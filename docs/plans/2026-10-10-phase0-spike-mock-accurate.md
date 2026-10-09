@@ -12,6 +12,21 @@
 
 **Environment:** file `.env` di root sudah berisi `GEMINI_API_KEY` dan `GOOGLE_OAUTH_CLIENT_ID` (milik pemilik project; `.env` memang ikut ter-commit — keputusan pemilik). Semua perintah dijalankan dari `/root/aigoogle`.
 
+## Amendmen Eksekusi (2026-10-10, disetujui pemilik setelah spike Task 2)
+
+Spike membuktikan bentuk API REAL Accurate Online (docs resmi + GitHub aol-integration) berbeda dari kontrak mock rencana awal. **Keputusan: mock disamakan dengan bentuk REAL** agar parser adapter Fase 1 diuji terhadap bentuk yang benar sejak awal. Dampak ke Tasks 4–7:
+
+1. Envelope: `{ s: true, d: [...], sp? }` — `s` **boolean**, `d` **array**; gagal = HTTP 200 + `{ s: false, d: ["pesan"] }`; token/session invalid = HTTP 401.
+2. Semua endpoint db/modul = **GET** (query string); `open-db.do?id={id}`.
+3. `open-db` sukses: `{ s, d: ["Proses Berhasil Dilakukan"], session, host, admin }` — session & host **top level**.
+4. List sukses menyertakan pagination `sp: { page, sort, pageSize, pageCount, rowCount, start, limit }`.
+5. Panggilan modul butuh **`Authorization: Bearer` + `X-Session-ID`** (session wajib milik user yang sama dengan token).
+6. `userinfo` = `GET /api/userinfo.do` (Bearer), bukan `/oauth/userinfo`.
+7. `db-list` menyertakan field asli: `id` (number), `alias`, `admin` (boolean per-user per-db), `dataAccessType`, `trial`, `expired`.
+
+---
+
+
 ---
 
 ## File Structure
