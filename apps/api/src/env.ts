@@ -1,0 +1,15 @@
+import { z } from "zod";
+
+const Env = z.object({
+  PORT: z.coerce.number().default(3001),
+  DATABASE_URL: z.string().min(1, "DATABASE_URL wajib diisi"),
+  TOKEN_ENC_KEY: z.string().regex(/^[0-9a-f]{64}$/, "TOKEN_ENC_KEY = 64 hex (32 byte)"),
+  ACCURATE_CLIENT_ID: z.string().min(1),
+  ACCURATE_CLIENT_SECRET: z.string().min(1),
+  ACCURATE_API_BASE: z.string().default("https://account.accurate.id"),
+  MOCK_ACCURATE_URL: z.string().default(""),
+  APP_ORIGIN: z.string().default("http://localhost:5173"),
+  GOOGLE_OAUTH_CLIENT_ID: z.string().default(""),
+  GOOGLE_OAUTH_CLIENT_SECRET: z.string().default(""),
+});
+export const env = Env.parse(process.env);
