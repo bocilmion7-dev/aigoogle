@@ -67,8 +67,17 @@ access_privilege, account_budget_target, approval, asset_transfer, attachment, a
 
 ## Keputusan untuk mock & Fase 1
 
-1. ~~Mock saat ini memakai kontrak mock~~ **DIPUTUSKAN (checkpoint batch 1): mock disamakan ke bentuk REAL** (s: boolean, d: array, GET, session/host top-level, sp pagination, Bearer + X-Session-ID).
+1. **DIPUTUSKAN (checkpoint batch 1): mock disamakan ke bentuk REAL** (s: boolean, d: array, GET, session/host top-level, sp pagination, Bearer + X-Session-ID). Terimplementasi penuh di Tasks 4–7 (23 test PASS).
 2. Mock base URL: `http://localhost:4010`; mapping: `{host}` real ≈ mock origin; path modul real `{host}/accurate/api/...` = mock `/accurate/api/...` ✓ (sudah cocok).
 3. Fixture: db 1001 "PT Maju Jaya" (admin+staff), db 1002 "CV Sejahtera" (admin saja); user demo admin@demo.local, staff@demo.local.
 4. Adapter Fase 1 menerjemahkan real↔internal; mock idealnya = bentuk real agar parser diuji sekali.
 5. Pemetaan user→privilege: **fallback disarankan** — `admin:true` dari db-list → role Admin; selain itu role dasar + checklist manual.
+
+## Ringkasan model Gemini audio (Okt 2026, dari docs resmi)
+
+| Kebutuhan | Model | Endpoint |
+|---|---|---|
+| Voice chat real-time + tool calling (Fase 2) | `gemini-3.8-live` (GA), alternatif `gemini-2.5-flash-native-audio-preview-12-2025` | Live API WebSocket `bidiGenerateContent` |
+| TTS sekali panggil (spike ini) | `gemini-3.8-flash-tts` (GA), alternatif `gemini-2.5-flash-preview-tts` | REST `generateContent` + `speechConfig` |
+
+Status spike audio: **TERBLOKIR** — key di `.env` (`AQ.Ab8...`) ditolak endpoint (`400 API key not valid`). Menunggu key valid dari pemilik (format umum `AIzaSy...` dari aistudio.google.com/apikey). Skrip siap: `node scripts/spike-gemini-audio.mjs [model]`.
