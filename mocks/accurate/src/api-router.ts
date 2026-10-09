@@ -1,9 +1,12 @@
 import { Router } from "express";
 import { bearerGuard, ok, fail, sp, sessionGuard } from "./session.js";
 import { createSession, getDb, getUser, isAdminOf, listDbs } from "./store.js";
+import { accessPrivilegeRouter } from "./modules/access-privilege.js";
 
 export const accountApiRouter = Router(); // API dasar account.accurate.id (Bearer)
 export const apiRouter = Router(); // API modul {host}/accurate/api (Bearer + X-Session-ID)
+
+apiRouter.use("/access-privilege", accessPrivilegeRouter);
 
 accountApiRouter.get("/api/userinfo.do", bearerGuard, (req, res) => {
   const u = getUser(req.mockUserId!)!;
