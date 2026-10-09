@@ -67,7 +67,7 @@ access_privilege, account_budget_target, approval, asset_transfer, attachment, a
 
 ## Keputusan untuk mock & Fase 1
 
-1. **Mock saat ini memakai kontrak mock** `{ s: { status, message? }, d: any }` + POST — DIREKOMENDASIKAN disesuaikan ke bentuk REAL (lihat checkpoint).
+1. ~~Mock saat ini memakai kontrak mock~~ **DIPUTUSKAN (checkpoint batch 1): mock disamakan ke bentuk REAL** (s: boolean, d: array, GET, session/host top-level, sp pagination, Bearer + X-Session-ID).
 2. Mock base URL: `http://localhost:4010`; mapping: `{host}` real ≈ mock origin; path modul real `{host}/accurate/api/...` = mock `/accurate/api/...` ✓ (sudah cocok).
 3. Fixture: db 1001 "PT Maju Jaya" (admin+staff), db 1002 "CV Sejahtera" (admin saja); user demo admin@demo.local, staff@demo.local.
 4. Adapter Fase 1 menerjemahkan real↔internal; mock idealnya = bentuk real agar parser diuji sekali.
