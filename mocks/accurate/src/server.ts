@@ -1,4 +1,6 @@
 import express from "express";
+import { oauthRouter } from "./oauth.js";
+import { accountApiRouter } from "./api-router.js";
 
 export function createApp() {
   const app = express();
@@ -7,6 +9,8 @@ export function createApp() {
   app.get("/health", (_req, res) => {
     res.json({ ok: true });
   });
+  app.use("/oauth", oauthRouter);
+  app.use(accountApiRouter);
   return app;
 }
 
