@@ -1,0 +1,81 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Tenant {
+  id           String       @id @default(cuid())
+  provider     String
+  providerDbId String
+  name         String
+  alias        String
+  createdAt    DateTime     @default(now())
+  users        User[]
+  connections  Connection[]
+  roles        Role[]
+  @@unique([provider, providerDbId])
+}
+
+model Role {
+  id          String           @id @default(cuid())
+  tenant      Tenant           @relation(fields: [tenantId], references: [id])
+  tenantId    String
+  key         String
+  name        String
+  permissions RolePermission[]
+  users       User[]
+  @@unique([tenantId, key])
+}
+
+model RolePermission {
+  id            String @id @default(cuid())
+  role          Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  roleId        String
+  permissionKey String
+  @@unique([roleId, permissionKey])
+}
+
+model User {
+  id             String   @id @default(cuid())
+  tenant         Tenant   @relation(fields: [tenantId], references: [id])
+  tenantId       String
+  providerUserId String
+  email          String
+  name           String
+  role           Role     @relation(fields: [roleId], references: [id])
+  roleId         String
+  createdAt      DateTime @default(now())
+  sessions       Session[]
+  @@unique([tenantId, providerUserId])
+}
+
+model Connection {
+  id              String   @id @default(cuid())
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+  tenantId        String
+  provider        String
+  accessTokenEnc  String
+  refreshTokenEnc String
+  expiresAt       DateTime
+  host            String   @default("")
+  status          String   @default("connected")
+  updatedAt       DateTime @updatedAt
+  @@unique([tenantId, provider])
+}
+
+model Session {
+  id        String   @id
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model AppSetting {
+  key   String @id
+  value String
+}
