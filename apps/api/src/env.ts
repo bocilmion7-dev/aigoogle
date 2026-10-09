@@ -12,4 +12,15 @@ const Env = z.object({
   GOOGLE_OAUTH_CLIENT_ID: z.string().default(""),
   GOOGLE_OAUTH_CLIENT_SECRET: z.string().default(""),
 });
-export const env = Env.parse(process.env);
+function parseEnv() {
+  const parsed = Env.safeParse(process.env);
+  if (!parsed.success) {
+    console.error("Env tidak valid:");
+    for (const issue of parsed.error.issues) {
+      console.error(` - ${issue.path.join(".")}: ${issue.message}`);
+    }
+    process.exit(1);
+  }
+  return parsed.data;
+}
+export const env = parseEnv();
