@@ -113,3 +113,5 @@ export const privilegesOf = (dbId: string, userId: string): PrivilegeRow[] =>
   dbs[dbId]?.privileges[dbs[dbId].userPrivileges[userId] ?? ""] ?? [];
 export const privilegeGroups = (dbId: string) =>
   Object.entries(dbs[dbId]?.privileges ?? {}).map(([id]) => ({ id, name: id === "priv-admin" ? "Administrator" : "Staff Penjualan" }));
+export const isAdminOf = (dbId: string, userId: string) =>
+  dbs[dbId]?.userPrivileges[userId] === "priv-admin";

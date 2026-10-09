@@ -1,6 +1,6 @@
 import express from "express";
 import { oauthRouter } from "./oauth.js";
-import { accountApiRouter } from "./api-router.js";
+import { accountApiRouter, apiRouter } from "./api-router.js";
 
 export function createApp() {
   const app = express();
@@ -11,6 +11,7 @@ export function createApp() {
   });
   app.use("/oauth", oauthRouter);
   app.use(accountApiRouter);
+  app.use("/accurate/api", apiRouter);
   return app;
 }
 
