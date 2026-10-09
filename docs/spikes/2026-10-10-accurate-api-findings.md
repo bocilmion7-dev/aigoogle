@@ -65,6 +65,12 @@ access_privilege, account_budget_target, approval, asset_transfer, attachment, a
 2. Bentuk field matriks `access-privilege/detail.do` (AllowView dll.) — verifikasi live.
 3. Ketersediaan authorization code flow (vs implicit) untuk server-side app — uji via php-01 sebagai referensi.
 
+## Probe live dengan client ID asli (2026-10-10, credential pemilik)
+
+- `GET /oauth/authorize?client_id=d3385...&response_type=code&redirect_uri=http://localhost:3000/oauth/callback` → **302 ke `/oauth/login.do`** — client ID valid, user harus login dulu (alur authorization code dikonfirmasi).
+- `POST /oauth/token` dengan code ngawur → **HTML "Halaman tidak boleh diakses"** (bukan JSON) — indikasi `redirect_uri` harus terdaftar di konsol developer; verifikasi live saat callback flow diuji di Fase 1.
+- Client credentials pemilik tersimpan di `.env` (`ACCURATE_CLIENT_ID/SECRET`). Redirect URI yang harus didaftarkan untuk dev lokal: `http://localhost:3001/api/oauth/accurate/callback`.
+
 ## Keputusan untuk mock & Fase 1
 
 1. **DIPUTUSKAN (checkpoint batch 1): mock disamakan ke bentuk REAL** (s: boolean, d: array, GET, session/host top-level, sp pagination, Bearer + X-Session-ID). Terimplementasi penuh di Tasks 4–7 (23 test PASS).
