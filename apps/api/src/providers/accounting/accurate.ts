@@ -1,10 +1,14 @@
 import type {
   AccountingProvider,
   OpenDbResult,
+  PrivilegeGroup,
+  ProviderCtx,
   ProviderDb,
   ProviderTokenSet,
   ProviderUser,
+  ToolSpec,
 } from "./types.js";
+import { ACCURATE_CATALOG } from "./catalog.js";
 
 interface Envelope<T> {
   s: boolean;
@@ -88,5 +92,54 @@ export class AccurateAdapter implements AccountingProvider {
     );
     if (!j.session || !j.host) throw new Error("open-db tidak mengembalikan session/host");
     return { session: j.session, host: j.host };
+  }
+
+  capabilityCatalog(): ToolSpec[] {
+    return ACCURATE_CATALOG;
+  }
+
+  private async moduleGet(path: string, ctx: ProviderCtx): Promise<Envelope<unknown>> {
+    const res = await fetch(`${ctx.host}${path}`, {
+      headers: { Authorization: `Bearer ${ctx.accessToken}`, "X-Session-ID": ctx.session },
+      redirect: "follow",
+    });
+    if (res.status === 401) throw new Error("sesi/token ditolak provider (401)");
+    const j = (await res.json()) as Envelope<unknown>;
+    if (!j.s) throw new Error(`provider gagal: ${JSON.stringify(j.d)}`);
+    return j;
+  }
+
+  async execute(tool: string, _args: Record<string, unknown>, ctx: ProviderCtx): Promise<unknown> {
+    const paths: Record<string, string> = {
+      "customer.list": "/accurate/api/customer/list.do",
+      "salesEntry.list": "/accurate/api/sales-entry/list.do",
+    };
+    const p = paths[tool];
+    if (!p) throw new Error(`tool tidak dikenal: ${tool}`);
+    const j = await this.moduleGet(p, ctx);
+    return j.d;
+  }
+
+  async refreshToken(refreshToken: string): Promise<ProviderTokenSet> {
+    return this.tokenRequest({ grant_type: "refresh_token", refresh_token: refreshToken });
+  }
+
+  async privilegeCatalog(ctx: ProviderCtx): Promise<PrivilegeGroup[]> {
+    const list = await this.moduleGet("/accurate/api/access-privilege/list.do", ctx);
+    const groups = (list.d as Array<{ id: string; name: string }>) ?? [];
+    const out: PrivilegeGroup[] = [];
+    for (const g of groups) {
+      const detail = await this.moduleGet(
+        `/accurate/api/access-privilege/detail.do?id=${encodeURIComponent(g.id)}`,
+        ctx
+      );
+      const row = (detail.d as Array<{ Privilege: Array<{ ModuleName: string; AllowView: boolean }> }>)[0];
+      out.push({
+        id: g.id,
+        name: g.name,
+        allowViewModules: (row?.Privilege ?? []).filter((m) => m.AllowView).map((m) => m.ModuleName),
+      });
+    }
+    return out;
   }
 }
