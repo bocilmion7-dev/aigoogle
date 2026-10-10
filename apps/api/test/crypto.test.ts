@@ -13,7 +13,24 @@ describe("crypto token", () => {
     expect(encryptToken("sama")).not.toBe(encryptToken("sama"));
   });
 
-  it("ciphertext rusak → throw", () => {
+  it("payload bukan 3 segmen → throw", () => {
     expect(() => decryptToken("aqQ=".repeat(8))).toThrow();
+    expect(() => decryptToken("a.b.c.d")).toThrow();
+  });
+
+  it("auth tag / ciphertext dimanipulasi → throw (GCM auth)", () => {
+    const [n, t, c] = encryptToken("rahasia").split(".");
+    const flip = (s: string) => {
+      const b = Buffer.from(s, "base64");
+      b[0] ^= 1;
+      return b.toString("base64");
+    };
+    expect(() => decryptToken([n, flip(t), c].join("."))).toThrow();
+    expect(() => decryptToken([n, t, flip(c)].join("."))).toThrow();
+  });
+
+  it("unicode round-trip", () => {
+    const plain = "tokén-🚀";
+    expect(decryptToken(encryptToken(plain))).toBe(plain);
   });
 });
