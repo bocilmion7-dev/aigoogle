@@ -20,14 +20,14 @@ describe.skipIf(!keyOk)("Gemini asli (live)", () => {
   const gemini = new RealGeminiClient(process.env.GEMINI_API_KEY!);
 
   it("generateContent teks polos → balasan teks", async () => {
-    const res = await withRetry(() => gemini.generate({ contents: [{ text: "Balas satu kata saja: halo" }] }));
+    const res = await withRetry(() => gemini.generate({ contents: [{ role: "user", parts: [{ text: "Balas satu kata saja: halo" }] }] }));
     expect(res.parts.some((p) => p.text && p.text.length > 0)).toBe(true);
   }, 60000);
 
   it("generateContent dengan tools → functionCall", async () => {
     const res = await withRetry(() =>
       gemini.generate({
-        contents: [{ text: "Cek daftar pelanggan sekarang." }],
+        contents: [{ role: "user", parts: [{ text: "Cek daftar pelanggan sekarang." }] }],
         tools: [
           {
             functionDeclarations: [

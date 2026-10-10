@@ -16,8 +16,12 @@ export interface ToolDecl {
     parameters: Record<string, unknown>;
   }>;
 }
+export interface GeminiContent {
+  role?: "user" | "model";
+  parts: GeminiPart[];
+}
 export interface GenerateOpts {
-  contents: GeminiPart[];
+  contents: GeminiContent[];
   tools?: ToolDecl[];
   system?: string;
   model?: string;

@@ -20,7 +20,7 @@ export class RealGeminiClient implements GeminiClient {
 
   private body(opts: GenerateOpts): string {
     return JSON.stringify({
-      contents: [{ parts: opts.contents }],
+      contents: opts.contents,
       ...(opts.tools ? { tools: opts.tools } : {}),
       ...(opts.system ? { systemInstruction: { parts: [{ text: opts.system }] } } : {}),
       ...(opts.responseModalities ? { generationConfig: { responseModalities: opts.responseModalities } } : {}),
