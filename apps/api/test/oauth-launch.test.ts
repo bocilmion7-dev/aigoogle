@@ -48,6 +48,14 @@ describe("launch & callback", () => {
     expect(me.body.tenant.provider).toBe("accurate");
     const tenant = await prisma.tenant.findFirst({ where: { providerDbId: "1001" } });
     expect(tenant).toBeTruthy();
+    const conn = await prisma.connection.findFirst({ where: { tenantId: tenant!.id } });
+    expect(conn!.host).toBe(mockBase);
+    expect(conn!.session).toMatch(/^sess-/);
+    const role = await prisma.role.findFirstOrThrow({ where: { tenantId: tenant!.id, key: "admin" } });
+    const perms = await prisma.rolePermission.findMany({ where: { roleId: role.id } });
+    expect(perms.map((p) => p.permissionKey)).toEqual(
+      expect.arrayContaining(["accurate:customer.view", "accurate:sales-entry.view", "app:settings.manage"])
+    );
     expect(await prisma.connection.count({ where: { tenantId: tenant!.id, provider: "accurate" } })).toBe(1);
     const au2 = await fetch(`${mockBase}/oauth/authorize?client_id=c&redirect_uri=${cbUrl}&state=${state}&user=admin`, { redirect: "manual" });
     const code2 = new URL(au2.headers.get("location")!).searchParams.get("code")!;
