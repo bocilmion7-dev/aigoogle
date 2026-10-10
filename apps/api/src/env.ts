@@ -11,6 +11,7 @@ const Env = z.object({
   APP_ORIGIN: z.string().default("http://localhost:5173"),
   GOOGLE_OAUTH_CLIENT_ID: z.string().default(""),
   GOOGLE_OAUTH_CLIENT_SECRET: z.string().default(""),
+  GEMINI_API_KEY: z.string().default(""),
   GEMINI_MODEL: z.string().default("gemini-3.6-flash"),
   GEMINI_TTS_MODEL: z.string().default("gemini-3.8-flash-tts"),
   GEMINI_TRANSCRIBE_MODEL: z.string().default("gemini-3.5-transcribe"),

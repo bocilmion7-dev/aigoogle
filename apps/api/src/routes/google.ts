@@ -1,12 +1,15 @@
 import { Router } from "express";
+import { z } from "zod";
 import { env } from "../env.js";
+import { prisma } from "../db.js";
+import { encryptToken } from "../crypto.js";
 
 export const googleRouter = Router();
 
 const SCOPES = ["https://www.googleapis.com/auth/drive"];
 
 googleRouter.get("/oauth/google/start", (req, res) => {
-  if (!env.GOOGLE_OAUTH_CLIENT_ID || !process.env.GOOGLE_OAUTH_CLIENT_SECRET) {
+  if (!env.GOOGLE_OAUTH_CLIENT_ID || !env.GOOGLE_OAUTH_CLIENT_SECRET) {
     return res.status(501).json({
       error: "google_secret_missing",
       message: "Isi GOOGLE_OAUTH_CLIENT_SECRET di .env (Google Cloud Console → OAuth client).",
@@ -24,5 +27,42 @@ googleRouter.get("/oauth/google/start", (req, res) => {
   res.redirect(u.toString());
 });
 
-// callback: menukar code → refresh token Google → simpan di Connection(provider="google")
-// DIIMPLEMENTASIKAN PENUH DI FASE 3 (Explore Manager) — saat secret tersedia.
+googleRouter.get("/oauth/google/callback", async (req, res, next) => {
+  try {
+    const { code, state } = z.object({ code: z.string(), state: z.string() }).parse(req.query);
+    if (!state) return res.redirect(`${env.APP_ORIGIN}/explore?error=google_state`);
+    const tokRes = await fetch("https://oauth2.googleapis.com/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        code,
+        client_id: env.GOOGLE_OAUTH_CLIENT_ID,
+        client_secret: env.GOOGLE_OAUTH_CLIENT_SECRET,
+        redirect_uri: "http://localhost:3001/api/oauth/google/callback",
+        grant_type: "authorization_code",
+      }),
+    });
+    if (!tokRes.ok) return res.redirect(`${env.APP_ORIGIN}/explore?error=google_token`);
+    const tok = (await tokRes.json()) as { access_token: string; refresh_token?: string; expires_in: number };
+    const expiresAt = new Date(Date.now() + (tok.expires_in ?? 3600) * 1000);
+    await prisma.connection.upsert({
+      where: { tenantId_provider: { tenantId: state, provider: "google" } },
+      create: {
+        tenantId: state,
+        provider: "google",
+        accessTokenEnc: encryptToken(tok.access_token),
+        refreshTokenEnc: encryptToken(tok.refresh_token ?? ""),
+        expiresAt,
+      },
+      update: {
+        accessTokenEnc: encryptToken(tok.access_token),
+        refreshTokenEnc: encryptToken(tok.refresh_token ?? ""),
+        expiresAt,
+        status: "connected",
+      },
+    });
+    res.redirect(`${env.APP_ORIGIN}/explore`);
+  } catch (e) {
+    next(e);
+  }
+});
