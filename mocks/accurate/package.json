@@ -2,6 +2,7 @@
   "name": "@mock/accurate",
   "private": true,
   "type": "module",
+  "exports": { ".": "./src/server.ts" },
   "scripts": {
     "dev": "MOCK_ACCURATE_AUTOSTART=1 tsx watch src/server.ts",
     "start": "MOCK_ACCURATE_AUTOSTART=1 tsx src/server.ts",
