@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { Me } from "@aigoogle/shared";
 import { getMe } from "../api";
+import { Chat } from "./Chat";
 
 export function Shell() {
   const [me, setMe] = useState<Me | null | undefined>(undefined);
@@ -13,12 +14,26 @@ export function Shell() {
     return null;
   }
   return (
-    <main style={{ fontFamily: "system-ui", maxWidth: 720, margin: "48px auto", padding: 24 }}>
-      <h1 style={{ fontSize: 24 }}>{me.tenant.name}</h1>
-      <p style={{ color: "#555" }}>
-        Halo, {me.name} ({me.roleKey}). Chat AI &amp; Explore Manager menyusul di fase berikutnya.
-      </p>
-      <a href="/settings" style={{ color: "#3d6b54" }}>Pengaturan →</a>
-    </main>
+    <div style={{ fontFamily: "system-ui" }}>
+      <header
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          padding: "10px 16px",
+          borderBottom: "1px solid #e3ddd4",
+          background: "#faf8f5",
+        }}
+      >
+        <strong style={{ color: "#3d6b54" }}>{me.tenant.name}</strong>
+        <span style={{ fontSize: 13, color: "#666" }}>
+          {me.name} · {me.roleKey} ·{" "}
+          <a href="/settings" style={{ color: "#3d6b54" }}>
+            Pengaturan
+          </a>
+        </span>
+      </header>
+      <Chat />
+    </div>
   );
 }
