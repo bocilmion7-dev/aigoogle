@@ -26,3 +26,21 @@ export interface AccountingProvider {
   listDbs(accessToken: string): Promise<ProviderDb[]>;
   openDb(accessToken: string, providerDbId: string): Promise<OpenDbResult>;
 }
+export interface ToolSpec {
+  name: string;
+  description: string;
+  jsonSchema: Record<string, unknown>;
+  requiredPermission: string;
+  label: string;
+}
+export interface ProviderCtx {
+  tenantId: string;
+  host: string;
+  session: string;
+  accessToken: string;
+}
+export interface PrivilegeGroup {
+  id: string;
+  name: string;
+  allowViewModules: string[];
+}
