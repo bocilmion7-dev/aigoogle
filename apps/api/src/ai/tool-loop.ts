@@ -1,5 +1,5 @@
 import type { GeminiClient } from "./gemini-client.js";
-import type { GeminiPart } from "./gemini-types.js";
+import type { GeminiContent, GeminiPart } from "./gemini-types.js";
 import { SYSTEM_PROMPT } from "./system-prompt.js";
 import type { ToolSpec } from "../providers/accounting/types.js";
 
@@ -19,7 +19,7 @@ export interface ToolLoopOpts {
   permissions: Set<string>;
   tools: ToolSpec[];
   userMessage: string;
-  history?: GeminiPart[];
+  history?: GeminiContent[];
   onEvent: (e: ToolLoopEvent) => void;
   model?: string;
   maxSteps?: number;
@@ -33,7 +33,10 @@ export async function runToolLoop(
   const now = opts.now ?? Date.now;
   const deadline = now() + 60_000;
   const trace: Array<Record<string, unknown>> = [];
-  const contents: GeminiPart[] = [...(opts.history ?? []), { text: opts.userMessage }];
+  const contents: GeminiContent[] = [
+    ...(opts.history ?? []),
+    { role: "user", parts: [{ text: opts.userMessage }] },
+  ];
   opts.onEvent({ type: "start" });
   let text = "";
 
@@ -65,13 +68,16 @@ export async function runToolLoop(
     }
     if (calls.length === 0) return { text, trace };
 
-    contents.push(...res.parts);
+    contents.push({ role: "model", parts: res.parts });
     for (const call of calls) {
       const spec = opts.tools.find((t) => t.name === call.functionCall!.name);
       if (!spec) {
         trace.push({ tool: call.functionCall!.name, args: call.functionCall!.args, ok: false, reason: "unknown_tool" });
         contents.push({
-          functionResponse: { name: call.functionCall!.name, response: { error: "tool tidak dikenal" }, id: call.functionCall!.id },
+          role: "user",
+          parts: [
+            { functionResponse: { name: call.functionCall!.name, response: { error: "tool tidak dikenal" }, id: call.functionCall!.id } },
+          ],
         });
         continue;
       }
@@ -80,11 +86,16 @@ export async function runToolLoop(
         trace.push({ tool: spec.name, args: call.functionCall!.args, ok: false, reason: "no_permission" });
         opts.onEvent({ type: "tool_result", tool: spec.name, ok: false });
         contents.push({
-          functionResponse: {
-            name: spec.name,
-            response: { error: `Anda tidak punya akses modul ${spec.requiredPermission}` },
-            id: call.functionCall!.id,
-          },
+          role: "user",
+          parts: [
+            {
+              functionResponse: {
+                name: spec.name,
+                response: { error: `Anda tidak punya akses modul ${spec.requiredPermission}` },
+                id: call.functionCall!.id,
+              },
+            },
+          ],
         });
         continue;
       }
@@ -92,12 +103,22 @@ export async function runToolLoop(
         const result = await opts.providerExecute(spec.name, call.functionCall!.args);
         trace.push({ tool: spec.name, args: call.functionCall!.args, ok: true });
         opts.onEvent({ type: "tool_result", tool: spec.name, ok: true });
-        contents.push({ functionResponse: { name: spec.name, response: result, id: call.functionCall!.id } });
+        const wrapped =
+          Array.isArray(result) ? { items: result } : result && typeof result === "object" ? result : { result };
+        contents.push({
+          role: "user",
+          parts: [{ functionResponse: { name: spec.name, response: wrapped, id: call.functionCall!.id } }],
+        });
       } catch (e) {
         trace.push({ tool: spec.name, args: call.functionCall!.args, ok: false, reason: "execute_error" });
         opts.onEvent({ type: "tool_result", tool: spec.name, ok: false });
         contents.push({
-          functionResponse: { name: spec.name, response: { error: e instanceof Error ? e.message : "gagal" }, id: call.functionCall!.id },
+          role: "user",
+          parts: [
+            {
+              functionResponse: { name: spec.name, response: { error: e instanceof Error ? e.message : "gagal" }, id: call.functionCall!.id },
+            },
+          ],
         });
       }
     }
