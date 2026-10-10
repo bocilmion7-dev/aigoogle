@@ -34,16 +34,15 @@ export class RealGeminiClient implements GeminiClient {
         headers: { "x-goog-api-key": this.apiKey, "Content-Type": "application/json" },
         body: this.body(opts),
       });
-    let lastRes: Response | null = null;
+    let last: { status: number; text: string } = { status: 0, text: "" };
     for (let attempt = 0; attempt < 3; attempt++) {
       const res = await doFetch();
       if (res.ok) return res;
-      lastRes = res;
-      if (res.status !== 429 && res.status !== 503) break;
-      await res.body?.cancel().catch(() => {});
+      last = { status: res.status, text: await res.text().catch(() => "") };
+      if ((res.status !== 429 && res.status !== 503) || attempt === 2) break;
       await new Promise((r) => setTimeout(r, 1500 * 2 ** attempt));
     }
-    throw new GeminiHttpError(lastRes!.status, await lastRes!.text());
+    throw new GeminiHttpError(last.status, last.text);
   }
 
   private partsFrom(json: { candidates?: Array<{ content?: { parts?: GeminiPart[] } }> }): GeminiPart[] {

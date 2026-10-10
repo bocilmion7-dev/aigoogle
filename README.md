@@ -25,5 +25,8 @@ DATABASE_URL (Neon), TOKEN_ENC_KEY, ACCURATE_CLIENT_ID/SECRET,
 ACCURATE_API_BASE, MOCK_ACCURATE_URL, APP_ORIGIN, GEMINI_API_KEY,
 GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET (menyusul)
 
-## Fase berikutnya
-Fase 2: AI chat + voice (Gemini tool loop + permission).
+## Fase
+- **Fase 1 (selesai):** fondasi monorepo, multi-tenant Neon, session cookie, OAuth Accurate (mock), Settings UI, koneksi. Rencana: `docs/plans/2026-10-10-phase1-fondasi-platform.md`.
+- **Fase 2 (selesai):** AI chat streaming (Gemini tool loop, badge tool, riwayat, isolasi tenant, audit per tool call) + voice (STT/TTS dua engine: Web Speech & Gemini native). Rencana: `docs/plans/2026-10-10-phase2-ai-chat-voice.md`; hasil smoke: `docs/spikes/2026-10-10-phase2-chat-check.md`; skrip: `/tmp/opencode/e2e-smoke-phase2.sh` (11/11 PASS dengan Gemini asli).
+- Catatan model Gemini: default `gemini-3.6-flash` (free tier 20 req/hari/model — `gemini-3.8-flash` habis kuota harian saat pengembangan); TTS `gemini-3.8-flash-tts`; STT `gemini-3.5-transcribe`.
+

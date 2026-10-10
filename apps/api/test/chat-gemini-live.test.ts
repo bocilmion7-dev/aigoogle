@@ -79,9 +79,9 @@ describe.skipIf(!keyOk)("chat dengan Gemini asli + mock Accurate", () => {
         await new Promise((r) => setTimeout(r, 2000));
       }
     }
-    if (last.includes("tidak tersedia") || last === "") {
+    if (last.includes("tidak tersedia") || last.includes("gangguan") || last === "") {
       outage = true;
-      console.warn("Gemini outage — integration test di-skip");
+      console.warn("Gemini outage/quota — integration test di-skip");
       return;
     }
     expect(last).toContain("customer.list");
