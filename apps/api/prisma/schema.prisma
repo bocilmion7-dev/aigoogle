@@ -19,6 +19,7 @@ model Tenant {
   roles        Role[]
   chatSessions ChatSession[]
   auditLogs    AuditLog[]
+  driveJobs    DriveJob[]
   @@unique([provider, providerDbId])
 }
 
@@ -116,4 +117,33 @@ model AuditLog {
   action    String
   detail    String   @default("{}")
   createdAt DateTime @default(now())
+}
+
+model DriveJob {
+  id         String            @id @default(cuid())
+  tenant     Tenant            @relation(fields: [tenantId], references: [id])
+  tenantId   String
+  userId     String
+  folderId   String
+  folderName String            @default("")
+  status     String            @default("planned") // planned|running|done|cancelled|failed
+  planJson   String            @default("[]")
+  resultJson String            @default("{}")
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+  logs       DriveActionLog[]
+}
+
+model DriveActionLog {
+  id         String   @id @default(cuid())
+  job        DriveJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  jobId      String
+  fileId     String
+  fileName   String   @default("")
+  action     String   // create_folder|rename|move
+  fromParent String   @default("")
+  toParent   String   @default("")
+  status     String   @default("ok") // ok|failed|skipped
+  error      String   @default("")
+  createdAt  DateTime @default(now())
 }
