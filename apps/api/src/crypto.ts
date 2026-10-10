@@ -12,7 +12,9 @@ export function encryptToken(plain: string): string {
 }
 
 export function decryptToken(payload: string): string {
-  const [nonce, tag, enc] = payload.split(".").map((s) => Buffer.from(s, "base64"));
+  const parts = payload.split(".");
+  if (parts.length !== 3) throw new Error("token tidak valid");
+  const [nonce, tag, enc] = parts.map((s) => Buffer.from(s, "base64"));
   const decipher = createDecipheriv("aes-256-gcm", KEY, nonce);
   decipher.setAuthTag(tag);
   return Buffer.concat([decipher.update(enc), decipher.final()]).toString("utf8");
