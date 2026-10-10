@@ -10,6 +10,7 @@ export interface ToolLoopEvent {
   ok?: boolean;
   delta?: string;
   message?: string;
+  [key: string]: unknown;
 }
 
 export interface ToolLoopOpts {
