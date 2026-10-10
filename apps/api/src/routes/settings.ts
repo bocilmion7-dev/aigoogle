@@ -38,6 +38,7 @@ settingsRouter.get(
   asyncHandler(async (req, res) => {
     const conns = await prisma.connection.findMany({ where: { tenantId: req.user!.tenant.id } });
     const accurate = conns.find((c) => c.provider === "accurate");
+    const google = conns.find((c) => c.provider === "google");
     res.json([
       {
         provider: "accurate",
@@ -45,7 +46,12 @@ settingsRouter.get(
         accountLabel: req.user!.tenant.alias,
         expiresAt: accurate?.expiresAt.toISOString(),
       },
-      { provider: "google", status: "none" },
+      {
+        provider: "google",
+        status: google ? (google.expiresAt < new Date() ? "expired" : google.status) : "none",
+        accountLabel: "",
+        expiresAt: google?.expiresAt.toISOString(),
+      },
     ]);
   })
 );

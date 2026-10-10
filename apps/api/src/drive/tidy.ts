@@ -49,7 +49,7 @@ export async function buildPlan(client: DriveClient, folderId: string, classify:
 
 export interface ExecuteOpts {
   isCancelled: () => boolean;
-  onProgress?: (done: number, total: number, item: TidyResultItem) => void;
+  onProgress?: (done: number, total: number, item: TidyResultItem) => void | Promise<void>;
 }
 
 export async function executePlan(
@@ -89,7 +89,7 @@ export async function executePlan(
       };
       items.push(item);
       done++;
-      opts.onProgress?.(done, total, item);
+      await opts.onProgress?.(done, total, item);
     } catch (e) {
       const item: TidyResultItem = {
         fileId: step.fileId,
@@ -101,7 +101,7 @@ export async function executePlan(
       };
       items.push(item);
       done++;
-      opts.onProgress?.(done, total, item);
+      await opts.onProgress?.(done, total, item);
     }
   }
   return { items };
