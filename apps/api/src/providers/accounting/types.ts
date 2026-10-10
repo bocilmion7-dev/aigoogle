@@ -25,6 +25,10 @@ export interface AccountingProvider {
   fetchUser(accessToken: string): Promise<ProviderUser>;
   listDbs(accessToken: string): Promise<ProviderDb[]>;
   openDb(accessToken: string, providerDbId: string): Promise<OpenDbResult>;
+  capabilityCatalog(): ToolSpec[];
+  execute(tool: string, args: Record<string, unknown>, ctx: ProviderCtx): Promise<unknown>;
+  refreshToken(refreshToken: string): Promise<ProviderTokenSet>;
+  privilegeCatalog(ctx: ProviderCtx): Promise<PrivilegeGroup[]>;
 }
 export interface ToolSpec {
   name: string;
