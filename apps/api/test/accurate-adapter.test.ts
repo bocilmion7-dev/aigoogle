@@ -17,7 +17,10 @@ beforeAll(async () => {
     apiBase: base,
   });
 });
-afterAll(() => server.close());
+afterAll(async () => {
+  server.closeAllConnections();
+  await new Promise((r) => server.close(r));
+});
 
 async function loginMock(user?: string) {
   const url = new URL(adapter.authorizeUrl({ redirectUri: "http://x/cb", state: "s" }));
