@@ -32,6 +32,7 @@ launchRouter.get("/oauth/accurate/callback", async (req, res, next) => {
     const dbs = await provider.listDbs(tok.accessToken);
     const db = (st.dbId ? dbs.find((d) => d.providerDbId === st.dbId) : dbs[0]) ?? dbs[0];
     if (!db) return res.redirect(`${env.APP_ORIGIN}/?error=nodb`);
+    const open = await provider.openDb(tok.accessToken, db.providerDbId);
 
     const tenant = await prisma.tenant.upsert({
       where: { provider_providerDbId: { provider: "accurate", providerDbId: db.providerDbId } },
@@ -71,14 +72,27 @@ launchRouter.get("/oauth/accurate/callback", async (req, res, next) => {
         accessTokenEnc: encryptToken(tok.accessToken),
         refreshTokenEnc: encryptToken(tok.refreshToken),
         expiresAt: tok.expiresAt,
+        host: open.host,
+        session: open.session,
       },
       update: {
         accessTokenEnc: encryptToken(tok.accessToken),
         refreshTokenEnc: encryptToken(tok.refreshToken),
         expiresAt: tok.expiresAt,
         status: "connected",
+        host: open.host,
+        session: open.session,
       },
     });
+    if (db.admin) {
+      const modulPerms = accurateProvider()
+        .capabilityCatalog()
+        .map((t) => t.requiredPermission);
+      await prisma.rolePermission.createMany({
+        data: modulPerms.map((permissionKey) => ({ roleId: role.id, permissionKey })),
+        skipDuplicates: true,
+      });
+    }
     const sid = randomBytes(32).toString("hex");
     await prisma.session.create({
       data: { id: sid, userId: user.id, expiresAt: new Date(Date.now() + 7 * 86400_000) },
