@@ -3,6 +3,7 @@ import cookieParser from "cookie-parser";
 import { loadSession } from "./middleware/session.js";
 import { meRouter } from "./routes/me.js";
 import { launchRouter } from "./routes/launch.js";
+import { settingsRouter } from "./routes/settings.js";
 
 export function createApp() {
   const app = express();
@@ -13,6 +14,7 @@ export function createApp() {
   app.get("/api/health", (_req, res) => res.json({ ok: true }));
   app.use("/api", meRouter);
   app.use("/api", launchRouter);
+  app.use("/api", settingsRouter);
 
   app.use((err: unknown, _req: express.Request, res: express.Response, next: express.NextFunction) => {
     if (res.headersSent) return next(err);
