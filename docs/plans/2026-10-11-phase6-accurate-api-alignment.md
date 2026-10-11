@@ -1,5 +1,7 @@
 # Phase 6: Perbaikan Nama Modul + Perluasan Tool Accurate — Implementation Plan
 
+> **Status: SELESAI (2026-10-11)** — semua task dikerjakan di branch `phase6-api-alignment`. Hasil: `docs/spikes/2026-10-11-phase6-api-alignment-check.md` (suite mock 26/26, api offline 34/34, smoke 12/12, typecheck OK).
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use executing-plans to implement this plan task-by-task (inline only — subagent mati di workspace ini). Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Samakan nama modul mock/adapter dengan API Accurate asli (`sales-invoice`, `purchase-invoice`, `glaccount`), dukung query param resmi (`fields`, `sp.*`, `filter.*`, `keywords`), dan perluas `ACCURATE_CATALOG` + mock dengan tool read inti agar chat AI bisa menjawab pertanyaan akuntansi umum.
@@ -58,7 +60,7 @@
 
 **Files:** `mocks/accurate/src/modules/sales-invoice.ts` (baru, ganti file lama), `mocks/accurate/src/store.ts`, `mocks/accurate/src/api-router.ts`, `mocks/accurate/test/modules.test.ts`, `mocks/accurate/test/access-privilege.test.ts`
 
-- [ ] **Step 1: Tulis test gagal dulu**
+- [x] **Step 1: Tulis test gagal dulu**
 
 Edit `mocks/accurate/test/modules.test.ts` — ganti nama test & path:
 
@@ -82,12 +84,12 @@ Edit `mocks/accurate/test/access-privilege.test.ts` — ganti `sales-entry`→`s
   });
 ```
 
-- [ ] **Step 2: Jalankan test — EXPECT FAIL (404 path)**
+- [x] **Step 2: Jalankan test — EXPECT FAIL (404 path)**
 
 Run: `pnpm --filter @mock/accurate test`
 Expected: FAIL di test sales-invoice & access-privilege.
 
-- [ ] **Step 3: Rename file module + store + router**
+- [x] **Step 3: Rename file module + store + router**
 
 `git mv mocks/accurate/src/modules/sales-entry.ts mocks/accurate/src/modules/sales-invoice.ts` lalu edit isi:
 
@@ -123,12 +125,12 @@ import { salesInvoiceRouter } from "./modules/sales-invoice.js";
 apiRouter.use("/sales-invoice", salesInvoiceRouter);
 ```
 
-- [ ] **Step 4: Jalankan test mock — EXPECT PASS**
+- [x] **Step 4: Jalankan test mock — EXPECT PASS**
 
 Run: `pnpm --filter @mock/accurate test`
 Expected: semua PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git -C /root/aigoogle add mocks/accurate
@@ -141,7 +143,7 @@ git -C /root/aigoogle -c user.name="aigoogle-dev" -c user.email="dev@aigoogle.lo
 
 **Files:** `mocks/accurate/src/api-router.ts`, `mocks/accurate/test/db-session.test.ts`
 
-- [ ] **Step 1: Edit test session — pakai `customer/list.do`**
+- [x] **Step 1: Edit test session — pakai `customer/list.do`**
 
 Ganti blok terakhir `db-session.test.ts`:
 
@@ -160,7 +162,7 @@ Ganti blok terakhir `db-session.test.ts`:
   });
 ```
 
-- [ ] **Step 2: Hapus route ping**
+- [x] **Step 2: Hapus route ping**
 
 `api-router.ts` — hapus:
 
@@ -170,7 +172,7 @@ apiRouter.get("/ping.do", sessionGuard, (req, res) => {
 });
 ```
 
-- [ ] **Step 3: Test PASS → Commit**
+- [x] **Step 3: Test PASS → Commit**
 
 Run: `pnpm --filter @mock/accurate test` → PASS.
 ```bash
@@ -184,7 +186,7 @@ git -C /root/aigoogle -c user.name="aigoogle-dev" -c user.email="dev@aigoogle.lo
 
 **Files:** `apps/api/src/providers/accounting/accurate.ts`, `catalog.ts`, `apps/api/test/accurate-execute.test.ts`, `golden-set.test.ts`, `tool-loop.test.ts`, `chat-stream.test.ts`, `chat-gemini-live.test.ts`, `admin.test.ts`, `oauth-launch.test.ts`
 
-- [ ] **Step 1: Edit test dulu (ganti string)**
+- [x] **Step 1: Edit test dulu (ganti string)**
 
 `accurate-execute.test.ts`:
 - `adapter.execute("salesEntry.list", …)` → `"salesInvoice.list"`.
@@ -204,12 +206,12 @@ git -C /root/aigoogle -c user.name="aigoogle-dev" -c user.email="dev@aigoogle.lo
 
 `oauth-launch.test.ts`: expect arrayContaining `accurate:sales-invoice.view`.
 
-- [ ] **Step 2: Jalankan API test — EXPECT FAIL**
+- [x] **Step 2: Jalankan API test — EXPECT FAIL**
 
 Run: `pnpm --filter @aigoogle/api test` (atau `pnpm --filter api test` — cek nama package di `apps/api/package.json`).
 Expected: FAIL (tool/permission lama di src).
 
-- [ ] **Step 3: Edit src**
+- [x] **Step 3: Edit src**
 
 `catalog.ts` — rename entry:
 
@@ -232,7 +234,7 @@ Expected: FAIL (tool/permission lama di src).
     };
 ```
 
-- [ ] **Step 4: Test PASS → Commit**
+- [x] **Step 4: Test PASS → Commit**
 
 Run: `pnpm --filter @aigoogle/api test` → PASS.
 ```bash
@@ -246,7 +248,7 @@ git -C /root/aigoogle -c user.name="aigoogle-dev" -c user.email="dev@aigoogle.lo
 
 **Files:** `mocks/accurate/src/modules/list-factory.ts` (baru), 6 modul baru, `store.ts`, `api-router.ts`, `mocks/accurate/test/modules.test.ts`
 
-- [ ] **Step 1: Helper factory**
+- [x] **Step 1: Helper factory**
 
 `list-factory.ts`:
 
@@ -301,7 +303,7 @@ export function makeListRouter(opts: {
 }
 ```
 
-- [ ] **Step 2: Isi fixture store + type**
+- [x] **Step 2: Isi fixture store + type**
 
 `store.ts` tambah interface & data fixture (db 1001 + 1002):
 
@@ -344,7 +346,7 @@ Fixture db 1001 (db 1002 minimal 1–2 row serupa):
 
 Tambah `detail.do` ke customer & sales-invoice (router existing — tambah handler serupa factory, atau refactor pakai factory; refactor: `customer.ts` & `sales-invoice.ts` ganti isi dengan `export const customerRouter = makeListRouter({ module: "customer", rows: (db) => db.data.customers, fieldsForDetail: ["id","name"] })` dst.)
 
-- [ ] **Step 3: Mount router + test baru**
+- [x] **Step 3: Mount router + test baru**
 
 `api-router.ts`:
 
@@ -388,7 +390,7 @@ Test tambah di `modules.test.ts`:
   });
 ```
 
-- [ ] **Step 4: Test PASS → Commit**
+- [x] **Step 4: Test PASS → Commit**
 
 Run: `pnpm --filter @mock/accurate test` → PASS.
 ```bash
@@ -402,7 +404,7 @@ git -C /root/aigoogle -c user.name="aigoogle-dev" -c user.email="dev@aigoogle.lo
 
 **Files:** `apps/api/src/providers/accounting/accurate.ts`, `catalog.ts`, `apps/api/test/accurate-execute.test.ts`
 
-- [ ] **Step 1: Test execute dengan args**
+- [x] **Step 1: Test execute dengan args**
 
 Tambah di `accurate-execute.test.ts`:
 
@@ -426,12 +428,12 @@ Tambah di `accurate-execute.test.ts`:
   });
 ```
 
-- [ ] **Step 2: Jalankan — EXPECT FAIL**
+- [x] **Step 2: Jalankan — EXPECT FAIL**
 
 Run test file: `pnpm --filter @aigoogle/api test accurate-execute`
 Expected: FAIL.
 
-- [ ] **Step 3: Implementasi query builder + path map + detail**
+- [x] **Step 3: Implementasi query builder + path map + detail**
 
 `accurate.ts` — tambah helper di dalam class (atau module scope):
 
@@ -495,7 +497,7 @@ Ganti `execute`:
   }
 ```
 
-- [ ] **Step 4: Expand catalog (9 entry baru)**
+- [x] **Step 4: Expand catalog (9 entry baru)**
 
 `catalog.ts` — helper + daftar:
 
@@ -552,7 +554,7 @@ export const ACCURATE_CATALOG: ToolSpec[] = [
 ];
 ```
 
-- [ ] **Step 5: Update capabilityCatalog assertion + seed test admin**
+- [x] **Step 5: Update capabilityCatalog assertion + seed test admin**
 
 `accurate-execute.test.ts` capabilityCatalog:
 
@@ -570,7 +572,7 @@ export const ACCURATE_CATALOG: ToolSpec[] = [
 
 `admin.test.ts` — expect `accurate:item.view` ikut arrayContaining (launch seed map catalog).
 
-- [ ] **Step 6: Test PASS → Commit**
+- [x] **Step 6: Test PASS → Commit**
 
 Run: `pnpm --filter @aigoogle/api test` → PASS (cek golden-set masih cocok — TOOLS lokal golden-set hanya 2 tool, tidak otomatis dari catalog; tetap valid).
 ```bash
@@ -584,7 +586,7 @@ git -C /root/aigoogle -c user.name="aigoogle-dev" -c user.email="dev@aigoogle.lo
 
 **Files:** `apps/api/test/golden-set.test.ts`
 
-- [ ] **Step 1: Tambah TOOLS lokal + cases**
+- [x] **Step 1: Tambah TOOLS lokal + cases**
 
 Ekstend TOOLS array dengan (salinan singkat spec — jangan import catalog agar golden set tetap independen):
 
@@ -604,7 +606,7 @@ Cases tambah:
 
 Negative case pertama tetap salesInvoice.list.
 
-- [ ] **Step 2: Test PASS → Commit**
+- [x] **Step 2: Test PASS → Commit**
 
 Run: `pnpm --filter @aigoogle/api test golden-set` → PASS.
 ```bash
@@ -618,14 +620,14 @@ git -C /root/aigoogle -c user.name="aigoogle-dev" -c user.email="dev@aigoogle.lo
 
 **Files:** `/tmp/opencode/e2e-smoke-phase6.sh`, `docs/spikes/2026-10-11-phase6-api-alignment-check.md`, `mocks/accurate/README.md`
 
-- [ ] **Step 1: Suite penuh + typecheck + build**
+- [x] **Step 1: Suite penuh + typecheck + build**
 
 ```bash
 pnpm --filter @mock/accurate test && pnpm --filter @aigoogle/api test && pnpm --filter @aigoogle/web exec tsc --noEmit && pnpm --filter @aigoogle/api exec tsc --noEmit
 ```
 Expected: semua PASS/Done. Jika gagal → perbaiki sebelum lanjut.
 
-- [ ] **Step 2: Smoke live mock**
+- [x] **Step 2: Smoke live mock**
 
 Buat `/tmp/opencode/e2e-smoke-phase6.sh` (salin pola phase4; trap cleanup pola bracket `dist/cli[.]mjs`, `vit[e].js`): launch mock 4010 + API 3001 dengan `ACCURATE_API_BASE=http://localhost:4010`, login launch admin, POST chat offline? — chat butuh Gemini; cukup:
 1. `GET /api/me` → 200 + permissions mengandung `accurate:sales-invoice.view` & `accurate:item.view`.
@@ -633,15 +635,15 @@ Buat `/tmp/opencode/e2e-smoke-phase6.sh` (salin pola phase4; trap cleanup pola b
 3. Mock langsung: `GET /accurate/api/sales-invoice/list.do` 200 s true; `ping.do` 404.
 Jalankan 3× retry jika port bentrok/P1001.
 
-- [ ] **Step 3: README mock**
+- [x] **Step 3: README mock**
 
 `mocks/accurate/README.md` — daftar modul: customer (list+detail), sales-invoice (list+detail), item, vendor, glaccount, sales-order, sales-receipt, purchase-invoice, access-privilege; staff hanya sales-invoice; hapus baris ping jika ada; ganti `sales-entry`→`sales-invoice`.
 
-- [ ] **Step 4: Spike check doc**
+- [x] **Step 4: Spike check doc**
 
 Buat `docs/spikes/2026-10-11-phase6-api-alignment-check.md`: tabel sebelum/sesudah, hasil suite, hasil smoke, sisa gap (write ops, 65 modul, webhook).
 
-- [ ] **Step 5: Commit akhir**
+- [x] **Step 5: Commit akhir**
 
 ```bash
 git -C /root/aigoogle add -A docs mocks/accurate/README.md
