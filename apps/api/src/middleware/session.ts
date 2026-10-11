@@ -9,6 +9,7 @@ declare global {
         email: string;
         name: string;
         roleKey: string;
+        roleId: string;
         tenant: { id: string; name: string; alias: string; provider: string };
       };
     }
@@ -29,6 +30,7 @@ export function loadSession(req: Request, res: Response, next: NextFunction) {
         email: s.user.email,
         name: s.user.name,
         roleKey: s.user.role.key,
+        roleId: s.user.role.id,
         tenant: {
           id: s.user.tenant.id,
           name: s.user.tenant.name,
