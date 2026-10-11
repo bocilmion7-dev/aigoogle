@@ -2,10 +2,10 @@ export const CATEGORIES = ["Faktur", "Kuitansi", "Nota", "Surat Jalan", "Lainnya
 export type Category = (typeof CATEGORIES)[number];
 
 const RULES: Array<[Category, RegExp]> = [
-  ["Faktur", /\bfaktur\b|\binvoice\b|\bno\.?\s*\d+/i],
+  ["Faktur", /\bfaktur\b|\binvoice\b/i],
   ["Kuitansi", /\bkuitansi\b|\breceipt\b/i],
   ["Nota", /\bnota\b|\btunai\b|\bcash\b/i],
-  ["Surat Jalan", /\bsurat jalan\b|\bdelivery\b|\bdo\b/i],
+  ["Surat Jalan", /\bsurat[\s-]jalan\b|\bdelivery\b|\bdo\b/i],
 ];
 
 export function classifyText(text: string): Category {
