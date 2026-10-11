@@ -1,9 +1,11 @@
 export interface Me {
   userId: string;
+  id?: string;
   email: string;
   name: string;
   tenant: { id: string; name: string; alias: string; provider: string };
   roleKey: string;
+  permissions?: string[];
 }
 export interface ConnectionInfo {
   provider: string;
