@@ -8,6 +8,7 @@ import { googleRouter } from "./routes/google.js";
 import { chatRouter } from "./routes/chat.js";
 import { audioRouter } from "./routes/audio.js";
 import { driveRouter } from "./routes/drive.js";
+import { adminRouter } from "./routes/admin.js";
 
 export function createApp() {
   const app = express();
@@ -23,6 +24,7 @@ export function createApp() {
   app.use("/api", chatRouter);
   app.use("/api", audioRouter);
   app.use("/api", driveRouter);
+  app.use("/api", adminRouter);
 
   app.use((err: unknown, _req: express.Request, res: express.Response, next: express.NextFunction) => {
     if (res.headersSent) return next(err);

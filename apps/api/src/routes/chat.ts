@@ -4,51 +4,14 @@ import { prisma } from "../db.js";
 import { env } from "../env.js";
 import { asyncHandler } from "../asyncHandler.js";
 import { requireUser } from "../middleware/session.js";
-import { decryptToken, encryptToken } from "../crypto.js";
 import { geminiClient } from "../ai/gemini-client.js";
 import { runToolLoop } from "../ai/tool-loop.js";
 import { loadPermissionSet } from "../permissions.js";
 import { writeAudit } from "../audit.js";
 import { accurateProvider } from "../providers/accounting/index.js";
-import type { ProviderCtx, ProviderTokenSet } from "../providers/accounting/types.js";
+import { accurateCtxFor } from "../providers/accounting/connection.js";
 
 export const chatRouter = Router();
-
-async function ensureConnection(tenantId: string): Promise<ProviderCtx | null> {
-  const conn = await prisma.connection.findUnique({
-    where: { tenantId_provider: { tenantId, provider: "accurate" } },
-  });
-  if (!conn) return null;
-  let accessToken = decryptToken(conn.accessTokenEnc);
-  let host = conn.host;
-  let session = conn.session;
-  const provider = accurateProvider();
-  if (conn.expiresAt.getTime() - Date.now() < 24 * 3600_000) {
-    try {
-      const fresh: ProviderTokenSet = await provider.refreshToken(decryptToken(conn.refreshTokenEnc));
-      accessToken = fresh.accessToken;
-      await prisma.connection.update({
-        where: { id: conn.id },
-        data: {
-          accessTokenEnc: encryptToken(fresh.accessToken),
-          refreshTokenEnc: encryptToken(fresh.refreshToken),
-          expiresAt: fresh.expiresAt,
-        },
-      });
-    } catch {
-      await prisma.connection.update({ where: { id: conn.id }, data: { status: "expired" } });
-      return null;
-    }
-  }
-  if (!host || !session) {
-    const dbs = await provider.listDbs(accessToken);
-    const open = await provider.openDb(accessToken, dbs[0]?.providerDbId ?? "");
-    host = open.host;
-    session = open.session;
-    await prisma.connection.update({ where: { id: conn.id }, data: { host, session } });
-  }
-  return { tenantId, host, session, accessToken };
-}
 
 chatRouter.get(
   "/chat/sessions",
@@ -110,7 +73,7 @@ chatRouter.post(
     const dbUser = await prisma.user.findUniqueOrThrow({ where: { id: user.id } });
     const [permissions, ctx] = await Promise.all([
       loadPermissionSet(dbUser.roleId),
-      ensureConnection(user.tenant.id),
+      accurateCtxFor(user.tenant.id),
     ]);
     const provider = accurateProvider();
     const tools = provider.capabilityCatalog();
