@@ -47,7 +47,7 @@ launchRouter.get("/oauth/accurate/callback", async (req, res, next) => {
     });
     if (db.admin) {
       await prisma.rolePermission.createMany({
-        data: ["app:users.manage", "app:settings.manage", "app:drive.tidy", "app:chat.history"].map(
+        data: ["app:users.manage", "app:settings.manage", "app:drive.tidy", "app:chat.history", "app:audit.view"].map(
           (permissionKey) => ({ roleId: role.id, permissionKey })
         ),
         skipDuplicates: true,
