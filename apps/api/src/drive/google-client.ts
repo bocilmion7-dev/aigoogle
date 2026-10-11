@@ -57,8 +57,10 @@ export class GoogleDriveClient implements DriveClient {
     if (!res.ok) throw new Error(`rename gagal (${res.status})`);
   }
 
-  async move(fileId: string, newParents: string): Promise<void> {
-    const res = await fetch(`${API}/files/${fileId}?addParents=${newParents}`, {
+  async move(fileId: string, newParents: string, oldParents?: string): Promise<void> {
+    const qs = new URLSearchParams({ addParents: newParents });
+    if (oldParents) qs.set("removeParents", oldParents);
+    const res = await fetch(`${API}/files/${fileId}?${qs}`, {
       method: "PATCH",
       headers: this.headers(),
     });

@@ -71,3 +71,38 @@ export async function driveRun(jobId: string, onEvent: (e: RunEvent) => void): P
 export async function driveCancel(jobId: string): Promise<void> {
   await fetch(`/api/drive/jobs/${jobId}/cancel`, { method: "POST" });
 }
+
+export type UndoEvent =
+  | { type: "start"; total: number }
+  | { type: "progress"; done: number; total: number; status: string; fileName: string }
+  | { type: "done"; jobId: string; status: string; items: Array<Record<string, unknown>> };
+
+export async function driveUndo(
+  jobId: string,
+  fileIds: string[] | undefined,
+  onEvent: (e: UndoEvent) => void
+): Promise<void> {
+  const r = await fetch(`/api/drive/jobs/${jobId}/undo`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(fileIds ? { fileIds } : {}),
+  });
+  if (!r.ok) {
+    const j = (await r.json().catch(() => ({}))) as { error?: string };
+    throw new Error(j.error ?? "gagal");
+  }
+  if (!r.body) throw new Error("gagal");
+  const reader = r.body.getReader();
+  const dec = new TextDecoder();
+  let buf = "";
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += dec.decode(value, { stream: true });
+    const lines = buf.split("\n");
+    buf = lines.pop() ?? "";
+    for (const line of lines) {
+      if (line.trim()) onEvent(JSON.parse(line) as UndoEvent);
+    }
+  }
+}

@@ -117,4 +117,56 @@ describe("drive routes", () => {
     const res = await request(api).get(`/api/drive/jobs/${job.id}`).set("Cookie", `sid=${sid}`);
     expect(res.status).toBe(404);
   });
+
+  it("undo job selesai → file kembali ke folder asal + status undone", async () => {
+    setMockDriveSeed({
+      folders: [
+        { id: "root", name: "Drive", parents: "" },
+        { id: "kerja", name: "Scan", parents: "root" },
+      ],
+      files: [
+        { id: "u1", name: "faktur-u.pdf", parents: "kerja", mimeType: "application/pdf", text: "Faktur U" },
+      ],
+    });
+    const plan = await request(api).post("/api/drive/plan").set("Cookie", cookie).send({ folderId: "kerja" });
+    const id = plan.body.jobId as string;
+    const run = await request(api).post(`/api/drive/jobs/${id}/run`).set("Cookie", cookie).buffer(true).parse((r, cb) => {
+      let d = "";
+      r.on("data", (c) => (d += c));
+      r.on("end", () => cb(null, d));
+    });
+    expect(ndjson(run.body as string).at(-1)!.type).toBe("done");
+
+    const undo = await request(api)
+      .post(`/api/drive/jobs/${id}/undo`)
+      .set("Cookie", cookie)
+      .send({})
+      .buffer(true)
+      .parse((r, cb) => {
+        let d = "";
+        r.on("data", (c) => (d += c));
+        r.on("end", () => cb(null, d));
+      });
+    expect(undo.status).toBe(200);
+    const ev = ndjson(undo.body as string);
+    expect(ev[0].type).toBe("start");
+    expect(ev.at(-1)!.type).toBe("done");
+    expect((ev.at(-1) as { status: string }).status).toBe("undone");
+    const job = await prisma.driveJob.findUniqueOrThrow({ where: { id } });
+    expect(job.status).toBe("undone");
+
+    const again = await request(api).post(`/api/drive/jobs/${id}/undo`).set("Cookie", cookie).send({});
+    expect(again.status).toBe(409);
+    expect(again.body.error).toBe("already_undone");
+  });
+
+  it("undo job yang belum jalan → 400 tidak_ada_yang_bisa_diundo", async () => {
+    const plan = await request(api).post("/api/drive/plan").set("Cookie", cookie).send({ folderId: "kerja" });
+    const res = await request(api)
+      .post(`/api/drive/jobs/${plan.body.jobId}/undo`)
+      .set("Cookie", cookie)
+      .send({});
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe("tidak_ada_yang_bisa_diundo");
+  });
 });

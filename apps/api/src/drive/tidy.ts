@@ -1,4 +1,4 @@
-import type { DriveClient, TidyPlanItem, TidyResultItem } from "./types.js";
+import type { DriveClient, TidyPlanItem, TidyResultItem, UndoResultItem, UndoTarget } from "./types.js";
 import { categoryFolderName, type Category } from "./classify.js";
 
 export type Classifier = (file: { id: string; name: string; mimeType: string }) => Promise<Category> | Category;
@@ -78,7 +78,7 @@ export async function executePlan(
     }
     try {
       if (step.toName && step.toName !== step.fileName) await client.rename(step.fileId, step.toName);
-      await client.move(step.fileId, step.toParent);
+      await client.move(step.fileId, step.toParent, step.fromParent);
       const item: TidyResultItem = {
         fileId: step.fileId,
         fileName: step.fileName,
@@ -86,6 +86,8 @@ export async function executePlan(
         status: "ok",
         originalParent: step.fromParent,
         originalName: step.fileName,
+        toParent: step.toParent,
+        toName: step.toName ?? step.fileName,
       };
       items.push(item);
       done++;
@@ -98,6 +100,50 @@ export async function executePlan(
         status: "failed",
         error: e instanceof Error ? e.message : "gagal",
         originalParent: step.fromParent,
+        originalName: step.fileName,
+        toParent: step.toParent,
+        toName: step.toName ?? step.fileName,
+      };
+      items.push(item);
+      done++;
+      await opts.onProgress?.(done, total, item);
+    }
+  }
+  return { items };
+}
+
+export interface UndoOpts {
+  onProgress?: (done: number, total: number, item: UndoResultItem) => void | Promise<void>;
+}
+
+/** Balikkan rename + move file (urutan terbalik). Folder kategori tidak dihapus. */
+export async function executeUndo(
+  client: DriveClient,
+  targets: UndoTarget[],
+  opts: UndoOpts = {}
+): Promise<{ items: UndoResultItem[] }> {
+  const items: UndoResultItem[] = [];
+  const ordered = [...targets].reverse();
+  const total = ordered.length;
+  let done = 0;
+  for (const t of ordered) {
+    try {
+      if (t.toName && t.toName !== t.originalName) {
+        await client.rename(t.fileId, t.originalName);
+      }
+      if (t.originalParent && t.originalParent !== t.toParent) {
+        await client.move(t.fileId, t.originalParent, t.toParent);
+      }
+      const item: UndoResultItem = { fileId: t.fileId, fileName: t.originalName || t.fileName, status: "ok" };
+      items.push(item);
+      done++;
+      await opts.onProgress?.(done, total, item);
+    } catch (e) {
+      const item: UndoResultItem = {
+        fileId: t.fileId,
+        fileName: t.originalName || t.fileName,
+        status: "failed",
+        error: e instanceof Error ? e.message : "gagal",
       };
       items.push(item);
       done++;

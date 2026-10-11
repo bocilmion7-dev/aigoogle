@@ -38,7 +38,7 @@ export class MockDriveClient implements DriveClient {
     if (!f) throw new Error("file tidak ditemukan");
     f.name = name;
   }
-  async move(fileId: string, newParents: string): Promise<void> {
+  async move(fileId: string, newParents: string, _oldParents?: string): Promise<void> {
     if (!this.hasFolder(newParents)) throw new Error("tujuan di luar scope");
     const f = this.files.find((x) => x.id === fileId);
     if (!f) throw new Error("file tidak ditemukan");

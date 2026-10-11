@@ -18,7 +18,7 @@ export interface DriveClient {
   getText(fileId: string): Promise<string>;
   createFolder(name: string, parents: string): Promise<DriveFolder>;
   rename(fileId: string, name: string): Promise<void>;
-  move(fileId: string, newParents: string): Promise<void>;
+  move(fileId: string, newParents: string, oldParents?: string): Promise<void>;
   isDescendant(folderId: string, ancestorId: string): Promise<boolean>;
 }
 
@@ -40,4 +40,22 @@ export interface TidyResultItem {
   error?: string;
   originalParent?: string;
   originalName?: string;
+  toParent?: string;
+  toName?: string;
+}
+
+export interface UndoTarget {
+  fileId: string;
+  fileName: string;
+  originalParent: string;
+  originalName: string;
+  toParent: string;
+  toName: string;
+}
+
+export interface UndoResultItem {
+  fileId: string;
+  fileName: string;
+  status: "ok" | "failed";
+  error?: string;
 }

@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { MockDriveClient } from "../src/drive/mock-client.js";
-import { buildPlan, executePlan } from "../src/drive/tidy.js";
+import { buildPlan, executePlan, executeUndo } from "../src/drive/tidy.js";
 import type { Category } from "../src/drive/classify.js";
+import type { UndoTarget } from "../src/drive/types.js";
 
 function mock() {
   return new MockDriveClient({
@@ -67,5 +68,62 @@ describe("executePlan", () => {
     const plan = await buildPlan(c, "kerja", async (): Promise<Category> => "Faktur");
     const res = await executePlan(broken, plan, { isCancelled: () => false });
     expect(res.items.filter((i) => i.action === "move").every((i) => i.status === "failed")).toBe(true);
+  });
+
+  it("result menyimpan toParent & toName untuk undo", async () => {
+    const c = mock();
+    const plan = await buildPlan(c, "kerja", async (): Promise<Category> => "Faktur");
+    const res = await executePlan(c, plan, { isCancelled: () => false });
+    const p1 = res.items.find((i) => i.fileId === "p1")!;
+    expect(p1.toParent).toBe("lama");
+    expect(p1.toName).toContain("[Faktur]");
+  });
+});
+
+describe("executeUndo", () => {
+  function target(over: Partial<UndoTarget> = {}): UndoTarget {
+    return {
+      fileId: "p1",
+      fileName: "faktur-a.pdf",
+      originalParent: "kerja",
+      originalName: "faktur-a.pdf",
+      toParent: "lama",
+      toName: "faktur-a [Faktur].pdf",
+      ...over,
+    };
+  }
+
+  it("balik rename + move ke folder asal", async () => {
+    const c = mock();
+    await c.rename("p1", "faktur-a [Faktur].pdf");
+    await c.move("p1", "lama", "kerja");
+    const res = await executeUndo(c, [target()]);
+    expect(res.items[0].status).toBe("ok");
+    const f = (await c.list("kerja")).files.find((x) => x.id === "p1")!;
+    expect(f.name).toBe("faktur-a.pdf");
+    expect(f.parents).toBe("kerja");
+  });
+
+  it("gagal di satu file → lanjut file lain", async () => {
+    const c = mock();
+    const broken: MockDriveClient = Object.create(c);
+    broken.rename = async (id: string) => {
+      if (id === "p1") throw new Error("lock");
+    };
+    const res = await executeUndo(broken, [
+      target(),
+      target({ fileId: "p2", fileName: "kuitansi-b.pdf", toName: "kuitansi-b [Kuitansi].pdf" }),
+    ]);
+    expect(res.items.find((i) => i.fileId === "p1")!.status).toBe("failed");
+    expect(res.items.find((i) => i.fileId === "p2")!.status).toBe("ok");
+  });
+
+  it("subset fileIds hanya mengubah file terpilih", async () => {
+    const c = mock();
+    await c.rename("p1", "faktur-a [Faktur].pdf");
+    await c.move("p1", "lama", "kerja");
+    const res = await executeUndo(c, [target({ fileId: "p2", fileName: "lain.pdf", toName: "lain [Faktur].pdf" })]);
+    expect(res.items).toHaveLength(1);
+    expect(res.items[0].fileId).toBe("p2");
   });
 });

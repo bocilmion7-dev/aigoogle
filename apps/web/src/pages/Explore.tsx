@@ -5,11 +5,13 @@ import {
   drivePlan,
   driveRun,
   driveStatus,
+  driveUndo,
   type DriveFile,
   type DriveFolder,
   type DriveStatus,
   type PlanItem,
   type RunEvent,
+  type UndoEvent,
 } from "../drive-api";
 
 interface Progress {
@@ -24,6 +26,8 @@ interface ResultItem {
   status: string;
   error?: string;
   originalParent?: string;
+  undoStatus?: string;
+  undoError?: string;
 }
 
 type Phase = "idle" | "planning" | "preview" | "running" | "done";
@@ -41,6 +45,11 @@ export function Explore() {
   const [result, setResult] = useState<ResultItem[] | null>(null);
   const [cancelled, setCancelled] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [jobStatus, setJobStatus] = useState<string | null>(null);
+  const [undoSelected, setUndoSelected] = useState<Set<string>>(new Set());
+  const [undoProgress, setUndoProgress] = useState<Progress | null>(null);
+  const [undoError, setUndoError] = useState<string | null>(null);
+  const [undoBusy, setUndoBusy] = useState(false);
   const cancelRef = useRef(false);
 
   const errText = (code?: string) =>
@@ -115,12 +124,18 @@ export function Explore() {
         if (e.type === "start") setProgress({ done: 0, total: e.total });
         if (e.type === "progress") setProgress({ done: e.done, total: e.total });
         if (e.type === "done") {
-          setResult(e.items as unknown as ResultItem[]);
+          const items = e.items as unknown as ResultItem[];
+          setResult(items);
+          setJobStatus("done");
+          setUndoSelected(new Set(items.filter((i) => i.status === "ok").map((i) => i.fileId)));
+          setUndoError(null);
+          setUndoProgress(null);
           setPhase("done");
         }
         if (e.type === "cancelled") {
           setResult(e.items as unknown as ResultItem[]);
           setCancelled(true);
+          setJobStatus("cancelled");
           setPhase("done");
         }
       });
@@ -136,6 +151,55 @@ export function Explore() {
     if (!jobId) return;
     cancelRef.current = true;
     await driveCancel(jobId);
+  }
+
+  function toggleUndo(fileId: string) {
+    setUndoSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(fileId)) next.delete(fileId);
+      else next.add(fileId);
+      return next;
+    });
+  }
+
+  async function undo() {
+    if (!jobId || !result) return;
+    setUndoBusy(true);
+    setUndoError(null);
+    setUndoProgress(null);
+    const ids = result.filter((r) => r.status === "ok" && undoSelected.has(r.fileId)).map((r) => r.fileId);
+    try {
+      await driveUndo(jobId, ids.length === result.filter((r) => r.status === "ok").length ? undefined : ids, (e: UndoEvent) => {
+        if (e.type === "start") setUndoProgress({ done: 0, total: e.total });
+        if (e.type === "progress") setUndoProgress({ done: e.done, total: e.total });
+        if (e.type === "done") {
+          const items = e.items as unknown as ResultItem[];
+          const byId = new Map(items.map((i) => [i.fileId, i]));
+          setResult(
+            (result ?? []).map((r) => {
+              const u = byId.get(r.fileId);
+              if (!u) return r;
+              return { ...r, undoStatus: u.status, undoError: u.error };
+            })
+          );
+          setJobStatus(e.status);
+        }
+      });
+      void load(folderId);
+    } catch (err) {
+      const code = err instanceof Error ? err.message : undefined;
+      setUndoError(
+        code === "already_undone"
+          ? "Job ini sudah diurungkan."
+          : code === "tidak_punya_hak"
+            ? "Anda tidak punya hak Rapikan Drive."
+            : code === "belum_connect"
+              ? "Belum terhubung ke Google Drive."
+              : "Gagal mengurungkan — coba lagi."
+      );
+    } finally {
+      setUndoBusy(false);
+    }
   }
 
   if (!status) return <p style={{ padding: 24 }}>Memuat…</p>;
@@ -250,20 +314,58 @@ export function Explore() {
         )}
         {phase === "done" && result && (
           <div style={{ background: "#faf8f5", border: "1px solid #e3ddd4", borderRadius: 6, padding: 12 }}>
-            <strong style={{ color: cancelled ? "#a33" : "#3d6b54" }}>
-              {cancelled ? "Dibatalkan" : "Selesai"}
+            <strong style={{ color: cancelled ? "#a33" : jobStatus === "undone" ? "#3d6b54" : "#3d6b54" }}>
+              {jobStatus === "undone" ? "Sudah diurungkan" : cancelled ? "Dibatalkan" : "Selesai"}
             </strong>
-            <ul style={{ paddingLeft: 16, fontSize: 13, color: "#333" }}>
+            <ul style={{ fontSize: 13, color: "#333", listStyle: "none", paddingLeft: 0, margin: 0 }}>
               {result.map((r) => (
-                <li key={r.fileId}>
-                  {r.fileName} — {r.status === "ok" ? "OK" : r.status === "failed" ? `Gagal (${r.error})` : "Dilewati"}
+                <li key={r.fileId} style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 0" }}>
+                  {r.status === "ok" && jobStatus !== "undone" && (
+                    <input
+                      type="checkbox"
+                      checked={undoSelected.has(r.fileId)}
+                      onChange={() => toggleUndo(r.fileId)}
+                      aria-label={`Pilih ${r.fileName} untuk diurungkan`}
+                      disabled={undoBusy}
+                    />
+                  )}
+                  <span>
+                    {r.fileName} —{" "}
+                    {r.undoStatus === "ok"
+                      ? "Dikembalikan"
+                      : r.undoStatus === "failed"
+                        ? `Undo gagal (${r.undoError})`
+                        : r.status === "ok"
+                          ? "OK"
+                          : r.status === "failed"
+                            ? `Gagal (${r.error})`
+                            : "Dilewati"}
+                  </span>
                 </li>
               ))}
             </ul>
-            <p style={{ fontSize: 12, color: "#666" }}>
-              Posisi asal tiap file tersimpan di log — fitur Urungkan menyusul.
-            </p>
-            <button style={btn} onClick={() => setPhase("idle")}>
+            {undoError && <p style={{ color: "#a33", fontSize: 13 }}>{undoError}</p>}
+            {undoBusy && (
+              <p style={{ fontSize: 13, color: "#555" }} aria-live="polite">
+                {undoProgress ? `${undoProgress.done}/${undoProgress.total} dikembalikan…` : "Mengembalikan…"}
+              </p>
+            )}
+            {jobStatus !== "undone" && !cancelled && result.some((r) => r.status === "ok") && (
+              <button
+                style={{ ...btn, marginTop: 8, background: "#3d6b54" }}
+                onClick={() => void undo()}
+                disabled={undoBusy || undoSelected.size === 0}
+                aria-label="Urungkan rapikan"
+              >
+                Urungkan
+              </button>
+            )}
+            {jobStatus === "undone" && (
+              <button style={{ ...btn, marginTop: 8, background: "#999" }} disabled aria-label="Urungkan rapikan">
+                Urungkan
+              </button>
+            )}
+            <button style={{ ...btn, background: "#eeeae3", color: "#333", marginTop: 8 }} onClick={() => setPhase("idle")}>
               Tutup
             </button>
           </div>

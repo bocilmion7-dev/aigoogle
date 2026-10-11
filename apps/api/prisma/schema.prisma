@@ -128,7 +128,7 @@ model DriveJob {
   userId     String
   folderId   String
   folderName String            @default("")
-  status     String            @default("planned") // planned|running|done|cancelled|failed
+  status     String            @default("planned") // planned|running|done|cancelled|failed|undone
   planJson   String            @default("[]")
   resultJson String            @default("{}")
   createdAt  DateTime          @default(now())

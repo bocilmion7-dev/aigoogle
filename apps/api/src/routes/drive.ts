@@ -5,7 +5,8 @@ import { env } from "../env.js";
 import { asyncHandler } from "../asyncHandler.js";
 import { requireUser } from "../middleware/session.js";
 import { driveClientFor, engineMode } from "../drive/registry.js";
-import { buildPlan, executePlan } from "../drive/tidy.js";
+import { buildPlan, executePlan, executeUndo } from "../drive/tidy.js";
+import type { TidyPlanItem, TidyResultItem, UndoTarget } from "../drive/types.js";
 import { classifyWithGemini } from "../drive/classify.js";
 import { writeAudit } from "../audit.js";
 
@@ -109,7 +110,7 @@ driveRouter.post(
             fileName: item.fileName,
             action: item.action,
             fromParent: item.originalParent ?? "",
-            toParent: "",
+            toParent: item.toParent ?? "",
             status: item.status,
             error: item.error ?? "",
           },
@@ -138,6 +139,100 @@ driveRouter.post(
     if (!job) return res.status(404).json({ error: "tidak_ditemukan" });
     cancelFlags.set(job.id, true);
     res.json({ ok: true });
+  })
+);
+
+async function requireDriveTidy(tenantId: string, userId: string): Promise<boolean> {
+  const perms = await prisma.rolePermission.findMany({
+    where: { role: { tenantId, users: { some: { id: userId } } } },
+  });
+  return perms.some((p) => p.permissionKey === "app:drive.tidy");
+}
+
+driveRouter.post(
+  "/drive/jobs/:id/undo",
+  requireUser,
+  asyncHandler(async (req, res) => {
+    const user = req.user!;
+    if (!(await requireDriveTidy(user.tenant.id, user.id))) {
+      return res.status(403).json({ error: "tidak_punya_hak" });
+    }
+    const job = await prisma.driveJob.findFirst({
+      where: { id: req.params.id, tenantId: user.tenant.id },
+    });
+    if (!job) return res.status(404).json({ error: "tidak_ditemukan" });
+    if (job.status === "undone") return res.status(409).json({ error: "already_undone" });
+    if (job.status === "running") return res.status(409).json({ error: "sedang_berjalan" });
+    const client = await driveClientFor(user.tenant.id);
+    if (!client) return res.status(409).json({ error: "belum_connect" });
+
+    const plan = JSON.parse(job.planJson) as TidyPlanItem[];
+    const result = JSON.parse(job.resultJson || "[]") as TidyResultItem[];
+    const planByFile = new Map(plan.filter((p) => p.action === "move").map((p) => [p.fileId, p]));
+    const body = z.object({ fileIds: z.array(z.string().min(1)).max(500).optional() }).safeParse(req.body ?? {});
+    if (!body.success) return res.status(400).json({ error: "bad_request" });
+
+    const okResults = result.filter((r) => r.status === "ok");
+    const bodyIds = body.data.fileIds;
+    const selected = okResults.filter((r) => !bodyIds || bodyIds.includes(r.fileId));
+    const targets: UndoTarget[] = [];
+    for (const r of selected) {
+      const p = planByFile.get(r.fileId);
+      if (!p) continue;
+      targets.push({
+        fileId: r.fileId,
+        fileName: r.fileName,
+        originalParent: r.originalParent ?? p.fromParent,
+        originalName: r.originalName ?? p.fileName,
+        toParent: r.toParent ?? p.toParent,
+        toName: r.toName ?? p.toName ?? p.fileName,
+      });
+    }
+    if (targets.length === 0) return res.status(400).json({ error: "tidak_ada_yang_bisa_diundo" });
+
+    res.setHeader("Content-Type", "application/x-ndjson; charset=utf-8");
+    const send = (e: Record<string, unknown>) => res.write(JSON.stringify(e) + "\n");
+    send({ type: "start", jobId: job.id, total: targets.length });
+
+    const { items } = await executeUndo(client, targets, {
+      onProgress: async (done, total, item) => {
+        send({ type: "progress", done, total, status: item.status, fileName: item.fileName });
+        await prisma.driveActionLog.create({
+          data: {
+            jobId: job.id,
+            fileId: item.fileId,
+            fileName: item.fileName,
+            action: "undo_move",
+            fromParent: "",
+            toParent: "",
+            status: item.status,
+            error: item.error ?? "",
+          },
+        });
+      },
+    });
+
+    const undoOk = items.every((i) => i.status === "ok");
+    const undoByFile = new Map(items.map((i) => [i.fileId, i]));
+    const merged = result.map((r) => {
+      const u = undoByFile.get(r.fileId);
+      if (!u) return r;
+      return { ...r, undoStatus: u.status, undoError: u.error ?? "" };
+    });
+    const nextStatus = undoOk ? "undone" : job.status;
+    await prisma.driveJob.update({
+      where: { id: job.id },
+      data: { status: nextStatus, resultJson: JSON.stringify(merged) },
+    });
+    await writeAudit(user.tenant.id, user.id, "drive.undo", {
+      jobId: job.id,
+      total: targets.length,
+      ok: items.filter((i) => i.status === "ok").length,
+      failed: items.filter((i) => i.status === "failed").length,
+      status: nextStatus,
+    });
+    send({ type: "done", jobId: job.id, status: nextStatus, items });
+    res.end();
   })
 );
 
