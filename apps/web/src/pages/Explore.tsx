@@ -162,7 +162,7 @@ export function Explore() {
   return (
     <div style={{ display: "flex", gap: 16, maxWidth: 960, margin: "0 auto", padding: 16, fontFamily: "system-ui" }}>
       <section style={{ flex: 1 }}>
-        <nav style={{ fontSize: 13, color: "#666", marginBottom: 8 }}>
+        <nav aria-label="Breadcrumb" style={{ fontSize: 13, color: "#666", marginBottom: 8 }}>
           {trail.map((t, i) => (
             <span key={t.id}>
               {i > 0 && " / "}
@@ -179,7 +179,7 @@ export function Explore() {
           <button style={btn} onClick={() => void load(folderId)}>
             Refresh
           </button>
-          <button style={btn} onClick={() => void makePlan()} disabled={phase === "planning" || phase === "running"}>
+          <button style={btn} onClick={() => void makePlan()} disabled={phase === "planning" || phase === "running"} aria-label="Rapikan folder ini">
             Rapikan Folder Ini
           </button>
           <span style={{ fontSize: 13, color: "#666", alignSelf: "center" }}>{pdfCount} PDF</span>

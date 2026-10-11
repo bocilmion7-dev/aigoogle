@@ -104,6 +104,9 @@ export function Chat() {
       </aside>
       <section style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 420 }}>
         <div
+          role="log"
+          aria-live="polite"
+          aria-label="Transkrip percakapan"
           style={{
             flex: 1,
             background: "#faf8f5",
@@ -156,7 +159,7 @@ export function Chat() {
           <div ref={bottomRef} />
         </div>
         {error && (
-          <div style={{ color: "#a33", marginTop: 8 }}>
+          <div role="alert" style={{ color: "#a33", marginTop: 8 }}>
             {error} —{" "}
             <button
               style={{ border: "none", background: "none", color: "#3d6b54", cursor: "pointer" }}
@@ -168,6 +171,7 @@ export function Chat() {
         )}
         <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
           <input
+            aria-label="Tanya data akuntansi"
             style={{ flex: 1, padding: 10, borderRadius: 4, border: "1px solid #e3ddd4" }}
             value={input}
             onChange={(e) => setInput(e.target.value)}
