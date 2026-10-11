@@ -1,0 +1,52 @@
+<h2>Bagian 1 — Arsitektur sistem</h2>
+<p class="subtitle">Monorepo modular: satu app, dipisah jadi modul-modul yang bisa diuji &amp; dikembangkan sendiri. Klik untuk pilih, lalu konfirmasi di terminal.</p>
+
+<div class="mockup">
+  <div class="mockup-header">Arsitektur — 3 lapis + adapter provider</div>
+  <div class="mockup-body" style="font-family:system-ui,sans-serif;font-size:13px;">
+
+    <div style="text-align:center;margin-bottom:6px;" class="label">BROWSER — React + Vite (TS)</div>
+    <div style="display:flex;gap:8px;margin-bottom:4px;">
+      <div style="flex:1;background:#e8f0ea;border:1px solid #b9cdbf;border-radius:6px;padding:10px;text-align:center;">💬<br>Chat AI<br><small>(teks + voice)</small></div>
+      <div style="flex:1;background:#e8f0ea;border:1px solid #b9cdbf;border-radius:6px;padding:10px;text-align:center;">📁<br>Explore Manager<br><small>(Drive UI)</small></div>
+      <div style="flex:1;background:#e8f0ea;border:1px solid #b9cdbf;border-radius:6px;padding:10px;text-align:center;">👥<br>User &amp; Role<br><small>(checklist hak akses)</small></div>
+      <div style="flex:1;background:#e8f0ea;border:1px solid #b9cdbf;border-radius:6px;padding:10px;text-align:center;">⚙️<br>Settings<br><small>(voice engine, koneksi)</small></div>
+    </div>
+    <div style="text-align:center;color:#8a8a8a;">▼ HTTPS / WebSocket</div>
+
+    <div style="text-align:center;margin:6px 0;" class="label">API — Node.js + TypeScript</div>
+    <div style="display:flex;gap:8px;margin-bottom:4px;">
+      <div style="flex:1;background:#f4f1ea;border:1px solid #d8d2c4;border-radius:6px;padding:10px;text-align:center;">🔐 Auth &amp; Roles<br><small>sesi, permission check</small></div>
+      <div style="flex:1;background:#f4f1ea;border:1px solid #d8d2c4;border-radius:6px;padding:10px;text-align:center;">🔗 Connections<br><small>OAuth Accurate + Google</small></div>
+      <div style="flex:1;background:#fff4e0;border:1px solid #e0c48a;border-radius:6px;padding:10px;text-align:center;"><b>🤖 AI Core</b><br><small>Gemini tool-calling<br>+ STT/TTS (setting)</small></div>
+      <div style="flex:1;background:#f4f1ea;border:1px solid #d8d2c4;border-radius:6px;padding:10px;text-align:center;">🧹 Drive Organizer<br><small>vision klasifikasi, aksi</small></div>
+      <div style="flex:1;background:#f0f0f0;border:1px dashed #bbb;border-radius:6px;padding:10px;text-align:center;color:#999;">💳 Billing Core<br><small>dormant (Midtrans siap)</small></div>
+    </div>
+    <div style="text-align:center;color:#8a8a8a;">▼ interface <code>AccountingProvider</code></div>
+
+    <div style="display:flex;gap:8px;margin-bottom:4px;">
+      <div style="flex:1;background:#e6efff;border:1px solid #9db8e8;border-radius:6px;padding:10px;text-align:center;"><b>AccurateAdapter</b><br><small>OAuth · open-db · API live</small></div>
+      <div style="flex:1;background:#f5f5f5;border:1px dashed #bbb;border-radius:6px;padding:10px;text-align:center;color:#999;">MekariAdapter<br><small>phase berikutnya</small></div>
+      <div style="flex:1;background:#f5f5f5;border:1px dashed #bbb;border-radius:6px;padding:10px;text-align:center;color:#999;">PaperAdapter<br><small>phase berikutnya</small></div>
+    </div>
+    <div style="text-align:center;color:#8a8a8a;">▼ HTTP live</div>
+
+    <div style="display:flex;gap:8px;">
+      <div style="flex:1;background:#fff;border:1px solid #ddd;border-radius:6px;padding:8px;text-align:center;">Accurate Online API</div>
+      <div style="flex:1;background:#fff;border:1px solid #ddd;border-radius:6px;padding:8px;text-align:center;">Google Drive API</div>
+      <div style="flex:1;background:#fff;border:1px solid #ddd;border-radius:6px;padding:8px;text-align:center;">Gemini API<br><small>(chat · vision · audio)</small></div>
+      <div style="flex:1;background:#fff;border:1px solid #ddd;border-radius:6px;padding:8px;text-align:center;">Neon Postgres<br><small>Prisma ORM</small></div>
+    </div>
+  </div>
+</div>
+
+<div class="options" style="margin-top:16px;">
+  <div class="option" data-choice="approve-arch" onclick="toggleSelect(this)">
+    <div class="letter">✓</div>
+    <div class="content"><h3>Setuju — lanjut ke bagian berikutnya</h3><p>Arsitektur &amp; modularitas sudah sesuai</p></div>
+  </div>
+  <div class="option" data-choice="revise-arch" onclick="toggleSelect(this)">
+    <div class="letter">✕</div>
+    <div class="content"><h3>Ada yang perlu diubah</h3><p>Tulis koreksinya di terminal</p></div>
+  </div>
+</div>
