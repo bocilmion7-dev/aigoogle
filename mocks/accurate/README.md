@@ -1,13 +1,13 @@
 # Mock Server Accurate Online
 
-Server tiruan untuk pengembangan Fase 1–2 tanpa credential akun Accurate.
+Server tiruan untuk pengembangan tanpa credential akun Accurate.
 **Bentuk response disamakan dengan API REAL Accurate Online** (lihat `docs/spikes/2026-10-10-accurate-api-findings.md`).
 
 ## Jalankan
 
 ```bash
 pnpm install
-pnpm test        # seluruh suite vitest (23 test)
+pnpm test        # seluruh suite vitest (26 test)
 pnpm dev         # http://localhost:4010 (env PORT untuk ganti)
 ```
 
@@ -16,6 +16,21 @@ pnpm dev         # http://localhost:4010 (env PORT untuk ganti)
 - Envelope: `{ s: true, d: [...], sp? }`; gagal = HTTP 200 + `{ s: false, d: ["pesan"] }`; token/session invalid = HTTP 401.
 - Semua endpoint db/modul = **GET**; modul butuh header `Authorization: Bearer` **dan** `X-Session-ID` (session harus milik token yang sama).
 - URL modul: `{host}/accurate/api/{module}/{action}.do` — mock: `http://localhost:4010/accurate/api/...`
+- Query resmi didukung di list.do: `fields` (koma), `keywords`, `sp.page`, `sp.pageSize`, `sp.sort`, `filter.{field}.op` / `filter.{field}.val`.
+
+## Modul
+
+| Module path | list.do | detail.do | Catatan |
+|---|---|---|---|
+| customer | ✓ | ✓ | id, name |
+| sales-invoice | ✓ | ✓ | no, customerName, date, total, status |
+| item | ✓ | ✓ | code, name, unit, sellingPrice |
+| vendor | ✓ | ✓ | code, name |
+| glaccount | ✓ | ✓ | code, name, type |
+| sales-order | ✓ | – | no, customerName, date, total, status |
+| sales-receipt | ✓ | – | no, customerName, date, amount |
+| purchase-invoice | ✓ | – | no, vendorName, date, total, status |
+| access-privilege | ✓ | ✓ | grup privilege + detail |
 
 ## Demo
 
@@ -25,8 +40,8 @@ curl -s "http://localhost:4010/oauth/authorize?client_id=c&redirect_uri=http://l
 # (redirect Location berisi ?code=code-...; tambah &user=staff untuk user staf)
 
 curl -s -X POST http://localhost:4010/oauth/token \
-  -H 'Content-Type: application/json' \
-  -d '{"grant_type":"authorization_code","code":"code-...","client_id":"c"}'
+  -H 'Content-Type: application/x-www-form-urlencoded' \
+  -d "grant_type=authorization_code&code=code-...&client_id=c"
 # → { access_token, refresh_token, expires_in: 1296000 }
 
 # 2. Userinfo & daftar db
@@ -40,6 +55,10 @@ curl -s "http://localhost:4010/api/open-db.do?id=1001" -H "Authorization: Bearer
 # 4. Panggil modul (Bearer + X-Session-ID)
 curl -s "http://localhost:4010/accurate/api/customer/list.do" \
   -H "Authorization: Bearer $AT" -H "X-Session-ID: $SESSION"
+
+# 5. Query resmi
+curl -s "http://localhost:4010/accurate/api/item/list.do?fields=code,name&keywords=A4&sp.pageSize=1" \
+  -H "Authorization: Bearer $AT" -H "X-Session-ID: $SESSION"
 ```
 
 ## User demo
@@ -47,7 +66,7 @@ curl -s "http://localhost:4010/accurate/api/customer/list.do" \
 | Email | Role mock | Akses modul (db 1001) | admin flag |
 |---|---|---|---|
 | admin@demo.local | Administrator | semua modul view | true |
-| staff@demo.local | Staff Penjualan | sales-entry view saja | false |
+| staff@demo.local | Staff Penjualan | sales-invoice view saja | false |
 
 ## Fixture db
 
