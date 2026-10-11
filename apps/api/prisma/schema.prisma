@@ -20,6 +20,8 @@ model Tenant {
   chatSessions ChatSession[]
   auditLogs    AuditLog[]
   driveJobs    DriveJob[]
+  subscriptions Subscription[]
+  payments     Payment[]
   @@unique([provider, providerDbId])
 }
 
@@ -146,4 +148,32 @@ model DriveActionLog {
   status     String   @default("ok") // ok|failed|skipped
   error      String   @default("")
   createdAt  DateTime @default(now())
+}
+
+model Subscription {
+  id        String    @id @default(cuid())
+  tenant    Tenant    @relation(fields: [tenantId], references: [id])
+  tenantId  String
+  plan      String    @default("free") // free|pro|enterprise
+  status    String    @default("active") // active|expired|cancelled
+  expiresAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  @@index([tenantId])
+}
+
+model Payment {
+  id                String   @id @default(cuid())
+  tenant            Tenant   @relation(fields: [tenantId], references: [id])
+  tenantId          String
+  orderId           String   @unique
+  amount            Int      // dalam Rupiah
+  status            String   @default("pending") // pending|settlement|deny|cancel|expire
+  paymentMethod     String   @default("")
+  transactionTime   DateTime @default(now())
+  fraudStatus       String   @default("")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  @@index([tenantId])
+  @@index([orderId])
 }

@@ -9,10 +9,17 @@ import { chatRouter } from "./routes/chat.js";
 import { audioRouter } from "./routes/audio.js";
 import { driveRouter } from "./routes/drive.js";
 import { adminRouter } from "./routes/admin.js";
+import { billingRouter } from "./routes/billing.js";
 
 export function createApp() {
   const app = express();
   app.disable("x-powered-by");
+  app.use((_req, res, next) => {
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("X-Frame-Options", "DENY");
+    res.setHeader("Referrer-Policy", "same-origin");
+    next();
+  });
   app.use(express.json());
   app.use(cookieParser());
   app.use(loadSession);
@@ -25,6 +32,7 @@ export function createApp() {
   app.use("/api", audioRouter);
   app.use("/api", driveRouter);
   app.use("/api", adminRouter);
+  app.use("/api", billingRouter);
 
   app.use((err: unknown, _req: express.Request, res: express.Response, next: express.NextFunction) => {
     if (res.headersSent) return next(err);
