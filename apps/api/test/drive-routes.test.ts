@@ -26,7 +26,7 @@ beforeAll(async () => {
   });
   tenantId = tenant.id;
   const role = await prisma.role.create({ data: { tenantId: tenant.id, key: "admin", name: "Admin" } });
-  await prisma.rolePermission.create({ data: { roleId: role.id, permissionKey: "drive.tidy" } });
+  await prisma.rolePermission.create({ data: { roleId: role.id, permissionKey: "app:drive.tidy" } });
   const user = await prisma.user.create({
     data: { tenantId: tenant.id, providerUserId: `du-${randomBytes(3).toString("hex")}`, email: "drv@demo.local", name: "Drv", roleId: role.id },
   });
