@@ -1,0 +1,2012 @@
+{
+  "source": "https://account.accurate.id/developer/api-docs.do",
+  "retrieved": "2026-10-11",
+  "retrievedVia": "view-source (login session pemilik); full HTML tersedia di conversation, tidak disimpan verbatim (terlalu besar)",
+  "nucleus": {
+    "baseUrl": "https://account.accurate.id",
+    "scope": "db_access",
+    "module": "/api",
+    "actions": [
+      "approved-scope",
+      "auth-info",
+      "db-check-session",
+      "db-detail",
+      "db-list",
+      "db-refresh-session",
+      "db-status",
+      "open-db",
+      "userinfo",
+      "webhook-history",
+      "webhook-renew"
+    ],
+    "dbListFields": [
+      "id",
+      "name",
+      "alias",
+      "admin",
+      "adminDb",
+      "country",
+      "expireDate",
+      "type",
+      "isPos",
+      "allowPos",
+      "isBml",
+      "currency"
+    ],
+    "openDbTopLevelFields": [
+      "session",
+      "host",
+      "admin",
+      "country",
+      "trial",
+      "expired",
+      "licenseEnd",
+      "accessibleUntil",
+      "trialMessage"
+    ],
+    "userinfoFields": [
+      "id",
+      "email",
+      "name"
+    ]
+  },
+  "accurate": {
+    "baseUrl": "https://{company}.accurate.id/accurate",
+    "apiVersion": "1.0.1#4954",
+    "auth": [
+      "Authorization: Bearer <access_token>",
+      "X-Session-ID: <session from open-db>"
+    ],
+    "sortPaging": {
+      "sort": "field1|asc;field2|desc",
+      "page": 1,
+      "pageSize": 20,
+      "filter": {
+        "<field>": {
+          "op": "<OPERATOR>",
+          "value": "<value>"
+        }
+      }
+    },
+    "filterOperators": [
+      "EQUAL",
+      "NOT_EQUAL",
+      "GREATER_THAN",
+      "GREATER_THAN_EQUAL",
+      "LOWER_THAN",
+      "LOWER_THAN_EQUAL",
+      "CONTAIN",
+      "START_WITH",
+      "END_WITH",
+      "AND",
+      "OR"
+    ],
+    "responseEnvelope": {
+      "s": "boolean",
+      "d": "array (rows or messages)",
+      "r": "object (save.do record)",
+      "session": "top-level on open-db",
+      "host": "top-level on open-db"
+    },
+    "modules": {
+      "access-privilege": {
+        "scopeView": "access_privilege_view",
+        "scopeSave": null,
+        "scopeDelete": null,
+        "actions": [
+          {
+            "name": "list.do",
+            "method": "GET",
+            "scope": "access_privilege_view"
+          },
+          {
+            "name": "detail.do",
+            "method": "GET",
+            "scope": "access_privilege_view"
+          }
+        ]
+      },
+      "account-budget-target": {
+        "scopeView": "account_budget_target_view",
+        "scopeSave": null,
+        "scopeDelete": null,
+        "actions": [
+          {
+            "name": "list.do",
+            "method": "GET",
+            "scope": "account_budget_target_view"
+          },
+          {
+            "name": "detail.do",
+            "method": "GET",
+            "scope": "account_budget_target_view"
+          }
+        ]
+      },
+      "auto-number": {
+        "scopeView": "auto_number_view",
+        "scopeSave": "auto_number_save",
+        "scopeDelete": null,
+        "actions": [
+          {
+            "name": "list.do",
+            "method": "GET",
+            "scope": "auto_number_view"
+          },
+          {
+            "name": "detail.do",
+            "method": "GET",
+            "scope": "auto_number_view"
+          },
+          {
+            "name": "save.do",
+            "method": "POST",
+            "scope": "auto_number_save"
+          }
+        ]
+      },
+      "bank-transfer": {
+        "scopeView": "bank_transfer_view",
+        "scopeSave": "bank_transfer_save",
+        "scopeDelete": null,
+        "actions": [
+          {
+            "name": "list.do",
+            "method": "GET",
+            "scope": "bank_transfer_view"
+          },
+          {
+            "name": "detail.do",
+            "method": "GET",
+            "scope": "bank_transfer_view"
+          },
+          {
+            "name": "save.do",
+            "method": "POST",
+            "scope": "bank_transfer_save"
+          }
+        ]
+      },
+      "bill-of-material": {
+        "scopeView": "bill_of_material_view",
+        "scopeSave": "bill_of_material_save",
+        "scopeDelete": null,
+        "actions": [
+          {
+            "name": "list.do",
+            "method": "GET",
+            "scope": "bill_of_material_view"
+          },
+          {
+            "name": "detail.do",
+            "method": "GET",
+            "scope": "bill_of_material_view"
+          },
+          {
+            "name": "save.do",
+            "method": "POST",
+            "scope": "bill_of_material_save"
+          }
+        ]
+      },
+      "bom-process-category": {
+        "scopeView": "bom_process_category_view",
+        "scopeSave": "bom_process_category_save",
+        "scopeDelete": null,
+        "actions": [
+          {
+            "name": "list.do",
+            "method": "GET",
+            "scope": "bom_process_category_view"
+          },
+          {
+            "name": "detail.do",
+            "method": "GET",
+            "scope": "bom_process_category_view"
+          },
+          {
+            "name": "save.do",
+            "method": "POST",
+            "scope": "bom_process_category_save"
+          }
+        ]
+      },
+      "branch": {
+        "scopeView": "branch_view",
+        "scopeSave": "branch_save",
+        "scopeDelete": null,
+        "actions": [
+          {
+            "name": "list.do",
+            "method": "GET",
+            "scope": "branch_view"
+          },
+          {
+            "name": "detail.do",
+            "method": "GET",
+            "scope": "branch_view"
+          },
+          {
+            "name": "save.do",
+            "method": "POST",
+            "scope": "branch_save"
+          }
+        ]
+      },
+      "currency": {
+        "scopeView": "currency_view",
+        "scopeSave": "currency_save",
+        "scopeDelete": null,
+        "actions": [
+          {
+            "name": "list.do",
+            "method": "GET",
+            "scope": "currency_view"
+          },
+          {
+            "name": "detail.do",
+            "method": "GET",
+            "scope": "currency_view"
+          },
+          {
+            "name": "save.do",
+            "method": "POST",
+            "scope": "currency_save"
+          }
+        ]
+      },
+      "customer": {
+        "scopeView": "customer_view",
+        "scopeSave": "customer_save",
+        "scopeDelete": null,
+        "actions": [
+          {
+            "name": "list.do",
+            "method": "GET",
+            "scope": "customer_view"
+          },
+          {
+            "name": "detail.do",
+            "method": "GET",
+            "scope": "customer_view"
+          },
+          {
+            "name": "save.do",
+            "method": "POST",
+            "scope": "customer_save"
+          }
+        ]
+      },
+      "customer-category": {
+        "scopeView": "customer_category_view",
+        "scopeSave": "customer_category_save",
+        "scopeDelete": null,
+        "actions": [
+          {
+            "name": "list.do",
+            "method": "GET",
+            "scope": "customer_category_view"
+          },
+          {
+            "name": "detail.do",
+            "method": "GET",
+            "scope": "customer_category_view"
+          },
+          {
+            "name": "save.do",
+            "method": "POST",
+            "scope": "customer_category_save"
+          }
+        ]
+      },
+      "customer-claim": {
+        "scopeView": "customer_claim_view",
+        "scopeSave": "customer_claim_save",
+        "scopeDelete": "customer_claim_delete",
+        "actions": [
+          {
+            "name": "list.do",
+            "method": "GET",
+            "scope": "customer_claim_view"
+          },
+          {
+            "name": "detail.do",
+            "method": "GET",
+            "scope": "customer_claim_view"
+          },
+          {
+            "name": "save.do",
+            "method": "POST",
+            "scope": "customer_claim_save"
+          },
+          {
+            "name": "delete.do",
+            "method": "DELETE",
+            "scope": "customer_claim_delete"
+          }
+        ]
+      },
+      "data-classification": {
+        "scopeView": "data_classification_view",
+        "scopeSave": "data_classification_save",
+        "scopeDelete": null,
+        "actions": [
+          {
+            "name": "list.do",
+            "method": "GET",
+            "scope": "data_classification_view"
+          },
+          {
+            "name": "detail.do",
+            "method": "GET",
+            "scope": "data_classification_view"
+          },
+          {
+            "name": "save.do",
+            "method": "POST",
+            "scope": "data_classification_save"
+          }
+        ]
+      },
+      "delivery-order": {
+        "scopeView": "delivery_order_view",
+        "scopeSave": "delivery_order_save",
+        "scopeDelete": null,
+        "actions": [
+          {
+            "name": "list.do",
+            "method": "GET",
+            "scope": "delivery_order_view"
+          },
+          {
+            "name": "detail.do",
+            "method": "GET",
+            "scope": "delivery_order_view"
+          },
+          {
+            "name": "save.do",
+            "method": "POST",
+            "scope": "delivery_order_save"
+          }
+        ]
+      },
+      "department": {
+        "scopeView": "department_view",
+        "scopeSave": "department_save",
+        "scopeDelete": null,
+        "actions": [
+          {
+            "name": "list.do",
+            "method": "GET",
+            "scope": "department_view"
+          },
+          {
+            "name": "detail.do",
+            "method": "GET",
+            "scope": "department_view"
+          },
+          {
+            "name": "save.do",
+            "method": "POST",
+            "scope": "department_save"
+          }
+        ]
+      },
+      "employee": {
+        "scopeView": "employee_view",
+        "scopeSave": "employee_save",
+        "scopeDelete": null,
+        "actions": [
+          {
+            "name": "list.do",
+            "method": "GET",
+            "scope": "employee_view"
+          },
+          {
+            "name": "detail.do",
+            "method": "GET",
+            "scope": "employee_view"
+          },
+          {
+            "name": "save.do",
+            "method": "POST",
+            "scope": "employee_save"
+          }
+        ]
+      },
+      "exchange-invoice": {
+        "scopeView": "exchange_invoice_view",
+        "scopeSave": "exchange_invoice_save",
+        "scopeDelete": null,
+        "actions": [
+          {
+            "name": "list.do",
+            "method": "GET",
+            "scope": "exchange_invoice_view"
+          },
+          {
+            "name": "detail.do",
+            "method": "GET",
+            "scope": "exchange_invoice_view"
+          },
+          {
+            "name": "save.do",
+            "method": "POST",
+            "scope": "exchange_invoice_save"
+          }
+        ]
+      },
+      "expense": {
+        "scopeView": "expense_accrual_view",
+        "scopeSave": "expense_accrual_save",
+        "scopeDelete": null,
+        "actions": [
+          {
+            "name": "list.do",
+            "method": "GET",
+            "scope": "expense_accrual_view"
+          },
+          {
+            "name": "detail.do",
+            "method": "GET",
+            "scope": "expense_accrual_view"
+          },
+          {
+            "name": "save.do",
+            "method": "POST",
+            "scope": "expense_accrual_save"
+          }
+        ]
+      },
+      "finished-good-slip": {
+        "scopeView": "finished_good_slip_view",
+        "scopeSave": "finished_good_slip_save",
+        "scopeDelete": null,
+        "actions": [
+          {
+            "name": "list.do",
+            "method": "GET",
+            "scope": "finished_good_slip_view"
+          },
+          {
+            "name": "detail.do",
+            "method": "GET",
+            "scope": "finished_good_slip_view"
+          },
+          {
+            "name": "save.do",
+            "method": "POST",
+            "scope": "finished_good_slip_save"
+          }
+        ]
+      },
+      "fixed-asset": {
+        "scopeView": "fixed_asset_view",
+        "scopeSave": "fixed_asset_save",
+        "scopeDelete": null,
+        "actions": [
+          {
+            "name": "list.do",
+            "method": "GET",
+            "scope": "fixed_asset_view"
+          },
+          {
+            "name": "detail.do",
+            "method": "GET",
+            "scope": "fixed_asset_view"
+          },
+          {
+            "name": "save.do",
+            "method": "POST",
+            "scope": "fixed_asset_save"
+          },
+          {
+            "name": "get-history.do",
+            "method": "GET",
+            "scope": "fixed_asset_view"
+          }
+        ]
+      },
+      "fob": {
+        "scopeView": "fob_view",
+        "scopeSave": "fob_save",
+        "scopeDelete": null,
+        "actions": [
+          {
+            "name": "list.do",
+            "method": "GET",
+            "scope": "fob_view"
+          },
+          {
+            "name": "detail.do",
+            "method": "GET",
+            "scope": "fob_view"
+          },
+          {
+            "name": "save.do",
+            "method": "POST",
+            "scope": "fob_save"
+          }
+        ]
+      },
+      "freeonboard": {
+        "scopeView": "freeonboard_view",
+        "scopeSave": "freeonboard_save",
+        "scopeDelete": null,
+        "actions": [
+          {
+            "name": "list.do",
+            "method": "GET",
+            "scope": "freeonboard_view"
+          },
+          {
+            "name": "detail.do",
+            "method": "GET",
+            "scope": "freeonboard_view"
+          },
+          {
+            "name": "save.do",
+            "method": "POST",
+            "scope": "freeonboard_save"
+          }
+        ]
+      },
+      "glaccount": {
+        "scopeView": "glaccount_view",
+        "scopeSave": "glaccount_save",
+        "scopeDelete": null,
+        "actions": [
+          {
+            "name": "list.do",
+            "method": "GET",
+            "scope": "glaccount_view"
+          },
+          {
+            "name": "detail.do",
+            "method": "GET",
+            "scope": "glaccount_view"
+          },
+          {
+            "name": "save.do",
+            "method": "POST",
+            "scope": "glaccount_save"
+          },
+          {
+            "name": "get-balance.do",
+            "method": "GET",
+            "scope": "glaccount_view"
+          },
+          {
+            "name": "get-bs-account-amount.do",
+            "method": "GET",
+            "scope": "glaccount_view"
+          },
+          {
+            "name": "get-pl-account-amount.do",
+            "method": "GET",
+            "scope": "glaccount_view"
+          },
+          {
+            "name": "mutation.do",
+            "method": "GET",
+            "scope": "glaccount_view"
+          }
+        ]
+      },
+      "item": {
+        "scopeView": "item_view",
+        "scopeSave": "item_save",
+        "scopeDelete": null,
+        "actions": [
+          {
+            "name": "list.do",
+            "method": "GET",
+            "scope": "item_view"
+          },
+          {
+            "name": "detail.do",
+            "method": "GET",
+            "scope": "item_view"
+          },
+          {
+            "name": "save.do",
+            "method": "POST",
+            "scope": "item_save"
+          },
+          {
+            "name": "get-stock.do",
+            "method": "GET",
+            "scope": "item_view"
+          },
+          {
+            "name": "list-stock.do",
+            "method": "GET",
+            "scope": "item_view"
+          },
+          {
+            "name": "get-selling-price.do",
+            "method": "GET",
+            "scope": "item_view"
+          },
+          {
+            "name": "get-nearest-cost.do",
+            "method": "GET",
+            "scope": "purchase_invoice_save"
+          },
+          {
+            "name": "search-by-item-or-sn.do",
+            "method": "GET",
+            "scope": "item_view"
+          },
+          {
+            "name": "search-by-no-upc.do",
+            "method": "GET",
+            "scope": "item_view"
+          },
+          {
+            "name": "vendor-price.do",
+            "method": "GET",
+            "scope": "item_view"
+          }
+        ]
+      },
+      "item-adjustment": {
+        "scopeView": "item_adjustment_view",
+        "scopeSave": "item_adjustment_save",
+        "scopeDelete": null,
+        "actions": [
+          {
+            "name": "list.do",
+            "method": "GET",
+            "scope": "item_adjustment_view"
+          },
+          {
+            "name": "detail.do",
+            "method": "GET",
+            "scope": "item_adjustment_view"
+          },
+          {
+            "name": "save.do",
+            "method": "POST",
+            "scope": "item_adjustment_save"
+          }
+        ]
+      },
+      "item-brand": {
+        "scopeView": "item_brand_view",
+        "scopeSave": "item_brand_save",
+        "scopeDelete": null,
+        "actions": [
+          {
+            "name": "list.do",
+            "method": "GET",
+            "scope": "item_brand_view"
+          },
+          {
+            "name": "detail.do",
+            "method": "GET",
+            "scope": "item_brand_view"
+          },
+          {
+            "name": "save.do",
+            "method": "POST",
+            "scope": "item_brand_save"
+          }
+        ]
+      },
+      "item-category": {
+        "scopeView": "item_category_view",
+        "scopeSave": "item_category_save",
+        "scopeDelete": null,
+        "actions": [
+          {
+            "name": "list.do",
+            "method": "GET",
+            "scope": "item_category_view"
+          },
+          {
+            "name": "detail.do",
+            "method": "GET",
+            "scope": "item_category_view"
+          },
+          {
+            "name": "save.do",
+            "method": "POST",
+            "scope": "item_category_save"
+          }
+        ]
+      },
+      "item-transfer": {
+        "scopeView": "item_transfer_view",
+        "scopeSave": "item_transfer_save",
+        "scopeDelete": null,
+        "actions": [
+          {
+            "name": "list.do",
+            "method": "GET",
+            "scope": "item_transfer_view"
+          },
+          {
+            "name": "detail.do",
+            "method": "GET",
+            "scope": "item_transfer_view"
+          },
+          {
+            "name": "save.do",
+            "method": "POST",
+            "scope": "item_transfer_save"
+          }
+        ]
+      },
+      "job-order": {
+        "scopeView": "job_order_view",
+        "scopeSave": "job_order_save",
+        "scopeDelete": null,
+        "actions": [
+          {
+            "name": "list.do",
+            "method": "GET",
+            "scope": "job_order_view"
+          },
+          {
+            "name": "detail.do",
+            "method": "GET",
+            "scope": "job_order_view"
+          },
+          {
+            "name": "save.do",
+            "method": "POST",
+            "scope": "job_order_save"
+          }
+        ]
+      },
+      "journal-voucher": {
+        "scopeView": "journal_voucher_view",
+        "scopeSave": "journal_voucher_save",
+        "scopeDelete": null,
+        "actions": [
+          {
+            "name": "list.do",
+            "method": "GET",
+            "scope": "journal_voucher_view"
+          },
+          {
+            "name": "detail.do",
+            "method": "GET",
+            "scope": "journal_voucher_view"
+          },
+          {
+            "name": "save.do",
+            "method": "POST",
+            "scope": "journal_voucher_save"
+          }
+        ]
+      },
+      "manufacture-order": {
+        "scopeView": "manufacture_order_view",
+        "scopeSave": "manufacture_order_save",
+        "scopeDelete": null,
+        "actions": [
+          {
+            "name": "list.do",
+            "method": "GET",
+            "scope": "manufacture_order_view"
+          },
+          {
+            "name": "detail.do",
+            "method": "GET",
+            "scope": "manufacture_order_view"
+          },
+          {
+            "name": "save.do",
+            "method": "POST",
+            "scope": "manufacture_order_save"
+          }
+        ]
+      },
+      "material-adjustment": {
+        "scopeView": "material_adjustment_view",
+        "scopeSave": "material_adjustment_save",
+        "scopeDelete": null,
+        "actions": [
+          {
+            "name": "list.do",
+            "method": "GET",
+            "scope": "material_adjustment_view"
+          },
+          {
+            "name": "detail.do",
+            "method": "GET",
+            "scope": "material_adjustment_view"
+          },
+          {
+            "name": "save.do",
+            "method": "POST",
+            "scope": "material_adjustment_save"
+          }
+        ]
+      },
+      "material-equipment": {
+        "scopeView": "material_equipment_view",
+        "scopeSave": "material_equipment_save",
+        "scopeDelete": null,
+        "actions": [
+          {
+            "name": "list.do",
+            "method": "GET",
+            "scope": "material_equipment_view"
+          },
+          {
+            "name": "detail.do",
+            "method": "GET",
+            "scope": "material_equipment_view"
+          },
+          {
+            "name": "save.do",
+            "method": "POST",
+            "scope": "material_equipment_save"
+          }
+        ]
+      },
+      "material-slip": {
+        "scopeView": "material_slip_view",
+        "scopeSave": "material_slip_save",
+        "scopeDelete": null,
+        "actions": [
+          {
+            "name": "list.do",
+            "method": "GET",
+            "scope": "material_slip_view"
+          },
+          {
+            "name": "detail.do",
+            "method": "GET",
+            "scope": "material_slip_view"
+          },
+          {
+            "name": "save.do",
+            "method": "POST",
+            "scope": "material_slip_save"
+          }
+        ]
+      },
+      "online-order": {
+        "scopeView": "online_order_view",
+        "scopeSave": "online_order_save",
+        "scopeDelete": null,
+        "actions": [
+          {
+            "name": "list.do",
+            "method": "GET",
+            "scope": "online_order_view"
+          },
+          {
+            "name": "detail.do",
+            "method": "GET",
+            "scope": "online_order_view"
+          },
+          {
+            "name": "save.do",
+            "method": "POST",
+            "scope": "online_order_save"
+          }
+        ]
+      },
+      "other-deposit": {
+        "scopeView": "other_deposit_view",
+        "scopeSave": "other_deposit_save",
+        "scopeDelete": null,
+        "actions": [
+          {
+            "name": "list.do",
+            "method": "GET",
+            "scope": "other_deposit_view"
+          },
+          {
+            "name": "detail.do",
+            "method": "GET",
+            "scope": "other_deposit_view"
+          },
+          {
+            "name": "save.do",
+            "method": "POST",
+            "scope": "other_deposit_save"
+          }
+        ]
+      },
+      "other-payment": {
+        "scopeView": "other_payment_view",
+        "scopeSave": "other_payment_save",
+        "scopeDelete": null,
+        "actions": [
+          {
+            "name": "list.do",
+            "method": "GET",
+            "scope": "other_payment_view"
+          },
+          {
+            "name": "detail.do",
+            "method": "GET",
+            "scope": "other_payment_view"
+          },
+          {
+            "name": "save.do",
+            "method": "POST",
+            "scope": "other_payment_save"
+          }
+        ]
+      },
+      "payment-term": {
+        "scopeView": "payment_term_view",
+        "scopeSave": "payment_term_save",
+        "scopeDelete": null,
+        "actions": [
+          {
+            "name": "list.do",
+            "method": "GET",
+            "scope": "payment_term_view"
+          },
+          {
+            "name": "detail.do",
+            "method": "GET",
+            "scope": "payment_term_view"
+          },
+          {
+            "name": "save.do",
+            "method": "POST",
+            "scope": "payment_term_save"
+          }
+        ]
+      },
+      "pos/customer": {
+        "scopeView": "pos_customer_view",
+        "scopeSave": "pos_customer_save",
+        "scopeDelete": "pos_customer_delete",
+        "actions": [
+          {
+            "name": "list.do",
+            "method": "GET",
+            "scope": "pos_customer_view"
+          },
+          {
+            "name": "detail.do",
+            "method": "GET",
+            "scope": "pos_customer_view"
+          },
+          {
+            "name": "save.do",
+            "method": "POST",
+            "scope": "pos_customer_save"
+          },
+          {
+            "name": "delete.do",
+            "method": "DELETE",
+            "scope": "pos_customer_delete"
+          }
+        ]
+      },
+      "pos/item": {
+        "scopeView": "pos_item_view",
+        "scopeSave": "pos_item_save",
+        "scopeDelete": "pos_item_delete",
+        "actions": [
+          {
+            "name": "list.do",
+            "method": "GET",
+            "scope": "pos_item_view"
+          },
+          {
+            "name": "detail.do",
+            "method": "GET",
+            "scope": "pos_item_view"
+          },
+          {
+            "name": "save.do",
+            "method": "POST",
+            "scope": "pos_item_save"
+          },
+          {
+            "name": "delete.do",
+            "method": "DELETE",
+            "scope": "pos_item_delete"
+          }
+        ]
+      },
+      "pos/transaction": {
+        "scopeView": "pos_transaction_view",
+        "scopeSave": "pos_transaction_save",
+        "scopeDelete": null,
+        "actions": [
+          {
+            "name": "list.do",
+            "method": "GET",
+            "scope": "pos_transaction_view"
+          },
+          {
+            "name": "detail.do",
+            "method": "GET",
+            "scope": "pos_transaction_view"
+          },
+          {
+            "name": "save.do",
+            "method": "POST",
+            "scope": "pos_transaction_save"
+          }
+        ]
+      },
+      "preliminary-survey": {
+        "scopeView": "preliminary_survey_view",
+        "scopeSave": "preliminary_survey_save",
+        "scopeDelete": null,
+        "actions": [
+          {
+            "name": "list.do",
+            "method": "GET",
+            "scope": "preliminary_survey_view"
+          },
+          {
+            "name": "detail.do",
+            "method": "GET",
+            "scope": "preliminary_survey_view"
+          },
+          {
+            "name": "save.do",
+            "method": "POST",
+            "scope": "preliminary_survey_save"
+          }
+        ]
+      },
+      "price-category": {
+        "scopeView": "price_category_view",
+        "scopeSave": "price_category_save",
+        "scopeDelete": null,
+        "actions": [
+          {
+            "name": "list.do",
+            "method": "GET",
+            "scope": "price_category_view"
+          },
+          {
+            "name": "detail.do",
+            "method": "GET",
+            "scope": "price_category_view"
+          },
+          {
+            "name": "save.do",
+            "method": "POST",
+            "scope": "price_category_save"
+          }
+        ]
+      },
+      "process-stages": {
+        "scopeView": "process_stages_view",
+        "scopeSave": "process_stages_save",
+        "scopeDelete": null,
+        "actions": [
+          {
+            "name": "list.do",
+            "method": "GET",
+            "scope": "process_stages_view"
+          },
+          {
+            "name": "detail.do",
+            "method": "GET",
+            "scope": "process_stages_view"
+          },
+          {
+            "name": "save.do",
+            "method": "POST",
+            "scope": "process_stages_save"
+          }
+        ]
+      },
+      "project": {
+        "scopeView": "project_view",
+        "scopeSave": "project_save",
+        "scopeDelete": null,
+        "actions": [
+          {
+            "name": "list.do",
+            "method": "GET",
+            "scope": "project_view"
+          },
+          {
+            "name": "detail.do",
+            "method": "GET",
+            "scope": "project_view"
+          },
+          {
+            "name": "save.do",
+            "method": "POST",
+            "scope": "project_save"
+          }
+        ]
+      },
+      "project-contractor": {
+        "scopeView": "project_contractor_view",
+        "scopeSave": "project_contractor_save",
+        "scopeDelete": null,
+        "actions": [
+          {
+            "name": "list.do",
+            "method": "GET",
+            "scope": "project_contractor_view"
+          },
+          {
+            "name": "detail.do",
+            "method": "GET",
+            "scope": "project_contractor_view"
+          },
+          {
+            "name": "save.do",
+            "method": "POST",
+            "scope": "project_contractor_save"
+          }
+        ]
+      },
+      "purchase-invoice": {
+        "scopeView": "purchase_invoice_view",
+        "scopeSave": "purchase_invoice_save",
+        "scopeDelete": null,
+        "actions": [
+          {
+            "name": "list.do",
+            "method": "GET",
+            "scope": "purchase_invoice_view"
+          },
+          {
+            "name": "detail.do",
+            "method": "GET",
+            "scope": "purchase_invoice_view"
+          },
+          {
+            "name": "save.do",
+            "method": "POST",
+            "scope": "purchase_invoice_save"
+          },
+          {
+            "name": "create-down-payment.do",
+            "method": "GET",
+            "scope": "purchase_invoice_view"
+          }
+        ]
+      },
+      "purchase-order": {
+        "scopeView": "purchase_order_view",
+        "scopeSave": "purchase_order_save",
+        "scopeDelete": null,
+        "actions": [
+          {
+            "name": "list.do",
+            "method": "GET",
+            "scope": "purchase_order_view"
+          },
+          {
+            "name": "detail.do",
+            "method": "GET",
+            "scope": "purchase_order_view"
+          },
+          {
+            "name": "save.do",
+            "method": "POST",
+            "scope": "purchase_order_save"
+          },
+          {
+            "name": "manual-close-order.do",
+            "method": "GET",
+            "scope": "purchase_order_view"
+          }
+        ]
+      },
+      "purchase-payment": {
+        "scopeView": "purchase_payment_view",
+        "scopeSave": "purchase_payment_save",
+        "scopeDelete": null,
+        "actions": [
+          {
+            "name": "list.do",
+            "method": "GET",
+            "scope": "purchase_payment_view"
+          },
+          {
+            "name": "detail.do",
+            "method": "GET",
+            "scope": "purchase_payment_view"
+          },
+          {
+            "name": "save.do",
+            "method": "POST",
+            "scope": "purchase_payment_save"
+          }
+        ]
+      },
+      "purchase-requisition": {
+        "scopeView": "purchase_requisition_view",
+        "scopeSave": "purchase_requisition_save",
+        "scopeDelete": null,
+        "actions": [
+          {
+            "name": "list.do",
+            "method": "GET",
+            "scope": "purchase_requisition_view"
+          },
+          {
+            "name": "detail.do",
+            "method": "GET",
+            "scope": "purchase_requisition_view"
+          },
+          {
+            "name": "save.do",
+            "method": "POST",
+            "scope": "purchase_requisition_save"
+          }
+        ]
+      },
+      "purchase-return": {
+        "scopeView": "purchase_return_view",
+        "scopeSave": "purchase_return_save",
+        "scopeDelete": null,
+        "actions": [
+          {
+            "name": "list.do",
+            "method": "GET",
+            "scope": "purchase_return_view"
+          },
+          {
+            "name": "detail.do",
+            "method": "GET",
+            "scope": "purchase_return_view"
+          },
+          {
+            "name": "save.do",
+            "method": "POST",
+            "scope": "purchase_return_save"
+          }
+        ]
+      },
+      "receive-item": {
+        "scopeView": "receive_item_view",
+        "scopeSave": "receive_item_save",
+        "scopeDelete": null,
+        "actions": [
+          {
+            "name": "list.do",
+            "method": "GET",
+            "scope": "receive_item_view"
+          },
+          {
+            "name": "detail.do",
+            "method": "GET",
+            "scope": "receive_item_view"
+          },
+          {
+            "name": "save.do",
+            "method": "POST",
+            "scope": "receive_item_save"
+          }
+        ]
+      },
+      "recognition": {
+        "scopeView": "recognition_view",
+        "scopeSave": "recognition_save",
+        "scopeDelete": null,
+        "actions": [
+          {
+            "name": "list.do",
+            "method": "GET",
+            "scope": "recognition_view"
+          },
+          {
+            "name": "detail.do",
+            "method": "GET",
+            "scope": "recognition_view"
+          },
+          {
+            "name": "save.do",
+            "method": "POST",
+            "scope": "recognition_save"
+          }
+        ]
+      },
+      "report": {
+        "scopeView": "report_view",
+        "scopeSave": null,
+        "scopeDelete": null,
+        "actions": [
+          {
+            "name": "list.do",
+            "method": "GET",
+            "scope": "report_view"
+          },
+          {
+            "name": "detail.do",
+            "method": "GET",
+            "scope": "report_view"
+          },
+          {
+            "name": "serial-number-mutation.do",
+            "method": "GET",
+            "scope": "report_view"
+          },
+          {
+            "name": "serial-number-per-warehouse.do",
+            "method": "GET",
+            "scope": "report_view"
+          },
+          {
+            "name": "stock-mutation-summary.do",
+            "method": "GET",
+            "scope": "report_view"
+          },
+          {
+            "name": "work-order-detail.do",
+            "method": "GET",
+            "scope": "report_view"
+          }
+        ]
+      },
+      "roll-over": {
+        "scopeView": "roll_over_view",
+        "scopeSave": "roll_over_save",
+        "scopeDelete": null,
+        "actions": [
+          {
+            "name": "list.do",
+            "method": "GET",
+            "scope": "roll_over_view"
+          },
+          {
+            "name": "detail.do",
+            "method": "GET",
+            "scope": "roll_over_view"
+          },
+          {
+            "name": "save.do",
+            "method": "POST",
+            "scope": "roll_over_save"
+          }
+        ]
+      },
+      "sales-checkin": {
+        "scopeView": "sales_checkin_view",
+        "scopeSave": "sales_checkin_save",
+        "scopeDelete": null,
+        "actions": [
+          {
+            "name": "list.do",
+            "method": "GET",
+            "scope": "sales_checkin_view"
+          },
+          {
+            "name": "detail.do",
+            "method": "GET",
+            "scope": "sales_checkin_view"
+          },
+          {
+            "name": "save.do",
+            "method": "POST",
+            "scope": "sales_checkin_save"
+          }
+        ]
+      },
+      "sales-invoice": {
+        "scopeView": "sales_invoice_view",
+        "scopeSave": "sales_invoice_save",
+        "scopeDelete": null,
+        "actions": [
+          {
+            "name": "list.do",
+            "method": "GET",
+            "scope": "sales_invoice_view"
+          },
+          {
+            "name": "detail.do",
+            "method": "GET",
+            "scope": "sales_invoice_view"
+          },
+          {
+            "name": "save.do",
+            "method": "POST",
+            "scope": "sales_invoice_save"
+          },
+          {
+            "name": "delete.do",
+            "method": "DELETE",
+            "scope": "sales_invoice_save"
+          },
+          {
+            "name": "detail-invoice.do",
+            "method": "GET",
+            "scope": "sales_invoice_view"
+          },
+          {
+            "name": "create-down-payment.do",
+            "method": "GET",
+            "scope": "sales_invoice_view"
+          },
+          {
+            "name": "bulk-save.do",
+            "method": "GET",
+            "scope": "sales_invoice_view"
+          }
+        ]
+      },
+      "sales-order": {
+        "scopeView": "sales_order_view",
+        "scopeSave": "sales_order_save",
+        "scopeDelete": null,
+        "actions": [
+          {
+            "name": "list.do",
+            "method": "GET",
+            "scope": "sales_order_view"
+          },
+          {
+            "name": "detail.do",
+            "method": "GET",
+            "scope": "sales_order_view"
+          },
+          {
+            "name": "save.do",
+            "method": "POST",
+            "scope": "sales_order_save"
+          },
+          {
+            "name": "manual-close-order.do",
+            "method": "GET",
+            "scope": "sales_order_view"
+          }
+        ]
+      },
+      "sales-quotation": {
+        "scopeView": "sales_quotation_view",
+        "scopeSave": "sales_quotation_save",
+        "scopeDelete": null,
+        "actions": [
+          {
+            "name": "list.do",
+            "method": "GET",
+            "scope": "sales_quotation_view"
+          },
+          {
+            "name": "detail.do",
+            "method": "GET",
+            "scope": "sales_quotation_view"
+          },
+          {
+            "name": "save.do",
+            "method": "POST",
+            "scope": "sales_quotation_save"
+          },
+          {
+            "name": "create-invoice.do",
+            "method": "GET",
+            "scope": "sales_quotation_view"
+          },
+          {
+            "name": "create-down-payment.do",
+            "method": "GET",
+            "scope": "sales_quotation_view"
+          }
+        ]
+      },
+      "sales-receipt": {
+        "scopeView": "sales_receipt_view",
+        "scopeSave": "sales_receipt_save",
+        "scopeDelete": null,
+        "actions": [
+          {
+            "name": "list.do",
+            "method": "GET",
+            "scope": "sales_receipt_view"
+          },
+          {
+            "name": "detail.do",
+            "method": "GET",
+            "scope": "sales_receipt_view"
+          },
+          {
+            "name": "save.do",
+            "method": "POST",
+            "scope": "sales_receipt_save"
+          }
+        ]
+      },
+      "sales-return": {
+        "scopeView": "sales_return_view",
+        "scopeSave": "sales_return_save",
+        "scopeDelete": null,
+        "actions": [
+          {
+            "name": "list.do",
+            "method": "GET",
+            "scope": "sales_return_view"
+          },
+          {
+            "name": "detail.do",
+            "method": "GET",
+            "scope": "sales_return_view"
+          },
+          {
+            "name": "save.do",
+            "method": "POST",
+            "scope": "sales_return_save"
+          },
+          {
+            "name": "create-receive-item.do",
+            "method": "GET",
+            "scope": "sales_return_view"
+          }
+        ]
+      },
+      "salesman-commission": {
+        "scopeView": "salesman_commission_view",
+        "scopeSave": "salesman_commission_save",
+        "scopeDelete": null,
+        "actions": [
+          {
+            "name": "list.do",
+            "method": "GET",
+            "scope": "salesman_commission_view"
+          },
+          {
+            "name": "detail.do",
+            "method": "GET",
+            "scope": "salesman_commission_view"
+          },
+          {
+            "name": "save.do",
+            "method": "POST",
+            "scope": "salesman_commission_save"
+          }
+        ]
+      },
+      "sellingprice-adjustment": {
+        "scopeView": "sellingprice_adjustment_view",
+        "scopeSave": "sellingprice_adjustment_save",
+        "scopeDelete": null,
+        "actions": [
+          {
+            "name": "list.do",
+            "method": "GET",
+            "scope": "sellingprice_adjustment_view"
+          },
+          {
+            "name": "detail.do",
+            "method": "GET",
+            "scope": "sellingprice_adjustment_view"
+          },
+          {
+            "name": "save.do",
+            "method": "POST",
+            "scope": "sellingprice_adjustment_save"
+          }
+        ]
+      },
+      "shipment": {
+        "scopeView": "shipment_view",
+        "scopeSave": "shipment_save",
+        "scopeDelete": null,
+        "actions": [
+          {
+            "name": "list.do",
+            "method": "GET",
+            "scope": "shipment_view"
+          },
+          {
+            "name": "detail.do",
+            "method": "GET",
+            "scope": "shipment_view"
+          },
+          {
+            "name": "save.do",
+            "method": "POST",
+            "scope": "shipment_save"
+          }
+        ]
+      },
+      "standard-product-cost": {
+        "scopeView": "standard_product_cost_view",
+        "scopeSave": "standard_product_cost_save",
+        "scopeDelete": null,
+        "actions": [
+          {
+            "name": "list.do",
+            "method": "GET",
+            "scope": "standard_product_cost_view"
+          },
+          {
+            "name": "detail.do",
+            "method": "GET",
+            "scope": "standard_product_cost_view"
+          },
+          {
+            "name": "save.do",
+            "method": "POST",
+            "scope": "standard_product_cost_save"
+          }
+        ]
+      },
+      "stock-opname-order": {
+        "scopeView": "stock_opname_order_view",
+        "scopeSave": "stock_opname_order_save",
+        "scopeDelete": null,
+        "actions": [
+          {
+            "name": "list.do",
+            "method": "GET",
+            "scope": "stock_opname_order_view"
+          },
+          {
+            "name": "detail.do",
+            "method": "GET",
+            "scope": "stock_opname_order_view"
+          },
+          {
+            "name": "save.do",
+            "method": "POST",
+            "scope": "stock_opname_order_save"
+          }
+        ]
+      },
+      "stock-opname-result": {
+        "scopeView": "stock_opname_result_view",
+        "scopeSave": "stock_opname_result_save",
+        "scopeDelete": null,
+        "actions": [
+          {
+            "name": "list.do",
+            "method": "GET",
+            "scope": "stock_opname_result_view"
+          },
+          {
+            "name": "detail.do",
+            "method": "GET",
+            "scope": "stock_opname_result_view"
+          },
+          {
+            "name": "save.do",
+            "method": "POST",
+            "scope": "stock_opname_result_save"
+          }
+        ]
+      },
+      "tax": {
+        "scopeView": "tax_view",
+        "scopeSave": "tax_save",
+        "scopeDelete": null,
+        "actions": [
+          {
+            "name": "list.do",
+            "method": "GET",
+            "scope": "tax_view"
+          },
+          {
+            "name": "detail.do",
+            "method": "GET",
+            "scope": "tax_view"
+          },
+          {
+            "name": "save.do",
+            "method": "POST",
+            "scope": "tax_save"
+          }
+        ]
+      },
+      "unit": {
+        "scopeView": "unit_view",
+        "scopeSave": "unit_save",
+        "scopeDelete": null,
+        "actions": [
+          {
+            "name": "list.do",
+            "method": "GET",
+            "scope": "unit_view"
+          },
+          {
+            "name": "detail.do",
+            "method": "GET",
+            "scope": "unit_view"
+          },
+          {
+            "name": "save.do",
+            "method": "POST",
+            "scope": "unit_save"
+          }
+        ]
+      },
+      "vendor": {
+        "scopeView": "vendor_view",
+        "scopeSave": "vendor_save",
+        "scopeDelete": "vendor_delete",
+        "actions": [
+          {
+            "name": "list.do",
+            "method": "GET",
+            "scope": "vendor_view"
+          },
+          {
+            "name": "detail.do",
+            "method": "GET",
+            "scope": "vendor_view"
+          },
+          {
+            "name": "save.do",
+            "method": "POST",
+            "scope": "vendor_save"
+          },
+          {
+            "name": "delete.do",
+            "method": "DELETE",
+            "scope": "vendor_delete"
+          }
+        ]
+      },
+      "vendor-category": {
+        "scopeView": "vendor_category_view",
+        "scopeSave": "vendor_category_save",
+        "scopeDelete": null,
+        "actions": [
+          {
+            "name": "list.do",
+            "method": "GET",
+            "scope": "vendor_category_view"
+          },
+          {
+            "name": "detail.do",
+            "method": "GET",
+            "scope": "vendor_category_view"
+          },
+          {
+            "name": "save.do",
+            "method": "POST",
+            "scope": "vendor_category_save"
+          }
+        ]
+      },
+      "vendor-claim": {
+        "scopeView": "vendor_claim_view",
+        "scopeSave": "vendor_claim_save",
+        "scopeDelete": "vendor_claim_delete",
+        "actions": [
+          {
+            "name": "list.do",
+            "method": "GET",
+            "scope": "vendor_claim_view"
+          },
+          {
+            "name": "detail.do",
+            "method": "GET",
+            "scope": "vendor_claim_view"
+          },
+          {
+            "name": "save.do",
+            "method": "POST",
+            "scope": "vendor_claim_save"
+          },
+          {
+            "name": "delete.do",
+            "method": "DELETE",
+            "scope": "vendor_claim_delete"
+          }
+        ]
+      },
+      "vendor-price": {
+        "scopeView": "vendor_price_view",
+        "scopeSave": "vendor_price_save",
+        "scopeDelete": null,
+        "actions": [
+          {
+            "name": "list.do",
+            "method": "GET",
+            "scope": "vendor_price_view"
+          },
+          {
+            "name": "detail.do",
+            "method": "GET",
+            "scope": "vendor_price_view"
+          },
+          {
+            "name": "save.do",
+            "method": "POST",
+            "scope": "vendor_price_save"
+          }
+        ]
+      },
+      "warehouse": {
+        "scopeView": "warehouse_view",
+        "scopeSave": "warehouse_save",
+        "scopeDelete": null,
+        "actions": [
+          {
+            "name": "list.do",
+            "method": "GET",
+            "scope": "warehouse_view"
+          },
+          {
+            "name": "detail.do",
+            "method": "GET",
+            "scope": "warehouse_view"
+          },
+          {
+            "name": "save.do",
+            "method": "POST",
+            "scope": "warehouse_save"
+          }
+        ]
+      },
+      "wo-person-in-charge": {
+        "scopeView": "wo_person_in_charge_view",
+        "scopeSave": "wo_person_in_charge_save",
+        "scopeDelete": null,
+        "actions": [
+          {
+            "name": "list.do",
+            "method": "GET",
+            "scope": "wo_person_in_charge_view"
+          },
+          {
+            "name": "detail.do",
+            "method": "GET",
+            "scope": "wo_person_in_charge_view"
+          },
+          {
+            "name": "save.do",
+            "method": "POST",
+            "scope": "wo_person_in_charge_save"
+          }
+        ]
+      },
+      "work-order": {
+        "scopeView": "work_order_view",
+        "scopeSave": "work_order_save",
+        "scopeDelete": null,
+        "actions": [
+          {
+            "name": "list.do",
+            "method": "GET",
+            "scope": "work_order_view"
+          },
+          {
+            "name": "detail.do",
+            "method": "GET",
+            "scope": "work_order_view"
+          },
+          {
+            "name": "save.do",
+            "method": "POST",
+            "scope": "work_order_save"
+          },
+          {
+            "name": "list-stock.do",
+            "method": "GET",
+            "scope": "work_order_view"
+          },
+          {
+            "name": "stock-in.do",
+            "method": "GET",
+            "scope": "work_order_view"
+          },
+          {
+            "name": "stock-out.do",
+            "method": "GET",
+            "scope": "work_order_view"
+          }
+        ]
+      }
+    }
+  },
+  "webhookEvents": [
+    "CUSTOMER",
+    "SALES_INVOICE",
+    "VENDOR",
+    "ITEM",
+    "PURCHASE_INVOICE",
+    "PURCHASE_ORDER",
+    "EXPENSE",
+    "ACCOUNT",
+    "JOURNAL_VOUCHER",
+    "SALES_QUOTATION",
+    "SALES_ORDER",
+    "SALES_RECEIPT",
+    "SALES_RETURN",
+    "PURCHASE_RETURN",
+    "FIXED_ASSET",
+    "PROJECT",
+    "WORK_ORDER",
+    "DELIVERY_ORDER",
+    "STOCK_OPNAME_ORDER",
+    "ITEM_ADJUSTMENT",
+    "RECEIVE_ITEM",
+    "BANK_TRANSFER",
+    "OTHER_DEPOSIT",
+    "OTHER_PAYMENT",
+    "TAX",
+    "CURRENCY",
+    "ITEM_CATEGORY",
+    "CUSTOMER_CATEGORY",
+    "ITEM_BRAND",
+    "VENDOR_CATEGORY",
+    "DEPARTMENT",
+    "EMPLOYEE",
+    "WAREHOUSE",
+    "UNIT",
+    "PAYMENT_TERM",
+    "PRICE_CATEGORY",
+    "BRANCH",
+    "ATTACHMENT",
+    "SALES_CHECKIN",
+    "EXCHANGE_INVOICE",
+    "SALES_MAN_COMMISSION",
+    "SELLINGPRICE_ADJUSTMENT",
+    "PURCHASE_PAYMENT",
+    "STANDARD_PRODUCT_COST",
+    "DATA_CLASSIFICATION",
+    "AUTO_NUMBER",
+    "FOB",
+    "FREEONBOARD",
+    "FINISHED_GOOD_SLIP",
+    "MATERIAL_SLIP",
+    "MATERIAL_EQUIPMENT",
+    "PROCESS_STAGES",
+    "JOB_ORDER",
+    "MANUFACTURE_ORDER",
+    "ROLL_OVER",
+    "RECOGNITION",
+    "BANK_STATEMENT",
+    "PRELIMINARY_SURVEY",
+    "PROJECT_CONTRACTOR",
+    "MATERIAL_ADJUSTMENT",
+    "BILL_OF_MATERIAL",
+    "BOM_PROCESS_CATEGORY",
+    "STOCK_MUTATION_HISTORY",
+    "STOCK_OPNAME_RESULT",
+    "ONLINE_ORDER",
+    "GOLIVE",
+    "ACCESS_PRIVILEGE",
+    "ACCOUNT_BUDGET_TARGET",
+    "WO_PERSON_IN_CHARGE",
+    "SHIPMENT",
+    "ITEM_TRANSFER",
+    "RECEIVE_ITEM_DONE",
+    "WEBHOOK"
+  ],
+  "comparisonWithMock": {
+    "match": [
+      {
+        "mockModule": "customer",
+        "realModule": "customer",
+        "note": "list.do/detail.do/save.do, scope customer_view"
+      },
+      {
+        "mockModule": "access-privilege",
+        "realModule": "access-privilege",
+        "note": "list.do/detail.do, response Privilege[] dengan ModuleName/AllowView — bentuk mock CONFIRMED by docs"
+      }
+    ],
+    "mismatch": [
+      {
+        "mockModule": "sales-entry",
+        "realModule": "sales-invoice",
+        "realScopeView": "sales_invoice_view",
+        "impact": "adapter path /accurate/api/sales-entry/list.do akan 404 di API asli; harus /accurate/api/sales-invoice/list.do"
+      },
+      {
+        "mockModule": "purchase-entry",
+        "realModule": "purchase-invoice",
+        "realScopeView": "purchase_invoice_view",
+        "impact": "belum diimplementasikan di adapter, tapi mock fixture salah nama"
+      },
+      {
+        "mockModule": "account",
+        "realModule": "glaccount",
+        "realScopeView": "glaccount_view",
+        "impact": "belum diimplementasikan di adapter, tapi mock fixture salah nama"
+      }
+    ],
+    "adapterPathFixRequired": {
+      "customer.list": "/accurate/api/customer/list.do",
+      "salesEntry.list": "/accurate/api/sales-invoice/list.do"
+    }
+  }
+}
