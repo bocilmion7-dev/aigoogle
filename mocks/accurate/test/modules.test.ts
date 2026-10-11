@@ -25,9 +25,9 @@ describe("modul read + isolasi tenant (bentuk real)", () => {
     expect(r1.body.sp.rowCount).toBe(2);
   });
 
-  it("staff db 1001: sales-entry boleh", async () => {
+  it("staff db 1001: sales-invoice boleh", async () => {
     const { sid, bearer } = await session("1001", "user-staff");
-    const res = await request(app).get("/accurate/api/sales-entry/list.do")
+    const res = await request(app).get("/accurate/api/sales-invoice/list.do")
       .set("Authorization", bearer).set("X-Session-ID", sid);
     expect(res.body.s).toBe(true);
     expect(res.body.d[0].total).toBe(2500000);

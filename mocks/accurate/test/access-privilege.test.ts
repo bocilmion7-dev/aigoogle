@@ -31,15 +31,15 @@ describe("access-privilege (bentuk real)", () => {
     expect(rows.every((r) => r.AllowView)).toBe(true);
   });
 
-  it("detail.do staff → sales-entry true, account false", async () => {
+  it("detail.do staff → sales-invoice true, glaccount false", async () => {
     const { sid, bearer } = await session("1001");
     const res = await request(app).get("/accurate/api/access-privilege/detail.do?id=priv-staff")
       .set("Authorization", bearer).set("X-Session-ID", sid);
     const byMod = Object.fromEntries(
       (res.body.d[0].Privilege as { ModuleName: string; AllowView: boolean }[]).map((r) => [r.ModuleName, r.AllowView])
     );
-    expect(byMod["sales-entry"]).toBe(true);
-    expect(byMod["account"]).toBe(false);
+    expect(byMod["sales-invoice"]).toBe(true);
+    expect(byMod["glaccount"]).toBe(false);
   });
 
   it("detail.do id ngawur → s false", async () => {

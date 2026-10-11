@@ -9,15 +9,24 @@ export interface PrivilegeRow {
 }
 export interface MockUser { id: string; email: string; name: string; }
 export interface Customer { id: string; name: string; }
-export interface SalesEntry { id: string; customerName: string; date: string; total: number; }
+export interface SalesInvoice { id: string; no: string; customerName: string; date: string; total: number; status: string; }
 export interface MockDb {
   id: string; name: string; alias: string;
   userPrivileges: Record<string, string>;
   privileges: Record<string, PrivilegeRow[]>;
-  data: { customers: Customer[]; salesEntries: SalesEntry[] };
+  data: {
+    customers: Customer[];
+    salesInvoices: SalesInvoice[];
+    items: unknown[];
+    vendors: unknown[];
+    glAccounts: unknown[];
+    salesOrders: unknown[];
+    salesReceipts: unknown[];
+    purchaseInvoices: unknown[];
+  };
 }
 
-const ALL_MODULES = ["customer", "sales-entry", "purchase-entry", "account"];
+const ALL_MODULES = ["customer", "sales-invoice", "purchase-invoice", "glaccount"];
 const priv = (mods: string[], allow: boolean): PrivilegeRow[] =>
   ALL_MODULES.map((m) => ({
     ModuleName: m, AllowView: allow && mods.includes(m),
@@ -30,11 +39,19 @@ const dbs: Record<string, MockDb> = {
     userPrivileges: { "user-admin": "priv-admin", "user-staff": "priv-staff" },
     privileges: {
       "priv-admin": priv(ALL_MODULES, true),
-      "priv-staff": priv(["sales-entry"], true),
+      "priv-staff": priv(["sales-invoice"], true),
     },
     data: {
       customers: [{ id: "C-001", name: "Budi Santoso" }, { id: "C-002", name: "Siti Aminah" }],
-      salesEntries: [{ id: "SJ-001", customerName: "Budi Santoso", date: "2026-10-01", total: 2500000 }],
+      salesInvoices: [
+        { id: "SI-001", no: "FJ/2026/0001", customerName: "Budi Santoso", date: "2026-10-01", total: 2500000, status: "Posted" },
+      ],
+      items: [],
+      vendors: [],
+      glAccounts: [],
+      salesOrders: [],
+      salesReceipts: [],
+      purchaseInvoices: [],
     },
   },
   "1002": {
@@ -43,7 +60,15 @@ const dbs: Record<string, MockDb> = {
     privileges: { "priv-admin": priv(ALL_MODULES, true) },
     data: {
       customers: [{ id: "C-101", name: "Toko Bersama" }],
-      salesEntries: [{ id: "SJ-101", customerName: "Toko Bersama", date: "2026-10-03", total: 1750000 }],
+      salesInvoices: [
+        { id: "SI-101", no: "FJ/2026/0101", customerName: "Toko Bersama", date: "2026-10-03", total: 1750000, status: "Posted" },
+      ],
+      items: [],
+      vendors: [],
+      glAccounts: [],
+      salesOrders: [],
+      salesReceipts: [],
+      purchaseInvoices: [],
     },
   },
 };
