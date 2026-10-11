@@ -112,7 +112,7 @@ export class AccurateAdapter implements AccountingProvider {
   async execute(tool: string, _args: Record<string, unknown>, ctx: ProviderCtx): Promise<unknown> {
     const paths: Record<string, string> = {
       "customer.list": "/accurate/api/customer/list.do",
-      "salesEntry.list": "/accurate/api/sales-entry/list.do",
+      "salesInvoice.list": "/accurate/api/sales-invoice/list.do",
     };
     const p = paths[tool];
     if (!p) throw new Error(`tool tidak dikenal: ${tool}`);

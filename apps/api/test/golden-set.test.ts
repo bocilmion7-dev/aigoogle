@@ -6,16 +6,16 @@ import type { ToolSpec } from "../src/providers/accounting/types.js";
 
 const TOOLS: ToolSpec[] = [
   { name: "customer.list", description: "Daftar pelanggan", jsonSchema: { type: "object", properties: {} }, requiredPermission: "accurate:customer.view", label: "Mengambil data pelanggan…" },
-  { name: "salesEntry.list", description: "Daftar penjualan", jsonSchema: { type: "object", properties: {} }, requiredPermission: "accurate:sales-entry.view", label: "Mengambil data penjualan…" },
+  { name: "salesInvoice.list", description: "Daftar faktur penjualan", jsonSchema: { type: "object", properties: {} }, requiredPermission: "accurate:sales-invoice.view", label: "Mengambil data faktur penjualan…" },
 ];
 
 describe("golden set: tool-loop (Gemini stub)", () => {
   const cases: Array<{ prompt: string; tool: string; permissions: string[] }> = [
-    { prompt: "tampilkan daftar pelanggan", tool: "customer.list", permissions: ["accurate:customer.view", "accurate:sales-entry.view"] },
-    { prompt: "siapa saja pelanggan saya?", tool: "customer.list", permissions: ["accurate:customer.view", "accurate:sales-entry.view"] },
-    { prompt: "faktur penjualan bulan ini", tool: "salesEntry.list", permissions: ["accurate:customer.view", "accurate:sales-entry.view"] },
-    { prompt: "berapa total penjualan?", tool: "salesEntry.list", permissions: ["accurate:customer.view", "accurate:sales-entry.view"] },
-    { prompt: "daftar penjualan untuk analisa", tool: "salesEntry.list", permissions: ["accurate:customer.view", "accurate:sales-entry.view"] },
+    { prompt: "tampilkan daftar pelanggan", tool: "customer.list", permissions: ["accurate:customer.view", "accurate:sales-invoice.view"] },
+    { prompt: "siapa saja pelanggan saya?", tool: "customer.list", permissions: ["accurate:customer.view", "accurate:sales-invoice.view"] },
+    { prompt: "faktur penjualan bulan ini", tool: "salesInvoice.list", permissions: ["accurate:customer.view", "accurate:sales-invoice.view"] },
+    { prompt: "berapa total penjualan?", tool: "salesInvoice.list", permissions: ["accurate:customer.view", "accurate:sales-invoice.view"] },
+    { prompt: "daftar penjualan untuk analisa", tool: "salesInvoice.list", permissions: ["accurate:customer.view", "accurate:sales-invoice.view"] },
   ];
   for (const c of cases) {
     it(`"${c.prompt}" → ${c.tool}`, async () => {
@@ -42,7 +42,7 @@ describe("golden set: tool-loop (Gemini stub)", () => {
 
   it("permission kurang → tool ditolak tanpa menyentuh provider", async () => {
     const fake = new FakeGeminiClient([
-      { parts: [{ functionCall: { name: "salesEntry.list", args: {}, id: "g1" } }] },
+      { parts: [{ functionCall: { name: "salesInvoice.list", args: {}, id: "g1" } }] },
       { parts: [{ text: "Anda tidak punya akses." }] },
     ]);
     const out = await runToolLoop({
@@ -55,7 +55,7 @@ describe("golden set: tool-loop (Gemini stub)", () => {
       userMessage: "faktur penjualan",
       onEvent: () => {},
     } as Parameters<typeof runToolLoop>[0]);
-    expect(out.trace[0]).toMatchObject({ tool: "salesEntry.list", ok: false, reason: "no_permission" });
+    expect(out.trace[0]).toMatchObject({ tool: "salesInvoice.list", ok: false, reason: "no_permission" });
   });
 });
 

@@ -39,8 +39,8 @@ describe("AccurateAdapter execute/refresh/privilege", () => {
     expect(d.map((c) => c.name)).toContain("Budi Santoso");
   });
 
-  it("salesEntry.list admin → ada transaksi total", async () => {
-    const d = (await adapter.execute("salesEntry.list", {}, adminCtx)) as Array<{ total: number }>;
+  it("salesInvoice.list admin → ada transaksi total", async () => {
+    const d = (await adapter.execute("salesInvoice.list", {}, adminCtx)) as Array<{ total: number }>;
     expect(d.length).toBeGreaterThan(0);
     expect(typeof d[0].total).toBe("number");
   });
@@ -63,12 +63,12 @@ describe("AccurateAdapter execute/refresh/privilege", () => {
   it("privilegeCatalog → kelompok Administrator + Staff Penjualan; admin melihat modul view", async () => {
     const groups = await adapter.privilegeCatalog(adminCtx);
     const admin = groups.find((g) => g.id === "priv-admin")!;
-    expect(admin.allowViewModules).toEqual(expect.arrayContaining(["customer", "sales-entry"]));
+    expect(admin.allowViewModules).toEqual(expect.arrayContaining(["customer", "sales-invoice"]));
   });
 
   it("capabilityCatalog → 2 tool teranotasi permission", () => {
     const cat = adapter.capabilityCatalog();
-    expect(cat.map((t) => t.name).sort()).toEqual(["customer.list", "salesEntry.list"]);
+    expect(cat.map((t) => t.name).sort()).toEqual(["customer.list", "salesInvoice.list"]);
     expect(cat.every((t) => t.requiredPermission.startsWith("accurate:"))).toBe(true);
   });
 });

@@ -54,7 +54,7 @@ describe("launch & callback", () => {
     const role = await prisma.role.findFirstOrThrow({ where: { tenantId: tenant!.id, key: "admin" } });
     const perms = await prisma.rolePermission.findMany({ where: { roleId: role.id } });
     expect(perms.map((p) => p.permissionKey)).toEqual(
-      expect.arrayContaining(["accurate:customer.view", "accurate:sales-entry.view", "app:settings.manage"])
+      expect.arrayContaining(["accurate:customer.view", "accurate:sales-invoice.view", "app:settings.manage"])
     );
     expect(await prisma.connection.count({ where: { tenantId: tenant!.id, provider: "accurate" } })).toBe(1);
     const au2 = await fetch(`${mockBase}/oauth/authorize?client_id=c&redirect_uri=${cbUrl}&state=${state}&user=admin`, { redirect: "manual" });

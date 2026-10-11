@@ -9,10 +9,10 @@ export const ACCURATE_CATALOG: ToolSpec[] = [
     label: "Mengambil data pelanggan…",
   },
   {
-    name: "salesEntry.list",
-    description: "Ambil daftar transaksi penjualan (faktur): pelanggan, tanggal, total",
+    name: "salesInvoice.list",
+    description: "Ambil daftar faktur penjualan: nomor, pelanggan, tanggal, total, status",
     jsonSchema: { type: "object", properties: {} },
-    requiredPermission: "accurate:sales-entry.view",
-    label: "Mengambil data penjualan…",
+    requiredPermission: "accurate:sales-invoice.view",
+    label: "Mengambil data faktur penjualan…",
   },
 ];

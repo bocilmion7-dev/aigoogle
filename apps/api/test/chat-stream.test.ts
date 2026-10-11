@@ -24,7 +24,7 @@ beforeAll(async () => {
   tenantId = tenant.id;
   const role = await prisma.role.create({ data: { tenantId: tenant.id, key: "admin", name: "Admin" } });
   await prisma.rolePermission.createMany({
-    data: ["accurate:customer.view", "accurate:sales-entry.view"].map((permissionKey) => ({ roleId: role.id, permissionKey })),
+    data: ["accurate:customer.view", "accurate:sales-invoice.view"].map((permissionKey) => ({ roleId: role.id, permissionKey })),
   });
   const user = await prisma.user.create({
     data: { tenantId: tenant.id, providerUserId: `cu-${randomBytes(4).toString("hex")}`, email: "chat@demo.local", name: "Chat", roleId: role.id },
