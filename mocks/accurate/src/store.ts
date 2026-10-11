@@ -10,6 +10,12 @@ export interface PrivilegeRow {
 export interface MockUser { id: string; email: string; name: string; }
 export interface Customer { id: string; name: string; }
 export interface SalesInvoice { id: string; no: string; customerName: string; date: string; total: number; status: string; }
+export interface Item { id: string; code: string; name: string; unit: string; sellingPrice: number; }
+export interface Vendor { id: string; code: string; name: string; }
+export interface GlAccount { id: string; code: string; name: string; type: "Asset" | "Liability" | "Equity" | "Revenue" | "Expense"; }
+export interface SalesOrder { id: string; no: string; customerName: string; date: string; total: number; status: string; }
+export interface SalesReceipt { id: string; no: string; customerName: string; date: string; amount: number; }
+export interface PurchaseInvoice { id: string; no: string; vendorName: string; date: string; total: number; status: string; }
 export interface MockDb {
   id: string; name: string; alias: string;
   userPrivileges: Record<string, string>;
@@ -17,16 +23,19 @@ export interface MockDb {
   data: {
     customers: Customer[];
     salesInvoices: SalesInvoice[];
-    items: unknown[];
-    vendors: unknown[];
-    glAccounts: unknown[];
-    salesOrders: unknown[];
-    salesReceipts: unknown[];
-    purchaseInvoices: unknown[];
+    items: Item[];
+    vendors: Vendor[];
+    glAccounts: GlAccount[];
+    salesOrders: SalesOrder[];
+    salesReceipts: SalesReceipt[];
+    purchaseInvoices: PurchaseInvoice[];
   };
 }
 
-const ALL_MODULES = ["customer", "sales-invoice", "purchase-invoice", "glaccount"];
+const ALL_MODULES = [
+  "customer", "sales-invoice", "purchase-invoice", "glaccount",
+  "item", "vendor", "sales-order", "sales-receipt",
+];
 const priv = (mods: string[], allow: boolean): PrivilegeRow[] =>
   ALL_MODULES.map((m) => ({
     ModuleName: m, AllowView: allow && mods.includes(m),
@@ -46,12 +55,29 @@ const dbs: Record<string, MockDb> = {
       salesInvoices: [
         { id: "SI-001", no: "FJ/2026/0001", customerName: "Budi Santoso", date: "2026-10-01", total: 2500000, status: "Posted" },
       ],
-      items: [],
-      vendors: [],
-      glAccounts: [],
-      salesOrders: [],
-      salesReceipts: [],
-      purchaseInvoices: [],
+      items: [
+        { id: "I-01", code: "BRG-001", name: "Kertas A4", unit: "Rim", sellingPrice: 55000 },
+        { id: "I-02", code: "BRG-002", name: "Tinta Printer", unit: "Botol", sellingPrice: 120000 },
+      ],
+      vendors: [
+        { id: "V-01", code: "SUP-001", name: "CV Sentosa Mandiri" },
+        { id: "V-02", code: "SUP-002", name: "PT Bahan Bangunan" },
+      ],
+      glAccounts: [
+        { id: "G-1000", code: "1000", name: "Kas", type: "Asset" },
+        { id: "G-1100", code: "1100", name: "Bank", type: "Asset" },
+        { id: "G-4000", code: "4000", name: "Penjualan", type: "Revenue" },
+        { id: "G-5000", code: "5000", name: "Harga Pokok Penjualan", type: "Expense" },
+      ],
+      salesOrders: [
+        { id: "SO-001", no: "SJ/2026/0001", customerName: "Budi Santoso", date: "2026-09-28", total: 2500000, status: "Posted" },
+      ],
+      salesReceipts: [
+        { id: "SR-001", no: "PK/2026/0001", customerName: "Budi Santoso", date: "2026-10-02", amount: 2500000 },
+      ],
+      purchaseInvoices: [
+        { id: "PI-001", no: "FB/2026/0001", vendorName: "CV Sentosa Mandiri", date: "2026-10-03", total: 800000, status: "Posted" },
+      ],
     },
   },
   "1002": {
@@ -63,9 +89,16 @@ const dbs: Record<string, MockDb> = {
       salesInvoices: [
         { id: "SI-101", no: "FJ/2026/0101", customerName: "Toko Bersama", date: "2026-10-03", total: 1750000, status: "Posted" },
       ],
-      items: [],
-      vendors: [],
-      glAccounts: [],
+      items: [
+        { id: "I-11", code: "BRG-101", name: "Spanduk", unit: "Lembar", sellingPrice: 85000 },
+      ],
+      vendors: [
+        { id: "V-11", code: "SUP-101", name: "PT Multi Supply" },
+      ],
+      glAccounts: [
+        { id: "G-1000", code: "1000", name: "Kas", type: "Asset" },
+        { id: "G-4000", code: "4000", name: "Penjualan", type: "Revenue" },
+      ],
       salesOrders: [],
       salesReceipts: [],
       purchaseInvoices: [],

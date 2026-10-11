@@ -4,6 +4,7 @@ import { createSession, getDb, getUser, isAdminOf, listDbs } from "./store.js";
 import { accessPrivilegeRouter } from "./modules/access-privilege.js";
 import { customerRouter } from "./modules/customer.js";
 import { salesInvoiceRouter } from "./modules/sales-invoice.js";
+import { makeListRouter } from "./modules/list-factory.js";
 
 export const accountApiRouter = Router(); // API dasar account.accurate.id (Bearer)
 export const apiRouter = Router(); // API modul {host}/accurate/api (Bearer + X-Session-ID)
@@ -11,6 +12,21 @@ export const apiRouter = Router(); // API modul {host}/accurate/api (Bearer + X-
 apiRouter.use("/access-privilege", accessPrivilegeRouter);
 apiRouter.use("/customer", customerRouter);
 apiRouter.use("/sales-invoice", salesInvoiceRouter);
+apiRouter.use("/item", makeListRouter({
+  module: "item", rows: (db) => db.data.items,
+  fieldsForDetail: ["id", "code", "name", "unit", "sellingPrice"],
+}));
+apiRouter.use("/vendor", makeListRouter({
+  module: "vendor", rows: (db) => db.data.vendors,
+  fieldsForDetail: ["id", "code", "name"],
+}));
+apiRouter.use("/glaccount", makeListRouter({
+  module: "glaccount", rows: (db) => db.data.glAccounts,
+  fieldsForDetail: ["id", "code", "name", "type"],
+}));
+apiRouter.use("/sales-order", makeListRouter({ module: "sales-order", rows: (db) => db.data.salesOrders }));
+apiRouter.use("/sales-receipt", makeListRouter({ module: "sales-receipt", rows: (db) => db.data.salesReceipts }));
+apiRouter.use("/purchase-invoice", makeListRouter({ module: "purchase-invoice", rows: (db) => db.data.purchaseInvoices }));
 
 accountApiRouter.get("/api/userinfo.do", bearerGuard, (req, res) => {
   const u = getUser(req.mockUserId!)!;
