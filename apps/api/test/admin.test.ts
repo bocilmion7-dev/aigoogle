@@ -73,7 +73,7 @@ describe("roles & privileges", () => {
     const r = await request(api).get("/api/admin/privileges").set("Cookie", adminCookie);
     expect(r.status).toBe(200);
     expect(r.body.modules.map((m: { key: string }) => m.key)).toEqual(
-      expect.arrayContaining(["accurate:customer.view", "accurate:sales-invoice.view"])
+      expect.arrayContaining(["accurate:customer.view", "accurate:sales-invoice.view", "accurate:item.view"])
     );
     expect(r.body.appFeatures.map((f: { key: string }) => f.key)).toContain("app:drive.tidy");
   });

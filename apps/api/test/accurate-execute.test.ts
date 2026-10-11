@@ -66,9 +66,31 @@ describe("AccurateAdapter execute/refresh/privilege", () => {
     expect(admin.allowViewModules).toEqual(expect.arrayContaining(["customer", "sales-invoice"]));
   });
 
-  it("capabilityCatalog → 2 tool teranotasi permission", () => {
+  it("capabilityCatalog → 10 tool teranotasi permission", () => {
     const cat = adapter.capabilityCatalog();
-    expect(cat.map((t) => t.name).sort()).toEqual(["customer.list", "salesInvoice.list"]);
+    expect(cat.map((t) => t.name).sort()).toEqual([
+      "customer.detail", "customer.list", "glAccount.list", "item.list",
+      "purchaseInvoice.list", "salesInvoice.detail", "salesInvoice.list",
+      "salesOrder.list", "salesReceipt.list", "vendor.list",
+    ]);
     expect(cat.every((t) => t.requiredPermission.startsWith("accurate:"))).toBe(true);
+  });
+
+  it("salesInvoice.list dengan fields+keywords → row terfilter", async () => {
+    const d = (await adapter.execute("salesInvoice.list", { fields: "no,total", keywords: "FJ/2026" }, adminCtx)) as Array<Record<string, unknown>>;
+    expect(d[0]).toEqual({ no: "FJ/2026/0001", total: 2500000 });
+  });
+
+  it("item.list & glAccount.list admin → ada data", async () => {
+    const items = (await adapter.execute("item.list", {}, adminCtx)) as Array<{ name: string }>;
+    expect(items.map((i) => i.name)).toContain("Kertas A4");
+    const accounts = (await adapter.execute("glAccount.list", {}, adminCtx)) as Array<{ code: string }>;
+    expect(accounts.map((a) => a.code)).toContain("1000");
+  });
+
+  it("customer.detail id C-001 → Budi Santoso; id salah → throw", async () => {
+    const d = (await adapter.execute("customer.detail", { id: "C-001" }, adminCtx)) as Array<{ name: string }>;
+    expect(d[0].name).toBe("Budi Santoso");
+    await expect(adapter.execute("customer.detail", { id: "XXX" }, adminCtx)).rejects.toThrow();
   });
 });

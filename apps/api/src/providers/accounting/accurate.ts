@@ -109,15 +109,58 @@ export class AccurateAdapter implements AccountingProvider {
     return j;
   }
 
-  async execute(tool: string, _args: Record<string, unknown>, ctx: ProviderCtx): Promise<unknown> {
-    const paths: Record<string, string> = {
+  private buildQuery(args: Record<string, unknown>): string {
+    const qs = new URLSearchParams();
+    if (typeof args.fields === "string" && args.fields) qs.set("fields", args.fields);
+    if (typeof args.keywords === "string" && args.keywords) qs.set("keywords", args.keywords);
+    if (typeof args.page === "number") qs.set("sp.page", String(args.page));
+    if (typeof args.pageSize === "number") qs.set("sp.pageSize", String(args.pageSize));
+    if (typeof args.sort === "string" && args.sort) qs.set("sp.sort", args.sort);
+    const filter = args.filter;
+    if (filter && typeof filter === "object") {
+      for (const [field, cond] of Object.entries(filter as Record<string, unknown>)) {
+        if (cond && typeof cond === "object") {
+          const { op, value } = cond as { op?: string; value?: unknown };
+          if (op) qs.set(`filter.${field}.op`, String(op));
+          if (value !== undefined) {
+            const vals = Array.isArray(value) ? value : [value];
+            vals.forEach((v, i) => qs.set(`filter.${field}.val${vals.length > 1 ? `[${i}]` : ""}`, String(v)));
+          }
+        }
+      }
+    }
+    const s = qs.toString();
+    return s ? `?${s}` : "";
+  }
+
+  async execute(tool: string, args: Record<string, unknown>, ctx: ProviderCtx): Promise<unknown> {
+    const listPaths: Record<string, string> = {
       "customer.list": "/accurate/api/customer/list.do",
       "salesInvoice.list": "/accurate/api/sales-invoice/list.do",
+      "salesOrder.list": "/accurate/api/sales-order/list.do",
+      "item.list": "/accurate/api/item/list.do",
+      "vendor.list": "/accurate/api/vendor/list.do",
+      "glAccount.list": "/accurate/api/glaccount/list.do",
+      "purchaseInvoice.list": "/accurate/api/purchase-invoice/list.do",
+      "salesReceipt.list": "/accurate/api/sales-receipt/list.do",
     };
-    const p = paths[tool];
-    if (!p) throw new Error(`tool tidak dikenal: ${tool}`);
-    const j = await this.moduleGet(p, ctx);
-    return j.d;
+    const detailPaths: Record<string, string> = {
+      "customer.detail": "/accurate/api/customer/detail.do",
+      "salesInvoice.detail": "/accurate/api/sales-invoice/detail.do",
+    };
+    const listPath = listPaths[tool];
+    if (listPath) {
+      const j = await this.moduleGet(`${listPath}${this.buildQuery(args)}`, ctx);
+      return j.d;
+    }
+    const detailPath = detailPaths[tool];
+    if (detailPath) {
+      const id = args.id;
+      if (typeof id !== "string" || !id) throw new Error("args.id wajib string untuk tool detail");
+      const j = await this.moduleGet(`${detailPath}?id=${encodeURIComponent(id)}`, ctx);
+      return j.d;
+    }
+    throw new Error(`tool tidak dikenal: ${tool}`);
   }
 
   async refreshToken(refreshToken: string): Promise<ProviderTokenSet> {
