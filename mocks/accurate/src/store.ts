@@ -7,7 +7,7 @@ export interface PrivilegeRow {
   AllowUpdate: boolean;
   AllowDelete: boolean;
 }
-export interface MockUser { id: string; email: string; name: string; }
+export interface MockUser { id: string; email: string; name: string; phone?: string; }
 export interface Customer { id: string; name: string; }
 export interface SalesInvoice { id: string; no: string; customerName: string; date: string; total: number; status: string; }
 export interface Item { id: string; code: string; name: string; unit: string; sellingPrice: number; }
@@ -107,8 +107,8 @@ const dbs: Record<string, MockDb> = {
 };
 
 const users: Record<string, MockUser> = {
-  "user-admin": { id: "user-admin", email: "admin@demo.local", name: "Admin Demo" },
-  "user-staff": { id: "user-staff", email: "staff@demo.local", name: "Staff Demo" },
+  "user-admin": { id: "user-admin", email: "admin@demo.local", name: "Admin Demo", phone: "6281234567890" },
+  "user-staff": { id: "user-staff", email: "staff@demo.local", name: "Staff Demo", phone: "6289876543210" },
 };
 
 const codes = new Map<string, string>();

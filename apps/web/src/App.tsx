@@ -3,6 +3,8 @@ import { Shell } from "./pages/Shell";
 import { Settings } from "./pages/Settings";
 import { Explore } from "./pages/Explore";
 import { Admin } from "./pages/Admin";
+import { Login } from "./pages/Login";
+import { SetPassword } from "./pages/SetPassword";
 
 export function App() {
   const path = window.location.pathname;
@@ -10,5 +12,7 @@ export function App() {
   if (path === "/explore") return <Explore />;
   if (path === "/admin") return <Admin />;
   if (path === "/app") return <Shell />;
+  if (path === "/login") return <Login />;
+  if (path === "/set-password") return <SetPassword />;
   return <Landing />;
 }

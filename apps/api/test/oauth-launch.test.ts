@@ -39,12 +39,15 @@ describe("launch & callback", () => {
     const code = new URL(au.headers.get("location")!).searchParams.get("code")!;
     const cb = await request(api).get(`/api/oauth/accurate/callback?code=${code}&state=${state}`).redirects(0);
     expect(cb.status).toBe(302);
+    // user baru → wajib set password dulu
+    expect(cb.headers.location).toContain("/set-password");
     const setCookie = cb.headers["set-cookie"] as string | string[] | undefined;
     const cookieStr = Array.isArray(setCookie) ? setCookie.join(";") : (setCookie ?? "");
     const sid = /sid=([^;]+)/.exec(cookieStr)?.[1];
     expect(sid).toBeTruthy();
     const me = await request(api).get("/api/me").set("Cookie", `sid=${sid}`);
     expect(me.status).toBe(200);
+    expect(me.body.needsPassword).toBe(true);
     expect(me.body.tenant.provider).toBe("accurate");
     const tenant = await prisma.tenant.findFirst({ where: { providerDbId: "1001" } });
     expect(tenant).toBeTruthy();
@@ -57,9 +60,18 @@ describe("launch & callback", () => {
       expect.arrayContaining(["accurate:customer.view", "accurate:sales-invoice.view", "app:settings.manage"])
     );
     expect(await prisma.connection.count({ where: { tenantId: tenant!.id, provider: "accurate" } })).toBe(1);
-    const au2 = await fetch(`${mockBase}/oauth/authorize?client_id=c&redirect_uri=${cbUrl}&state=${state}&user=admin`, { redirect: "manual" });
+    // set password → OAuth ulang redirect ke /app
+    const setPw = await request(api)
+      .post("/api/auth/set-password")
+      .set("Cookie", `sid=${sid}`)
+      .send({ password: "password123" });
+    expect(setPw.status).toBe(200);
+    const launch2 = await request(api).get("/api/launch?dbId=1001").redirects(0);
+    const state2 = new URL(launch2.headers.location).searchParams.get("state")!;
+    const au2 = await fetch(`${mockBase}/oauth/authorize?client_id=c&redirect_uri=${cbUrl}&state=${state2}&user=admin`, { redirect: "manual" });
     const code2 = new URL(au2.headers.get("location")!).searchParams.get("code")!;
-    await request(api).get(`/api/oauth/accurate/callback?code=${code2}&state=${state}`).redirects(0);
+    const cb2 = await request(api).get(`/api/oauth/accurate/callback?code=${code2}&state=${state2}`).redirects(0);
+    expect(cb2.headers.location).toContain("/app");
     expect(await prisma.tenant.count({ where: { providerDbId: "1001" } })).toBe(1);
     expect(await prisma.user.count({ where: { email: "admin@demo.local" } })).toBe(1);
   });

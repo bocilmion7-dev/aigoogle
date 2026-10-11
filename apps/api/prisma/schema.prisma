@@ -51,9 +51,11 @@ model User {
   providerUserId String
   email          String
   name           String
+  phone          String   @default("")
+  passwordHash   String   @default("")
   role           Role     @relation(fields: [roleId], references: [id])
   roleId         String
-  createdAt      DateTime     @default(now())
+  createdAt      DateTime @default(now())
   sessions       Session[]
   chatSessions   ChatSession[]
   @@unique([tenantId, providerUserId])

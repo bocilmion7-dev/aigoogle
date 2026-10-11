@@ -7,6 +7,7 @@ export interface ProviderUser {
   providerUserId: string;
   email: string;
   name: string;
+  phone?: string;
 }
 export interface ProviderDb {
   providerDbId: string;

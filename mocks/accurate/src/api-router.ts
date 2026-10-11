@@ -30,7 +30,7 @@ apiRouter.use("/purchase-invoice", makeListRouter({ module: "purchase-invoice", 
 
 accountApiRouter.get("/api/userinfo.do", bearerGuard, (req, res) => {
   const u = getUser(req.mockUserId!)!;
-  res.json(ok({ id: u.id, email: u.email, name: u.name }));
+  res.json(ok({ id: u.id, email: u.email, name: u.name, phone: u.phone ?? "" }));
 });
 
 accountApiRouter.get("/api/db-list.do", bearerGuard, (req, res) => {

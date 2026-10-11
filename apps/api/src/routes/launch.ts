@@ -58,11 +58,12 @@ launchRouter.get("/oauth/accurate/callback", async (req, res, next) => {
       create: {
         tenantId: tenant.id,
         providerUserId: pUser.providerUserId,
-        email: pUser.email,
+        email: pUser.email.toLowerCase(),
         name: pUser.name,
+        phone: pUser.phone ?? "",
         roleId: role.id,
       },
-      update: { roleId: role.id },
+      update: { roleId: role.id, phone: pUser.phone ?? undefined },
     });
     await prisma.connection.upsert({
       where: { tenantId_provider: { tenantId: tenant.id, provider: "accurate" } },
@@ -98,6 +99,10 @@ launchRouter.get("/oauth/accurate/callback", async (req, res, next) => {
       data: { id: sid, userId: user.id, expiresAt: new Date(Date.now() + 7 * 86400_000) },
     });
     res.cookie("sid", sid, { httpOnly: true, sameSite: "lax", maxAge: 7 * 86400_000 });
+    if (!user.passwordHash) {
+      res.redirect(`${env.APP_ORIGIN}/set-password`);
+      return;
+    }
     res.redirect(`${env.APP_ORIGIN}/app`);
   } catch (e) {
     next(e);

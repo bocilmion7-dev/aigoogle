@@ -37,10 +37,10 @@ export function Settings() {
       <div style={card}>
         <strong>Accurate Online</strong>
         <p style={{ color: "#666", fontSize: 14 }}>
-          Status: {accurate?.status === "connected" ? `terhubung (${accurate.accountLabel})` : accurate?.status ?? "none"}
+          Status: {accurate?.status === "connected" ? `terhubung (${accurate.accountLabel})` : accurate?.status === "expired" ? "token expired — buka ulang dari Accurate" : accurate?.status ?? "none"}
         </p>
         {accurate?.status !== "connected" && (
-          <a href="/api/launch"><button style={btn}>Hubungkan Accurate</button></a>
+          <a href="/api/launch"><button style={btn}>{accurate?.status === "expired" ? "Hubungkan ulang Accurate" : "Hubungkan Accurate"}</button></a>
         )}
       </div>
       <div style={card}>
@@ -49,6 +49,18 @@ export function Settings() {
           Status: {google?.status ?? "none"} — menyusul (butuh client secret Google)
         </p>
         <button style={{ ...btn, background: "#9a9a9a" }} disabled>Hubungkan Google (segera)</button>
+      </div>
+
+      <h2 style={{ fontSize: 16, marginTop: 24 }}>Akun</h2>
+      <div style={card}>
+        <strong>Login password</strong>
+        <p style={{ color: "#666", fontSize: 14 }}>
+          Email: {me.email}
+          {me.needsPassword ? " · belum diset" : " · sudah aktif"}
+        </p>
+        <p style={{ color: "#666", fontSize: 13 }}>
+          Lupa password? Reset via WhatsApp menyusul. Untuk sekarang, hubungi administrator sistem Anda.
+        </p>
       </div>
 
       <h2 style={{ fontSize: 16, marginTop: 24 }}>Suara</h2>

@@ -65,11 +65,16 @@ export class AccurateAdapter implements AccountingProvider {
   }
 
   async fetchUser(accessToken: string): Promise<ProviderUser> {
-    const j = await this.getEnvelope<{ id: string; email: string; name: string }>(
+    const j = await this.getEnvelope<{ id: string; email: string; name: string; phone?: string }>(
       "/api/userinfo.do",
       accessToken
     );
-    return { providerUserId: j.d.id, email: j.d.email, name: j.d.name };
+    return {
+      providerUserId: j.d.id,
+      email: j.d.email,
+      name: j.d.name,
+      phone: typeof j.d.phone === "string" ? j.d.phone : "",
+    };
   }
 
   async listDbs(accessToken: string): Promise<ProviderDb[]> {

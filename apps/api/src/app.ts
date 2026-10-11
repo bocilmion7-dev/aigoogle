@@ -10,6 +10,7 @@ import { audioRouter } from "./routes/audio.js";
 import { driveRouter } from "./routes/drive.js";
 import { adminRouter } from "./routes/admin.js";
 import { billingRouter } from "./routes/billing.js";
+import { authRouter } from "./routes/auth.js";
 
 export function createApp() {
   const app = express();
@@ -25,6 +26,7 @@ export function createApp() {
   app.use(loadSession);
   app.get("/api/health", (_req, res) => res.json({ ok: true }));
   app.use("/api", meRouter);
+  app.use("/api", authRouter);
   app.use("/api", launchRouter);
   app.use("/api", settingsRouter);
   app.use("/api", googleRouter);

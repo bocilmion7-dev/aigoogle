@@ -13,6 +13,10 @@ export function Shell() {
     window.location.href = "/";
     return null;
   }
+  if (me.needsPassword) {
+    window.location.href = "/set-password";
+    return null;
+  }
   return (
     <div style={{ fontFamily: "system-ui" }}>
       <header

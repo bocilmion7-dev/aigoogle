@@ -10,6 +10,7 @@ declare global {
         name: string;
         roleKey: string;
         roleId: string;
+        needsPassword: boolean;
         tenant: { id: string; name: string; alias: string; provider: string };
       };
     }
@@ -31,6 +32,7 @@ export function loadSession(req: Request, res: Response, next: NextFunction) {
         name: s.user.name,
         roleKey: s.user.role.key,
         roleId: s.user.role.id,
+        needsPassword: !s.user.passwordHash,
         tenant: {
           id: s.user.tenant.id,
           name: s.user.tenant.name,

@@ -6,6 +6,7 @@ export interface Me {
   tenant: { id: string; name: string; alias: string; provider: string };
   roleKey: string;
   permissions?: string[];
+  needsPassword?: boolean;
 }
 export interface ConnectionInfo {
   provider: string;
