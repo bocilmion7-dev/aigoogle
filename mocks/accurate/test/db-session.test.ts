@@ -41,15 +41,14 @@ describe("db-list, open-db, session (bentuk real)", () => {
   });
 
   it("modul butuh Bearer + X-Session-ID; session harus milik token yang sama", async () => {
-    const tanpaAuth = await request(app).get("/accurate/api/ping.do");
+    const tanpaAuth = await request(app).get("/accurate/api/customer/list.do");
     expect(tanpaAuth.status).toBe(401);
     const { body: open } = await request(app).get("/api/open-db.do?id=1001").set("Authorization", bearer());
-    const okRes = await request(app).get("/accurate/api/ping.do")
+    const okRes = await request(app).get("/accurate/api/customer/list.do")
       .set("Authorization", bearer()).set("X-Session-ID", open.session);
     expect(okRes.status).toBe(200);
     expect(okRes.body.s).toBe(true);
-    expect(okRes.body.d[0]).toMatchObject({ dbId: "1001", userId: "user-admin" });
-    const mismatch = await request(app).get("/accurate/api/ping.do")
+    const mismatch = await request(app).get("/accurate/api/customer/list.do")
       .set("Authorization", bearerStaff()).set("X-Session-ID", open.session);
     expect(mismatch.status).toBe(401);
   });

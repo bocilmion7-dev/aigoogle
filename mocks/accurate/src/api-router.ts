@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { bearerGuard, ok, fail, sp, sessionGuard } from "./session.js";
+import { bearerGuard, ok, fail, sp } from "./session.js";
 import { createSession, getDb, getUser, isAdminOf, listDbs } from "./store.js";
 import { accessPrivilegeRouter } from "./modules/access-privilege.js";
 import { customerRouter } from "./modules/customer.js";
@@ -41,8 +41,4 @@ accountApiRouter.get("/api/open-db.do", bearerGuard, (req, res) => {
     host: `${req.protocol}://${req.get("host")}`,
     admin: isAdminOf(dbId, userId),
   }));
-});
-
-apiRouter.get("/ping.do", sessionGuard, (req, res) => {
-  res.json(ok([{ ...req.mockCtx }]));
 });
