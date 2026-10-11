@@ -32,6 +32,14 @@ export function Shell() {
             Explore Manager
           </a>{" "}
           ·{" "}
+          {me.permissions?.includes("app:users.manage") && (
+            <>
+              <a href="/admin" style={{ color: "#3d6b54" }}>
+                Admin
+              </a>{" "}
+              ·{" "}
+            </>
+          )}
           <a href="/settings" style={{ color: "#3d6b54" }}>
             Pengaturan
           </a>
