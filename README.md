@@ -34,6 +34,7 @@ GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET (menyusul)
 - **Fase 6 (selesai):** Penyesuaian API Accurate — nama modul `sales-invoice` (bukan `sales-entry`), hapus `ping.do`, 6 modul mock baru (item/vendor/glaccount/sales-order/sales-receipt/purchase-invoice) + factory list/detail + query resmi (fields/keywords/sp/filter), catalog 10 tool read, golden set 23 prompt. Rencana: `docs/plans/2026-10-11-phase6-accurate-api-alignment.md`; hasil: `docs/spikes/2026-10-11-phase6-api-alignment-check.md`.
 - **Fitur lanjutan:** Undo massal Drive — `POST /api/drive/jobs/:id/undo` (subset file, status `undone`, audit `drive.undo`) + UI Explore (checkbox + tombol Urungkan). Spek: `docs/specs/2026-10-11-drive-undo-design.md`.
 - **Fitur lanjutan:** Login password — set-password wajib setelah OAuth Accurate pertama (min 8 + angka, scrypt), login email+password (`POST /api/auth/login`), nomor HP dari profil Accurate. Reset WA menyusul setelah subsystem WhatsApp.
+- **Fitur lanjutan:** Voice Edge — engine `edge` di Settings: STT Web Speech browser (Microsoft di Edge), TTS neural Edge server-side (`msedge-tts`, id-ID-GadisNeural), tanpa kirim audio ke Gemini.
 
 **Status:** seluruh fase spek (§18) + fase 6 selesai; suite offline mock/api hijau (drive-tidy/mock 16/16, offline-api 34/34); suite DB-dependent butuh Neon. Rilis produksi ikuti `docs/release-checklist.md`.
 - Catatan model Gemini: default `gemini-3.6-flash` (free tier 20 req/hari/model — `gemini-3.8-flash` habis kuota harian saat pengembangan); TTS `gemini-3.8-flash-tts`; STT `gemini-3.5-transcribe`.

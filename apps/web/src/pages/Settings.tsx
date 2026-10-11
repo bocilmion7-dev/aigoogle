@@ -72,6 +72,13 @@ export function Settings() {
           />{" "}
           Browser (Web Speech) — ringan
         </label>
+        <label style={{ display: "block", marginBottom: 8 }}>
+          <input
+            type="radio" name="voice" checked={settings.voiceEngine === "edge"}
+            onChange={() => setSettings({ ...settings, voiceEngine: "edge" })}
+          />{" "}
+          Edge — STT di browser (Microsoft), TTS neural Edge (gratis, tanpa Gemini)
+        </label>
         <label style={{ display: "block", marginBottom: 12 }}>
           <input
             type="radio" name="voice" checked={settings.voiceEngine === "gemini-native"}

@@ -15,5 +15,5 @@ export interface ConnectionInfo {
   expiresAt?: string;
 }
 export interface AppSettings {
-  voiceEngine: "gemini-native" | "web-speech";
+  voiceEngine: "gemini-native" | "web-speech" | "edge";
 }

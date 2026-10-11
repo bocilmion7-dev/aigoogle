@@ -21,6 +21,33 @@ export async function ttsGemini(text: string): Promise<void> {
   await audio.play();
 }
 
+export async function ttsEdge(text: string): Promise<void> {
+  const res = await fetch("/api/tts", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text, engine: "edge" }),
+  });
+  if (!res.ok) throw new Error("gagal sintesis suara Edge");
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const audio = new Audio(url);
+  await audio.play();
+}
+
+/** STT via Web Speech (browser) — di Edge diproses Microsoft, tidak dikirim ke Gemini. */
+export async function sttWebSpeech(): Promise<string> {
+  const SR = (window as unknown as { webkitSpeechRecognition?: new () => SpeechRecognition })
+    .webkitSpeechRecognition;
+  if (!SR) throw new Error("browser_ini_belum_mendukung_web_speech");
+  const rec = new SR();
+  rec.lang = "id-ID";
+  return new Promise<string>((resolve, reject) => {
+    rec.onresult = (e) => resolve(e.results[0][0].transcript);
+    rec.onerror = () => reject(new Error("stt gagal"));
+    rec.start();
+  });
+}
+
 export function speakWeb(text: string): void {
   const u = new SpeechSynthesisUtterance(text);
   u.lang = "id-ID";
@@ -35,20 +62,8 @@ export function MicButton({ onText, disabled }: { onText: (t: string) => void; d
     const settings = await getSettings();
     setListening(true);
     try {
-      if (settings.voiceEngine === "web-speech") {
-        const SR = (window as unknown as { webkitSpeechRecognition?: new () => SpeechRecognition })
-          .webkitSpeechRecognition;
-        if (!SR) {
-          alert("Browser ini belum mendukung Web Speech — coba Chrome/Edge.");
-          return;
-        }
-        const rec = new SR();
-        rec.lang = "id-ID";
-        const text = await new Promise<string>((resolve, reject) => {
-          rec.onresult = (e) => resolve(e.results[0][0].transcript);
-          rec.onerror = () => reject(new Error("stt gagal"));
-          rec.start();
-        });
+      if (settings.voiceEngine === "web-speech" || settings.voiceEngine === "edge") {
+        const text = await sttWebSpeech();
         onText(text);
       } else {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });

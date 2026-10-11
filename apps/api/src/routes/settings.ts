@@ -6,7 +6,7 @@ import { asyncHandler } from "../asyncHandler.js";
 
 export const settingsRouter = Router();
 
-const PutBody = z.object({ voiceEngine: z.enum(["gemini-native", "web-speech"]) });
+const PutBody = z.object({ voiceEngine: z.enum(["gemini-native", "web-speech", "edge"]) });
 
 settingsRouter.get(
   "/settings",

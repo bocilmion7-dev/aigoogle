@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { MessageInfo, SessionInfo } from "../chat-api";
 import { listMessages, listSessions, streamChat } from "../chat-api";
 import { getSettings } from "../api";
-import { MicButton, speakWeb, ttsGemini } from "../voice";
+import { MicButton, speakWeb, ttsEdge, ttsGemini } from "../voice";
 
 interface UiMsg {
   role: "user" | "ai";
@@ -67,6 +67,7 @@ export function Chat() {
       if (aiText) {
         const settings = await getSettings();
         if (settings.voiceEngine === "gemini-native") void ttsGemini(aiText).catch(() => {});
+        else if (settings.voiceEngine === "edge") void ttsEdge(aiText).catch(() => {});
         else speakWeb(aiText);
       }
     } catch {

@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { MsEdgeTTS, OUTPUT_FORMAT } from "msedge-tts";
 import { env } from "../env.js";
 import { asyncHandler } from "../asyncHandler.js";
 import { RealGeminiClient, GeminiHttpError } from "../ai/gemini-client.js";
@@ -42,9 +43,21 @@ audioRouter.post(
 audioRouter.post(
   "/tts",
   asyncHandler(async (req, res) => {
-    const body = req.body as { text?: string };
+    const body = req.body as { text?: string; engine?: string };
     if (!body?.text || typeof body.text !== "string" || body.text.length === 0 || body.text.length > 2000) {
       return res.status(400).json({ error: "bad_request" });
+    }
+    if (body.engine === "edge") {
+      const tts = new MsEdgeTTS();
+      await tts.setMetadata("id-ID-GadisNeural", OUTPUT_FORMAT.AUDIO_24KHZ_96KBITRATE_MONO_MP3);
+      const { audioStream } = tts.toStream(body.text);
+      res.setHeader("Content-Type", "audio/mpeg");
+      audioStream.on("error", () => {
+        if (!res.headersSent) res.status(502).json({ error: "edge_tts_gagal" });
+        else res.destroy();
+      });
+      audioStream.pipe(res);
+      return;
     }
     const client = real();
     const { parts } = await client.generate({
