@@ -45,7 +45,7 @@ driveRouter.post(
     const perms = await prisma.rolePermission.findMany({
       where: { role: { tenantId: user.tenant.id, users: { some: { id: user.id } } } },
     });
-    if (!perms.some((p) => p.permissionKey === "drive.tidy")) {
+    if (!perms.some((p) => p.permissionKey === "app:drive.tidy")) {
       return res.status(403).json({ error: "tidak_punya_hak" });
     }
     const client = await driveClientFor(user.tenant.id);
