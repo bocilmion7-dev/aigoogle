@@ -5,6 +5,7 @@ import { Explore } from "./pages/Explore";
 import { Admin } from "./pages/Admin";
 import { Login } from "./pages/Login";
 import { SetPassword } from "./pages/SetPassword";
+import { WhatsApp } from "./pages/WhatsApp";
 
 export function App() {
   const path = window.location.pathname;
@@ -14,5 +15,6 @@ export function App() {
   if (path === "/app") return <Shell />;
   if (path === "/login") return <Login />;
   if (path === "/set-password") return <SetPassword />;
+  if (path === "/whatsapp") return <WhatsApp />;
   return <Landing />;
 }

@@ -36,6 +36,10 @@ export function Shell() {
             Explore Manager
           </a>{" "}
           ·{" "}
+          <a href="/whatsapp" style={{ color: "#3d6b54" }}>
+            WhatsApp
+          </a>{" "}
+          ·{" "}
           {me.permissions?.includes("app:users.manage") && (
             <>
               <a href="/admin" style={{ color: "#3d6b54" }}>

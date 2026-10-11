@@ -18,6 +18,10 @@ const Env = z.object({
   BILLING_ENABLED: z.string().default("0"),
   MIDTRANS_SERVER_KEY: z.string().default(""),
   MIDTRANS_CLIENT_KEY: z.string().default(""),
+  META_APP_ID: z.string().default(""),
+  META_APP_SECRET: z.string().default(""),
+  META_WABA_ID: z.string().default(""),
+  META_EMBEDDED_CONFIG_ID: z.string().default(""),
 });
 function parseEnv() {
   const parsed = Env.safeParse(process.env);

@@ -22,6 +22,10 @@ model Tenant {
   driveJobs    DriveJob[]
   subscriptions Subscription[]
   payments     Payment[]
+  waAccount    WaAccount?
+  waBalance    WaBalance?
+  waTopups     WaTopup[]
+  waMessages   WaMessageLog[]
   @@unique([provider, providerDbId])
 }
 
@@ -178,4 +182,53 @@ model Payment {
   updatedAt         DateTime @updatedAt
   @@index([tenantId])
   @@index([orderId])
+}
+
+model WaAccount {
+  id            String   @id @default(cuid())
+  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+  tenantId      String
+  wabaId        String   @default("")
+  phoneNumberId String   @default("")
+  displayName   String   @default("")
+  tokenEnc      String   @default("")
+  status        String   @default("pending") // pending|connected|error
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  @@unique([tenantId])
+}
+
+model WaBalance {
+  tenantId String @id
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+  amount   Int    @default(0) // kredit pesan
+  updatedAt DateTime @updatedAt
+}
+
+model WaTopup {
+  id            String   @id @default(cuid())
+  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+  tenantId      String
+  orderId       String   @unique
+  amount        Int      // Rupiah
+  credits       Int      // amount / 200
+  status        String   @default("pending") // pending|settlement|deny|cancel|expire
+  paymentMethod String   @default("")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  @@index([tenantId])
+  @@index([orderId])
+}
+
+model WaMessageLog {
+  id          String   @id @default(cuid())
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  tenantId    String
+  to          String
+  body        String
+  status      String   // sent|failed
+  error       String   @default("")
+  costCredits Int      @default(1)
+  createdAt   DateTime @default(now())
+  @@index([tenantId])
 }
