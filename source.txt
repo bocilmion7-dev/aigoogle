@@ -1,0 +1,2 @@
+https://account.accurate.id/developer/api-docs.do
+view-source:https://account.accurate.id/developer/api-docs.do

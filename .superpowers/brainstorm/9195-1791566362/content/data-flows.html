@@ -1,0 +1,64 @@
+<h2>Bagian 2 — Alur data utama</h2>
+<p class="subtitle">Tiga alur inti produk. Perhatikan titik keputusan (belah ketupat) dan aksi berisiko tinggi yang wajib konfirmasi.</p>
+
+<div class="split">
+  <div class="mockup">
+    <div class="mockup-header">Alur 1 — Onboarding / Connect</div>
+    <div class="mockup-body" style="font-size:12.5px;font-family:system-ui,sans-serif;line-height:1.7;">
+      1️⃣ User klik add-on di <b>Accurate Store</b><br>
+      <div style="text-align:center;color:#8a8a8a;">▼</div>
+      2️⃣ Accurate buka <code>/launch</code> kita<br> membawa code/token + id data usaha<br>
+      <div style="text-align:center;color:#8a8a8a;">▼</div>
+      3️⃣ Kita tukar → <b>access + refresh token</b><br> <code>open-db</code> → session &amp; host tersimpan<br>
+      <div style="text-align:center;color:#8a8a8a;">▼</div>
+      <div style="background:#fff4e0;border:1px solid #e0c48a;border-radius:6px;padding:6px 8px;margin:4px 0;text-align:center;">◆ Sudah punya akun?<br>ya → login &nbsp;|&nbsp; tidak → buat akun (Admin pertama)</div>
+      4️⃣ Connect <b>Google Drive</b> (OAuth terpisah)<br>
+      <div style="text-align:center;color:#8a8a8a;">▼</div>
+      5️⃣ Selesai → langsung ke Chat/Explore<br>
+      <small style="color:#999;">Akun pertama otomatis dapat role default Admin</small>
+    </div>
+  </div>
+
+  <div class="mockup">
+    <div class="mockup-header">Alur 2 — Chat / Voice ke data akuntansi</div>
+    <div class="mockup-body" style="font-size:12.5px;font-family:system-ui,sans-serif;line-height:1.7;">
+      1️⃣ User ketik / tekan mic<br>
+      <div style="text-align:center;color:#8a8a8a;">▼</div>
+      2️⃣ STT: audio → teks<br><small>(Gemini native audio / Web Speech — sesuai setting admin)</small><br>
+      <div style="text-align:center;color:#8a8a8a;">▼</div>
+      3️⃣ <b>Gemini tool loop</b>: model panggil tool<br> → cek <b>permission role</b> → adapter → API provider<br> (boleh multi-langkah: ambil → hitung → ambil lagi)<br>
+      <div style="text-align:center;color:#8a8a8a;">▼</div>
+      4️⃣ Jawaban: teks + tabel angka<br> + TTS → audio (kalau mode voice)<br>
+      <div style="text-align:center;color:#8a8a8a;">▼</div>
+      5️⃣ Tersimpan di riwayat chat (per tenant)
+      <div style="background:#fdeaea;border:1px solid #e8b4b4;border-radius:6px;padding:6px 8px;margin-top:6px;">⛔ Tool ditolak jika role tidak punya<br>hak akses modul terkait → AI menjawab<br>"Anda tidak punya akses modul X"</div>
+    </div>
+  </div>
+
+  <div class="mockup">
+    <div class="mockup-header">Alur 3 — Rapikan Drive (tombol, bukan chat)</div>
+    <div class="mockup-body" style="font-size:12.5px;font-family:system-ui,sans-serif;line-height:1.7;">
+      1️⃣ User buka <b>Explore Manager</b>,<br> pilih folder kerja (poin spek #4)<br>
+      <div style="text-align:center;color:#8a8a8a;">▼</div>
+      2️⃣ Klik tombol <b>"Rapikan Folder Ini"</b><br>
+      <div style="text-align:center;color:#8a8a8a;">▼</div>
+      3️⃣ Scan isi → ambil PDF → <b>Gemini Vision</b><br> baca isi dokumen → klasifikasi jenis<br>
+      <div style="text-align:center;color:#8a8a8a;">▼</div>
+      4️⃣ <b>Rencana aksi ditampilkan dulu</b>:<br> folder apa yang dibuat, file apa yang<br> rename &amp; pindah (preview daftar)<br>
+      <div style="background:#fff4e0;border:1px solid #e0c48a;border-radius:6px;padding:6px 8px;margin:4px 0;text-align:center;">◆ User klik <b>"Jalankan"</b> (consent)</div>
+      5️⃣ Eksekusi: create folder → rename → move<br> progres per file, bisa dibatalkan<br>
+      6️⃣ Laporan hasil + <b>log undo info</b><br><small>(posisi asal tiap file tercatat)</small>
+    </div>
+  </div>
+</div>
+
+<div class="options" style="margin-top:16px;">
+  <div class="option" data-choice="approve-flow" onclick="toggleSelect(this)">
+    <div class="letter">✓</div>
+    <div class="content"><h3>Setuju — lanjut</h3><p>Ketiga alur sudah benar</p></div>
+  </div>
+  <div class="option" data-choice="revise-flow" onclick="toggleSelect(this)">
+    <div class="letter">✕</div>
+    <div class="content"><h3>Ada koreksi</h3><p>Tulis di terminal</p></div>
+  </div>
+</div>

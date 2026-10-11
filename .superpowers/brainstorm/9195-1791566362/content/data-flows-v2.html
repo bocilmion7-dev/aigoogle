@@ -1,0 +1,65 @@
+<h2>Bagian 2 — Alur data utama (revisi onboarding)</h2>
+<p class="subtitle">Onboarding diperbaiki: tanpa halaman login/register — identitas datang dari launch provider. Bukan dari provider → landing page.</p>
+
+<div class="split">
+  <div class="mockup">
+    <div class="mockup-header">Alur 1 — Onboarding (REVISI)</div>
+    <div class="mockup-body" style="font-size:12.5px;font-family:system-ui,sans-serif;line-height:1.7;">
+      <b>Sumber akses:</b> SEMUA masuk lewat launch<br>dari provider (Accurate Store / nanti Mekari, Paper.id)<br>
+      <div style="text-align:center;color:#8a8a8a;">▼</div>
+      1️⃣ Provider buka <code>/launch</code> kita<br> membawa code/token + id data usaha<br>
+      <div style="text-align:center;color:#8a8a8a;">▼</div>
+      2️⃣ Tukar → <b>access + refresh token</b><br> <code>open-db</code> → session &amp; host tersimpan<br>
+      <div style="text-align:center;color:#8a8a8a;">▼</div>
+      3️⃣ Identitas user dari <b>OAuth user info</b><br> (email/id provider) → cocokkan ke tenant:<br> • belum ada → buat user + role default<br> &nbsp;&nbsp;(user pertama = Admin)<br> • sudah ada → pakai role-nya<br> <small>(tanpa password, tanpa register)</small><br>
+      <div style="text-align:center;color:#8a8a8a;">▼</div>
+      4️⃣ Session cookie dibuat → masuk app<br>
+      <div style="text-align:center;color:#8a8a8a;">▼</div>
+      5️⃣ Connect Google Drive (OAuth, step terpisah)<br>
+      <div style="background:#fdeaea;border:1px solid #e8b4b4;border-radius:6px;padding:6px 8px;margin-top:6px;text-align:center;">⛔ BUKAN dari provider (URL langsung,<br>bookmark, tanpa session) →<br><b>redirect Landing Page</b><br><small>(halaman info: "add-on ini dipakai dari Accurate")</small></div>
+    </div>
+  </div>
+
+  <div class="mockup">
+    <div class="mockup-header">Alur 2 — Chat / Voice ke data akuntansi</div>
+    <div class="mockup-body" style="font-size:12.5px;font-family:system-ui,sans-serif;line-height:1.7;">
+      1️⃣ User ketik / tekan mic<br>
+      <div style="text-align:center;color:#8a8a8a;">▼</div>
+      2️⃣ STT: audio → teks<br><small>(Gemini native audio / Web Speech — setting admin)</small><br>
+      <div style="text-align:center;color:#8a8a8a;">▼</div>
+      3️⃣ <b>Gemini tool loop</b> → cek <b>permission role</b><br> → adapter → API provider (live, multi-langkah)<br>
+      <div style="text-align:center;color:#8a8a8a;">▼</div>
+      4️⃣ Jawaban teks + tabel angka<br> + TTS audio (kalau mode voice)<br>
+      <div style="text-align:center;color:#8a8a8a;">▼</div>
+      5️⃣ Riwayat chat tersimpan per tenant
+      <div style="background:#fdeaea;border:1px solid #e8b4b4;border-radius:6px;padding:6px 8px;margin-top:6px;">⛔ Tool ditolak jika role tanpa hak modul → AI jawab "Anda tidak punya akses modul X"</div>
+    </div>
+  </div>
+
+  <div class="mockup">
+    <div class="mockup-header">Alur 3 — Rapikan Drive (tombol)</div>
+    <div class="mockup-body" style="font-size:12.5px;font-family:system-ui,sans-serif;line-height:1.7;">
+      1️⃣ Buka <b>Explore Manager</b>, pilih folder kerja<br>
+      <div style="text-align:center;color:#8a8a8a;">▼</div>
+      2️⃣ Klik tombol <b>"Rapikan Folder Ini"</b><br>
+      <div style="text-align:center;color:#8a8a8a;">▼</div>
+      3️⃣ Scan → ambil PDF → <b>Gemini Vision</b><br> baca isi → klasifikasi jenis dokumen<br>
+      <div style="text-align:center;color:#8a8a8a;">▼</div>
+      4️⃣ <b>Preview rencana aksi</b>: folder baru,<br> file rename &amp; pindah (daftar lengkap)<br>
+      <div style="background:#fff4e0;border:1px solid #e0c48a;border-radius:6px;padding:6px 8px;margin:4px 0;text-align:center;">◆ Klik <b>"Jalankan"</b> (consent)</div>
+      5️⃣ Eksekusi create → rename → move<br> progres per file, bisa dibatalkan<br>
+      6️⃣ Laporan hasil + log posisi asal (undo info)
+    </div>
+  </div>
+</div>
+
+<div class="options" style="margin-top:16px;">
+  <div class="option" data-choice="approve-flow2" onclick="toggleSelect(this)">
+    <div class="letter">✓</div>
+    <div class="content"><h3>Setuju — lanjut</h3><p>Onboarding revisi &amp; alur lain sudah benar</p></div>
+  </div>
+  <div class="option" data-choice="revise-flow2" onclick="toggleSelect(this)">
+    <div class="letter">✕</div>
+    <div class="content"><h3>Ada koreksi lagi</h3><p>Tulis di terminal</p></div>
+  </div>
+</div>
