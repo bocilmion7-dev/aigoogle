@@ -7,6 +7,9 @@ import type { ToolSpec } from "../src/providers/accounting/types.js";
 const TOOLS: ToolSpec[] = [
   { name: "customer.list", description: "Daftar pelanggan", jsonSchema: { type: "object", properties: {} }, requiredPermission: "accurate:customer.view", label: "Mengambil data pelanggan…" },
   { name: "salesInvoice.list", description: "Daftar faktur penjualan", jsonSchema: { type: "object", properties: {} }, requiredPermission: "accurate:sales-invoice.view", label: "Mengambil data faktur penjualan…" },
+  { name: "item.list", description: "Daftar item", jsonSchema: { type: "object", properties: {} }, requiredPermission: "accurate:item.view", label: "Mengambil data item…" },
+  { name: "glAccount.list", description: "Daftar akun", jsonSchema: { type: "object", properties: {} }, requiredPermission: "accurate:glaccount.view", label: "Mengambil data akun…" },
+  { name: "vendor.list", description: "Daftar vendor", jsonSchema: { type: "object", properties: {} }, requiredPermission: "accurate:vendor.view", label: "Mengambil data vendor…" },
 ];
 
 describe("golden set: tool-loop (Gemini stub)", () => {
@@ -16,6 +19,9 @@ describe("golden set: tool-loop (Gemini stub)", () => {
     { prompt: "faktur penjualan bulan ini", tool: "salesInvoice.list", permissions: ["accurate:customer.view", "accurate:sales-invoice.view"] },
     { prompt: "berapa total penjualan?", tool: "salesInvoice.list", permissions: ["accurate:customer.view", "accurate:sales-invoice.view"] },
     { prompt: "daftar penjualan untuk analisa", tool: "salesInvoice.list", permissions: ["accurate:customer.view", "accurate:sales-invoice.view"] },
+    { prompt: "daftar item yang dijual", tool: "item.list", permissions: ["accurate:item.view"] },
+    { prompt: "saldo akun kas 1000", tool: "glAccount.list", permissions: ["accurate:glaccount.view"] },
+    { prompt: "siapa saja vendor saya", tool: "vendor.list", permissions: ["accurate:vendor.view"] },
   ];
   for (const c of cases) {
     it(`"${c.prompt}" → ${c.tool}`, async () => {
