@@ -15,6 +15,9 @@ const Env = z.object({
   GEMINI_MODEL: z.string().default("gemini-3.6-flash"),
   GEMINI_TTS_MODEL: z.string().default("gemini-3.8-flash-tts"),
   GEMINI_TRANSCRIBE_MODEL: z.string().default("gemini-3.5-transcribe"),
+  BILLING_ENABLED: z.string().default("0"),
+  MIDTRANS_SERVER_KEY: z.string().default(""),
+  MIDTRANS_CLIENT_KEY: z.string().default(""),
 });
 function parseEnv() {
   const parsed = Env.safeParse(process.env);
