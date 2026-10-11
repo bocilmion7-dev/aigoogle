@@ -79,6 +79,29 @@ access_privilege, account_budget_target, approval, asset_transfer, attachment, a
 4. Adapter Fase 1 menerjemahkan real↔internal; mock idealnya = bentuk real agar parser diuji sekali.
 5. Pemetaan user→privilege: **fallback disarankan** — `admin:true` dari db-list → role Admin; selain itu role dasar + checklist manual.
 
+## Konfirmasi dari halaman dokumentasi login (2026-10-11)
+
+Sumber: view-source `https://account.accurate.id/developer/api-docs.do` (akun pemilik, Langit Media). Indeks terstruktur: `docs/spikes/accurate-api-docs-modules.json` (72 modul + scope + action; field list lengkap sengaja tidak disalin — terlalu besar, ambil ulang saat butuh).
+
+Temuan vs mock/adapter saat ini:
+
+| Modul mock | Modul resmi | Scope view | Status |
+|---|---|---|---|
+| `customer` | `customer` | `customer_view` | ✅ cocok |
+| `access-privilege` | `access-privilege` | `access_privilege_view` | ✅ bentuk `Privilege[]` (ModuleName/AllowView/…) **CONFIRMED** |
+| `sales-entry` | **`sales-invoice`** | `sales_invoice_view` | ❌ **nama salah** — path asli `{host}/accurate/api/sales-invoice/list.do`; adapter `salesEntry.list` akan 404 di API asli |
+| `purchase-entry` | `purchase-invoice` | `purchase_invoice_view` | ❌ fixture mock salah nama (belum di adapter) |
+| `account` | `glaccount` | `glaccount_view` | ❌ fixture mock salah nama (belum di adapter) |
+
+Fakta API yang dikonfirmasi halaman docs (selaras spike 2026-10-10):
+- Envelope `{s: bool, d: array}`; `open-db` → `session`/`host` top-level; save → `r` record. SortPaging: `page`, `pageSize` (default 20), `sort: "field|asc"`, `filter: {field: {op, value}}` (EQUAL, CONTAIN, dst.).
+- Header modul: `Authorization: Bearer` + `X-Session-ID`. URL: `https://{company}.accurate.id/accurate`.
+- `sales-invoice` punya `delete.do` dengan scope `sales_invoice_save` (bukan `_delete`); `vendor`/`customer-claim` pakai `*_delete`.
+- 11 action nucleus (`db-list`, `open-db`, `userinfo`, `webhook-history`, `webhook-renew`, dst.), scope `db_access`.
+- Webhook events tersedia (CUSTOMER, SALES_INVOICE, …) — belum dipakai app.
+
+**Keputusan tertunda**: (a) ganti nama mock+adapter `sales-entry`→`sales-invoice` (dan permission key?) sebelum uji live; (b) perluas `ACCURATE_CATALOG` (saat ini baru `customer.list` + `salesEntry.list`) — scope keputusan pemilik.
+
 ## Ringkasan model Gemini audio (Okt 2026, dari docs resmi)
 
 | Kebutuhan | Model | Endpoint |
