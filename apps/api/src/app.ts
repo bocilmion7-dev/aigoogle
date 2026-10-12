@@ -14,7 +14,7 @@ import { billingRouter } from "./routes/billing.js";
 import { authRouter } from "./routes/auth.js";
 import { waRouter } from "./routes/wa.js";
 import { customersRouter } from "./routes/customers.js";
-import { webhookAccurateRouter } from "./routes/webhook-accurate.js";
+import { webhookAccurateRouter, webhookRootRouter } from "./routes/webhook-accurate.js";
 
 export function createApp() {
   const app = express();
@@ -42,6 +42,8 @@ export function createApp() {
   app.use("/api", waRouter);
   app.use("/api", customersRouter);
   app.use("/api", webhookAccurateRouter);
+  // POST /webhook — target URL webhook yang terdaftar di Area Developer Accurate
+  app.use(webhookRootRouter);
 
   app.use((err: unknown, _req: express.Request, res: express.Response, next: express.NextFunction) => {
     if (res.headersSent) return next(err);
