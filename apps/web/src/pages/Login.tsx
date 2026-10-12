@@ -68,6 +68,9 @@ export function Login() {
           </button>
         </div>
       </form>
+      <p className="meta" style={{ textAlign: "center" }}>
+        Pengurus sistem? <a href="/platform">Masuk sebagai Admin Platform</a>
+      </p>
       <p className="meta">
         Belum punya password?{" "}
         <a href={ACCURATE_OAUTH_CTA}>Masuk lewat Accurate →</a>

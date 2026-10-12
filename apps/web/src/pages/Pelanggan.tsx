@@ -2,13 +2,11 @@ import { useEffect, useState } from "react";
 import type { ConnectionInfo, Me } from "@aigoogle/shared";
 import {
   friendlyWarning,
-  getCustomers,
   getConnections,
   getMe,
   postEntry,
   uploadRead,
   uploadScan,
-  type CustomerRow,
   type ScanResponse,
 } from "../api";
 import { AppHeader } from "../ui";
@@ -24,9 +22,7 @@ const TARGET_LABEL: Record<string, string> = {
 export function Pelanggan() {
   const [me, setMe] = useState<Awaited<ReturnType<typeof getMe>> | undefined>(undefined);
   const [conns, setConns] = useState<ConnectionInfo[]>([]);
-  const [customers, setCustomers] = useState<CustomerRow[] | null>(null);
   const [q, setQ] = useState("");
-  const [selected, setSelected] = useState<string>("");
   const [tab, setTab] = useState<"scan" | "reader">("scan");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
@@ -37,25 +33,10 @@ export function Pelanggan() {
   const [target, setTarget] = useState<"" | "salesInvoice" | "salesReceipt">("");
   const [readText, setReadText] = useState<{ fileName: string; text: string; engine: string } | null>(null);
 
-  const reload = (keywords = "") => {
-    getCustomers(keywords)
-      .then(setCustomers)
-      .catch((e: Error) => {
-        setCustomers([]);
-        setErr(e.message);
-      });
-  };
-
   useEffect(() => {
     void getMe().then(setMe);
     void getConnections().then(setConns).catch(() => undefined);
   }, []);
-
-  const canCustomer = !!me?.permissions?.includes("accurate:customer.view");
-  useEffect(() => {
-    if (canCustomer) reload();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canCustomer]);
 
   if (me === undefined) {
     return (
@@ -81,26 +62,6 @@ export function Pelanggan() {
     window.location.replace("/admin");
     return null;
   }
-  if (!canCustomer) {
-    return (
-      <div className="app">
-        <AppHeader me={me} />
-        <main className="page page--narrow">
-          <h1>Scan Nota & Bukti Bayar</h1>
-          <div className="card">
-            <strong>Anda tidak punya akses menu Scan.</strong>
-            <p className="meta" style={{ marginTop: 6, marginBottom: 0 }}>
-              Hak akses data pelanggan diatur oleh admin di menu User & Peran. Hubungi administrator Anda.
-            </p>
-          </div>
-          <a className="btn btn--ghost btn--sm" href="/app">
-            ← Kembali ke dashboard
-          </a>
-        </main>
-      </div>
-    );
-  }
-
   const onScanFile = async (file: File | undefined) => {
     if (!file) return;
     setErr(""); setOkMsg(""); setScan(null); setReadText(null);
@@ -109,7 +70,7 @@ export function Pelanggan() {
       const res = await uploadScan(file);
       setScan(res);
       setForm({
-        customerName: res.fields.customerName || selected || "",
+        customerName: res.fields.customerName || "",
         date: res.fields.date,
         no: res.fields.no,
         total: res.fields.total !== null ? String(res.fields.total) : "",
@@ -157,7 +118,6 @@ export function Pelanggan() {
       });
       setOkMsg(`Tersimpan ke ${TARGET_LABEL[target]} — no. referensi ${res.id}`);
       setScan(null);
-      reload(q);
     } catch (e) {
       setErr((e as Error).message);
     } finally {
@@ -173,66 +133,6 @@ export function Pelanggan() {
         <p className="page__sub">
           {me.tenant.name} · {connected ? "Accurate terhubung" : "Accurate belum terhubung"}
         </p>
-
-        <h2 className="section-title" style={{ marginTop: 0 }}>Data pelanggan</h2>
-        <div className="card" style={{ marginBottom: "var(--space-xs)" }}>
-          <div className="row">
-            <input
-              className="input"
-              style={{ flex: "1 1 220px", maxWidth: 360 }}
-              type="search"
-              inputMode="search"
-              placeholder="Cari pelanggan…"
-              aria-label="Cari pelanggan"
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") reload(q); }}
-            />
-            <button className="btn" onClick={() => reload(q)}>Cari</button>
-            {customers && (
-              <span className="meta num">{customers.length} pelanggan</span>
-            )}
-          </div>
-        </div>
-
-        <div className="table-wrap" style={{ marginBottom: "var(--space-s)" }}>
-          {customers === null ? (
-            <p className="empty">Memuat data pelanggan…</p>
-          ) : customers.length === 0 ? (
-            <p className="empty">
-              {connected ? "Tidak ada pelanggan yang cocok." : "Hubungkan Accurate dulu untuk melihat data pelanggan."}
-            </p>
-          ) : (
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Nama</th>
-                  <th className="num">Faktur</th>
-                  <th className="num">Total faktur</th>
-                  <th />
-                </tr>
-              </thead>
-              <tbody>
-                {customers.map((c) => (
-                  <tr key={c.id}>
-                    <td>{c.name}</td>
-                    <td className="num">{c.invoiceCount}</td>
-                    <td className="num">{rp(c.invoiceTotal)}</td>
-                    <td>
-                      <button
-                        className={`btn btn--sm ${selected === c.name ? "" : "btn--2"}`}
-                        onClick={() => setSelected(selected === c.name ? "" : c.name)}
-                        aria-pressed={selected === c.name}
-                      >
-                        {selected === c.name ? "Terpilih ✓" : "Pilih"}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
 
         <div className="tabs" role="group" aria-label="Mode input">
           <button className="tab" aria-pressed={tab === "scan"} onClick={() => setTab("scan")}>
@@ -252,7 +152,7 @@ export function Pelanggan() {
             <p className="meta">
               Foto atau unggah gambar/PDF (nota, bukti transfer, faktur, kwitansi, screenshot) atau file teks
               (MD, TXT, DOCX, PPTX). Hasil baca ditampilkan untuk diperiksa dulu sebelum disimpan ke Accurate.
-              {selected && <> · Pelanggan terpilih: <b>{selected}</b></>}
+              
             </p>
             <input
               className="input-file"

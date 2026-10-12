@@ -1,7 +1,7 @@
 import express from "express";
 import { ZodError } from "zod";
 import cookieParser from "cookie-parser";
-import { loadSession } from "./middleware/session.js";
+import { loadPlatformSession, loadSession } from "./middleware/session.js";
 import { meRouter } from "./routes/me.js";
 import { launchRouter } from "./routes/launch.js";
 import { settingsRouter } from "./routes/settings.js";
@@ -28,6 +28,7 @@ export function createApp() {
   app.use(express.json());
   app.use(cookieParser());
   app.use(loadSession);
+  app.use(loadPlatformSession);
   app.get("/api/health", (_req, res) => res.json({ ok: true }));
   app.use("/api", meRouter);
   app.use("/api", authRouter);

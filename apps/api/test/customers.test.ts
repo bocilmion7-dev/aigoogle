@@ -10,6 +10,7 @@ let api: ReturnType<typeof createApp>;
 let mockSrv: Server;
 let mockBase: string;
 let cookie = "";
+let platCookie = "";
 let bareCookie = "";
 
 const realFetch = globalThis.fetch.bind(globalThis);
@@ -71,6 +72,16 @@ beforeAll(async () => {
   const sid = randomBytes(32).toString("hex");
   await prisma.session.create({ data: { id: sid, userId: user.id, expiresAt: new Date(Date.now() + 86400_000) } });
   cookie = `sid=${sid}`;
+
+  // sesi platform utk PUT /settings
+  const pu = await prisma.platformUser.upsert({
+    where: { email: "plat-cust@demo.local" },
+    create: { email: "plat-cust@demo.local", name: "Plat Cust" },
+    update: {},
+  });
+  const psid = randomBytes(32).toString("hex");
+  await prisma.platformSession.create({ data: { id: psid, platformUserId: pu.id, expiresAt: new Date(Date.now() + 86400_000) } });
+  platCookie = `psid=${psid}`;
 
   const bareRole = await prisma.role.create({ data: { tenantId: tenant.id, key: "guest", name: "Guest" } });
   const bareUser = await prisma.user.create({
@@ -201,7 +212,7 @@ describe("POST /api/customers/scan", () => {
   });
 
   it("ocrMode=text → gambar ditolak 409", async () => {
-    const put = await request(api).put("/api/settings").set("Cookie", cookie).send({ ocrMode: "text" });
+    const put = await request(api).put("/api/settings").set("Cookie", platCookie).send({ ocrMode: "text" });
     expect(put.status).toBe(200);
     const res = await request(api)
       .post("/api/customers/scan")
@@ -211,7 +222,7 @@ describe("POST /api/customers/scan", () => {
       .send(Buffer.from("JPEGDATA"));
     expect(res.status).toBe(409);
     expect(res.body.error).toBe("vision_ocr_nonaktif");
-    await request(api).put("/api/settings").set("Cookie", cookie).send({ ocrMode: "vision" });
+    await request(api).put("/api/settings").set("Cookie", platCookie).send({ ocrMode: "vision" });
   });
 });
 

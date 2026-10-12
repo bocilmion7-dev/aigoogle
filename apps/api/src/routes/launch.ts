@@ -11,7 +11,6 @@ import {
   ACCURATE_REDIRECT_URI,
 } from "../providers/accounting/index.js";
 import type { AccountingProvider } from "../providers/accounting/types.js";
-import { platformTenant } from "../platform.js";
 
 export const launchRouter = Router();
 
@@ -82,40 +81,46 @@ async function handleCallback(
     const isPlatform = platformEmails.includes(pUser.email.toLowerCase());
 
     if (isPlatform) {
-      // Operator platform → identitas TERPISAH di tenant internal platform.
-      // Bukan perusahaan pelanggan: tanpa koneksi Accurate, tanpa data perusahaan.
-      const pTenant = await platformTenant();
-      const role = await prisma.role.upsert({
-        where: { tenantId_key: { tenantId: pTenant.id, key: "platform-admin" } },
-        create: { tenantId: pTenant.id, key: "platform-admin", name: "Admin Platform" },
-        update: { name: "Admin Platform" },
+      // Operator platform → tabel PlatformUser TERPISAH (bukan akun Accurate).
+      // Koneksi Accurate milik db perusahaannya tetap disimpan agar sisi perusahaan tetap hidup,
+      // tapi TIDAK membuat User/Role di tenant perusahaan dan sesi mengarah ke platform.
+      const tenant = await prisma.tenant.upsert({
+        where: { provider_providerDbId: { provider: "accurate", providerDbId: db.providerDbId } },
+        create: { provider: "accurate", providerDbId: db.providerDbId, name: db.name, alias: db.alias },
+        update: {},
       });
-      const appPerms = ["app:users.manage", "app:settings.manage", "app:drive.tidy", "app:chat.history", "app:audit.view"];
-      await prisma.rolePermission.createMany({
-        data: appPerms.map((permissionKey) => ({ roleId: role.id, permissionKey })),
-        skipDuplicates: true,
-      });
-      const pUser2 = await prisma.user.upsert({
-        where: { tenantId_providerUserId: { tenantId: pTenant.id, providerUserId: pUser.providerUserId } },
+      const open = await provider.openDb(tok.accessToken, db.providerDbId);
+      await prisma.connection.upsert({
+        where: { tenantId_provider: { tenantId: tenant.id, provider: "accurate" } },
         create: {
-          tenantId: pTenant.id,
-          providerUserId: pUser.providerUserId,
-          email: pUser.email.toLowerCase(),
-          name: pUser.name,
-          phone: pUser.phone ?? "",
-          roleId: role.id,
+          tenantId: tenant.id,
+          provider: "accurate",
+          accessTokenEnc: encryptToken(tok.accessToken),
+          refreshTokenEnc: encryptToken(tok.refreshToken),
+          expiresAt: tok.expiresAt,
+          host: open.host,
+          session: open.session,
+          status: "connected",
         },
-        update: { roleId: role.id, phone: pUser.phone ?? undefined },
+        update: {
+          accessTokenEnc: encryptToken(tok.accessToken),
+          refreshTokenEnc: encryptToken(tok.refreshToken),
+          expiresAt: tok.expiresAt,
+          host: open.host,
+          session: open.session,
+          status: "connected",
+        },
       });
-      const sid = randomBytes(32).toString("hex");
-      await prisma.session.create({
-        data: { id: sid, userId: pUser2.id, expiresAt: new Date(Date.now() + 7 * 86400_000) },
+      const pu = await prisma.platformUser.upsert({
+        where: { email: pUser.email.toLowerCase() },
+        create: { email: pUser.email.toLowerCase(), name: pUser.name },
+        update: { name: pUser.name },
       });
-      res.cookie("sid", sid, { httpOnly: true, sameSite: "lax", maxAge: 7 * 86400_000 });
-      if (!pUser2.passwordHash) {
-        res.redirect(`${opts.origin}/set-password`);
-        return;
-      }
+      const psid = randomBytes(32).toString("hex");
+      await prisma.platformSession.create({
+        data: { id: psid, platformUserId: pu.id, expiresAt: new Date(Date.now() + 7 * 86400_000) },
+      });
+      res.cookie("psid", psid, { httpOnly: true, sameSite: "lax", maxAge: 7 * 86400_000 });
       res.redirect(`${opts.origin}/admin`);
       return;
     }

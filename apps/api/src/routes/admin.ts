@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "../db.js";
 import { asyncHandler } from "../asyncHandler.js";
 import { requirePerm, loadPermissionSet } from "../permissions.js";
+import { requirePlatform } from "../middleware/session.js";
 import { writeAudit } from "../audit.js";
 import { APP_FEATURES, isValidPermissionKey } from "../app-features.js";
 import { accurateProvider } from "../providers/accounting/index.js";
@@ -14,24 +15,33 @@ function normalizeModule(name: string): string {
   return name.toLowerCase().replace(/[\s_]+/g, "-");
 }
 
-/** Admin Platform (penanda: app:settings.manage) boleh mengelola lintas perusahaan dgn ?tenantId=;
+/** Admin Platform (sesi psid, tabel PlatformUser terpisah) mengelola lintas perusahaan dgn ?tenantId=;
  *  Admin Accurate selalu terkunci di perusahaannya sendiri. */
 async function tenantScope(req: import("express").Request): Promise<{
   isPlatform: boolean;
   tenantId: string;
 }> {
-  const set = await loadPermissionSet(req.user!.roleId);
-  const isPlatform = set.has("app:settings.manage");
-  const q = req.query.tenantId;
-  const tenantId = isPlatform && typeof q === "string" && q ? q : req.user!.tenant.id;
-  return { isPlatform, tenantId };
+  if (req.platform) {
+    const q = req.query.tenantId;
+    const tenantId = typeof q === "string" && q ? q : "";
+    return { isPlatform: true, tenantId };
+  }
+  return { isPlatform: false, tenantId: req.user!.tenant.id };
+}
+
+/** guard gabungan: operator platform (psid) ATAU user perusahaan dgn permission tertentu */
+function requireAdminAccess(perm: string) {
+  return (req: import("express").Request, res: import("express").Response, next: import("express").NextFunction) => {
+    if (req.platform) return next();
+    return requirePerm(perm)(req, res, next);
+  };
 }
 
 // GET /api/admin/tenants — daftar perusahaan pelanggan sistem ini (khusus Admin Platform).
 // Hanya tenant dengan koneksi Accurate Online ASLI (host *.accurate.id) — data test/mock (host lokal) disembunyikan.
 adminRouter.get(
   "/admin/tenants",
-  requirePerm("app:settings.manage"),
+  requirePlatform,
   asyncHandler(async (_req, res) => {
     const cons = await prisma.connection.findMany({
       where: { provider: "accurate", host: { contains: "accurate.id" } },
@@ -50,7 +60,7 @@ adminRouter.get(
 
 adminRouter.get(
   "/admin/roles",
-  requirePerm("app:users.manage"),
+  requireAdminAccess("app:users.manage"),
   asyncHandler(async (req, res) => {
     const scope = await tenantScope(req);
     const roles = await prisma.role.findMany({
@@ -71,7 +81,7 @@ adminRouter.get(
 
 adminRouter.get(
   "/admin/privileges",
-  requirePerm("app:users.manage"),
+  requireAdminAccess("app:users.manage"),
   asyncHandler(async (req, res) => {
     const provider = accurateProvider();
     const catalog = provider.capabilityCatalog();
@@ -99,7 +109,7 @@ adminRouter.get(
 
 adminRouter.put(
   "/admin/roles/:id/permissions",
-  requirePerm("app:users.manage"),
+  requireAdminAccess("app:users.manage"),
   asyncHandler(async (req, res) => {
     const body = z.object({ permissions: z.array(z.string().min(1)).max(100) }).safeParse(req.body);
     if (!body.success) return res.status(400).json({ error: "bad_request" });
@@ -128,7 +138,7 @@ adminRouter.put(
 
 adminRouter.get(
   "/admin/users",
-  requirePerm("app:users.manage"),
+  requireAdminAccess("app:users.manage"),
   asyncHandler(async (req, res) => {
     const scope = await tenantScope(req);
     const users = await prisma.user.findMany({
@@ -142,7 +152,7 @@ adminRouter.get(
 
 adminRouter.put(
   "/admin/users/:id/role",
-  requirePerm("app:users.manage"),
+  requireAdminAccess("app:users.manage"),
   asyncHandler(async (req, res) => {
     const body = z.object({ roleKey: z.string().min(1) }).safeParse(req.body);
     if (!body.success) return res.status(400).json({ error: "bad_request" });
@@ -167,7 +177,7 @@ adminRouter.put(
 
 adminRouter.get(
   "/admin/audit",
-  requirePerm("app:audit.view"),
+  requireAdminAccess("app:audit.view"),
   asyncHandler(async (req, res) => {
     const q = z
       .object({

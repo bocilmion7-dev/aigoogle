@@ -2,7 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../db.js";
 import { requireUser } from "../middleware/session.js";
-import { requirePerm } from "../permissions.js";
+import { requirePlatform } from "../middleware/session.js";
 import { asyncHandler } from "../asyncHandler.js";
 import { WA_TOPUP_RUPIAH_PER_CREDIT } from "../wa/service.js";
 import { writeAudit } from "../audit.js";
@@ -40,7 +40,7 @@ settingsRouter.get(
 
 settingsRouter.put(
   "/settings",
-  requirePerm("app:settings.manage"),
+  requirePlatform,
   asyncHandler(async (req, res) => {
     const body = PutBody.safeParse(req.body);
     if (!body.success) return res.status(400).json({ error: "bad_request" });
@@ -52,7 +52,12 @@ settingsRouter.put(
         update: { value: String(value) },
       });
     }
-    await writeAudit(req.user!.tenant.id, req.user!.id, "settings.update", body.data);
+    await writeAudit(
+      req.platform ? "platform" : req.user!.tenant.id,
+      req.platform?.id ?? req.user!.id,
+      "settings.update",
+      body.data
+    );
     res.json(await settingsSnapshot());
   })
 );

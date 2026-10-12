@@ -6,28 +6,17 @@ export async function getMe(): Promise<Me | null> {
   return res.json();
 }
 
-export interface Membership {
-  tenantId: string;
-  name: string;
-  alias: string;
-  provider: string;
-  roleKey: string;
-  current: boolean;
-}
-/** identitas user ini di semua konteks (platform internal + perusahaan) */
-export async function getMemberships(): Promise<Membership[]> {
-  const res = await fetch("/api/auth/memberships");
-  if (!res.ok) return [];
-  return res.json();
-}
-/** pindah konteks (platform ⇄ perusahaan; antar-perusahaan) */
-export async function switchTenant(tenantId: string): Promise<void> {
-  const res = await fetch("/api/auth/switch", {
+/** login khusus operator platform (tabel akun terpisah) */
+export async function platformLogin(email: string, password: string): Promise<void> {
+  const res = await fetch("/api/platform/login", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ tenantId }),
+    body: JSON.stringify({ email, password }),
   });
-  if (!res.ok) throw new Error("gagal pindah konteks");
+  if (!res.ok) {
+    const j = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(j.error === "email_atau_password_salah" ? "Email atau password salah." : "Gagal masuk.");
+  }
 }
 
 export async function getSettings(): Promise<AppSettings> {

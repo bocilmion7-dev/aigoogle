@@ -13,6 +13,8 @@ declare global {
         needsPassword: boolean;
         tenant: { id: string; name: string; alias: string; provider: string };
       };
+      /** operator platform (tabel PlatformUser terpisah — bukan akun Accurate) */
+      platform?: { id: string; email: string; name: string };
     }
   }
 }
@@ -47,5 +49,26 @@ export function loadSession(req: Request, res: Response, next: NextFunction) {
 
 export function requireUser(req: Request, res: Response, next: NextFunction) {
   if (!req.user) return res.status(401).json({ error: "belum_login" });
+  next();
+}
+
+/** muat sesi platform dari cookie psid (terpisah dari sesi perusahaan sid) */
+export function loadPlatformSession(req: Request, _res: Response, next: NextFunction) {
+  const psid = req.cookies?.psid as string | undefined;
+  if (!psid) return next();
+  void (async () => {
+    const s = await prisma.platformSession.findUnique({
+      where: { id: psid },
+      include: { platformUser: true },
+    });
+    if (s && s.expiresAt > new Date()) {
+      req.platform = { id: s.platformUser.id, email: s.platformUser.email, name: s.platformUser.name };
+    }
+    next();
+  })().catch(next);
+}
+
+export function requirePlatform(req: Request, res: Response, next: NextFunction) {
+  if (!req.platform) return res.status(401).json({ error: "bukan_platform" });
   next();
 }

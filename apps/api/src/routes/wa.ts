@@ -82,7 +82,7 @@ waRouter.put(
 // Notifikasi WhatsApp dari webhook Accurate: event yang diikuti + jeda antar-kirim + nomor tujuan
 waRouter.get(
   "/wa/webhook-events",
-  requirePerm("app:settings.manage"),
+  requirePerm("app:users.manage"),
   asyncHandler(async (req, res) => {
     res.json(await getWaWebhookSettings(req.user!.tenant.id));
   })
@@ -90,7 +90,7 @@ waRouter.get(
 
 waRouter.put(
   "/wa/webhook-events",
-  requirePerm("app:settings.manage"),
+  requirePerm("app:users.manage"),
   asyncHandler(async (req, res) => {
     const valid = new Set(WA_WEBHOOK_EVENT_OPTIONS.map((o) => o.key));
     const body = z

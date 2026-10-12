@@ -8,6 +8,7 @@ import { SetPassword } from "./pages/SetPassword";
 import { WhatsApp } from "./pages/WhatsApp";
 import { Pelanggan } from "./pages/Pelanggan";
 import { Aktivitas } from "./pages/Aktivitas";
+import { PlatformLogin } from "./pages/PlatformLogin";
 
 export function App() {
   const path = window.location.pathname;
@@ -16,6 +17,7 @@ export function App() {
   if (path === "/admin") return <Admin />;
   if (path === "/app") return <Shell />;
   if (path === "/login") return <Login />;
+  if (path === "/platform") return <PlatformLogin />;
   if (path === "/set-password") return <SetPassword />;
   if (path === "/whatsapp") return <WhatsApp />;
   if (path === "/pelanggan") return <Pelanggan />;

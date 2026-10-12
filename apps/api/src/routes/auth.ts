@@ -39,72 +39,36 @@ authRouter.post(
   })
 );
 
-// GET /api/auth/memberships — daftar identitas user ini di seluruh tenant
-// (platform internal + perusahaan tempat dia terdaftar) utk pemilih konteks
-authRouter.get(
-  "/auth/memberships",
-  requireUser,
+// ── Autentikasi PLATFORM (tabel PlatformUser terpisah dari akun Accurate) ──
+const PlatformLoginBody = z.object({
+  email: z.string().email(),
+  password: z.string().min(1),
+});
+
+authRouter.post(
+  "/platform/login",
   asyncHandler(async (req, res) => {
-    const me = await prisma.user.findUnique({
-      where: { id: req.user!.id },
-      select: { providerUserId: true },
+    const body = PlatformLoginBody.safeParse(req.body);
+    if (!body.success) return res.status(400).json({ error: "bad_request" });
+    const u = await prisma.platformUser.findUnique({ where: { email: body.data.email.toLowerCase() } });
+    if (!u || !u.passwordHash || !verifyPassword(body.data.password, u.passwordHash)) {
+      return res.status(401).json({ error: "email_atau_password_salah" });
+    }
+    const sid = randomBytes(32).toString("hex");
+    await prisma.platformSession.create({
+      data: { id: sid, platformUserId: u.id, expiresAt: new Date(Date.now() + 7 * 86400_000) },
     });
-    if (!me) return res.json([]);
-    const rows = await prisma.user.findMany({
-      where: { providerUserId: me.providerUserId },
-      include: {
-        tenant: { select: { id: true, name: true, alias: true, provider: true } },
-        role: { select: { key: true } },
-      },
-      orderBy: { createdAt: "asc" },
-    });
-    res.json(
-      rows.map((r) => ({
-        tenantId: r.tenant.id,
-        name: r.tenant.name,
-        alias: r.tenant.alias,
-        provider: r.tenant.provider,
-        roleKey: r.role.key,
-        current: r.tenant.id === req.user!.tenant.id,
-      }))
-    );
+    res.cookie("psid", sid, { httpOnly: true, sameSite: "lax", maxAge: 7 * 86400_000 });
+    res.json({ ok: true });
   })
 );
 
-// POST /api/auth/switch — pindah konteks ke identitas lain milik user yg sama
-// (operator platform ⇄ perusahaannya; pemilik beberapa perusahaan ⇄ antar-perusahaan)
 authRouter.post(
-  "/auth/switch",
-  requireUser,
+  "/platform/logout",
   asyncHandler(async (req, res) => {
-    const body = z.object({ tenantId: z.string().min(1).max(64) }).safeParse(req.body);
-    if (!body.success) return res.status(400).json({ error: "bad_request" });
-    const me = await prisma.user.findUnique({
-      where: { id: req.user!.id },
-      select: { providerUserId: true },
-    });
-    if (!me) return res.status(401).json({ error: "belum_login" });
-    const target = await prisma.user.findFirst({
-      where: { providerUserId: me.providerUserId, tenantId: body.data.tenantId },
-      include: { tenant: { select: { provider: true } } },
-    });
-    if (!target) return res.status(403).json({ error: "bukan_anggota" });
-    // hanya ke tenant platform internal atau perusahaan dgn koneksi Accurate nyata
-    const isPlatformTenant = target.tenant.provider === "platform";
-    const realConn = await prisma.connection.findFirst({
-      where: { tenantId: target.tenantId, provider: "accurate", host: { contains: "accurate.id" } },
-      select: { id: true },
-    });
-    if (!isPlatformTenant && !realConn) return res.status(403).json({ error: "tenant_tidak_aktif" });
-    const oldSid = req.cookies?.sid as string | undefined;
-    if (oldSid) await prisma.session.deleteMany({ where: { id: oldSid } });
-    const sid = randomBytes(32).toString("hex");
-    await prisma.session.create({
-      data: { id: sid, userId: target.id, expiresAt: new Date(Date.now() + 7 * 86400_000) },
-    });
-    res.cookie("sid", sid, { httpOnly: true, sameSite: "lax", maxAge: 7 * 86400_000 });
-    await writeAudit(target.tenantId, target.id, "auth.switch", { fromTenantId: req.user!.tenant.id });
-    res.json({ ok: true, tenantId: target.tenantId });
+    const psid = req.cookies?.psid as string | undefined;
+    if (psid) await prisma.platformSession.deleteMany({ where: { id: psid } });
+    res.clearCookie("psid").json({ ok: true });
   })
 );
 

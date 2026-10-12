@@ -81,6 +81,28 @@ model Connection {
   @@unique([tenantId, provider])
 }
 
+// Akun operator PLATFORM — tabel terpisah dari akun Accurate (perusahaan pelanggan).
+// Platform tidak menumpang tenant/perusahaan mana pun.
+model PlatformUser {
+  id           String            @id @default(cuid())
+  email        String            @unique
+  name         String
+  passwordHash String            @default("")
+  createdAt    DateTime          @default(now())
+  sessions     PlatformSession[]
+}
+
+model PlatformSession {
+  id             String       @id
+  platformUser   PlatformUser @relation(fields: [platformUserId], references: [id], onDelete: Cascade)
+  platformUserId String
+  expiresAt      DateTime
+  createdAt      DateTime     @default(now())
+
+  @@index([platformUserId])
+  @@index([expiresAt])
+}
+
 model Session {
   id        String   @id
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
