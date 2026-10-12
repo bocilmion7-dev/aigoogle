@@ -76,16 +76,21 @@ export function Pelanggan() {
   const canInvoice = !!me.permissions?.includes("accurate:sales-invoice.view");
   const canReceipt = !!me.permissions?.includes("accurate:sales-receipt.view");
 
+  // Admin Platform tidak memakai halaman Scan — arahkan ke kelola User & Peran
+  if (me.permissions?.includes("app:settings.manage")) {
+    window.location.replace("/admin");
+    return null;
+  }
   if (!canCustomer) {
     return (
       <div className="app">
         <AppHeader me={me} />
         <main className="page page--narrow">
-          <h1>Pelanggan</h1>
+          <h1>Scan Nota & Bukti Bayar</h1>
           <div className="card">
-            <strong>Anda tidak punya akses menu Pelanggan.</strong>
+            <strong>Anda tidak punya akses menu Scan.</strong>
             <p className="meta" style={{ marginTop: 6, marginBottom: 0 }}>
-              Hak akses data pelanggan diatur oleh Admin → Peran. Hubungi administrator Anda.
+              Hak akses data pelanggan diatur oleh admin di menu User & Peran. Hubungi administrator Anda.
             </p>
           </div>
           <a className="btn btn--ghost btn--sm" href="/app">
@@ -164,7 +169,7 @@ export function Pelanggan() {
     <div className="app">
       <AppHeader me={me} />
       <main className="page">
-        <h1>Pelanggan</h1>
+        <h1>Scan Nota & Bukti Bayar</h1>
         <p className="page__sub">
           {me.tenant.name} · {connected ? "Accurate terhubung" : "Accurate belum terhubung"}
         </p>

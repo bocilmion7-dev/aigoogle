@@ -19,20 +19,21 @@ export function AppHeader({ me }: { me?: Me | null }) {
 
   const cur = window.location.pathname;
   const perms = data.permissions ?? [];
-  // Aturan menu per tingkat peran:
-  //  - Staff Accurate      : 4 menu inti (Dashboard, Pelanggan, Explore, WhatsApp)
-  //  - Admin Accurate      : + Admin (kelola user/peran/audit perusahaan) — TANPA Pengaturan
-  //  - Admin Platform      : semua (4 + Admin + Pengaturan)
+  // Aturan isolasi menu final:
+  //  - Staf Accurate      : Dashboard, Explore Manager, WhatsApp, Scan
+  //  - Admin Accurate     : + Aktivitas (perusahaannya), User & Peran (perusahaannya)
+  //  - Admin Platform     : User & Peran (semua perusahaan) + Pengaturan saja
   const canAdmin = perms.includes("app:users.manage");
-  const canSettings = perms.includes("app:settings.manage");
+  const canPlatform = perms.includes("app:settings.manage");
+  const sisiAccurate = !canPlatform; // Staf & Admin Accurate
   const links: Array<{ href: string; label: string }> = [
-    { href: "/app", label: "Dashboard" },
-    { href: "/pelanggan", label: "Pelanggan" },
-    { href: "/aktivitas", label: "Aktivitas" },
-    { href: "/explore", label: "Explore Manager" },
-    { href: "/whatsapp", label: "WhatsApp" },
-    ...(canAdmin ? [{ href: "/admin", label: "Admin" }] : []),
-    ...(canSettings ? [{ href: "/settings", label: "Pengaturan" }] : []),
+    ...(sisiAccurate ? [{ href: "/app", label: "Dashboard" }] : []),
+    ...(canAdmin && !canPlatform ? [{ href: "/aktivitas", label: "Aktivitas" }] : []),
+    ...(sisiAccurate ? [{ href: "/explore", label: "Explore Manager" }] : []),
+    ...(sisiAccurate ? [{ href: "/whatsapp", label: "WhatsApp" }] : []),
+    ...(canAdmin ? [{ href: "/admin", label: "User & Peran" }] : []),
+    ...(sisiAccurate ? [{ href: "/pelanggan", label: "Scan" }] : []),
+    ...(canPlatform ? [{ href: "/settings", label: "Pengaturan" }] : []),
   ];
 
   return (

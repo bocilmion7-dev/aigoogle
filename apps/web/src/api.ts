@@ -61,7 +61,15 @@ async function adminFetch<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-export const getRoles = () => adminFetch<AdminRole[]>("/api/admin/roles");
+export interface TenantLite {
+  id: string;
+  name: string;
+  alias: string;
+}
+/** khusus Admin Platform: daftar semua perusahaan */
+export const getAdminTenants = () => adminFetch<TenantLite[]>("/api/admin/tenants");
+export const getRoles = (tenantId?: string) =>
+  adminFetch<AdminRole[]>(`/api/admin/roles${tenantId ? `?tenantId=${encodeURIComponent(tenantId)}` : ""}`);
 export const getPrivileges = () => adminFetch<PrivilegesPayload>("/api/admin/privileges");
 export const putRolePermissions = (id: string, permissions: string[]) =>
   adminFetch<{ ok: boolean }>(`/api/admin/roles/${id}/permissions`, {
@@ -69,14 +77,16 @@ export const putRolePermissions = (id: string, permissions: string[]) =>
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ permissions }),
   });
-export const getAdminUsers = () => adminFetch<AdminUser[]>("/api/admin/users");
+export const getAdminUsers = (tenantId?: string) =>
+  adminFetch<AdminUser[]>(`/api/admin/users${tenantId ? `?tenantId=${encodeURIComponent(tenantId)}` : ""}`);
 export const putUserRole = (id: string, roleKey: string) =>
   adminFetch<{ ok: boolean }>(`/api/admin/users/${id}/role`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ roleKey }),
   });
-export const getAuditLogs = (limit = 50) => adminFetch<AuditRow[]>(`/api/admin/audit?limit=${limit}`);
+export const getAuditLogs = (limit = 50, tenantId?: string) =>
+  adminFetch<AuditRow[]>(`/api/admin/audit?limit=${limit}${tenantId ? `&tenantId=${encodeURIComponent(tenantId)}` : ""}`);
 
 export interface CustomerRow {
   id: string;

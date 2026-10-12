@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import {
+  getAdminTenants,
   getAdminUsers,
   getAuditLogs,
   getConnections,
@@ -41,6 +42,8 @@ export function Admin() {
   const [waDaily, setWaDaily] = useState(false);
   const [waPhone, setWaPhone] = useState("");
   const [waWh, setWaWh] = useState<{ events: string[]; rateMin: number; options: Array<{ key: string; label: string }> } | null>(null);
+  const [tenants, setTenants] = useState<Array<{ id: string; name: string; alias: string }>>([]);
+  const [selTenant, setSelTenant] = useState<string>(""); // Admin Platform: perusahaan yang sedang dikelola
   const [me, setMe] = useState<Awaited<ReturnType<typeof getMe>> | undefined>(undefined);
   const isAdmin = !!me?.permissions?.includes("app:users.manage");
   const canSettings = !!me?.permissions?.includes("app:settings.manage"); // Admin Platform saja
@@ -49,15 +52,15 @@ export function Admin() {
     void getMe().then(setMe);
   }, []);
 
-  const loadRoles = useCallback(async () => {
-    const r = await getRoles();
+  const loadRoles = useCallback(async (tenantId?: string) => {
+    const r = await getRoles(tenantId || undefined);
     setRoles(r);
     return r;
   }, []);
 
   useEffect(() => {
     if (!isAdmin) return;
-    void loadRoles()
+    void loadRoles(selTenant || undefined)
       .then((r) => {
         if (r[0]) setSelRole(r[0].id);
       })
@@ -68,7 +71,17 @@ export function Admin() {
     void getPrivileges()
       .then(setPriv)
       .catch(() => undefined);
-  }, [loadRoles, isAdmin]);
+  }, [loadRoles, isAdmin, selTenant]);
+
+  useEffect(() => {
+    if (!canSettings) return;
+    void getAdminTenants()
+      .then((ts) => {
+        setTenants(ts);
+        setSelTenant((cur) => cur || ts[0]?.id || "");
+      })
+      .catch(() => undefined);
+  }, [canSettings, me]);
 
   const onFetchErr = (e: unknown) => {
     if (e instanceof Error && e.message === "belum_login") window.location.href = "/login";
@@ -79,11 +92,11 @@ export function Admin() {
     if (!isAdmin) return;
     if (tab === "users") {
       setErr(null);
-      void getAdminUsers().then(setUsers).catch(onFetchErr);
+      void getAdminUsers(selTenant || undefined).then(setUsers).catch(onFetchErr);
     }
     if (tab === "audit") {
       setErr(null);
-      void getAuditLogs(50).then(setAudit).catch(onFetchErr);
+      void getAuditLogs(50, selTenant || undefined).then(setAudit).catch(onFetchErr);
     }
     if (tab === "roles" && selRole) {
       const role = roles.find((x) => x.id === selRole);
@@ -110,7 +123,7 @@ export function Admin() {
         .then((s) => setWaWh({ events: s.events ?? [], rateMin: s.rateMin ?? 10, options: s.options ?? [] }))
         .catch(() => undefined);
     }
-  }, [tab, selRole, roles, isAdmin, canSettings]);
+  }, [tab, selRole, roles, isAdmin, canSettings, selTenant]);
 
   const errText = (code?: string) =>
     code === "tidak_boleh_ubah_role_sendiri"
@@ -124,7 +137,7 @@ export function Admin() {
     setErr(null);
     try {
       await putRolePermissions(selRole, [...checked]);
-      await loadRoles();
+      await loadRoles(selTenant || undefined);
       setMsg("Hak akses role disimpan.");
     } catch (e) {
       setErr(errText(e instanceof Error ? e.message : undefined));
@@ -136,11 +149,11 @@ export function Admin() {
     setErr(null);
     try {
       await putUserRole(userId, roleKey);
-      setUsers(await getAdminUsers());
+      setUsers(await getAdminUsers(selTenant || undefined));
       setMsg("Role user diperbarui.");
     } catch (e) {
       setErr(errText(e instanceof Error ? e.message : undefined));
-      void getAdminUsers().then(setUsers);
+      void getAdminUsers(selTenant || undefined).then(setUsers);
     }
   }
 
@@ -203,6 +216,27 @@ export function Admin() {
       <main className="page">
         <h1>Admin</h1>
         <p className="page__sub">Kelola user, hak akses peran, jejak audit, dan pengaturan aplikasi.</p>
+
+        {canSettings && tenants.length > 0 && (
+          <div className="card" style={{ marginBottom: "var(--space-s)", maxWidth: 420 }}>
+            <label className="field" style={{ marginBottom: 0 }}>
+              Perusahaan yang dikelola
+              <select
+                className="input"
+                value={selTenant}
+                onChange={(e) => setSelTenant(e.target.value)}
+                aria-label="Pilih perusahaan"
+              >
+                {tenants.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                    {t.alias ? ` (${t.alias})` : ""}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+        )}
 
         <div className="tabs" role="group" aria-label="Bagian Admin">
           <button className="tab" aria-pressed={tab === "users"} onClick={() => setTab("users")}>

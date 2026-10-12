@@ -7,7 +7,7 @@ import { requireUser } from "../middleware/session.js";
 import { requirePerm, loadPermissionSet } from "../permissions.js";
 import { accurateCtxFor } from "../providers/accounting/connection.js";
 import { accurateProvider } from "../providers/accounting/index.js";
-import { cache, CACHE_TTL } from "../cache.js";
+import { cache, CACHE_TTL, invalidateTenantCache } from "../cache.js";
 import { writeAudit } from "../audit.js";
 import { detectKind, extractText, VISION_KINDS } from "../doc/extract.js";
 import { ocrDocument, scanDocument, suggestedTarget } from "../doc/scan.js";
@@ -167,6 +167,9 @@ customersRouter.post(
       customerName: b.customerName,
       total: b.total ?? null,
     });
+    // tulis baru di Accurate → buang cache agregat supaya angka langsung segar
+    invalidateTenantCache(req.user!.tenant.id, "accurate:customer");
+    invalidateTenantCache(req.user!.tenant.id, "accurate:sales-invoice");
     res.json({ ok: true, id: saved.id, target: b.target });
   })
 );

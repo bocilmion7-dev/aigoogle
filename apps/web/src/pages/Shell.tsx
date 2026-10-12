@@ -18,6 +18,11 @@ export function Shell() {
     window.location.href = "/set-password";
     return null;
   }
+  // Admin Platform tidak punya Dashboard — langsung ke kelola User & Peran
+  if (me.permissions?.includes("app:settings.manage")) {
+    window.location.replace("/admin");
+    return null;
+  }
   return (
     <div className="app">
       <AppHeader me={me} />

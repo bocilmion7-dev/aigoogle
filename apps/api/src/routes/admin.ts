@@ -2,7 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../db.js";
 import { asyncHandler } from "../asyncHandler.js";
-import { requirePerm } from "../permissions.js";
+import { requirePerm, loadPermissionSet } from "../permissions.js";
 import { writeAudit } from "../audit.js";
 import { APP_FEATURES, isValidPermissionKey } from "../app-features.js";
 import { accurateProvider } from "../providers/accounting/index.js";
@@ -14,12 +14,39 @@ function normalizeModule(name: string): string {
   return name.toLowerCase().replace(/[\s_]+/g, "-");
 }
 
+/** Admin Platform (penanda: app:settings.manage) boleh mengelola lintas perusahaan dgn ?tenantId=;
+ *  Admin Accurate selalu terkunci di perusahaannya sendiri. */
+async function tenantScope(req: import("express").Request): Promise<{
+  isPlatform: boolean;
+  tenantId: string;
+}> {
+  const set = await loadPermissionSet(req.user!.roleId);
+  const isPlatform = set.has("app:settings.manage");
+  const q = req.query.tenantId;
+  const tenantId = isPlatform && typeof q === "string" && q ? q : req.user!.tenant.id;
+  return { isPlatform, tenantId };
+}
+
+// GET /api/admin/tenants — daftar perusahaan (khusus Admin Platform, utk pemilih tenant)
+adminRouter.get(
+  "/admin/tenants",
+  requirePerm("app:settings.manage"),
+  asyncHandler(async (_req, res) => {
+    const tenants = await prisma.tenant.findMany({
+      orderBy: { createdAt: "asc" },
+      select: { id: true, name: true, alias: true },
+    });
+    res.json(tenants);
+  })
+);
+
 adminRouter.get(
   "/admin/roles",
   requirePerm("app:users.manage"),
   asyncHandler(async (req, res) => {
+    const scope = await tenantScope(req);
     const roles = await prisma.role.findMany({
-      where: { tenantId: req.user!.tenant.id },
+      where: { tenantId: scope.tenantId },
       include: { permissions: { select: { permissionKey: true } } },
       orderBy: { key: "asc" },
     });
@@ -71,8 +98,9 @@ adminRouter.put(
     if (!body.data.permissions.every(isValidPermissionKey)) {
       return res.status(400).json({ error: "permission_key_tidak_valid" });
     }
+    const scope = await tenantScope(req);
     const role = await prisma.role.findFirst({
-      where: { id: req.params.id, tenantId: req.user!.tenant.id },
+      where: { id: req.params.id, tenantId: scope.tenantId },
     });
     if (!role) return res.status(404).json({ error: "role_tidak_ditemukan" });
     await prisma.$transaction([
@@ -82,7 +110,7 @@ adminRouter.put(
         skipDuplicates: true,
       }),
     ]);
-    await writeAudit(req.user!.tenant.id, req.user!.id, "role.permissions.update", {
+    await writeAudit(scope.tenantId, req.user!.id, "role.permissions.update", {
       roleKey: role.key,
       permissions: body.data.permissions,
     });
@@ -94,8 +122,9 @@ adminRouter.get(
   "/admin/users",
   requirePerm("app:users.manage"),
   asyncHandler(async (req, res) => {
+    const scope = await tenantScope(req);
     const users = await prisma.user.findMany({
-      where: { tenantId: req.user!.tenant.id },
+      where: { tenantId: scope.tenantId },
       include: { role: { select: { key: true } } },
       orderBy: { name: "asc" },
     });
@@ -112,14 +141,15 @@ adminRouter.put(
     if (req.params.id === req.user!.id) {
       return res.status(400).json({ error: "tidak_boleh_ubah_role_sendiri" });
     }
-    const user = await prisma.user.findFirst({ where: { id: req.params.id, tenantId: req.user!.tenant.id } });
+    const scope = await tenantScope(req);
+    const user = await prisma.user.findFirst({ where: { id: req.params.id, tenantId: scope.tenantId } });
     if (!user) return res.status(404).json({ error: "user_tidak_ditemukan" });
     const role = await prisma.role.findFirst({
-      where: { tenantId: req.user!.tenant.id, key: body.data.roleKey },
+      where: { tenantId: scope.tenantId, key: body.data.roleKey },
     });
     if (!role) return res.status(404).json({ error: "role_tidak_ditemukan" });
     await prisma.user.update({ where: { id: user.id }, data: { roleId: role.id } });
-    await writeAudit(req.user!.tenant.id, req.user!.id, "user.role.update", {
+    await writeAudit(scope.tenantId, req.user!.id, "user.role.update", {
       userId: user.id,
       roleKey: role.key,
     });
@@ -132,11 +162,16 @@ adminRouter.get(
   requirePerm("app:audit.view"),
   asyncHandler(async (req, res) => {
     const q = z
-      .object({ limit: z.coerce.number().int().min(1).max(200).default(50), action: z.string().max(100).optional() })
+      .object({
+        limit: z.coerce.number().int().min(1).max(200).default(50),
+        action: z.string().max(100).optional(),
+        tenantId: z.string().max(64).optional(),
+      })
       .safeParse(req.query);
     if (!q.success) return res.status(400).json({ error: "bad_request" });
+    const scope = await tenantScope(req);
     const rows = await prisma.auditLog.findMany({
-      where: { tenantId: req.user!.tenant.id, ...(q.data.action ? { action: q.data.action } : {}) },
+      where: { tenantId: scope.tenantId, ...(q.data.action ? { action: q.data.action } : {}) },
       orderBy: { createdAt: "desc" },
       take: q.data.limit,
     });

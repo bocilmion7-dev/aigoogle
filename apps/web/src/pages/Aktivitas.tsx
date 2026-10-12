@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { AppHeader } from "../ui";
-import { getAccurateWebhookEvents, type AccurateEventRow } from "../api";
+import { getAccurateWebhookEvents, getMe, type AccurateEventRow } from "../api";
 
 const EVENT_LABEL: Record<string, string> = {
   CUSTOMER: "Pelanggan",
@@ -141,8 +141,19 @@ export function Aktivitas() {
   const [err, setErr] = useState("");
   const [q, setQ] = useState("");
   const [open, setOpen] = useState<Set<string>>(new Set());
+  const [me, setMe] = useState<Awaited<ReturnType<typeof getMe>> | undefined>(undefined);
 
-  const load = useCallback(() => {
+  useEffect(() => {
+    void getMe().then(setMe);
+  }, []);
+  const bolehLihat = !!me?.permissions?.includes("app:audit.view");
+  const meLoaded = me !== undefined;
+
+  const load = useCallback((boleh: boolean) => {
+    if (!boleh) {
+      setRows([]);
+      return;
+    }
     void getAccurateWebhookEvents(100)
       .then((d) => {
         setRows(d);
@@ -154,8 +165,9 @@ export function Aktivitas() {
       });
   }, []);
   useEffect(() => {
-    load();
-  }, [load]);
+    if (me === undefined) return;
+    load(bolehLihat);
+  }, [me, bolehLihat, load]);
 
   const toggle = (id: string) =>
     setOpen((s) => {
@@ -188,7 +200,14 @@ export function Aktivitas() {
             aria-label="Saring aktivitas"
           />
         </div>
-        {rows === null ? (
+        {meLoaded && !bolehLihat ? (
+          <div className="card">
+            <strong>Aktivitas hanya untuk Admin Accurate.</strong>
+            <p className="meta" style={{ marginTop: 6, marginBottom: 0 }}>
+              Riwayat perubahan data perusahaan dikelola oleh admin perusahaan Anda.
+            </p>
+          </div>
+        ) : rows === null ? (
           <p className="meta">Memuat…</p>
         ) : filtered.length === 0 ? (
           <div className="card">
