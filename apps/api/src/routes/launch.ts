@@ -80,20 +80,36 @@ async function handleCallback(
       create: { provider: "accurate", providerDbId: db.providerDbId, name: db.name, alias: db.alias },
       update: {},
     });
-    const roleKey = db.admin ? "admin" : "staff";
+    // Tingkat peran:
+    //  - platform-admin : operator platform (email terdaftar) — semua menu & pengaturan
+    //  - accurate-admin : admin database Accurate (db.admin)   — kelola perusahaan, tanpa pengaturan platform
+    //  - staff          : pengguna Accurate biasa              — 4 menu inti saja
+    const platformEmails = env.PLATFORM_ADMIN_EMAILS.split(",")
+      .map((e) => e.trim().toLowerCase())
+      .filter(Boolean);
+    const isPlatform = platformEmails.includes(pUser.email.toLowerCase());
+    const roleKey = isPlatform ? "platform-admin" : db.admin ? "accurate-admin" : "staff";
+    const roleName = isPlatform ? "Admin Platform" : db.admin ? "Admin Accurate" : "Staff";
     const role = await prisma.role.upsert({
       where: { tenantId_key: { tenantId: tenant.id, key: roleKey } },
-      create: { tenantId: tenant.id, key: roleKey, name: db.admin ? "Administrator" : "Staff" },
-      update: {},
+      create: { tenantId: tenant.id, key: roleKey, name: roleName },
+      update: { name: roleName },
     });
-    if (db.admin) {
-      await prisma.rolePermission.createMany({
-        data: ["app:users.manage", "app:settings.manage", "app:drive.tidy", "app:chat.history", "app:audit.view"].map(
-          (permissionKey) => ({ roleId: role.id, permissionKey })
-        ),
-        skipDuplicates: true,
-      });
-    }
+    const modulPerms = accurateProvider()
+      .capabilityCatalog()
+      .map((t) => t.requiredPermission);
+    const appPerms = isPlatform
+      ? ["app:users.manage", "app:settings.manage", "app:drive.tidy", "app:chat.history", "app:audit.view"]
+      : db.admin
+        ? ["app:users.manage", "app:drive.tidy", "app:chat.history", "app:audit.view"] // tanpa settings.manage
+        : [];
+    const staffView = ["accurate:customer.view", "accurate:item.view", "accurate:sales-invoice.view", "accurate:sales-receipt.view"];
+    await prisma.rolePermission.createMany({
+      data: (isPlatform || db.admin ? [...appPerms, ...modulPerms] : [...appPerms, ...staffView]).map(
+        (permissionKey) => ({ roleId: role.id, permissionKey })
+      ),
+      skipDuplicates: true,
+    });
     const user = await prisma.user.upsert({
       where: { tenantId_providerUserId: { tenantId: tenant.id, providerUserId: pUser.providerUserId } },
       create: {
@@ -126,15 +142,6 @@ async function handleCallback(
         session: open.session,
       },
     });
-    if (db.admin) {
-      const modulPerms = accurateProvider()
-        .capabilityCatalog()
-        .map((t) => t.requiredPermission);
-      await prisma.rolePermission.createMany({
-        data: modulPerms.map((permissionKey) => ({ roleId: role.id, permissionKey })),
-        skipDuplicates: true,
-      });
-    }
     const sid = randomBytes(32).toString("hex");
     await prisma.session.create({
       data: { id: sid, userId: user.id, expiresAt: new Date(Date.now() + 7 * 86400_000) },

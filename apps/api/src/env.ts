@@ -9,6 +9,8 @@ const Env = z.object({
   ACCURATE_API_BASE: z.string().default("https://account.accurate.id"),
   MOCK_ACCURATE_URL: z.string().default(""),
   APP_ORIGIN: z.string().default("http://localhost:5173"),
+  /** email (pisahkan koma) yang berhak jadi Admin Platform — bukan sekadar admin Accurate */
+  PLATFORM_ADMIN_EMAILS: z.string().default(""),
   GOOGLE_OAUTH_CLIENT_ID: z.string().default(""),
   GOOGLE_OAUTH_CLIENT_SECRET: z.string().default(""),
   GEMINI_API_KEY: z.string().default(""),

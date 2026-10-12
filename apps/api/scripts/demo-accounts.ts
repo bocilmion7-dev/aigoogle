@@ -120,7 +120,7 @@ async function main() {
   const tenant = await prisma.tenant.findFirst({ where: { alias: TENANT_ALIAS } });
   if (!tenant) throw new Error(`tenant alias ${TENANT_ALIAS} tidak ditemukan`);
 
-  const adminRole = await upsertRole(tenant.id, "admin", "Administrator");
+  const adminRole = await upsertRole(tenant.id, "platform-admin", "Admin Platform");
   await grant(adminRole.id, ADMIN_PERMS);
 
   const staffRole = await upsertRole(tenant.id, "staff", "Staff");
@@ -130,7 +130,7 @@ async function main() {
   const pelanggan = await ensureUser(tenant.id, "pelanggan@demo.local", "Pelanggan Demo", staffRole.id);
 
   console.log(`tenant: ${tenant.name} (${tenant.alias})`);
-  console.log(`admin@demo.local / ${PASSWORD} — role admin${admin.created ? " (baru)" : " (diperbarui)"}`);
+  console.log(`admin@demo.local / ${PASSWORD} — role platform-admin${admin.created ? " (baru)" : " (diperbarui)"}`);
   console.log(`pelanggan@demo.local / ${PASSWORD} — role staff${pelanggan.created ? " (baru)" : " (diperbarui)"}`);
 
   await refreshConnection(tenant.id);

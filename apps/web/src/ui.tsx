@@ -4,8 +4,8 @@ import { getMe } from "./api";
 
 /**
  * Header bersama semua halaman aplikasi (kecuali Landing).
- * Isi menu mengikuti hak user: Admin hanya bila app:users.manage,
- * Pelanggan hanya bila accurate:customer.view.
+ * Isi menu mengikuti tingkat peran: 4 menu inti; Admin bila app:users.manage
+ * (admin Accurate); Pengaturan bila app:settings.manage (hanya Admin Platform).
  * Bila `me` tidak diberikan, komponen memuat /api/me sendiri.
  */
 export function AppHeader({ me }: { me?: Me | null }) {
@@ -19,25 +19,20 @@ export function AppHeader({ me }: { me?: Me | null }) {
 
   const cur = window.location.pathname;
   const perms = data.permissions ?? [];
-  const isAdmin = perms.includes("app:users.manage");
-  // Aturan menu:
-  //  - Pelanggan Accurate : Dashboard, Explore Manager, Pelanggan, WhatsApp
-  //  - Admin (platform)   : semua menu (4 di atas + Admin + Pengaturan)
-  const links: Array<{ href: string; label: string }> = isAdmin
-    ? [
-        { href: "/app", label: "Dashboard" },
-        { href: "/pelanggan", label: "Pelanggan" },
-        { href: "/explore", label: "Explore Manager" },
-        { href: "/whatsapp", label: "WhatsApp" },
-        { href: "/admin", label: "Admin" },
-        { href: "/settings", label: "Pengaturan" },
-      ]
-    : [
-        { href: "/app", label: "Dashboard" },
-        { href: "/pelanggan", label: "Pelanggan" },
-        { href: "/explore", label: "Explore Manager" },
-        { href: "/whatsapp", label: "WhatsApp" },
-      ];
+  // Aturan menu per tingkat peran:
+  //  - Staff Accurate      : 4 menu inti (Dashboard, Pelanggan, Explore, WhatsApp)
+  //  - Admin Accurate      : + Admin (kelola user/peran/audit perusahaan) — TANPA Pengaturan
+  //  - Admin Platform      : semua (4 + Admin + Pengaturan)
+  const canAdmin = perms.includes("app:users.manage");
+  const canSettings = perms.includes("app:settings.manage");
+  const links: Array<{ href: string; label: string }> = [
+    { href: "/app", label: "Dashboard" },
+    { href: "/pelanggan", label: "Pelanggan" },
+    { href: "/explore", label: "Explore Manager" },
+    { href: "/whatsapp", label: "WhatsApp" },
+    ...(canAdmin ? [{ href: "/admin", label: "Admin" }] : []),
+    ...(canSettings ? [{ href: "/settings", label: "Pengaturan" }] : []),
+  ];
 
   return (
     <header className="app-header">

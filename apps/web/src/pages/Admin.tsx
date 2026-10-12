@@ -40,6 +40,7 @@ export function Admin() {
   const [waPhone, setWaPhone] = useState("");
   const [me, setMe] = useState<Awaited<ReturnType<typeof getMe>> | undefined>(undefined);
   const isAdmin = !!me?.permissions?.includes("app:users.manage");
+  const canSettings = !!me?.permissions?.includes("app:settings.manage"); // Admin Platform saja
 
   useEffect(() => {
     void getMe().then(setMe);
@@ -85,6 +86,10 @@ export function Admin() {
       const role = roles.find((x) => x.id === selRole);
       setChecked(new Set(role?.permissions ?? []));
     }
+    if (tab === "settings" && !canSettings) {
+      setTab("users");
+      return;
+    }
     if (tab === "settings") {
       setErr(null);
       void getSettings()
@@ -99,7 +104,7 @@ export function Admin() {
         })
         .catch(() => undefined);
     }
-  }, [tab, selRole, roles, isAdmin]);
+  }, [tab, selRole, roles, isAdmin, canSettings]);
 
   const errText = (code?: string) =>
     code === "tidak_boleh_ubah_role_sendiri"
@@ -202,9 +207,11 @@ export function Admin() {
           <button className="tab" aria-pressed={tab === "audit"} onClick={() => setTab("audit")}>
             Audit
           </button>
-          <button className="tab" aria-pressed={tab === "settings"} onClick={() => setTab("settings")}>
-            Pengaturan
-          </button>
+          {canSettings && (
+            <button className="tab" aria-pressed={tab === "settings"} onClick={() => setTab("settings")}>
+              Pengaturan
+            </button>
+          )}
         </div>
 
         {msg && <p className="banner banner--ok" role="status">{msg}</p>}
