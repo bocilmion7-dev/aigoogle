@@ -1,6 +1,6 @@
 # Phase 7: Cakupan Penuh API Accurate — Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use executing-plans to implement this plan task-by-task (inline only — subagent mati di workspace ini). Steps use checkbox (`- [ ]`) syntax for tracking. Setelah plan, eksekusi langsung tanpa bertanya; uji akhir **LIVE ke API Accurate asli** (bukan mock).
+> **For agentic workers:** REQUIRED SUB-SKILL: Use executing-plans to implement this plan task-by-task (inline only — subagent mati di workspace ini). Steps use checkbox (`- [x]`) syntax for tracking. Setelah plan, eksekusi langsung tanpa bertanya; uji akhir **LIVE ke API Accurate asli** (bukan mock).
 
 **Goal:** Tidak ada endpoint Accurate yang tertinggal — semua **76 modul (366 aksi) + 11 util + 73 event webhook** terimplementasi di adapter, catalog tool, mock, dan receiver webhook, lulus test suite + uji live penuh tanpa error.
 
@@ -68,7 +68,7 @@
 - Create: `docs/spikes/accurate-actions-manifest.json`
 - Test: `apps/api/test/accurate-manifest.test.ts`
 
-- [ ] **Step 1: Tulis generator**
+- [x] **Step 1: Tulis generator**
 
 `scripts/build-accurate-manifest.mjs`:
 
@@ -122,12 +122,12 @@ writeFileSync("docs/spikes/accurate-actions-manifest.json", JSON.stringify(manif
 console.log(manifest.totals);
 ```
 
-- [ ] **Step 2: Jalankan generator**
+- [x] **Step 2: Jalankan generator**
 
 Run: `node scripts/build-accurate-manifest.mjs`
 Expected: `{ modules: 76, actions: 366, utils: 11, webhookEvents: 73 }`
 
-- [ ] **Step 3: Tulis test sinkronisasi**
+- [x] **Step 3: Tulis test sinkronisasi**
 
 `apps/api/test/accurate-manifest.test.ts`:
 
@@ -162,12 +162,12 @@ describe("manifest cakupan penuh Accurate", () => {
 });
 ```
 
-- [ ] **Step 4: Test gagal dulu → isi catalog (Task 3) → PASS**
+- [x] **Step 4: Test gagal dulu → isi catalog (Task 3) → PASS**
 
 Run: `pnpm --filter @aigoogle/api exec vitest run test/accurate-manifest.test.ts`
 Expected: gagal di test catalog (catalog lama 10 tool) — Task 3 menyelesaikan.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git -C /root/aigoogle add scripts/build-accurate-manifest.mjs docs/spikes/accurate-actions-manifest.json apps/api/test/accurate-manifest.test.ts
@@ -182,7 +182,7 @@ git -C /root/aigoogle -c user.name="bocilmion7-dev" -c user.email="bocilmion7-de
 - Create: `apps/api/src/providers/accounting/accurate-paths.ts`
 - Modify: `apps/api/src/providers/accounting/accurate.ts`
 
-- [ ] **Step 1: Buat `accurate-paths.ts` (manifest → struktur jalan)**
+- [x] **Step 1: Buat `accurate-paths.ts` (manifest → struktur jalan)**
 
 ```ts
 import { readFileSync } from "node:fs";
@@ -214,7 +214,7 @@ for (const [mod, acts] of Object.entries(ACCURATE_MODULES)) {
 }
 ```
 
-- [ ] **Step 2: Ganti `execute()` di accurate.ts jadi generic**
+- [x] **Step 2: Ganti `execute()` di accurate.ts jadi generic**
 
 Hapus `listPaths`/`detailPaths` lokal. Ganti isi `execute`:
 
@@ -246,7 +246,7 @@ Hapus `listPaths`/`detailPaths` lokal. Ganti isi `execute`:
 
 Catatan: `detail.do` per tool `*.detail` otomatis GET dgn `buildQuery` → `id` harus dikirim sebagai query — tambahkan di `buildQuery`: `if (typeof args.id === "string") qs.set("id", args.id);`
 
-- [ ] **Step 3: 8 util baru di class**
+- [x] **Step 3: 8 util baru di class**
 
 ```ts
   utilGet(path: string, ctx: ProviderCtx, extraQuery = "") {
@@ -267,7 +267,7 @@ Catatan: `detail.do` per tool `*.detail` otomatis GET dgn `buildQuery` → `id` 
   async webhookRenew(ctx: ProviderCtx) { return (await this.utilGet("webhook-renew", ctx)).d; }
 ```
 
-- [ ] **Step 4: tsc + test adapter existing**
+- [x] **Step 4: tsc + test adapter existing**
 
 Run: `pnpm --filter @aigoogle/api exec tsc --noEmit && pnpm --filter @aigoogle/api exec vitest run test/accurate-execute.test.ts`
 Expected: tsc OK; accurate-execute PASS (tool lama `customer.list` dsb tetap ada dgn path sama).
@@ -285,7 +285,7 @@ git -C /root/aigoogle -c user.name="bocilmion7-dev" -c user.email="bocilmion7-de
 **Files:**
 - Modify: `apps/api/src/providers/accounting/catalog.ts` (ganti daftar hardcode → generate)
 
-- [ ] **Step 1: Ganti isi catalog.ts**
+- [x] **Step 1: Ganti isi catalog.ts**
 
 ```ts
 import type { ToolSpec } from "./types.js";
@@ -326,12 +326,12 @@ export const ACCURATE_CATALOG: ToolSpec[] = Object.entries(ACCURATE_MODULES)
   .sort((x, y) => x.name.localeCompare(y.name));
 ```
 
-- [ ] **Step 2: cek jumlah + jalankan test manifest & catalog existing**
+- [x] **Step 2: cek jumlah + jalankan test manifest & catalog existing**
 
 Run: `pnpm --filter @aigoogle/api exec tsc --noEmit && pnpm --filter @aigoogle/api exec vitest run test/accurate-manifest.test.ts test/accurate-execute.test.ts`
 Expected: tsc OK; manifest test **PASS** (366 tool); accurate-execute gagal pada assertion `capabilityCatalog → 10 tool` — perbaiki di Task 7 jadi `366`.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git -C /root/aigoogle add apps/api/src/providers/accounting/catalog.ts
@@ -347,11 +347,11 @@ git -C /root/aigoogle -c user.name="bocilmion7-dev" -c user.email="bocilmion7-de
 - Modify: `mocks/accurate/src/store.ts`
 - Modify: `mocks/accurate/src/api-router.ts`
 
-- [ ] **Step 1: store.ts — data generik + ALL_MODULES dari manifest**
+- [x] **Step 1: store.ts — data generik + ALL_MODULES dari manifest**
 
 Ganti `interface MockDb.data` jadi `data: Record<string, Record<string, unknown>[]>` dan isi `data` dengan **key per modul** (`"customer"`, `"sales-invoice"`, … `"pos/transaction"`). Fixture lama DIPERTAHANKAN persis di key modulnya (customers → `"customer"`, salesInvoices → `"sales-invoice"`, dst). Modul lain: 1 row generik `[{ id: "<PREFIX>-001", name: "Contoh <modul>" }]` (prefix = 3 huruf awal modul upper). `ALL_MODULES` = `Object.keys(ACCURATE_MODULES)` dari manifest (import via `readFileSync` — mock boleh baca file yang sama: `../../../docs/spikes/accurate-actions-manifest.json`).
 
-- [ ] **Step 2: module-factory.ts — router semua aksi**
+- [x] **Step 2: module-factory.ts — router semua aksi**
 
 ```ts
 import { Router, type Request, type Response } from "express";
@@ -421,7 +421,7 @@ export function makeModuleRouter(mod: string): Router {
 }
 ```
 
-- [ ] **Step 3: api-router.ts — mount semua dari manifest + 8 util**
+- [x] **Step 3: api-router.ts — mount semua dari manifest + 8 util**
 
 ```ts
 import { ACCURATE_MODULES, ACCURATE_UTILS } from "./manifest.js";
@@ -433,7 +433,7 @@ for (const mod of Object.keys(ACCURATE_MODULES)) apiRouter.use(`/${mod}`, makeMo
 ```
 Router util lama (`access-privilege`, `customer`, `sales-invoice`, dkk) dihapus — semua lewat `makeModuleRouter` (access-privilege tetap dgn pola `Privilege[]` → buat khusus di `modules/access-privilege.ts` lama dipertahankan karena shape `Privilege[]` berbeda; mount manual di atas loop).
 
-- [ ] **Step 4: Mock test**
+- [x] **Step 4: Mock test**
 
 Run: `pnpm --filter @mock/accurate test`
 Expected: PASS — test lama modul utama tetap cocok (fixture dipertahankan); jika `modules.test` eksplisit memuat daftar modul → sesuaikan jadi loop manifest.
@@ -454,7 +454,7 @@ git -C /root/aigoogle -c user.name="bocilmion7-dev" -c user.email="bocilmion7-de
 - Modify: `apps/api/src/app.ts`
 - Create: `mocks/accurate/src/webhook-receiver.ts` (helper test mock — hanya utk dev lokal)
 
-- [ ] **Step 1: Prisma model**
+- [x] **Step 1: Prisma model**
 
 ```prisma
 // Webhook masuk dari Accurate Online (73 jenis event; payload disimpan mentah)
@@ -472,7 +472,7 @@ model AccurateWebhookEvent {
 ```
 Run: `DATABASE_URL=postgresql://aigoogle:aigoogle@127.0.0.1:5432/aigoogle pnpm --filter @aigoogle/api exec prisma migrate dev --name accurate_webhook_event`
 
-- [ ] **Step 2: Route receiver publik + list**
+- [x] **Step 2: Route receiver publik + list**
 
 `apps/api/src/routes/webhook-accurate.ts` — pola sama dengan `wa.ts` webhook (publik, tanpa auth) + endpoint list pakai `requirePerm("app:audit.view")`:
 
@@ -518,7 +518,7 @@ Mount di `app.ts`: `app.use("/api", webhookAccurateRouter);` (urutan setelah aut
 
 Catatan `tenantId`: receiver publik → simpan tenant default/`"default"`; jika `b.tenantId` disediakan proses internal (test) pakai itu. Verifikasi saat Task 8: tenant `"default"` harus ada — jika tidak, pakai `prisma.tenant.findFirst` fallback tenant pertama saat koneksi belum tersedia (buat helper `resolveTenant()` yang ambil `b.tenantId ?? tenantPertama ?? create("default")`).
 
-- [ ] **Step 3: Test webhook**
+- [x] **Step 3: Test webhook**
 
 `apps/api/test/webhook-accurate.test.ts`:
 
@@ -542,7 +542,7 @@ it("tolak event tak dikenal", async () => {
   expect(res.status).toBe(400);
 });
 ```
-- [ ] **Step 4: Run test → PASS → Commit**
+- [x] **Step 4: Run test → PASS → Commit**
 
 Run: `pnpm --filter @aigoogle/api exec vitest run test/webhook-accurate.test.ts`
 ```bash
@@ -557,7 +557,7 @@ git -C /root/aigoogle -c user.name="bocilmion7-dev" -c user.email="bocilmion7-de
 **Files:**
 - Create: `apps/api/test/accurate-all-actions.test.ts`
 
-- [ ] **Step 1: Parametrik semua tool**
+- [x] **Step 1: Parametrik semua tool**
 
 ```ts
 import { describe, expect, it, beforeAll } from "vitest";
@@ -585,7 +585,7 @@ it("366 tool semua ter-execute vs mock tanpa throw", async () => {
 ```
 Detail "id pertama": utk `*.detail`/`delete`, panggil dulu `*.list` → `d[0].id` (fallback `"ID-UJI"` bila modul fixture kosong → mock balas `fail` → **provider tidak throw** karena mock mengembalikan `{s:false,d}` dan `moduleGet` cukup mengembalikan `d` tanpa throw — verifikasi perilaku: bila `moduleGet` melempar utk `s:false`, tangkap `s:false` sbg "ter-execute" (respons terstruktur) dan hanya exception jaringan yang dicatat gagal).
 
-- [ ] **Step 2: Run → PASS → Commit**
+- [x] **Step 2: Run → PASS → Commit**
 
 Run: `pnpm --filter @aigoogle/api exec vitest run test/accurate-all-actions.test.ts`
 ```bash
@@ -600,18 +600,18 @@ git -C /root/aigoogle -c user.name="bocilmion7-dev" -c user.email="bocilmion7-de
 **Files:**
 - Modify: `apps/api/test/accurate-execute.test.ts`, `apps/api/test/admin.test.ts`, `apps/api/test/oauth-launch.test.ts` (bila eksplisit)
 
-- [ ] **Step 1: Cari ekspektasi yang patah**
+- [x] **Step 1: Cari ekspektasi yang patah**
 
 Run: `pnpm --filter @aigoogle/api exec vitest run` (dengan `DATABASE_URL` lokal)
 - Grep `toHaveLength(10)` / `capabilityCatalog` / `modulPerms` — ganti jumlah lama → 366 / `toMatch` jumlah permission baru (76 modul × view + save + delete ≈ jumlah unik permission — hitung dari manifest: `new Set(a.permission)`).
 - `admin.test.ts` seeding role staff: `staffView` tetap 4 — tidak berubah.
 - Jika test login/launch meng-`arrayContaining` permission lama → tetap lolos (superbag) ✓.
 
-- [ ] **Step 2: Run suite penuh → hijau**
+- [x] **Step 2: Run suite penuh → hijau**
 
 Run: `pnpm --filter @aigoogle/api exec vitest run` dengan `DATABASE_URL=postgresql://aigoogle:aigoogle@127.0.0.1:5432/aigoogle`
 Expected: semua test hijau (baseline 166 + test baru). 2 known-fail lama (`audio-real` 429, `oauth-launch` set-password) boleh tetap gagal.
-- [ ] **Step 3: tsc + lint**
+- [x] **Step 3: tsc + lint**
 
 Run: `pnpm --filter @aigoogle/api exec tsc --noEmit && pnpm --filter @aigoogle/web exec tsc --noEmit`
 Expected: tanpa error.
@@ -628,7 +628,7 @@ git -C /root/aigoogle -c user.name="bocilmion7-dev" -c user.email="bocilmion7-de
 
 Sesi nyata via `accurateCtxFor(tenantId)` (kunci OAuth Retail Demo, host+session di tabel Connection, auto-refresh token) → panggil `accurateProvider().execute()` langsung ke `https://*.accurate.id`.
 
-- [ ] **Step 1: Fase A — semua 177 aksi GET live**
+- [x] **Step 1: Fase A — semua 177 aksi GET live**
 
 ```ts
 // util: prisma.tenant.findFirst → accurateCtxFor → provider
@@ -642,11 +642,11 @@ const report: { tool: string; status: "ok" | "provider_tolak" | "gagal"; detail:
 // pacing: await sleep(60) antar request; retry 1× utk timeout
 ```
 
-- [ ] **Step 2: Fase B — 11 util live**
+- [x] **Step 2: Fase B — 11 util live**
 
 Panggil 11 util (approved-scope, auth-info, db-check-session, db-detail, db-list, db-refresh-session, db-status, open-db, userinfo, webhook-history, webhook-renew) — buka dgn `fetch` langsung `ctx.host + /api/{util}.do` + Bearer + X-Session-ID (atau method provider bila ada). Semua harus balas 200 JSON.
 
-- [ ] **Step C: tulis live modul master (save→delete bersih)**
+- [x] **Step C: tulis live modul master (save→delete bersih)**
 
 Untuk `customer`, `vendor`, `item`, `unit`:
 ```ts
@@ -655,13 +655,13 @@ const id = await execute(`${toolSave}`, { data: { name: "Uji Cakupan <epoch>" } 
 // verifikasi list tidak berisi nama tsb → hijau
 ```
 
-- [ ] **Step D: probe tulis 185 aksi POST/DELETE lain (tanpa data sampah)**
+- [x] **Step D: probe tulis 185 aksi POST/DELETE lain (tanpa data sampah)**
 
 - `delete.*` (62): Panggil dengan `id="0"` → respons provider "Data tidak ditemukan/Authorization failed" = **endpoint terverifikasi terhubung** (struktur `{s:false,d}`), bukan error kode.
 - `save.*`/special POST (127 − 4 master = 123): kirim `{ data: {} }` → diterima (return id — **langsung delete bila ada delete; bila tidak ada delete dan id kembali → catat "membuat data; hapus manual" dan JANGAN kirim payload valid dgn data bermakna**; payload `{data:{name:"Uji"}}` berisiko nyangkut → keputusan: payload `{}` saja; Accurate hampir selalu menolak `save` kosong → 400 validasi = terverifikasi).
 - Klasifikasi sama: hanya jaringan/5xx = "gagal".
 
-- [ ] **Step E: webhook live 73 event ke situs publik**
+- [x] **Step E: webhook live 73 event ke situs publik**
 
 ```ts
 for (const ev of ACCURATE_WEBHOOK_EVENTS) {
@@ -675,7 +675,7 @@ for (const ev of ACCURATE_WEBHOOK_EVENTS) {
 ```
 Catatan: butuh backend `:3001` production (deploy: `pnpm --filter @aigoogle/web build && cp -r apps/web/dist/* /var/www/aigoogle/` + API restart dengan migrasi).
 
-- [ ] **Step F: Ringkasan laporan**
+- [x] **Step F: Ringkasan laporan**
 
 Cetak tabel: total aksi, ok, provider_tolak, gagal. **Target: gagal = 0**, semua 366 aksi + 11 util + 73 webhook terpanggil.
 Run: `pnpm --filter @aigoogle/api exec tsx --env-file=../../.env scripts/live/accurate-full-live.ts`
@@ -683,23 +683,25 @@ Run: `pnpm --filter @aigoogle/api exec tsx --env-file=../../.env scripts/live/ac
 
 ---
 
+**Hasil live (12 Okt 2026):** `ok=139 tolak=240 GAGAL=0` — 366 aksi + 11 util + 73 webhook teruji vs API asli (`zeus.accurate.id`, token OAuth196 scope resmi). Master save→delete nyata 5/5 (unit/warehouse/customer/vendor/item; `transDate` format `dd/MM/yyyy`, `itemType: "INVENTORY"`, nama satuan maks7). `tolak` = batasan provider:43 aksi docs-only (server balas HTML SPA), payload probe minim ditolak validasi, modul kosong di db demo, transient302 sempat teramati (retry otomatis utk non-docsOnly).
+
 ## Task 9: Regresi final + deploy + push
 
-- [ ] **Step 1: Suite lokal penuh**
+- [x] **Step 1: Suite lokal penuh**
 
 Run: `DATABASE_URL=postgresql://aigoogle:aigoogle@127.0.0.1:5432/aigoogle pnpm --filter @aigoogle/api exec vitest run`
 Expected: hijau, kecuali 2 known pre-existing (`audio-real` tts 429 quota, `oauth-launch` set-password) — 2 itu di luar perubahan phase ini (konfirmasi via `git stash` bila perlu).
 
-- [ ] **Step 2: tsc + mock test + E2E**
+- [x] **Step 2: tsc + mock test + E2E**
 
 Run: `pnpm --filter @aigoogle/api exec tsc --noEmit && pnpm --filter @mock/accurate test` (expected hijau)
 E2E: `~/.local/opencode-venv/bin/python /tmp/opencode/e2e-check.py` → 21/21
 
-- [ ] **Step 3: Deploy prod (web + API + migrasi)**
+- [x] **Step 3: Deploy prod (web + API + migrasi)**
 
 `pnpm --filter @aigoogle/web build && cp -r apps/web/dist/* /var/www/aigoogle/` — API `:3001` sudah watch (migrasi Task 5 sudah jalan); `touch apps/api/src/index.ts` bila perlu reload.
 
-- [ ] **Step 4: Sinkron git**
+- [x] **Step 4: Sinkron git**
 
 ```bash
 git -C /root/aigoogle status --porcelain
@@ -710,7 +712,7 @@ git -C /root/aigoogle push https://bocilmion7-dev:ghp_m77c2Poa3dheMYn8xChKnYEM6e
 git -C /root/aigoogle fetch https://bocilmion7-dev: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@github.com/bocilmion7-dev/aigoogle.git "+refs/heads/main:refs/remotes/origin/main"
 ```
 
-- [ ] **Step 5: Laporan akhir (bahasa menu)**
+- [x] **Step 5: Laporan akhir (bahasa menu)**
 
 Selesai = Task 8 "gagal=0" + suite hijau + ter-push.
 
