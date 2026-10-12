@@ -9,10 +9,32 @@ export function Settings() {
     void getMe().then(setMe);
   }, []);
 
+  const canSettings = !!me?.permissions?.includes("app:settings.manage");
+
   if (me === undefined) return <p style={{ padding: 24 }}>Memuat…</p>;
   if (me === null) {
     window.location.href = "/login";
     return null;
+  }
+
+  if (!canSettings) {
+    return (
+      <div className="app">
+        <AppHeader me={me} />
+        <main className="page page--narrow">
+          <h1>Pengaturan</h1>
+          <div className="card">
+            <strong>Anda tidak punya akses menu Pengaturan.</strong>
+            <p className="meta" style={{ marginTop: 6, marginBottom: 0 }}>
+              Menu ini hanya untuk Admin platform. Hubungi administrator Anda jika Anda membutuhkannya.
+            </p>
+          </div>
+          <a className="btn btn--ghost btn--sm" href="/app">
+            ← Kembali ke dashboard
+          </a>
+        </main>
+      </div>
+    );
   }
 
   return (
