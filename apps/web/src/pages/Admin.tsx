@@ -19,6 +19,7 @@ import {
 } from "../api";
 import type { AppSettings, ConnectionInfo } from "@aigoogle/shared";
 import { AppHeader } from "../ui";
+import { ACCURATE_OAUTH_CTA } from "../oauth";
 
 type Tab = "users" | "roles" | "audit" | "settings";
 
@@ -449,7 +450,7 @@ export function Admin() {
                   : conns.find((c) => c.provider === "accurate")?.status ?? "none"}
               </p>
               {conns.find((c) => c.provider === "accurate")?.status !== "connected" && (
-                <a className="btn" href="/api/launch" style={{ marginBottom: "var(--space-xs)" }}>
+                <a className="btn" href={ACCURATE_OAUTH_CTA} style={{ marginBottom: "var(--space-xs)" }}>
                   Hubungkan Accurate
                 </a>
               )}

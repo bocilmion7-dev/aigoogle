@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ACCURATE_OAUTH_CTA } from "../oauth";
 
 export function Login() {
   const [email, setEmail] = useState("");
@@ -69,7 +70,7 @@ export function Login() {
       </form>
       <p className="meta">
         Belum punya password?{" "}
-        <a href="/api/launch">Masuk lewat Accurate →</a>
+        <a href={ACCURATE_OAUTH_CTA}>Masuk lewat Accurate →</a>
       </p>
       <a className="btn btn--ghost btn--sm" href="/" style={{ marginTop: 8 }}>
         ← Kembali

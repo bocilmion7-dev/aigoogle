@@ -29,6 +29,7 @@ export class AccurateAdapter implements AccountingProvider {
     u.searchParams.set("client_id", this.cfg.clientId);
     u.searchParams.set("redirect_uri", opts.redirectUri);
     u.searchParams.set("response_type", "code");
+    u.searchParams.set("scope", "item_view customer_view sales_invoice_view sales_invoice_save");
     u.searchParams.set("state", opts.state);
     return u.toString();
   }

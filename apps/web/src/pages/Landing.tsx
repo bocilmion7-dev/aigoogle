@@ -1,4 +1,5 @@
 import "./landing.css";
+import { ACCURATE_OAUTH_CTA } from "../oauth";
 
 const STORY = [
   {
@@ -85,7 +86,7 @@ export function Landing() {
             memutuskan, bersama Accurate yang sudah Anda pakai selama ini.
           </p>
           <div className="ld-actions ld-rise ld-rise-3">
-            <a className="ld-btn ld-btn-primary" href="/api/launch">
+            <a className="ld-btn ld-btn-primary" href={ACCURATE_OAUTH_CTA}>
               Masuk lewat Accurate →
             </a>
             <a className="ld-btn ld-btn-secondary" href="/login">
@@ -158,7 +159,7 @@ export function Landing() {
       <footer className="ld-footer">
         <span>AI Google · Add-on AI untuk Accurate Online</span>
         <span>
-          <a className="ld-link" href="/api/launch">
+          <a className="ld-link" href={ACCURATE_OAUTH_CTA}>
             Masuk lewat Accurate
           </a>
           <a className="ld-link" href="/login">

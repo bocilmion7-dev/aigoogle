@@ -4,7 +4,13 @@ import { z } from "zod";
 import { prisma } from "../db.js";
 import { env } from "../env.js";
 import { encryptToken } from "../crypto.js";
-import { accurateProvider, OAUTH_REDIRECT_URI } from "../providers/accounting/index.js";
+import {
+  accurateProvider,
+  realAccurateProvider,
+  OAUTH_REDIRECT_URI,
+  ACCURATE_REDIRECT_URI,
+} from "../providers/accounting/index.js";
+import type { AccountingProvider } from "../providers/accounting/types.js";
 
 export const launchRouter = Router();
 
@@ -20,18 +26,53 @@ launchRouter.get("/launch", (req, res) => {
   res.redirect(url.toString());
 });
 
-launchRouter.get("/oauth/accurate/callback", async (req, res, next) => {
+interface CallbackOpts {
+  redirectUri: string;
+  provider: () => AccountingProvider;
+  requireState: boolean;
+  /** origin tempat user diarahkan kembali setelah callback */
+  origin: string;
+}
+
+async function handleCallback(
+  req: Parameters<Parameters<import("express").Router["get"]>[1]>[0],
+  res: Parameters<Parameters<import("express").Router["get"]>[1]>[1],
+  next: (e?: unknown) => void,
+  opts: CallbackOpts
+): Promise<void> {
   try {
-    const { code, state } = z.object({ code: z.string(), state: z.string() }).parse(req.query);
-    const st = pending.get(state);
-    pending.delete(state);
-    if (!st || st.exp < Date.now()) return res.redirect(`${env.APP_ORIGIN}/?error=state`);
-    const provider = accurateProvider();
-    const tok = await provider.exchangeCode(code, OAUTH_REDIRECT_URI);
+    // Accurate menolak akses (user batal) → kembali dengan kode error
+    const qError = typeof req.query.error === "string" ? req.query.error : undefined;
+    if (qError) {
+      res.redirect(`${opts.origin}/?error=${encodeURIComponent(qError)}`);
+      return;
+    }
+    const { code, state } = z
+      .object({ code: z.string(), state: z.string().optional() })
+      .parse(req.query);
+    let st: { dbId?: string } | undefined;
+    if (state) {
+      const hit = pending.get(state);
+      pending.delete(state);
+      if (!hit || hit.exp < Date.now()) {
+        res.redirect(`${opts.origin}/?error=state`);
+        return;
+      }
+      st = hit;
+    } else if (opts.requireState) {
+      // alur launch lama selalu membawa state
+      res.redirect(`${opts.origin}/?error=state`);
+      return;
+    }
+    const provider = opts.provider();
+    const tok = await provider.exchangeCode(code, opts.redirectUri);
     const pUser = await provider.fetchUser(tok.accessToken);
     const dbs = await provider.listDbs(tok.accessToken);
-    const db = (st.dbId ? dbs.find((d) => d.providerDbId === st.dbId) : dbs[0]) ?? dbs[0];
-    if (!db) return res.redirect(`${env.APP_ORIGIN}/?error=nodb`);
+    const db = (st?.dbId ? dbs.find((d) => d.providerDbId === st.dbId) : dbs[0]) ?? dbs[0];
+    if (!db) {
+      res.redirect(`${opts.origin}/?error=nodb`);
+      return;
+    }
     const open = await provider.openDb(tok.accessToken, db.providerDbId);
 
     const tenant = await prisma.tenant.upsert({
@@ -100,11 +141,31 @@ launchRouter.get("/oauth/accurate/callback", async (req, res, next) => {
     });
     res.cookie("sid", sid, { httpOnly: true, sameSite: "lax", maxAge: 7 * 86400_000 });
     if (!user.passwordHash) {
-      res.redirect(`${env.APP_ORIGIN}/set-password`);
+      res.redirect(`${opts.origin}/set-password`);
       return;
     }
-    res.redirect(`${env.APP_ORIGIN}/app`);
+    res.redirect(`${opts.origin}/app`);
   } catch (e) {
     next(e);
   }
-});
+}
+
+// alur lama (mock/dev): /api/oauth/accurate/callback — wajib state, apiBase mock-aware
+launchRouter.get("/oauth/accurate/callback", (req, res, next) =>
+  handleCallback(req, res, next, {
+    redirectUri: OAUTH_REDIRECT_URI,
+    provider: accurateProvider,
+    requireState: true,
+    origin: env.APP_ORIGIN,
+  })
+);
+
+// CTA OAuth: /api/callback/accurate — tanpa state, apiBase Accurate asli
+launchRouter.get("/callback/accurate", (req, res, next) =>
+  handleCallback(req, res, next, {
+    redirectUri: ACCURATE_REDIRECT_URI,
+    provider: realAccurateProvider,
+    requireState: false,
+    origin: new URL(ACCURATE_REDIRECT_URI).origin,
+  })
+);
