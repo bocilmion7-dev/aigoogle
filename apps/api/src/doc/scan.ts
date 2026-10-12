@@ -1,3 +1,5 @@
+import { withModelFailover } from "../ai/model-pool.js";
+import { GeminiHttpError } from "../ai/gemini-error.js";
 import type { DocKind } from "./extract.js";
 import { VISION_KINDS } from "./extract.js";
 
@@ -110,23 +112,27 @@ async function geminiFields(opts: {
   apiKey: string;
   parts: Array<Record<string, unknown>>;
 }): Promise<{ rawText: string; fields: ScanFields } | null> {
-  const model = process.env.GEMINI_MODEL || "gemini-3.6-flash";
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-    {
-      method: "POST",
-      headers: { "x-goog-api-key": opts.apiKey, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ role: "user", parts: [...opts.parts, { text: FIELD_PROMPT }] }],
-        generationConfig: { temperature: 0 },
-      }),
-    }
-  );
-  if (!res.ok) return null;
-  const j = (await res.json()) as {
-    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
-  };
-  const text = j.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+  let text = "";
+  try {
+    const j = await withModelFailover("generate", async (model) => {
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+        {
+          method: "POST",
+          headers: { "x-goog-api-key": opts.apiKey, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ role: "user", parts: [...opts.parts, { text: FIELD_PROMPT }] }],
+            generationConfig: { temperature: 0 },
+          }),
+        }
+      );
+      if (!res.ok) throw new GeminiHttpError(res.status, await res.text().catch(() => ""));
+      return (await res.json()) as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
+    });
+    text = j.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+  } catch {
+    return null; // semua model gagal → fallback ekstraksi lokal
+  }
   const raw = parseJsonLoose(text);
   return raw ? coerce(raw) : null;
 }
@@ -168,34 +174,37 @@ export async function ocrDocument(opts: {
   const { buffer, kind, mime, fileName, apiKey, localText } = opts;
   if (!VISION_KINDS.has(kind)) return localText;
   if (!apiKey) return "";
-  const model = process.env.GEMINI_MODEL || "gemini-3.6-flash";
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-    {
-      method: "POST",
-      headers: { "x-goog-api-key": apiKey, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [
-          {
-            role: "user",
-            parts: [
+  try {
+    const j = await withModelFailover("generate", async (model) => {
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+        {
+          method: "POST",
+          headers: { "x-goog-api-key": apiKey, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [
               {
-                inlineData: {
-                  mimeType: kind === "pdf" ? "application/pdf" : mime,
-                  data: buffer.toString("base64"),
-                },
+                role: "user",
+                parts: [
+                  {
+                    inlineData: {
+                      mimeType: kind === "pdf" ? "application/pdf" : mime,
+                      data: buffer.toString("base64"),
+                    },
+                  },
+                  { text: `Dokumen: ${fileName}. Ekstrak SEMUA teks yang terlihat (OCR), pertahankan angka dan susunan. Balas teks saja.` },
+                ],
               },
-              { text: `Dokumen: ${fileName}. Ekstrak SEMUA teks yang terlihat (OCR), pertahankan angka dan susunan. Balas teks saja.` },
             ],
-          },
-        ],
-        generationConfig: { temperature: 0 },
-      }),
-    }
-  );
-  if (!res.ok) return "";
-  const j = (await res.json()) as {
-    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
-  };
-  return (j.candidates?.[0]?.content?.parts?.[0]?.text ?? "").trim();
+            generationConfig: { temperature: 0 },
+          }),
+        }
+      );
+      if (!res.ok) throw new GeminiHttpError(res.status, await res.text().catch(() => ""));
+      return (await res.json()) as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
+    });
+    return (j.candidates?.[0]?.content?.parts?.[0]?.text ?? "").trim();
+  } catch {
+    return ""; // semua model gagal
+  }
 }

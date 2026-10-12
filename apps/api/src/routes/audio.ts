@@ -33,6 +33,7 @@ audioRouter.post(
         },
       ],
       model: env.GEMINI_TRANSCRIBE_MODEL,
+      action: "stt",
     });
     let text = "";
     for await (const p of gen) if (p.text) text += p.text;
@@ -64,6 +65,7 @@ audioRouter.post(
       contents: [{ role: "user", parts: [{ text: body.text }] }],
       responseModalities: ["AUDIO"],
       model: env.GEMINI_TTS_MODEL,
+      action: "tts",
     });
     const audio = parts.find((p) => p.inlineData?.mimeType.startsWith("audio/"));
     if (!audio?.inlineData) throw new Error("tts tidak mengembalikan audio");

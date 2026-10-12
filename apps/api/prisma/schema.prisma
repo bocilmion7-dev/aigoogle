@@ -232,3 +232,17 @@ model WaMessageLog {
   createdAt   DateTime @default(now())
   @@index([tenantId])
 }
+
+// Pool model Gemini — daftar model "live" dari API (di-refresh saat SEMUA model gagal)
+model GeminiModel {
+  id           String    @id // "generate:gemini-x-flash"
+  action       String // generate | tts | stt
+  name         String
+  rank         Int       @default(0) // urutan percobaan (0 = utama)
+  failureCount Int       @default(0) // gagal berutun → menunggu refresh live
+  lastError    String    @default("")
+  lastOkAt     DateTime?
+  lastFailAt   DateTime?
+  syncedAt     DateTime  @default(now())
+  @@index([action, rank])
+}

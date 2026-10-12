@@ -1,3 +1,6 @@
+import { withModelFailover } from "../ai/model-pool.js";
+import { GeminiHttpError } from "../ai/gemini-error.js";
+
 export const CATEGORIES = ["Faktur", "Kuitansi", "Nota", "Surat Jalan", "Lainnya"] as const;
 export type Category = (typeof CATEGORIES)[number];
 
@@ -33,27 +36,26 @@ export async function classifyWithGemini(
   const fallback = () => (fileName ? classifyFileName(fileName) : classifyText(text));
   if (!apiKey || !VISION_OK.test(mimeType)) return fallback();
   try {
-    const model = process.env.GEMINI_MODEL || "gemini-3.6-flash";
     const prompt =
       `Klasifikasi dokumen ini ke salah satu: ${CATEGORIES.join(", ")}. Balas HANYA kata kategorinya.` +
       (fileName ? ` Nama file: ${fileName}` : "");
     const parts: Array<Record<string, unknown>> = mediaBase64
       ? [{ inlineData: { mimeType, data: mediaBase64 } }, { text: prompt }]
       : [{ text: `${prompt}\n\n${text.slice(0, 1500)}` }];
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-      {
-        method: "POST",
-        headers: { "x-goog-api-key": apiKey, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ role: "user", parts }],
-        }),
-      }
-    );
-    if (!res.ok) return fallback();
-    const j = (await res.json()) as {
-      candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
-    };
+    const j = await withModelFailover("generate", async (model) => {
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+        {
+          method: "POST",
+          headers: { "x-goog-api-key": apiKey, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ role: "user", parts }],
+          }),
+        }
+      );
+      if (!res.ok) throw new GeminiHttpError(res.status, await res.text().catch(() => ""));
+      return (await res.json()) as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
+    });
     const raw = (j.candidates?.[0]?.content?.parts?.[0]?.text ?? "").trim();
     const hit = CATEGORIES.find((c) => c.toLowerCase() === raw.toLowerCase());
     return hit ?? fallback();

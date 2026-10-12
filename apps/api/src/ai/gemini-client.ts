@@ -1,5 +1,9 @@
 import { env } from "../env.js";
+import { GeminiHttpError } from "./gemini-error.js";
+import { withModelFailover } from "./model-pool.js";
 import type { GenerateOpts, GeminiPart } from "./gemini-types.js";
+
+export { GeminiHttpError };
 
 export interface GeminiClient {
   generate(opts: GenerateOpts): Promise<{ parts: GeminiPart[] }>;
@@ -7,13 +11,6 @@ export interface GeminiClient {
 }
 
 const BASE = "https://generativelanguage.googleapis.com/v1beta";
-
-export class GeminiHttpError extends Error {
-  constructor(readonly status: number, message: string) {
-    super(message);
-    this.name = "GeminiHttpError";
-  }
-}
 
 export class RealGeminiClient implements GeminiClient {
   constructor(private apiKey: string) {}
@@ -28,21 +25,20 @@ export class RealGeminiClient implements GeminiClient {
   }
 
   private async post(path: string, opts: GenerateOpts): Promise<Response> {
-    const doFetch = () =>
-      fetch(`${BASE}/models/${opts.model}:${path}`, {
-        method: "POST",
-        headers: { "x-goog-api-key": this.apiKey, "Content-Type": "application/json" },
-        body: this.body(opts),
-      });
-    let last: { status: number; text: string } = { status: 0, text: "" };
-    for (let attempt = 0; attempt < 3; attempt++) {
-      const res = await doFetch();
-      if (res.ok) return res;
-      last = { status: res.status, text: await res.text().catch(() => "") };
-      if ((res.status !== 429 && res.status !== 503) || attempt === 2) break;
-      await new Promise((r) => setTimeout(r, 1500 * 2 ** attempt));
-    }
-    throw new GeminiHttpError(last.status, last.text);
+    // failover: coba model satu per satu dari pool; semua gagal → refresh live
+    return withModelFailover(
+      opts.action ?? "generate",
+      async (model) => {
+        const res = await fetch(`${BASE}/models/${model}:${path}`, {
+          method: "POST",
+          headers: { "x-goog-api-key": this.apiKey, "Content-Type": "application/json" },
+          body: this.body(opts),
+        });
+        if (!res.ok) throw new GeminiHttpError(res.status, await res.text().catch(() => ""));
+        return res;
+      },
+      opts.model ?? env.GEMINI_MODEL
+    );
   }
 
   private partsFrom(json: { candidates?: Array<{ content?: { parts?: GeminiPart[] } }> }): GeminiPart[] {
@@ -50,15 +46,12 @@ export class RealGeminiClient implements GeminiClient {
   }
 
   async generate(opts: GenerateOpts): Promise<{ parts: GeminiPart[] }> {
-    const res = await this.post("generateContent", { ...opts, model: opts.model ?? env.GEMINI_MODEL });
+    const res = await this.post("generateContent", opts);
     return { parts: this.partsFrom(await res.json()) };
   }
 
   async *generateStream(opts: GenerateOpts): AsyncGenerator<GeminiPart> {
-    const res = await this.post("streamGenerateContent?alt=sse", {
-      ...opts,
-      model: opts.model ?? env.GEMINI_MODEL,
-    });
+    const res = await this.post("streamGenerateContent?alt=sse", opts);
     const reader = res.body!.getReader();
     const decoder = new TextDecoder();
     let buf = "";
