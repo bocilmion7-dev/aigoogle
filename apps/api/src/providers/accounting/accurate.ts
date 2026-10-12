@@ -35,14 +35,15 @@ export class AccurateAdapter implements AccountingProvider {
   }
 
   private async tokenRequest(params: Record<string, string>): Promise<ProviderTokenSet> {
+    // Accurate mewajibkan HTTP Basic Auth (client_id:client_secret) — bukan di body
+    const basic = Buffer.from(`${this.cfg.clientId}:${this.cfg.clientSecret}`).toString("base64");
     const res = await fetch(`${this.cfg.apiBase}/oauth/token`, {
       method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        client_id: this.cfg.clientId,
-        client_secret: this.cfg.clientSecret,
-        ...params,
-      }),
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Authorization: `Basic ${basic}`,
+      },
+      body: new URLSearchParams(params),
     });
     if (!res.ok) throw new Error(`token endpoint ${res.status}: ${await res.text()}`);
     const j = (await res.json()) as { access_token: string; refresh_token: string; expires_in: number };
@@ -57,49 +58,58 @@ export class AccurateAdapter implements AccountingProvider {
     return this.tokenRequest({ grant_type: "authorization_code", code, redirect_uri: redirectUri });
   }
 
-  private async getEnvelope<T>(path: string, accessToken: string): Promise<Envelope<T>> {
+  /** GET JSON: dukung envelope {s,d} (mock) maupun objek langsung (Accurate asli). */
+  private async fetchJson(path: string, accessToken: string): Promise<Record<string, unknown>> {
     const res = await fetch(`${this.cfg.apiBase}${path}`, {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
     if (res.status === 401) throw new Error("token ditolak provider (401)");
-    const j = (await res.json()) as Envelope<T>;
-    if (!j.s) throw new Error(`provider gagal: ${JSON.stringify(j.d)}`);
-    return j;
+    const raw = await res.text();
+    let j: Record<string, unknown>;
+    try {
+      j = JSON.parse(raw) as Record<string, unknown>;
+    } catch {
+      throw new Error(`provider non-JSON ${res.status} ${path}: ${raw.slice(0, 300)}`);
+    }
+    if (j && typeof j === "object" && "s" in j && !j.s) {
+      throw new Error(`provider gagal ${path}: ${raw.slice(0, 300)}`);
+    }
+    return j ?? {};
   }
 
   async fetchUser(accessToken: string): Promise<ProviderUser> {
-    const j = await this.getEnvelope<{ id: string; email: string; name: string; phone?: string }>(
-      "/api/userinfo.do",
-      accessToken
-    );
+    const j = await this.fetchJson("/api/userinfo.do", accessToken);
+    // Accurate asli: profil gaya OpenID {sub,name,email,phone_number}; mock: envelope {s,d:{id,...}}
+    const d = (j.sub ? j : ((j.d as Record<string, unknown>) ?? j)) as Record<string, unknown>;
+    const id = d.sub ?? d.id;
+    if (!id || !d.email) throw new Error(`userinfo tak dikenal: ${JSON.stringify(j).slice(0, 300)}`);
     return {
-      providerUserId: j.d.id,
-      email: j.d.email,
-      name: j.d.name,
-      phone: typeof j.d.phone === "string" ? j.d.phone : "",
+      providerUserId: String(id),
+      email: String(d.email),
+      name: String(d.name ?? ""),
+      phone: typeof d.phone_number === "string" ? d.phone_number : typeof d.phone === "string" ? d.phone : "",
     };
   }
 
   async listDbs(accessToken: string): Promise<ProviderDb[]> {
-    const j = await this.getEnvelope<{ id: number; alias: string; name: string; admin: boolean }[]>(
-      "/api/db-list.do",
-      accessToken
-    );
-    return j.d.map((r) => ({
+    const j = await this.fetchJson("/api/db-list.do", accessToken);
+    const arr = Array.isArray(j) ? j : Array.isArray(j.d) ? (j.d as Record<string, unknown>[]) : null;
+    if (!arr) throw new Error(`db-list tak dikenal: ${JSON.stringify(j).slice(0, 300)}`);
+    return arr.map((r) => ({
       providerDbId: String(r.id),
-      alias: r.alias,
-      name: r.name ?? r.alias,
-      admin: r.admin,
+      alias: String(r.alias ?? ""),
+      name: String(r.name ?? r.alias ?? ""),
+      admin: Boolean(r.admin),
     }));
   }
 
   async openDb(accessToken: string, providerDbId: string): Promise<OpenDbResult> {
-    const j = await this.getEnvelope<unknown>(
-      `/api/open-db.do?id=${encodeURIComponent(providerDbId)}`,
-      accessToken
-    );
-    if (!j.session || !j.host) throw new Error("open-db tidak mengembalikan session/host");
-    return { session: j.session, host: j.host };
+    const j = await this.fetchJson(`/api/open-db.do?id=${encodeURIComponent(providerDbId)}`, accessToken);
+    const d = (j.d && typeof j.d === "object" ? j.d : {}) as Record<string, unknown>;
+    const host = j.host ?? d.host;
+    const session = j.session ?? d.session;
+    if (!host || !session) throw new Error(`open-db tidak mengembalikan session/host: ${JSON.stringify(j).slice(0, 300)}`);
+    return { session: String(session), host: String(host) };
   }
 
   capabilityCatalog(): ToolSpec[] {
