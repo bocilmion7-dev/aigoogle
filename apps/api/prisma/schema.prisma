@@ -26,6 +26,7 @@ model Tenant {
   waBalance    WaBalance?
   waTopups     WaTopup[]
   waMessages   WaMessageLog[]
+  accurateWebhookEvents AccurateWebhookEvent[]
   @@unique([provider, providerDbId])
 }
 
@@ -245,4 +246,17 @@ model GeminiModel {
   lastFailAt   DateTime?
   syncedAt     DateTime  @default(now())
   @@index([action, rank])
+}
+
+// Webhook masuk dari Accurate Online (73 jenis event sesuai docs-modules; payload disimpan mentah)
+model AccurateWebhookEvent {
+  id        String   @id @default(cuid())
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  tenantId  String
+  event     String
+  dbId      String   @default("")
+  payload   String   @default("{}")
+  createdAt DateTime @default(now())
+
+  @@index([tenantId, event, createdAt])
 }
