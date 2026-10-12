@@ -1,1 +1,6 @@
 node_modules/
+
+# rahasia lokal — jangan di-commit
+.env
+.env.*
+!.env.example
