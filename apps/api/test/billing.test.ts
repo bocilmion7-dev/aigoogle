@@ -77,7 +77,10 @@ describe("webhook update (mode aktif disuntik via env)", () => {
       transaction_status: "deny",
     };
     const sig = computeWebhookSignature(payload, "srv-test");
-    const bad = await request(api).post("/api/billing/webhook").set("X-Signature-Key", sig.replace(/.$/, "0")).send(payload);
+    // ubah karakter terakhir ke nilai yg BERBEDA dari aslinya (bila sudah "0" pakai "1")
+    const flipped = sig.replace(/.$/, (c) => (c === "0" ? "1" : "0"));
+    expect(flipped).not.toBe(sig);
+    const bad = await request(api).post("/api/billing/webhook").set("X-Signature-Key", flipped).send(payload);
     expect(bad.status).toBe(401);
     const ok = await request(api).post("/api/billing/webhook").set("X-Signature-Key", sig).send(payload);
     expect(ok.status).toBe(200);

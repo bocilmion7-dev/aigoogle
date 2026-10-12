@@ -1,7 +1,7 @@
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { prisma } from "../src/db.js";
 import { env } from "../src/env.js";
-import { withModelFailover, refreshModelsLive, MAX_FAILURES } from "../src/ai/model-pool.js";
+import { withModelFailover, refreshModelsLive, resetRefreshCooldown, MAX_FAILURES } from "../src/ai/model-pool.js";
 import { GeminiHttpError } from "../src/ai/gemini-error.js";
 
 function listResp(names: string[]): Response {
@@ -19,6 +19,7 @@ function listResp(names: string[]): Response {
 
 beforeEach(async () => {
   await prisma.geminiModel.deleteMany({});
+  resetRefreshCooldown();
 });
 
 afterEach(() => {

@@ -39,10 +39,15 @@ const isTransient = (s: number) => s === 0 || s === 404 || s === 429 || s >= 500
 const errMsg = (e: unknown) => (e instanceof Error ? e.message : String(e)).slice(0, 500);
 
 let refreshP: Promise<number> | null = null;
+let lastRefreshAt = 0;
+/** Saat semua model gagal (mis. kuota habis), jangan muat ulang daftar live lebih
+ * sering dari ini — reset hitungan tetap terjadi tiap cooldown, latensi terjaga. */
+const REFRESH_COOLDOWN_MS = 10_000;
 
 /** Muat SEMUA model live dari API Gemini → tulis ke tabel (mengganti isi lama). */
 export async function refreshModelsLive(): Promise<number> {
   if (refreshP) return refreshP;
+  if (Date.now() - lastRefreshAt < REFRESH_COOLDOWN_MS) return 0;
   refreshP = (async () => {
     const key = process.env.GEMINI_API_KEY || "";
     if (key.length < 10) return 0;
@@ -102,8 +107,14 @@ export async function refreshModelsLive(): Promise<number> {
     return rows.length;
   })().finally(() => {
     refreshP = null;
+    lastRefreshAt = Date.now();
   });
   return refreshP;
+}
+
+/** Hanya untuk test: longgarkan cooldown refresh agar skenario refresh bisa diuji. */
+export function resetRefreshCooldown(): void {
+  lastRefreshAt = 0;
 }
 
 async function ensureSeeded(): Promise<void> {
