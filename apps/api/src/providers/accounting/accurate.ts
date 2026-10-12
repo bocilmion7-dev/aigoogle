@@ -4,7 +4,7 @@ const DEFAULT_LIST_FIELDS: Record<string, string> = {
   "salesOrder.list": "id,no,customerName,date,total,status,customer,totalAmount",
   "item.list": "id,code,name,unit,sellingPrice",
   "vendor.list": "id,code,name,phone,email,address",
-  "glAccount.list": "id,code,name,type",
+  "glaccount.list": "id,code,name,type",
   "purchaseInvoice.list": "id,no,vendorName,date,total,status,vendor,totalAmount",
   "salesReceipt.list": "id,no,customerName,date,total,status,customer,totalAmount",
 };
@@ -22,6 +22,7 @@ import type {
   ToolSpec,
 } from "./types.js";
 import { ACCURATE_CATALOG } from "./catalog.js";
+import { ACTION_ROUTES } from "./accurate-paths.js";
 
 interface Envelope<T> {
   s: boolean;
@@ -123,6 +124,39 @@ export class AccurateAdapter implements AccountingProvider {
     return { session: String(session), host: String(host) };
   }
 
+  private async utilGet(util: string, ctx: ProviderCtx, extraQuery = ""): Promise<unknown> {
+    const j = await this.moduleGet(`/api/${util}.do${extraQuery}`, ctx);
+    return j.d;
+  }
+  approvedScope(ctx: ProviderCtx): Promise<unknown> {
+    return this.utilGet("approved-scope", ctx);
+  }
+  authInfo(ctx: ProviderCtx): Promise<unknown> {
+    return this.utilGet("auth-info", ctx);
+  }
+  dbCheckSession(ctx: ProviderCtx): Promise<unknown> {
+    return this.utilGet("db-check-session", ctx);
+  }
+  dbDetail(ctx: ProviderCtx): Promise<unknown> {
+    return this.utilGet("db-detail", ctx);
+  }
+  dbList(ctx: ProviderCtx): Promise<unknown> {
+    return this.utilGet("db-list", ctx);
+  }
+  dbRefreshSession(ctx: ProviderCtx): Promise<unknown> {
+    return this.utilGet("db-refresh-session", ctx);
+  }
+  dbStatus(ctx: ProviderCtx): Promise<unknown> {
+    return this.utilGet("db-status", ctx);
+  }
+  webhookHistory(ctx: ProviderCtx, from?: string, to?: string): Promise<unknown> {
+    const q = from ? `?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to ?? from)}` : "";
+    return this.utilGet("webhook-history", ctx, q);
+  }
+  webhookRenew(ctx: ProviderCtx): Promise<unknown> {
+    return this.utilGet("webhook-renew", ctx);
+  }
+
   capabilityCatalog(): ToolSpec[] {
     return ACCURATE_CATALOG;
   }
@@ -158,44 +192,44 @@ export class AccurateAdapter implements AccountingProvider {
         }
       }
     }
+    // argumen tambahan (id, accountCode, dst) ikut terkirim apa adanya
+    for (const [k, v] of Object.entries(args)) {
+      if (["fields", "keywords", "page", "pageSize", "sort", "filter"].includes(k)) continue;
+      if (v === undefined || v === null || typeof v === "object") continue;
+      qs.set(k, String(v));
+    }
     const s = qs.toString();
     return s ? `?${s}` : "";
   }
 
   async execute(tool: string, args: Record<string, unknown>, ctx: ProviderCtx): Promise<unknown> {
-    const listPaths: Record<string, string> = {
-      "customer.list": "/accurate/api/customer/list.do",
-      "salesInvoice.list": "/accurate/api/sales-invoice/list.do",
-      "salesOrder.list": "/accurate/api/sales-order/list.do",
-      "item.list": "/accurate/api/item/list.do",
-      "vendor.list": "/accurate/api/vendor/list.do",
-      "glAccount.list": "/accurate/api/glaccount/list.do",
-      "purchaseInvoice.list": "/accurate/api/purchase-invoice/list.do",
-      "salesReceipt.list": "/accurate/api/sales-receipt/list.do",
-    };
-    const detailPaths: Record<string, string> = {
-      "customer.detail": "/accurate/api/customer/detail.do",
-      "salesInvoice.detail": "/accurate/api/sales-invoice/detail.do",
-    };
-    const listPath = listPaths[tool];
-    if (listPath) {
+    const route = ACTION_ROUTES[tool];
+    if (!route) throw new Error(`tool tidak dikenal: ${tool}`);
+    if (route.method === "GET") {
+      let merged = args;
       // API Accurate asli hanya membalas {id} kecuali dimintai fields;
       // mock menyaring sendiri kolom yang dikenal → daftar gabungan aman dua arah
-      let merged: Record<string, unknown> = args;
-      if (!(typeof args.fields === "string" && args.fields) && DEFAULT_LIST_FIELDS[tool]) {
+      if (tool.endsWith(".list") && !(typeof args.fields === "string" && args.fields) && DEFAULT_LIST_FIELDS[tool]) {
         merged = { ...args, fields: DEFAULT_LIST_FIELDS[tool] };
       }
-      const j = await this.moduleGet(`${listPath}${this.buildQuery(merged)}`, ctx);
+      const j = await this.moduleGet(`${route.path}${this.buildQuery(merged)}`, ctx);
       return j.d;
     }
-    const detailPath = detailPaths[tool];
-    if (detailPath) {
+    if (route.method === "DELETE") {
       const id = args.id;
-      if (typeof id !== "string" || !id) throw new Error("args.id wajib string untuk tool detail");
-      const j = await this.moduleGet(`${detailPath}?id=${encodeURIComponent(id)}`, ctx);
+      if (typeof id !== "string" || !id) throw new Error("args.id wajib string untuk aksi delete");
+      const res = await fetch(`${ctx.host}${route.path}?id=${encodeURIComponent(id)}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${ctx.accessToken}`, "X-Session-ID": ctx.session },
+        redirect: "follow",
+      });
+      if (res.status === 401) throw new Error("sesi/token ditolak provider (401)");
+      const j = (await res.json()) as Envelope<unknown>;
+      if (!j.s) throw new Error(`provider gagal: ${JSON.stringify(j.d)}`);
       return j.d;
     }
-    throw new Error(`tool tidak dikenal: ${tool}`);
+    const j = await this.modulePost(route.path, args, ctx);
+    return j.d;
   }
 
   private async modulePost(path: string, body: unknown, ctx: ProviderCtx): Promise<Envelope<unknown>> {
