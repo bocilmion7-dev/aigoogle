@@ -37,6 +37,12 @@ export class GoogleDriveClient implements DriveClient {
     return res.text();
   }
 
+  async getBytes(fileId: string): Promise<Uint8Array> {
+    const res = await fetch(`${API}/files/${fileId}?alt=media`, { headers: this.headers() });
+    if (!res.ok) throw new Error(`drive download gagal (${res.status})`);
+    return new Uint8Array(await res.arrayBuffer());
+  }
+
   async createFolder(name: string, parents: string): Promise<DriveFolder> {
     const res = await fetch(`${API}/files`, {
       method: "POST",

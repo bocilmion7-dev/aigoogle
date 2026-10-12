@@ -9,7 +9,7 @@ let cookie = "";
 
 beforeAll(async () => {
   api = createApp();
-  await prisma.appSetting.deleteMany({ where: { key: "voiceEngine" } });
+  await prisma.appSetting.deleteMany({ where: { key: { in: ["voiceEngine", "ocrMode"] } } });
   const tenant = await prisma.tenant.create({
     data: { provider: "accurate", providerDbId: `s-${randomBytes(3).toString("hex")}`, name: "PT Set", alias: "SET" },
   });
@@ -42,11 +42,16 @@ describe("settings & connections", () => {
 
   it("GET default voiceEngine = web-speech; PUT mengubah; GET ulang konsisten", async () => {
     const g1 = await request(api).get("/api/settings").set("Cookie", cookie);
-    expect(g1.body).toEqual({ voiceEngine: "web-speech" });
+    expect(g1.body).toEqual({ voiceEngine: "web-speech", ocrMode: "vision" });
     const put = await request(api).put("/api/settings").set("Cookie", cookie).send({ voiceEngine: "gemini-native" });
     expect(put.status).toBe(200);
     const g2 = await request(api).get("/api/settings").set("Cookie", cookie);
     expect(g2.body.voiceEngine).toBe("gemini-native");
+    const putOcr = await request(api).put("/api/settings").set("Cookie", cookie).send({ ocrMode: "text" });
+    expect(putOcr.status).toBe(200);
+    const g3 = await request(api).get("/api/settings").set("Cookie", cookie);
+    expect(g3.body).toEqual({ voiceEngine: "gemini-native", ocrMode: "text" });
+    await request(api).put("/api/settings").set("Cookie", cookie).send({ ocrMode: "vision" });
   });
 
   it("PUT voiceEngine ngawur → 400", async () => {

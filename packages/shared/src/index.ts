@@ -16,4 +16,5 @@ export interface ConnectionInfo {
 }
 export interface AppSettings {
   voiceEngine: "gemini-native" | "web-speech" | "edge";
+  ocrMode?: "vision" | "text";
 }

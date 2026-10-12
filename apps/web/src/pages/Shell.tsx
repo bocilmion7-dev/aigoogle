@@ -32,6 +32,10 @@ export function Shell() {
         <strong style={{ color: "#3d6b54" }}>{me.tenant.name}</strong>
         <span style={{ fontSize: 13, color: "#666" }}>
           {me.name} · {me.roleKey} ·{" "}
+          <a href="/pelanggan" style={{ color: "#3d6b54" }}>
+            Pelanggan
+          </a>{" "}
+          ·{" "}
           <a href="/explore" style={{ color: "#3d6b54" }}>
             Explore Manager
           </a>{" "}

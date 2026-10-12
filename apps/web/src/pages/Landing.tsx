@@ -23,6 +23,41 @@ const STORY = [
   },
 ];
 
+const CAPS = [
+  {
+    title: "Chat AI dengan data Accurate",
+    body: "Tanya apa saja — piutang, faktur penjualan, stok, saldo kas. Jawaban datang seketika, lengkap dengan rincian yang menyusunnya.",
+  },
+  {
+    title: "Membaca PDF & gambar",
+    body: "Bukan cuma PDF. Foto nota, screenshot nota, bukti transfer, faktur, kuitansi — dibaca langsung oleh AI-nya, lalu dikenali dan dikelompokkan ke kategori yang benar.",
+  },
+  {
+    title: "Merapikan Google Drive",
+    body: "Folder berantakan jadi rapi otomatis: nama file diseragamkan, dokumen masuk kategori sendiri. Salah beres? Urungkan sekaligus dengan satu klik.",
+  },
+  {
+    title: "WhatsApp otomatis",
+    body: "Pengingat jatuh tempo terkirim ke pelanggan dan laporan harian mendarat di HP pemilik — otomatis, 200 rupiah per kirim.",
+  },
+  {
+    title: "Bicara, bukan mengetik",
+    body: "Tanya dengan suara, jawaban dibacakan. Mesin suara neural gratis — tanpa langganan tambahan.",
+  },
+  {
+    title: "Riwayat percakapan",
+    body: "Semua sesi tersimpan dan bisa dilanjut kapan pun — hari ini menanyakan hal yang sama seperti minggu lalu? Tinggal buka lagi.",
+  },
+  {
+    title: "Tim, peran & jejak audit",
+    body: "Undang staf, atur siapa boleh melihat apa, dan setiap aksi tercatat. Satu akun untuk satu orang, bukan berbagi password.",
+  },
+  {
+    title: "Dua cara masuk",
+    body: "Lewat Accurate sekali klik, atau email & password — pilih yang paling nyaman, keduanya ke dashboard yang sama.",
+  },
+];
+
 export function Landing() {
   return (
     <div className="landing">
@@ -103,6 +138,21 @@ export function Landing() {
             </li>
           ))}
         </ul>
+      </section>
+
+      <section className="ld-caps" aria-labelledby="fitur-heading">
+        <h2 id="fitur-heading">Daftar lengkap kemampuannya</h2>
+        <div className="ld-caps-grid">
+          {CAPS.map((c, i) => (
+            <div className="ld-cap ld-rise" key={c.title}>
+              <span className="ld-idx">{String(i + 1).padStart(2, "0")}</span>
+              <div>
+                <h3>{c.title}</h3>
+                <p>{c.body}</p>
+              </div>
+            </div>
+          ))}
+        </div>
       </section>
 
       <footer className="ld-footer">

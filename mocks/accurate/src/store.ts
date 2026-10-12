@@ -39,7 +39,8 @@ const ALL_MODULES = [
 const priv = (mods: string[], allow: boolean): PrivilegeRow[] =>
   ALL_MODULES.map((m) => ({
     ModuleName: m, AllowView: allow && mods.includes(m),
-    AllowCreate: false, AllowUpdate: false, AllowDelete: false,
+    AllowCreate: allow && mods.includes(m),
+    AllowUpdate: false, AllowDelete: false,
   }));
 
 const dbs: Record<string, MockDb> = {

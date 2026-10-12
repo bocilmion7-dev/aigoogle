@@ -25,7 +25,7 @@ apiRouter.use("/glaccount", makeListRouter({
   fieldsForDetail: ["id", "code", "name", "type"],
 }));
 apiRouter.use("/sales-order", makeListRouter({ module: "sales-order", rows: (db) => db.data.salesOrders }));
-apiRouter.use("/sales-receipt", makeListRouter({ module: "sales-receipt", rows: (db) => db.data.salesReceipts }));
+apiRouter.use("/sales-receipt", makeListRouter({ module: "sales-receipt", rows: (db) => db.data.salesReceipts, addable: true }));
 apiRouter.use("/purchase-invoice", makeListRouter({ module: "purchase-invoice", rows: (db) => db.data.purchaseInvoices }));
 
 accountApiRouter.get("/api/userinfo.do", bearerGuard, (req, res) => {

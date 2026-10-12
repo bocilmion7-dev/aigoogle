@@ -16,6 +16,7 @@ export interface ListResult {
 export interface DriveClient {
   list(folderId: string): Promise<ListResult>;
   getText(fileId: string): Promise<string>;
+  getBytes?(fileId: string): Promise<Uint8Array>;
   createFolder(name: string, parents: string): Promise<DriveFolder>;
   rename(fileId: string, name: string): Promise<void>;
   move(fileId: string, newParents: string, oldParents?: string): Promise<void>;

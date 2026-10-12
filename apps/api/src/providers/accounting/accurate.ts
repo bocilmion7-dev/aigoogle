@@ -6,6 +6,8 @@ import type {
   ProviderDb,
   ProviderTokenSet,
   ProviderUser,
+  SalesInvoiceInput,
+  SalesReceiptInput,
   ToolSpec,
 } from "./types.js";
 import { ACCURATE_CATALOG } from "./catalog.js";
@@ -166,6 +168,53 @@ export class AccurateAdapter implements AccountingProvider {
       return j.d;
     }
     throw new Error(`tool tidak dikenal: ${tool}`);
+  }
+
+  private async modulePost(path: string, body: unknown, ctx: ProviderCtx): Promise<Envelope<unknown>> {
+    const res = await fetch(`${ctx.host}${path}`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${ctx.accessToken}`,
+        "X-Session-ID": ctx.session,
+        "Content-Type": "application/json",
+      },
+      redirect: "follow",
+      body: JSON.stringify(body),
+    });
+    if (res.status === 401) throw new Error("sesi/token ditolak provider (401)");
+    const j = (await res.json()) as Envelope<unknown>;
+    if (!j.s) throw new Error(`provider gagal: ${JSON.stringify(j.d)}`);
+    return j;
+  }
+
+  async createSalesInvoice(ctx: ProviderCtx, data: SalesInvoiceInput): Promise<{ id: string }> {
+    const j = await this.modulePost(
+      "/accurate/api/sales-invoice/add.do",
+      {
+        customerName: data.customerName,
+        date: data.date || new Date().toISOString().slice(0, 10),
+        total: data.total ?? 0,
+        description: data.description ?? "",
+        ...(data.no ? { no: data.no } : {}),
+      },
+      ctx
+    );
+    return { id: String(j.d ?? "") };
+  }
+
+  async createSalesReceipt(ctx: ProviderCtx, data: SalesReceiptInput): Promise<{ id: string }> {
+    const j = await this.modulePost(
+      "/accurate/api/sales-receipt/add.do",
+      {
+        customerName: data.customerName,
+        date: data.date || new Date().toISOString().slice(0, 10),
+        amount: data.amount ?? 0,
+        description: data.description ?? "",
+        ...(data.no ? { no: data.no } : {}),
+      },
+      ctx
+    );
+    return { id: String(j.d ?? "") };
   }
 
   async refreshToken(refreshToken: string): Promise<ProviderTokenSet> {

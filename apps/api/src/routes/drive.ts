@@ -59,9 +59,31 @@ driveRouter.post(
       body.data.folderId === "root"
         ? "Drive"
         : listing.folders.find((f) => f.id === body.data.folderId)?.name ?? "";
-    const items = await buildPlan(client, body.data.folderId, async (f) =>
-      classifyWithGemini(await client.getText(f.id).catch(() => ""), f.mimeType, env.GEMINI_API_KEY, f.name)
-    );
+    const visionOk = /^(application\/pdf|image\/)/i;
+    const items = await buildPlan(client, body.data.folderId, async (f) => {
+      if (env.GEMINI_API_KEY && visionOk.test(f.mimeType) && client.getBytes) {
+        try {
+          const bytes = await client.getBytes(f.id);
+          if (bytes.byteLength > 0 && bytes.byteLength <= 6_000_000) {
+            return classifyWithGemini(
+              "",
+              f.mimeType,
+              env.GEMINI_API_KEY,
+              f.name,
+              Buffer.from(bytes).toString("base64")
+            );
+          }
+        } catch {
+          /* jatuh ke jalur teks */
+        }
+      }
+      return classifyWithGemini(
+        await client.getText(f.id).catch(() => ""),
+        f.mimeType,
+        env.GEMINI_API_KEY,
+        f.name
+      );
+    });
     const job = await prisma.driveJob.create({
       data: {
         tenantId: user.tenant.id,
@@ -167,7 +189,8 @@ driveRouter.post(
     if (!client) return res.status(409).json({ error: "belum_connect" });
 
     const plan = JSON.parse(job.planJson) as TidyPlanItem[];
-    const result = JSON.parse(job.resultJson || "[]") as TidyResultItem[];
+    const rawResult = JSON.parse(job.resultJson || "[]") as unknown;
+    const result = Array.isArray(rawResult) ? (rawResult as TidyResultItem[]) : [];
     const planByFile = new Map(plan.filter((p) => p.action === "move").map((p) => [p.fileId, p]));
     const body = z.object({ fileIds: z.array(z.string().min(1)).max(500).optional() }).safeParse(req.body ?? {});
     if (!body.success) return res.status(400).json({ error: "bad_request" });
@@ -259,12 +282,13 @@ driveRouter.get(
       include: { logs: { orderBy: { createdAt: "asc" } } },
     });
     if (!job) return res.status(404).json({ error: "tidak_ditemukan" });
+    const rawResult = JSON.parse(job.resultJson) as unknown;
     res.json({
       id: job.id,
       folderName: job.folderName,
       status: job.status,
       plan: JSON.parse(job.planJson),
-      result: JSON.parse(job.resultJson),
+      result: Array.isArray(rawResult) ? rawResult : [],
       logs: job.logs,
     });
   })

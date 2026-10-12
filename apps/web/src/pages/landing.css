@@ -335,10 +335,11 @@
   max-width: 1120px;
   width: 100%;
   margin: 0 auto;
-  padding: 0 var(--space-l) var(--space-3xl);
+  padding: 0 var(--space-l) var(--space-xl);
 }
 
-.ld-features h2 {
+.ld-features h2,
+.ld-caps h2 {
   font-family: var(--font-display);
   font-size: var(--step-3);
   font-weight: 600;
@@ -380,6 +381,45 @@
 
 .ld-features .ld-feat-desc {
   font-size: var(--step-0);
+  color: var(--ink-2);
+  margin: 0;
+}
+
+/* ---------- caps (daftar lengkap) ---------- */
+.ld-caps {
+  max-width: 1120px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 var(--space-l) var(--space-3xl);
+}
+
+.ld-caps-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: var(--space-2xl);
+}
+
+.ld-cap {
+  display: grid;
+  grid-template-columns: 4ch minmax(0, 1fr);
+  gap: var(--space-s);
+  align-items: baseline;
+  padding: var(--space-m) 0;
+  border-bottom: var(--border);
+}
+
+.ld-cap h3 {
+  font-family: var(--font-display);
+  font-size: var(--step-1);
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--ink);
+  margin: 0 0 var(--space-3xs);
+}
+
+.ld-cap p {
+  font-size: var(--step-0);
+  line-height: 1.55;
   color: var(--ink-2);
   margin: 0;
 }
@@ -456,7 +496,15 @@
   }
 
   .ld-features {
+    padding: 0 var(--space-m) var(--space-l);
+  }
+
+  .ld-caps {
     padding: 0 var(--space-m) var(--space-2xl);
+  }
+
+  .ld-caps-grid {
+    grid-template-columns: 1fr;
   }
 
   .ld-features li {

@@ -27,28 +27,26 @@ export async function classifyWithGemini(
   text: string,
   mimeType: string,
   apiKey: string,
-  fileName = ""
+  fileName = "",
+  mediaBase64?: string
 ): Promise<Category> {
   const fallback = () => (fileName ? classifyFileName(fileName) : classifyText(text));
   if (!apiKey || !VISION_OK.test(mimeType)) return fallback();
   try {
     const model = process.env.GEMINI_MODEL || "gemini-3.6-flash";
+    const prompt =
+      `Klasifikasi dokumen ini ke salah satu: ${CATEGORIES.join(", ")}. Balas HANYA kata kategorinya.` +
+      (fileName ? ` Nama file: ${fileName}` : "");
+    const parts: Array<Record<string, unknown>> = mediaBase64
+      ? [{ inlineData: { mimeType, data: mediaBase64 } }, { text: prompt }]
+      : [{ text: `${prompt}\n\n${text.slice(0, 1500)}` }];
     const res = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
       {
         method: "POST",
         headers: { "x-goog-api-key": apiKey, "Content-Type": "application/json" },
         body: JSON.stringify({
-          contents: [
-            {
-              role: "user",
-              parts: [
-                {
-                  text: `Klasifikasi dokumen ini ke salah satu: ${CATEGORIES.join(", ")}. Balas HANYA kata kategorinya.\n\n${text.slice(0, 1500)}`,
-                },
-              ],
-            },
-          ],
+          contents: [{ role: "user", parts }],
         }),
       }
     );

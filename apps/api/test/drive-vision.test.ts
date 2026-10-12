@@ -36,4 +36,20 @@ describe("classifyWithGemini", () => {
     );
     expect(await classifyWithGemini("isi", "application/pdf", "key-x", "nota.pdf")).toBe("Nota");
   });
+  it("media base64 (gambar) → kirim inlineData, bukan teks", async () => {
+    const fetchMock = vi.fn(
+      async (_url: string, init?: RequestInit) => {
+        const body = String(init?.body ?? "");
+        expect(body).toContain("inlineData");
+        expect(body).toContain("image/jpeg");
+        expect(body).toContain(Buffer.from("PICTURE").toString("base64"));
+        return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: "Kuitansi" }] } }] }));
+      }
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    expect(
+      await classifyWithGemini("", "image/jpeg", "key-x", "bukti-transfer.jpg", Buffer.from("PICTURE").toString("base64"))
+    ).toBe("Kuitansi");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
 });
