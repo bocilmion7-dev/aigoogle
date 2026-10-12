@@ -54,11 +54,13 @@ customersRouter.get(
     }
     const byName = new Map<string, { count: number; total: number }>();
     for (const f of invoices) {
-      const name = String(f.customerName ?? "").toLowerCase();
+      // Accurate asli: { customer: { name }, totalAmount } · mock: { customerName, total }
+      const cust = f.customer as { name?: unknown } | undefined;
+      const name = String(cust?.name ?? f.customerName ?? "").toLowerCase();
       if (!name) continue;
       const agg = byName.get(name) ?? { count: 0, total: 0 };
       agg.count += 1;
-      agg.total += Number(f.total ?? 0) || 0;
+      agg.total += Number(f.totalAmount ?? f.total ?? 0) || 0;
       byName.set(name, agg);
     }
     res.json(

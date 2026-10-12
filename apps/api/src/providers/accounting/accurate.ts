@@ -1,3 +1,14 @@
+const DEFAULT_LIST_FIELDS: Record<string, string> = {
+  "customer.list": "id,name,email,phone,phone1,mobilePhone",
+  "salesInvoice.list": "id,no,customerName,date,total,status,dueDate,customer,totalAmount,description",
+  "salesOrder.list": "id,no,customerName,date,total,status,customer,totalAmount",
+  "item.list": "id,code,name,unit,sellingPrice",
+  "vendor.list": "id,code,name,phone,email,address",
+  "glAccount.list": "id,code,name,type",
+  "purchaseInvoice.list": "id,no,vendorName,date,total,status,vendor,totalAmount",
+  "salesReceipt.list": "id,no,customerName,date,total,status,customer,totalAmount",
+};
+
 import type {
   AccountingProvider,
   OpenDbResult,
@@ -168,7 +179,13 @@ export class AccurateAdapter implements AccountingProvider {
     };
     const listPath = listPaths[tool];
     if (listPath) {
-      const j = await this.moduleGet(`${listPath}${this.buildQuery(args)}`, ctx);
+      // API Accurate asli hanya membalas {id} kecuali dimintai fields;
+      // mock menyaring sendiri kolom yang dikenal → daftar gabungan aman dua arah
+      let merged: Record<string, unknown> = args;
+      if (!(typeof args.fields === "string" && args.fields) && DEFAULT_LIST_FIELDS[tool]) {
+        merged = { ...args, fields: DEFAULT_LIST_FIELDS[tool] };
+      }
+      const j = await this.moduleGet(`${listPath}${this.buildQuery(merged)}`, ctx);
       return j.d;
     }
     const detailPath = detailPaths[tool];
