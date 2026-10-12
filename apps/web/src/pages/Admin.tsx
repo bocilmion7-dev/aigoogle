@@ -56,20 +56,32 @@ export function Admin() {
   }, []);
 
   useEffect(() => {
-    void loadRoles().then((r) => {
-      if (r[0]) setSelRole(r[0].id);
-    });
-    void getPrivileges().then(setPriv);
+    void loadRoles()
+      .then((r) => {
+        if (r[0]) setSelRole(r[0].id);
+      })
+      .catch((e) => {
+        if (e instanceof Error && e.message === "belum_login") window.location.href = "/login";
+        else setErr("Gagal memuat role.");
+      });
+    void getPrivileges()
+      .then(setPriv)
+      .catch(() => undefined);
   }, [loadRoles]);
+
+  const onFetchErr = (e: unknown) => {
+    if (e instanceof Error && e.message === "belum_login") window.location.href = "/login";
+    else setErr("Gagal memuat data.");
+  };
 
   useEffect(() => {
     if (tab === "users") {
       setErr(null);
-      void getAdminUsers().then(setUsers).catch(() => setErr("Gagal memuat user."));
+      void getAdminUsers().then(setUsers).catch(onFetchErr);
     }
     if (tab === "audit") {
       setErr(null);
-      void getAuditLogs(50).then(setAudit).catch(() => setErr("Gagal memuat audit."));
+      void getAuditLogs(50).then(setAudit).catch(onFetchErr);
     }
     if (tab === "roles" && selRole) {
       const role = roles.find((x) => x.id === selRole);

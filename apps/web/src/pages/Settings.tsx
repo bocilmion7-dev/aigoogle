@@ -12,18 +12,25 @@ const btn: React.CSSProperties = {
 };
 
 export function Settings() {
-  const [me, setMe] = useState<Awaited<ReturnType<typeof getMe>>>(null);
+  const [me, setMe] = useState<Awaited<ReturnType<typeof getMe>> | undefined>(undefined);
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [conns, setConns] = useState<ConnectionInfo[]>([]);
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     void getMe().then(setMe);
-    void getSettings().then(setSettings);
-    void getConnections().then(setConns);
+    void getSettings()
+      .then(setSettings)
+      .catch(() => undefined);
+    void getConnections().then(setConns).catch(() => undefined);
   }, []);
 
-  if (!me || !settings) return <p style={{ padding: 24, fontFamily: "system-ui" }}>Memuat…</p>;
+  if (me === undefined) return <p style={{ padding: 24, fontFamily: "system-ui" }}>Memuat…</p>;
+  if (me === null) {
+    window.location.href = "/login";
+    return null;
+  }
+  if (!settings) return <p style={{ padding: 24, fontFamily: "system-ui" }}>Memuat…</p>;
 
   const accurate = conns.find((c) => c.provider === "accurate");
   const google = conns.find((c) => c.provider === "google");

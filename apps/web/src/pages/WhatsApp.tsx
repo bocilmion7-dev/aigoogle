@@ -38,13 +38,26 @@ export function WhatsApp() {
 
   const load = useCallback(() => {
     void fetch("/api/wa/status")
-      .then((r) => r.json())
-      .then((j: WaStatus) => {
-        setSt(j);
-        setOwnerPhone(j.settings.ownerPhone);
-        setAutoDue(j.settings.autoDueDate);
-        setDaily(j.settings.dailyReport);
-      });
+      .then(async (r) => {
+        if (r.status === 401) {
+          window.location.href = "/login";
+          return null;
+        }
+        if (!r.ok) throw new Error("gagal");
+        return r.json() as Promise<WaStatus>;
+      })
+      .then((j) => {
+        if (!j) return;
+        setSt({
+          ...j,
+          recent: j.recent ?? [],
+          settings: j.settings ?? { autoDueDate: false, dailyReport: false, ownerPhone: "" },
+        });
+        setOwnerPhone(j.settings?.ownerPhone ?? "");
+        setAutoDue(!!j.settings?.autoDueDate);
+        setDaily(!!j.settings?.dailyReport);
+      })
+      .catch(() => setError("Gagal memuat status WhatsApp."));
   }, []);
   useEffect(() => {
     load();
