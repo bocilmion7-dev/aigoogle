@@ -5,6 +5,12 @@ import { prisma } from "../db.js";
 export const WA_COST_CREDITS_PER_MESSAGE = 1;
 export const WA_TOPUP_RUPIAH_PER_CREDIT = 200;
 
+export async function waPricePerCredit(): Promise<number> {
+  const row = await prisma.appSetting.findUnique({ where: { key: "waPricePerCredit" } });
+  const n = row ? Number(row.value) : NaN;
+  return Number.isFinite(n) && n >= 1 ? Math.floor(n) : WA_TOPUP_RUPIAH_PER_CREDIT;
+}
+
 export function metaConfigured(): boolean {
   return env.META_APP_ID !== "" && env.META_APP_SECRET !== "";
 }
@@ -91,8 +97,8 @@ export async function getOrCreateBalance(tenantId: string): Promise<number> {
   return bal.amount;
 }
 
-export function creditsFromRupiah(rupiah: number): number {
-  return Math.floor(rupiah / WA_TOPUP_RUPIAH_PER_CREDIT);
+export function creditsFromRupiah(rupiah: number, pricePerCredit: number = WA_TOPUP_RUPIAH_PER_CREDIT): number {
+  return Math.floor(rupiah / pricePerCredit);
 }
 
 export async function getWaSettings(tenantId: string): Promise<{

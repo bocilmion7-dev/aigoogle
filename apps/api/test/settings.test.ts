@@ -6,6 +6,7 @@ import { prisma } from "../src/db.js";
 
 let api: ReturnType<typeof createApp>;
 let cookie = "";
+let staffCookie = "";
 
 beforeAll(async () => {
   api = createApp();
@@ -14,6 +15,7 @@ beforeAll(async () => {
     data: { provider: "accurate", providerDbId: `s-${randomBytes(3).toString("hex")}`, name: "PT Set", alias: "SET" },
   });
   const role = await prisma.role.create({ data: { tenantId: tenant.id, key: "admin", name: "Admin" } });
+  await prisma.rolePermission.create({ data: { roleId: role.id, permissionKey: "app:settings.manage" } });
   const user = await prisma.user.create({
     data: { tenantId: tenant.id, providerUserId: `su-${randomBytes(3).toString("hex")}`, email: "set@demo.local", name: "Set", roleId: role.id },
   });
@@ -29,6 +31,14 @@ beforeAll(async () => {
   const sid = randomBytes(32).toString("hex");
   await prisma.session.create({ data: { id: sid, userId: user.id, expiresAt: new Date(Date.now() + 86400_000) } });
   cookie = `sid=${sid}`;
+
+  const staffRole = await prisma.role.create({ data: { tenantId: tenant.id, key: "staff", name: "Staff" } });
+  const staff = await prisma.user.create({
+    data: { tenantId: tenant.id, providerUserId: `st-${randomBytes(3).toString("hex")}`, email: "staff-set@demo.local", name: "Staff", roleId: staffRole.id },
+  });
+  const sid2 = randomBytes(32).toString("hex");
+  await prisma.session.create({ data: { id: sid2, userId: staff.id, expiresAt: new Date(Date.now() + 86400_000) } });
+  staffCookie = `sid=${sid2}`;
 });
 
 afterAll(async () => {
@@ -42,16 +52,25 @@ describe("settings & connections", () => {
 
   it("GET default voiceEngine = web-speech; PUT mengubah; GET ulang konsisten", async () => {
     const g1 = await request(api).get("/api/settings").set("Cookie", cookie);
-    expect(g1.body).toEqual({ voiceEngine: "web-speech", ocrMode: "vision" });
+    expect(g1.body).toEqual({ voiceEngine: "web-speech", ocrMode: "vision", waPricePerCredit: 200 });
     const put = await request(api).put("/api/settings").set("Cookie", cookie).send({ voiceEngine: "gemini-native" });
     expect(put.status).toBe(200);
     const g2 = await request(api).get("/api/settings").set("Cookie", cookie);
     expect(g2.body.voiceEngine).toBe("gemini-native");
     const putOcr = await request(api).put("/api/settings").set("Cookie", cookie).send({ ocrMode: "text" });
     expect(putOcr.status).toBe(200);
+    const putPrice = await request(api).put("/api/settings").set("Cookie", cookie).send({ waPricePerCredit: 350 });
+    expect(putPrice.status).toBe(200);
+    expect(putPrice.body.waPricePerCredit).toBe(350);
     const g3 = await request(api).get("/api/settings").set("Cookie", cookie);
-    expect(g3.body).toEqual({ voiceEngine: "gemini-native", ocrMode: "text" });
-    await request(api).put("/api/settings").set("Cookie", cookie).send({ ocrMode: "vision" });
+    expect(g3.body).toEqual({ voiceEngine: "gemini-native", ocrMode: "text", waPricePerCredit: 350 });
+    await request(api).put("/api/settings").set("Cookie", cookie).send({ ocrMode: "vision", waPricePerCredit: 200 });
+  });
+
+  it("PUT /settings tanpa hak app:settings.manage → 403", async () => {
+    const res = await request(api).put("/api/settings").set("Cookie", staffCookie).send({ ocrMode: "text" });
+    expect(res.status).toBe(403);
+    expect(res.body.error).toBe("tidak_punya_hak");
   });
 
   it("PUT voiceEngine ngawur → 400", async () => {

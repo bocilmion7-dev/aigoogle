@@ -30,10 +30,6 @@ export function WhatsApp() {
   const [st, setSt] = useState<WaStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [amount, setAmount] = useState(10000);
-  const [ownerPhone, setOwnerPhone] = useState("");
-  const [autoDue, setAutoDue] = useState(false);
-  const [daily, setDaily] = useState(false);
-  const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(() => {
@@ -48,14 +44,7 @@ export function WhatsApp() {
       })
       .then((j) => {
         if (!j) return;
-        setSt({
-          ...j,
-          recent: j.recent ?? [],
-          settings: j.settings ?? { autoDueDate: false, dailyReport: false, ownerPhone: "" },
-        });
-        setOwnerPhone(j.settings?.ownerPhone ?? "");
-        setAutoDue(!!j.settings?.autoDueDate);
-        setDaily(!!j.settings?.dailyReport);
+        setSt({ ...j, recent: j.recent ?? [], settings: j.settings ?? { autoDueDate: false, dailyReport: false, ownerPhone: "" } });
       })
       .catch(() => setError("Gagal memuat status WhatsApp."));
   }, []);
@@ -64,22 +53,6 @@ export function WhatsApp() {
   }, [load]);
 
   if (!st) return <p style={{ padding: 24, fontFamily: "system-ui" }}>Memuat…</p>;
-
-  async function saveSettings() {
-    setBusy(true);
-    try {
-      await fetch("/api/wa/settings", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ autoDueDate: autoDue, dailyReport: daily, ownerPhone }),
-      });
-      setSaved(true);
-      setTimeout(() => setSaved(false), 1500);
-      load();
-    } finally {
-      setBusy(false);
-    }
-  }
 
   async function topup() {
     setError(null);
@@ -90,7 +63,7 @@ export function WhatsApp() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ amount }),
       });
-      const j = (await res.json()) as { error?: string; orderId?: string; credits?: number };
+      const j = (await res.json()) as { error?: string; orderId?: string; credits?: number; min?: number };
       if (res.status === 503 && j.orderId) {
         // billing dormant → mock settle untuk dev
         const s = await fetch(`/api/wa/topup/${j.orderId}/mock-settle`, { method: "POST" });
@@ -100,7 +73,7 @@ export function WhatsApp() {
           return;
         }
       }
-      if (!res.ok) setError(j.error ?? "Gagal topup");
+      if (!res.ok) setError(j.error === "minimal_topup" ? `Minimal topup Rp ${(j.min ?? 200).toLocaleString("id-ID")}` : j.error ?? "Gagal topup");
       else load();
     } finally {
       setBusy(false);
@@ -118,7 +91,7 @@ export function WhatsApp() {
           {st.connected ? `Terhubung (${st.account?.displayName || st.account?.phoneNumberId})` : "Belum terhubung"}
         </p>
         <p style={{ fontSize: 14 }}>
-          Saldo: <strong>{st.balance}</strong> kredit · {st.rupiahPerCredit} Rp/kirim
+          Saldo: <strong>{st.balance}</strong> kredit · {st.rupiahPerCredit} Rp/kirim (diatur di menu Admin)
         </p>
       </section>
 
@@ -154,21 +127,9 @@ export function WhatsApp() {
 
       <section style={card}>
         <strong>Otomasi</strong>
-        <label style={{ display: "block", fontSize: 14, marginBottom: 6 }}>
-          <input type="checkbox" checked={autoDue} onChange={(e) => setAutoDue(e.target.checked)} />{" "}
-          Ingatkan tagihan jatuh tempo ke pelanggan
-        </label>
-        <label style={{ display: "block", fontSize: 14, marginBottom: 6 }}>
-          <input type="checkbox" checked={daily} onChange={(e) => setDaily(e.target.checked)} />{" "}
-          Laporan harian ke pemilik usaha (jam 08.00)
-        </label>
-        <label style={{ fontSize: 13 }}>
-          Nomor WhatsApp pemilik (format 62…)
-          <input value={ownerPhone} onChange={(e) => setOwnerPhone(e.target.value)} style={input} placeholder="628123456789" />
-        </label>
-        <button style={btn} onClick={() => void saveSettings()} disabled={busy}>
-          {saved ? "Tersimpan ✓" : "Simpan pengaturan"}
-        </button>
+        <p style={{ fontSize: 13, color: "#666" }}>
+          Pengingat jatuh tempo & laporan harian diatur oleh Admin di menu Admin → tab Pengaturan.
+        </p>
       </section>
 
       <section style={card}>

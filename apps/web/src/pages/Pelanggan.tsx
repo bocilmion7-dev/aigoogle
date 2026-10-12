@@ -1,13 +1,11 @@
 import { useEffect, useState } from "react";
-import type { AppSettings, ConnectionInfo, Me } from "@aigoogle/shared";
+import type { ConnectionInfo, Me } from "@aigoogle/shared";
 import {
   friendlyWarning,
   getCustomers,
   getConnections,
   getMe,
-  getSettings,
   postEntry,
-  putSettings,
   uploadRead,
   uploadScan,
   type CustomerRow,
@@ -40,7 +38,6 @@ const TARGET_LABEL: Record<string, string> = {
 
 export function Pelanggan() {
   const [me, setMe] = useState<Awaited<ReturnType<typeof getMe>> | undefined>(undefined);
-  const [settings, setSettings] = useState<AppSettings | null>(null);
   const [conns, setConns] = useState<ConnectionInfo[]>([]);
   const [customers, setCustomers] = useState<CustomerRow[] | null>(null);
   const [q, setQ] = useState("");
@@ -66,9 +63,6 @@ export function Pelanggan() {
 
   useEffect(() => {
     void getMe().then(setMe);
-    void getSettings()
-      .then(setSettings)
-      .catch(() => undefined);
     void getConnections().then(setConns).catch(() => undefined);
     reload();
   }, []);
@@ -78,7 +72,6 @@ export function Pelanggan() {
     window.location.href = "/login";
     return null;
   }
-  if (!settings) return <p style={{ padding: 24, fontFamily: "system-ui" }}>Memuat…</p>;
 
   const accurate = conns.find((c) => c.provider === "accurate");
   const connected = accurate?.status === "connected";
@@ -145,69 +138,12 @@ export function Pelanggan() {
     }
   };
 
-  const saveSettings = async () => {
-    setErr("");
-    try {
-      const next = await putSettings(settings);
-      setSettings(next);
-      setOkMsg("Pengaturan tersimpan ✓");
-      setTimeout(() => setOkMsg(""), 2500);
-    } catch (e) {
-      setErr((e as Error).message);
-    }
-  };
-
   return (
     <main style={{ fontFamily: "system-ui", maxWidth: 720, margin: "40px auto", padding: 24 }}>
       <h1 style={{ fontSize: 24 }}>Pelanggan</h1>
       <p style={{ color: "#666" }}>
         {me.tenant.name} · {connected ? "Accurate terhubung" : "Accurate belum terhubung"}
       </p>
-
-      <h2 style={{ fontSize: 16, marginTop: 24 }}>Pengaturan cepat</h2>
-      <div style={card}>
-        <strong>Mode baca dokumen</strong>
-        <label style={{ ...label, marginTop: 8 }}>
-          <input
-            type="radio" name="ocr" checked={(settings.ocrMode ?? "vision") === "vision"}
-            onChange={() => setSettings({ ...settings, ocrMode: "vision" })}
-          />{" "}
-          Vision & OCR — gambar/PDF dibaca dengan AI (nota, bukti transfer, faktur, screenshot)
-        </label>
-        <label style={label}>
-          <input
-            type="radio" name="ocr" checked={settings.ocrMode === "text"}
-            onChange={() => setSettings({ ...settings, ocrMode: "text" })}
-          />{" "}
-          Teks saja — hanya file teks (MD/TXT/DOCX/PPTX), gambar & PDF tidak dibaca
-        </label>
-
-        <strong style={{ display: "block", marginTop: 14 }}>Suara</strong>
-        <label style={{ ...label, marginTop: 8 }}>
-          <input
-            type="radio" name="voice" checked={settings.voiceEngine === "web-speech"}
-            onChange={() => setSettings({ ...settings, voiceEngine: "web-speech" })}
-          />{" "}
-          Browser (Web Speech) — ringan
-        </label>
-        <label style={label}>
-          <input
-            type="radio" name="voice" checked={settings.voiceEngine === "edge"}
-            onChange={() => setSettings({ ...settings, voiceEngine: "edge" })}
-          />{" "}
-          Edge — STT di browser, TTS neural (gratis)
-        </label>
-        <label style={label}>
-          <input
-            type="radio" name="voice" checked={settings.voiceEngine === "gemini-native"}
-            onChange={() => setSettings({ ...settings, voiceEngine: "gemini-native" })}
-          />{" "}
-          Gemini native audio — bicara langsung ke Gemini (kualitas terbaik)
-        </label>
-        <button style={{ ...btn, marginTop: 12 }} onClick={() => void saveSettings()}>
-          Simpan pengaturan
-        </button>
-      </div>
 
       <h2 style={{ fontSize: 16, marginTop: 24 }}>Data pelanggan</h2>
       <div style={{ ...card, display: "flex", gap: 8, alignItems: "center" }}>

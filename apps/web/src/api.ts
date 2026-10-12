@@ -111,7 +111,7 @@ export interface ReadResponse {
 const MSG: Record<string, string> = {
     belum_connect: "Accurate belum terhubung — hubungkan dulu di Pengaturan.",
     vision_ocr_nonaktif:
-      "Vision & OCR nonaktif. Aktifkan di bagian Pengaturan cepat untuk membaca gambar/PDF.",
+      "Vision & OCR nonaktif. Minta Admin mengaktifkannya di menu Admin → tab Pengaturan.",
     gemini_unavailable: "Vision & OCR butuh API key Gemini — hubungi administrator.",
     unsupported_type: "Tipe file tidak didukung (gambar, PDF, DOCX, PPTX, DOC, PPT, MD, TXT).",
     file_too_large: "File terlalu besar (maks 15 MB).",
@@ -133,6 +133,20 @@ async function apiError(res: Response): Promise<Error> {
 export function friendlyWarning(code?: string): string | null {
   return code ? (MSG[code] ?? code) : null;
 }
+
+export interface WaStatusLite {
+  balance: number;
+  rupiahPerCredit: number;
+  settings: { autoDueDate: boolean; dailyReport: boolean; ownerPhone: string };
+  recent: Array<{ id: string; to: string; body: string; status: string; error: string; createdAt: string }>;
+}
+export const getWaStatus = () => adminFetch<WaStatusLite>("/api/wa/status");
+export const putWaSettings = (body: { autoDueDate?: boolean; dailyReport?: boolean; ownerPhone?: string }) =>
+  adminFetch<unknown>("/api/wa/settings", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
 
 export async function getCustomers(keywords = ""): Promise<CustomerRow[]> {
   const qs = keywords ? `?keywords=${encodeURIComponent(keywords)}` : "";

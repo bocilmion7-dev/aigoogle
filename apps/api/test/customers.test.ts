@@ -36,6 +36,7 @@ beforeAll(async () => {
     data: { provider: "accurate", providerDbId: `c-${randomBytes(4).toString("hex")}`, name: "PT Pelang", alias: "PLG" },
   });
   const role = await prisma.role.create({ data: { tenantId: tenant.id, key: "admin", name: "Admin" } });
+  await prisma.rolePermission.create({ data: { roleId: role.id, permissionKey: "app:settings.manage" } });
   const user = await prisma.user.create({
     data: { tenantId: tenant.id, providerUserId: `cu-${randomBytes(4).toString("hex")}`, email: "plg@demo.local", name: "Plg", roleId: role.id },
   });

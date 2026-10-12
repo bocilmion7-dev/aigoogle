@@ -6,17 +6,18 @@ import { env } from "../env.js";
 import { encryptToken } from "../crypto.js";
 import { asyncHandler } from "../asyncHandler.js";
 import { requireUser } from "../middleware/session.js";
+import { requirePerm } from "../permissions.js";
 import { writeAudit } from "../audit.js";
 import { isBillingEnabled, billingServerKey, verifyWebhookSignature, type MidtransNotification } from "../billing/midtrans.js";
 import {
   WA_COST_CREDITS_PER_MESSAGE,
-  WA_TOPUP_RUPIAH_PER_CREDIT,
   creditsFromRupiah,
   embeddedSignupUrl,
   getOrCreateBalance,
   getWaSettings,
   metaConfigured,
   setWaSettings,
+  waPricePerCredit,
 } from "../wa/service.js";
 
 export const waRouter = Router();
@@ -47,7 +48,7 @@ waRouter.get(
         : null,
       balance,
       costPerMessage: WA_COST_CREDITS_PER_MESSAGE,
-      rupiahPerCredit: WA_TOPUP_RUPIAH_PER_CREDIT,
+      rupiahPerCredit: await waPricePerCredit(),
       settings,
       metaConfigured: metaConfigured(),
       embedUrl: embeddedSignupUrl(`${env.APP_ORIGIN}/wa/embed-callback`),
@@ -59,7 +60,7 @@ waRouter.get(
 
 waRouter.put(
   "/wa/settings",
-  requireUser,
+  requirePerm("app:settings.manage"),
   asyncHandler(async (req, res) => {
     const body = z
       .object({
@@ -82,8 +83,9 @@ waRouter.post(
     const body = z.object({ amount: z.number().int().min(2000).max(10_000_000) }).safeParse(req.body);
     if (!body.success) return res.status(400).json({ error: "bad_request" });
     const tenantId = req.user!.tenant.id;
-    const credits = creditsFromRupiah(body.data.amount);
-    if (credits < 1) return res.status(400).json({ error: "minimal_2000" });
+    const price = await waPricePerCredit();
+    const credits = creditsFromRupiah(body.data.amount, price);
+    if (credits < 1) return res.status(400).json({ error: "minimal_topup", min: price });
     const orderId = `wa-${randomBytes(8).toString("hex")}`;
     await prisma.waTopup.create({
       data: { tenantId, orderId, amount: body.data.amount, credits },
