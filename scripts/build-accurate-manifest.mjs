@@ -8,6 +8,8 @@ const put = (mod, act, method) => {
   if (!modules.has(mod)) modules.set(mod, new Map());
   modules.get(mod).set(act, method);
 };
+// openapi diolah dulu: method openapi (spesifikasi HTTP asli) MENANG;
+// docs-modules hanya melengkapi aksi yang tidak ada di openapi (putIfAbsent).
 
 for (const [p, v] of Object.entries(openapi.paths)) {
   const m = p.match(/^\/api\/((?:[^/]+\/)?[^/]+)\/([a-z0-9-]+)\.do$/);
@@ -15,7 +17,10 @@ for (const [p, v] of Object.entries(openapi.paths)) {
   put(m[1], m[2], Object.keys(v)[0].toUpperCase());
 }
 for (const [mod, info] of Object.entries(docs.accurate.modules)) {
-  for (const a of info.actions) put(mod, a.name.replace(/\.do$/, ""), a.method.toUpperCase());
+  for (const a of info.actions) {
+    const act = a.name.replace(/\.do$/, "");
+    if (!modules.has(mod) || !modules.get(mod).has(act)) put(mod, act, a.method.toUpperCase());
+  }
 }
 
 const utils = Object.keys(openapi.paths)
@@ -23,7 +28,9 @@ const utils = Object.keys(openapi.paths)
   .map((p) => p.replace("/api/", "").replace(".do", ""))
   .sort();
 
-const camel = (s) => s.replace(/(^|[-/])([a-z])/g, (_, __, c) => c.toUpperCase());
+const camel = (s) =>
+  s.replace(/(^|[-/])([a-z])/g, (_, __, c) => c.toUpperCase())
+    .replace(/^([A-Z])/, (c) => c.toLowerCase());
 const manifest = {
   generatedFrom: ["accurate-openapi.json", "accurate-api-docs-modules.json"],
   modules: {},

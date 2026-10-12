@@ -8,13 +8,13 @@
    {
     "action": "detail",
     "method": "GET",
-    "tool": "AccessPrivilege.detail",
+    "tool": "accessPrivilege.detail",
     "permission": "accurate:access-privilege.view"
    },
    {
     "action": "list",
     "method": "GET",
-    "tool": "AccessPrivilege.list",
+    "tool": "accessPrivilege.list",
     "permission": "accurate:access-privilege.view"
    }
   ],
@@ -22,25 +22,25 @@
    {
     "action": "delete",
     "method": "DELETE",
-    "tool": "AccountBudgetTarget.delete",
+    "tool": "accountBudgetTarget.delete",
     "permission": "accurate:account-budget-target.delete"
    },
    {
     "action": "detail",
     "method": "GET",
-    "tool": "AccountBudgetTarget.detail",
+    "tool": "accountBudgetTarget.detail",
     "permission": "accurate:account-budget-target.view"
    },
    {
     "action": "list",
     "method": "GET",
-    "tool": "AccountBudgetTarget.list",
+    "tool": "accountBudgetTarget.list",
     "permission": "accurate:account-budget-target.view"
    },
    {
     "action": "save",
     "method": "POST",
-    "tool": "AccountBudgetTarget.save",
+    "tool": "accountBudgetTarget.save",
     "permission": "accurate:account-budget-target.save"
    }
   ],
@@ -48,19 +48,19 @@
    {
     "action": "detail",
     "method": "GET",
-    "tool": "AutoNumber.detail",
+    "tool": "autoNumber.detail",
     "permission": "accurate:auto-number.view"
    },
    {
     "action": "list",
     "method": "GET",
-    "tool": "AutoNumber.list",
+    "tool": "autoNumber.list",
     "permission": "accurate:auto-number.view"
    },
    {
     "action": "save",
     "method": "POST",
-    "tool": "AutoNumber.save",
+    "tool": "autoNumber.save",
     "permission": "accurate:auto-number.save"
    }
   ],
@@ -68,31 +68,31 @@
    {
     "action": "bulk-save",
     "method": "POST",
-    "tool": "BankTransfer.bulk-save",
+    "tool": "bankTransfer.bulk-save",
     "permission": "accurate:bank-transfer.save"
    },
    {
     "action": "delete",
     "method": "DELETE",
-    "tool": "BankTransfer.delete",
+    "tool": "bankTransfer.delete",
     "permission": "accurate:bank-transfer.delete"
    },
    {
     "action": "detail",
     "method": "GET",
-    "tool": "BankTransfer.detail",
+    "tool": "bankTransfer.detail",
     "permission": "accurate:bank-transfer.view"
    },
    {
     "action": "list",
     "method": "GET",
-    "tool": "BankTransfer.list",
+    "tool": "bankTransfer.list",
     "permission": "accurate:bank-transfer.view"
    },
    {
     "action": "save",
     "method": "POST",
-    "tool": "BankTransfer.save",
+    "tool": "bankTransfer.save",
     "permission": "accurate:bank-transfer.save"
    }
   ],
@@ -100,25 +100,25 @@
    {
     "action": "delete",
     "method": "DELETE",
-    "tool": "BillOfMaterial.delete",
+    "tool": "billOfMaterial.delete",
     "permission": "accurate:bill-of-material.delete"
    },
    {
     "action": "detail",
     "method": "GET",
-    "tool": "BillOfMaterial.detail",
+    "tool": "billOfMaterial.detail",
     "permission": "accurate:bill-of-material.view"
    },
    {
     "action": "list",
     "method": "GET",
-    "tool": "BillOfMaterial.list",
+    "tool": "billOfMaterial.list",
     "permission": "accurate:bill-of-material.view"
    },
    {
     "action": "save",
     "method": "POST",
-    "tool": "BillOfMaterial.save",
+    "tool": "billOfMaterial.save",
     "permission": "accurate:bill-of-material.save"
    }
   ],
@@ -126,25 +126,25 @@
    {
     "action": "delete",
     "method": "DELETE",
-    "tool": "BomProcessCategory.delete",
+    "tool": "bomProcessCategory.delete",
     "permission": "accurate:bom-process-category.delete"
    },
    {
     "action": "detail",
     "method": "GET",
-    "tool": "BomProcessCategory.detail",
+    "tool": "bomProcessCategory.detail",
     "permission": "accurate:bom-process-category.view"
    },
    {
     "action": "list",
     "method": "GET",
-    "tool": "BomProcessCategory.list",
+    "tool": "bomProcessCategory.list",
     "permission": "accurate:bom-process-category.view"
    },
    {
     "action": "save",
     "method": "POST",
-    "tool": "BomProcessCategory.save",
+    "tool": "bomProcessCategory.save",
     "permission": "accurate:bom-process-category.save"
    }
   ],
@@ -152,31 +152,31 @@
    {
     "action": "bulk-save",
     "method": "POST",
-    "tool": "Branch.bulk-save",
+    "tool": "branch.bulk-save",
     "permission": "accurate:branch.save"
    },
    {
     "action": "delete",
     "method": "DELETE",
-    "tool": "Branch.delete",
+    "tool": "branch.delete",
     "permission": "accurate:branch.delete"
    },
    {
     "action": "detail",
     "method": "GET",
-    "tool": "Branch.detail",
+    "tool": "branch.detail",
     "permission": "accurate:branch.view"
    },
    {
     "action": "list",
     "method": "GET",
-    "tool": "Branch.list",
+    "tool": "branch.list",
     "permission": "accurate:branch.view"
    },
    {
     "action": "save",
     "method": "POST",
-    "tool": "Branch.save",
+    "tool": "branch.save",
     "permission": "accurate:branch.save"
    }
   ],
@@ -184,37 +184,37 @@
    {
     "action": "bulk-save",
     "method": "POST",
-    "tool": "Currency.bulk-save",
+    "tool": "currency.bulk-save",
     "permission": "accurate:currency.save"
    },
    {
     "action": "detail",
     "method": "GET",
-    "tool": "Currency.detail",
+    "tool": "currency.detail",
     "permission": "accurate:currency.view"
    },
    {
     "action": "exchange-rate",
     "method": "GET",
-    "tool": "Currency.exchange-rate",
+    "tool": "currency.exchange-rate",
     "permission": "accurate:currency.view"
    },
    {
     "action": "fiscal-rate",
     "method": "GET",
-    "tool": "Currency.fiscal-rate",
+    "tool": "currency.fiscal-rate",
     "permission": "accurate:currency.view"
    },
    {
     "action": "list",
     "method": "GET",
-    "tool": "Currency.list",
+    "tool": "currency.list",
     "permission": "accurate:currency.view"
    },
    {
     "action": "save",
     "method": "POST",
-    "tool": "Currency.save",
+    "tool": "currency.save",
     "permission": "accurate:currency.save"
    }
   ],
@@ -222,31 +222,31 @@
    {
     "action": "bulk-save",
     "method": "POST",
-    "tool": "Customer.bulk-save",
+    "tool": "customer.bulk-save",
     "permission": "accurate:customer.save"
    },
    {
     "action": "delete",
     "method": "DELETE",
-    "tool": "Customer.delete",
+    "tool": "customer.delete",
     "permission": "accurate:customer.delete"
    },
    {
     "action": "detail",
     "method": "GET",
-    "tool": "Customer.detail",
+    "tool": "customer.detail",
     "permission": "accurate:customer.view"
    },
    {
     "action": "list",
     "method": "GET",
-    "tool": "Customer.list",
+    "tool": "customer.list",
     "permission": "accurate:customer.view"
    },
    {
     "action": "save",
     "method": "POST",
-    "tool": "Customer.save",
+    "tool": "customer.save",
     "permission": "accurate:customer.save"
    }
   ],
@@ -254,31 +254,31 @@
    {
     "action": "bulk-save",
     "method": "POST",
-    "tool": "CustomerCategory.bulk-save",
+    "tool": "customerCategory.bulk-save",
     "permission": "accurate:customer-category.save"
    },
    {
     "action": "delete",
     "method": "DELETE",
-    "tool": "CustomerCategory.delete",
+    "tool": "customerCategory.delete",
     "permission": "accurate:customer-category.delete"
    },
    {
     "action": "detail",
     "method": "GET",
-    "tool": "CustomerCategory.detail",
+    "tool": "customerCategory.detail",
     "permission": "accurate:customer-category.view"
    },
    {
     "action": "list",
     "method": "GET",
-    "tool": "CustomerCategory.list",
+    "tool": "customerCategory.list",
     "permission": "accurate:customer-category.view"
    },
    {
     "action": "save",
     "method": "POST",
-    "tool": "CustomerCategory.save",
+    "tool": "customerCategory.save",
     "permission": "accurate:customer-category.save"
    }
   ],
@@ -286,31 +286,31 @@
    {
     "action": "bulk-save",
     "method": "POST",
-    "tool": "CustomerClaim.bulk-save",
+    "tool": "customerClaim.bulk-save",
     "permission": "accurate:customer-claim.save"
    },
    {
     "action": "delete",
     "method": "DELETE",
-    "tool": "CustomerClaim.delete",
+    "tool": "customerClaim.delete",
     "permission": "accurate:customer-claim.delete"
    },
    {
     "action": "detail",
     "method": "GET",
-    "tool": "CustomerClaim.detail",
+    "tool": "customerClaim.detail",
     "permission": "accurate:customer-claim.view"
    },
    {
     "action": "list",
     "method": "GET",
-    "tool": "CustomerClaim.list",
+    "tool": "customerClaim.list",
     "permission": "accurate:customer-claim.view"
    },
    {
     "action": "save",
     "method": "POST",
-    "tool": "CustomerClaim.save",
+    "tool": "customerClaim.save",
     "permission": "accurate:customer-claim.save"
    }
   ],
@@ -318,31 +318,31 @@
    {
     "action": "bulk-save",
     "method": "POST",
-    "tool": "DataClassification.bulk-save",
+    "tool": "dataClassification.bulk-save",
     "permission": "accurate:data-classification.save"
    },
    {
     "action": "delete",
     "method": "DELETE",
-    "tool": "DataClassification.delete",
+    "tool": "dataClassification.delete",
     "permission": "accurate:data-classification.delete"
    },
    {
     "action": "detail",
     "method": "GET",
-    "tool": "DataClassification.detail",
+    "tool": "dataClassification.detail",
     "permission": "accurate:data-classification.view"
    },
    {
     "action": "list",
     "method": "GET",
-    "tool": "DataClassification.list",
+    "tool": "dataClassification.list",
     "permission": "accurate:data-classification.view"
    },
    {
     "action": "save",
     "method": "POST",
-    "tool": "DataClassification.save",
+    "tool": "dataClassification.save",
     "permission": "accurate:data-classification.save"
    }
   ],
@@ -350,31 +350,31 @@
    {
     "action": "bulk-save",
     "method": "POST",
-    "tool": "DeliveryOrder.bulk-save",
+    "tool": "deliveryOrder.bulk-save",
     "permission": "accurate:delivery-order.save"
    },
    {
     "action": "delete",
     "method": "DELETE",
-    "tool": "DeliveryOrder.delete",
+    "tool": "deliveryOrder.delete",
     "permission": "accurate:delivery-order.delete"
    },
    {
     "action": "detail",
     "method": "GET",
-    "tool": "DeliveryOrder.detail",
+    "tool": "deliveryOrder.detail",
     "permission": "accurate:delivery-order.view"
    },
    {
     "action": "list",
     "method": "GET",
-    "tool": "DeliveryOrder.list",
+    "tool": "deliveryOrder.list",
     "permission": "accurate:delivery-order.view"
    },
    {
     "action": "save",
     "method": "POST",
-    "tool": "DeliveryOrder.save",
+    "tool": "deliveryOrder.save",
     "permission": "accurate:delivery-order.save"
    }
   ],
@@ -382,31 +382,31 @@
    {
     "action": "bulk-save",
     "method": "POST",
-    "tool": "Department.bulk-save",
+    "tool": "department.bulk-save",
     "permission": "accurate:department.save"
    },
    {
     "action": "delete",
     "method": "DELETE",
-    "tool": "Department.delete",
+    "tool": "department.delete",
     "permission": "accurate:department.delete"
    },
    {
     "action": "detail",
     "method": "GET",
-    "tool": "Department.detail",
+    "tool": "department.detail",
     "permission": "accurate:department.view"
    },
    {
     "action": "list",
     "method": "GET",
-    "tool": "Department.list",
+    "tool": "department.list",
     "permission": "accurate:department.view"
    },
    {
     "action": "save",
     "method": "POST",
-    "tool": "Department.save",
+    "tool": "department.save",
     "permission": "accurate:department.save"
    }
   ],
@@ -414,25 +414,25 @@
    {
     "action": "delete",
     "method": "DELETE",
-    "tool": "Employee.delete",
+    "tool": "employee.delete",
     "permission": "accurate:employee.delete"
    },
    {
     "action": "detail",
     "method": "GET",
-    "tool": "Employee.detail",
+    "tool": "employee.detail",
     "permission": "accurate:employee.view"
    },
    {
     "action": "list",
     "method": "GET",
-    "tool": "Employee.list",
+    "tool": "employee.list",
     "permission": "accurate:employee.view"
    },
    {
     "action": "save",
     "method": "POST",
-    "tool": "Employee.save",
+    "tool": "employee.save",
     "permission": "accurate:employee.save"
    }
   ],
@@ -440,31 +440,31 @@
    {
     "action": "bulk-save",
     "method": "POST",
-    "tool": "ExchangeInvoice.bulk-save",
+    "tool": "exchangeInvoice.bulk-save",
     "permission": "accurate:exchange-invoice.save"
    },
    {
     "action": "delete",
     "method": "DELETE",
-    "tool": "ExchangeInvoice.delete",
+    "tool": "exchangeInvoice.delete",
     "permission": "accurate:exchange-invoice.delete"
    },
    {
     "action": "detail",
     "method": "GET",
-    "tool": "ExchangeInvoice.detail",
+    "tool": "exchangeInvoice.detail",
     "permission": "accurate:exchange-invoice.view"
    },
    {
     "action": "list",
     "method": "GET",
-    "tool": "ExchangeInvoice.list",
+    "tool": "exchangeInvoice.list",
     "permission": "accurate:exchange-invoice.view"
    },
    {
     "action": "save",
     "method": "POST",
-    "tool": "ExchangeInvoice.save",
+    "tool": "exchangeInvoice.save",
     "permission": "accurate:exchange-invoice.save"
    }
   ],
@@ -472,31 +472,31 @@
    {
     "action": "bulk-save",
     "method": "POST",
-    "tool": "Expense.bulk-save",
+    "tool": "expense.bulk-save",
     "permission": "accurate:expense.save"
    },
    {
     "action": "delete",
     "method": "DELETE",
-    "tool": "Expense.delete",
+    "tool": "expense.delete",
     "permission": "accurate:expense.delete"
    },
    {
     "action": "detail",
     "method": "GET",
-    "tool": "Expense.detail",
+    "tool": "expense.detail",
     "permission": "accurate:expense.view"
    },
    {
     "action": "list",
     "method": "GET",
-    "tool": "Expense.list",
+    "tool": "expense.list",
     "permission": "accurate:expense.view"
    },
    {
     "action": "save",
     "method": "POST",
-    "tool": "Expense.save",
+    "tool": "expense.save",
     "permission": "accurate:expense.save"
    }
   ],
@@ -504,31 +504,31 @@
    {
     "action": "bulk-save",
     "method": "POST",
-    "tool": "FinishedGoodSlip.bulk-save",
+    "tool": "finishedGoodSlip.bulk-save",
     "permission": "accurate:finished-good-slip.save"
    },
    {
     "action": "delete",
     "method": "DELETE",
-    "tool": "FinishedGoodSlip.delete",
+    "tool": "finishedGoodSlip.delete",
     "permission": "accurate:finished-good-slip.delete"
    },
    {
     "action": "detail",
     "method": "GET",
-    "tool": "FinishedGoodSlip.detail",
+    "tool": "finishedGoodSlip.detail",
     "permission": "accurate:finished-good-slip.view"
    },
    {
     "action": "list",
     "method": "GET",
-    "tool": "FinishedGoodSlip.list",
+    "tool": "finishedGoodSlip.list",
     "permission": "accurate:finished-good-slip.view"
    },
    {
     "action": "save",
     "method": "POST",
-    "tool": "FinishedGoodSlip.save",
+    "tool": "finishedGoodSlip.save",
     "permission": "accurate:finished-good-slip.save"
    }
   ],
@@ -536,31 +536,31 @@
    {
     "action": "delete",
     "method": "DELETE",
-    "tool": "FixedAsset.delete",
+    "tool": "fixedAsset.delete",
     "permission": "accurate:fixed-asset.delete"
    },
    {
     "action": "detail",
     "method": "GET",
-    "tool": "FixedAsset.detail",
+    "tool": "fixedAsset.detail",
     "permission": "accurate:fixed-asset.view"
    },
    {
     "action": "get-history",
     "method": "GET",
-    "tool": "FixedAsset.get-history",
+    "tool": "fixedAsset.get-history",
     "permission": "accurate:fixed-asset.view"
    },
    {
     "action": "list",
     "method": "GET",
-    "tool": "FixedAsset.list",
+    "tool": "fixedAsset.list",
     "permission": "accurate:fixed-asset.view"
    },
    {
     "action": "save",
     "method": "POST",
-    "tool": "FixedAsset.save",
+    "tool": "fixedAsset.save",
     "permission": "accurate:fixed-asset.save"
    }
   ],
@@ -568,31 +568,31 @@
    {
     "action": "bulk-save",
     "method": "POST",
-    "tool": "Fob.bulk-save",
+    "tool": "fob.bulk-save",
     "permission": "accurate:fob.save"
    },
    {
     "action": "delete",
     "method": "DELETE",
-    "tool": "Fob.delete",
+    "tool": "fob.delete",
     "permission": "accurate:fob.delete"
    },
    {
     "action": "detail",
     "method": "GET",
-    "tool": "Fob.detail",
+    "tool": "fob.detail",
     "permission": "accurate:fob.view"
    },
    {
     "action": "list",
     "method": "GET",
-    "tool": "Fob.list",
+    "tool": "fob.list",
     "permission": "accurate:fob.view"
    },
    {
     "action": "save",
     "method": "POST",
-    "tool": "Fob.save",
+    "tool": "fob.save",
     "permission": "accurate:fob.save"
    }
   ],
@@ -600,31 +600,31 @@
    {
     "action": "bulk-save",
     "method": "POST",
-    "tool": "Freeonboard.bulk-save",
+    "tool": "freeonboard.bulk-save",
     "permission": "accurate:freeonboard.save"
    },
    {
     "action": "delete",
     "method": "DELETE",
-    "tool": "Freeonboard.delete",
+    "tool": "freeonboard.delete",
     "permission": "accurate:freeonboard.delete"
    },
    {
     "action": "detail",
     "method": "GET",
-    "tool": "Freeonboard.detail",
+    "tool": "freeonboard.detail",
     "permission": "accurate:freeonboard.view"
    },
    {
     "action": "list",
     "method": "GET",
-    "tool": "Freeonboard.list",
+    "tool": "freeonboard.list",
     "permission": "accurate:freeonboard.view"
    },
    {
     "action": "save",
     "method": "POST",
-    "tool": "Freeonboard.save",
+    "tool": "freeonboard.save",
     "permission": "accurate:freeonboard.save"
    }
   ],
@@ -632,55 +632,55 @@
    {
     "action": "bulk-save",
     "method": "POST",
-    "tool": "Glaccount.bulk-save",
+    "tool": "glaccount.bulk-save",
     "permission": "accurate:glaccount.save"
    },
    {
     "action": "delete",
     "method": "DELETE",
-    "tool": "Glaccount.delete",
+    "tool": "glaccount.delete",
     "permission": "accurate:glaccount.delete"
    },
    {
     "action": "detail",
     "method": "GET",
-    "tool": "Glaccount.detail",
+    "tool": "glaccount.detail",
     "permission": "accurate:glaccount.view"
    },
    {
     "action": "get-balance",
     "method": "GET",
-    "tool": "Glaccount.get-balance",
+    "tool": "glaccount.get-balance",
     "permission": "accurate:glaccount.view"
    },
    {
     "action": "get-bs-account-amount",
     "method": "GET",
-    "tool": "Glaccount.get-bs-account-amount",
+    "tool": "glaccount.get-bs-account-amount",
     "permission": "accurate:glaccount.view"
    },
    {
     "action": "get-pl-account-amount",
     "method": "GET",
-    "tool": "Glaccount.get-pl-account-amount",
+    "tool": "glaccount.get-pl-account-amount",
     "permission": "accurate:glaccount.view"
    },
    {
     "action": "list",
     "method": "GET",
-    "tool": "Glaccount.list",
+    "tool": "glaccount.list",
     "permission": "accurate:glaccount.view"
    },
    {
     "action": "mutation",
     "method": "GET",
-    "tool": "Glaccount.mutation",
+    "tool": "glaccount.mutation",
     "permission": "accurate:glaccount.view"
    },
    {
     "action": "save",
     "method": "POST",
-    "tool": "Glaccount.save",
+    "tool": "glaccount.save",
     "permission": "accurate:glaccount.save"
    }
   ],
@@ -688,79 +688,79 @@
    {
     "action": "bulk-save",
     "method": "POST",
-    "tool": "Item.bulk-save",
+    "tool": "item.bulk-save",
     "permission": "accurate:item.save"
    },
    {
     "action": "delete",
     "method": "DELETE",
-    "tool": "Item.delete",
+    "tool": "item.delete",
     "permission": "accurate:item.delete"
    },
    {
     "action": "detail",
     "method": "GET",
-    "tool": "Item.detail",
+    "tool": "item.detail",
     "permission": "accurate:item.view"
    },
    {
     "action": "get-nearest-cost",
     "method": "GET",
-    "tool": "Item.get-nearest-cost",
+    "tool": "item.get-nearest-cost",
     "permission": "accurate:item.view"
    },
    {
     "action": "get-selling-price",
     "method": "GET",
-    "tool": "Item.get-selling-price",
+    "tool": "item.get-selling-price",
     "permission": "accurate:item.view"
    },
    {
     "action": "get-stock",
     "method": "GET",
-    "tool": "Item.get-stock",
+    "tool": "item.get-stock",
     "permission": "accurate:item.view"
    },
    {
     "action": "list",
     "method": "GET",
-    "tool": "Item.list",
+    "tool": "item.list",
     "permission": "accurate:item.view"
    },
    {
     "action": "list-stock",
     "method": "GET",
-    "tool": "Item.list-stock",
+    "tool": "item.list-stock",
     "permission": "accurate:item.view"
    },
    {
     "action": "save",
     "method": "POST",
-    "tool": "Item.save",
+    "tool": "item.save",
     "permission": "accurate:item.save"
    },
    {
     "action": "search-by-item-or-sn",
     "method": "GET",
-    "tool": "Item.search-by-item-or-sn",
+    "tool": "item.search-by-item-or-sn",
     "permission": "accurate:item.view"
    },
    {
     "action": "search-by-no-upc",
     "method": "GET",
-    "tool": "Item.search-by-no-upc",
+    "tool": "item.search-by-no-upc",
     "permission": "accurate:item.view"
    },
    {
     "action": "stock-mutation-history",
     "method": "GET",
-    "tool": "Item.stock-mutation-history",
+    "tool": "item.stock-mutation-history",
     "permission": "accurate:item.view"
    },
    {
     "action": "vendor-price",
     "method": "GET",
-    "tool": "Item.vendor-price",
+    "tool": "item.vendor-price",
     "permission": "accurate:item.view"
    }
   ],
@@ -768,37 +768,37 @@
    {
     "action": "bulk-save",
     "method": "POST",
-    "tool": "ItemAdjustment.bulk-save",
+    "tool": "itemAdjustment.bulk-save",
     "permission": "accurate:item-adjustment.save"
    },
    {
     "action": "delete",
     "method": "DELETE",
-    "tool": "ItemAdjustment.delete",
+    "tool": "itemAdjustment.delete",
     "permission": "accurate:item-adjustment.delete"
    },
    {
     "action": "detail",
     "method": "GET",
-    "tool": "ItemAdjustment.detail",
+    "tool": "itemAdjustment.detail",
     "permission": "accurate:item-adjustment.view"
    },
    {
     "action": "list",
     "method": "GET",
-    "tool": "ItemAdjustment.list",
+    "tool": "itemAdjustment.list",
     "permission": "accurate:item-adjustment.view"
    },
    {
     "action": "save",
     "method": "POST",
-    "tool": "ItemAdjustment.save",
+    "tool": "itemAdjustment.save",
     "permission": "accurate:item-adjustment.save"
    },
    {
     "action": "save-target-quantity",
     "method": "POST",
-    "tool": "ItemAdjustment.save-target-quantity",
+    "tool": "itemAdjustment.save-target-quantity",
     "permission": "accurate:item-adjustment.save"
    }
   ],
@@ -806,25 +806,25 @@
    {
     "action": "delete",
     "method": "DELETE",
-    "tool": "ItemBrand.delete",
+    "tool": "itemBrand.delete",
     "permission": "accurate:item-brand.delete"
    },
    {
     "action": "detail",
     "method": "GET",
-    "tool": "ItemBrand.detail",
+    "tool": "itemBrand.detail",
     "permission": "accurate:item-brand.view"
    },
    {
     "action": "list",
     "method": "GET",
-    "tool": "ItemBrand.list",
+    "tool": "itemBrand.list",
     "permission": "accurate:item-brand.view"
    },
    {
     "action": "save",
     "method": "POST",
-    "tool": "ItemBrand.save",
+    "tool": "itemBrand.save",
     "permission": "accurate:item-brand.save"
    }
   ],
@@ -832,31 +832,31 @@
    {
     "action": "bulk-save",
     "method": "POST",
-    "tool": "ItemCategory.bulk-save",
+    "tool": "itemCategory.bulk-save",
     "permission": "accurate:item-category.save"
    },
    {
     "action": "delete",
     "method": "DELETE",
-    "tool": "ItemCategory.delete",
+    "tool": "itemCategory.delete",
     "permission": "accurate:item-category.delete"
    },
    {
     "action": "detail",
     "method": "GET",
-    "tool": "ItemCategory.detail",
+    "tool": "itemCategory.detail",
     "permission": "accurate:item-category.view"
    },
    {
     "action": "list",
     "method": "GET",
-    "tool": "ItemCategory.list",
+    "tool": "itemCategory.list",
     "permission": "accurate:item-category.view"
    },
    {
     "action": "save",
     "method": "POST",
-    "tool": "ItemCategory.save",
+    "tool": "itemCategory.save",
     "permission": "accurate:item-category.save"
    }
   ],
@@ -864,31 +864,31 @@
    {
     "action": "bulk-save",
     "method": "POST",
-    "tool": "ItemTransfer.bulk-save",
+    "tool": "itemTransfer.bulk-save",
     "permission": "accurate:item-transfer.save"
    },
    {
     "action": "delete",
     "method": "DELETE",
-    "tool": "ItemTransfer.delete",
+    "tool": "itemTransfer.delete",
     "permission": "accurate:item-transfer.delete"
    },
    {
     "action": "detail",
     "method": "GET",
-    "tool": "ItemTransfer.detail",
+    "tool": "itemTransfer.detail",
     "permission": "accurate:item-transfer.view"
    },
    {
     "action": "list",
     "method": "GET",
-    "tool": "ItemTransfer.list",
+    "tool": "itemTransfer.list",
     "permission": "accurate:item-transfer.view"
    },
    {
     "action": "save",
     "method": "POST",
-    "tool": "ItemTransfer.save",
+    "tool": "itemTransfer.save",
     "permission": "accurate:item-transfer.save"
    }
   ],
@@ -896,31 +896,31 @@
    {
     "action": "bulk-save",
     "method": "POST",
-    "tool": "JobOrder.bulk-save",
+    "tool": "jobOrder.bulk-save",
     "permission": "accurate:job-order.save"
    },
    {
     "action": "delete",
     "method": "DELETE",
-    "tool": "JobOrder.delete",
+    "tool": "jobOrder.delete",
     "permission": "accurate:job-order.delete"
    },
    {
     "action": "detail",
     "method": "GET",
-    "tool": "JobOrder.detail",
+    "tool": "jobOrder.detail",
     "permission": "accurate:job-order.view"
    },
    {
     "action": "list",
     "method": "GET",
-    "tool": "JobOrder.list",
+    "tool": "jobOrder.list",
     "permission": "accurate:job-order.view"
    },
    {
     "action": "save",
     "method": "POST",
-    "tool": "JobOrder.save",
+    "tool": "jobOrder.save",
     "permission": "accurate:job-order.save"
    }
   ],
@@ -928,31 +928,31 @@
    {
     "action": "bulk-save",
     "method": "POST",
-    "tool": "JournalVoucher.bulk-save",
+    "tool": "journalVoucher.bulk-save",
     "permission": "accurate:journal-voucher.save"
    },
    {
     "action": "delete",
     "method": "DELETE",
-    "tool": "JournalVoucher.delete",
+    "tool": "journalVoucher.delete",
     "permission": "accurate:journal-voucher.delete"
    },
    {
     "action": "detail",
     "method": "GET",
-    "tool": "JournalVoucher.detail",
+    "tool": "journalVoucher.detail",
     "permission": "accurate:journal-voucher.view"
    },
    {
     "action": "list",
     "method": "GET",
-    "tool": "JournalVoucher.list",
+    "tool": "journalVoucher.list",
     "permission": "accurate:journal-voucher.view"
    },
    {
     "action": "save",
     "method": "POST",
-    "tool": "JournalVoucher.save",
+    "tool": "journalVoucher.save",
     "permission": "accurate:journal-voucher.save"
    }
   ],
@@ -960,25 +960,25 @@
    {
     "action": "delete",
     "method": "DELETE",
-    "tool": "ManufactureOrder.delete",
+    "tool": "manufactureOrder.delete",
     "permission": "accurate:manufacture-order.delete"
    },
    {
     "action": "detail",
     "method": "GET",
-    "tool": "ManufactureOrder.detail",
+    "tool": "manufactureOrder.detail",
     "permission": "accurate:manufacture-order.view"
    },
    {
     "action": "list",
     "method": "GET",
-    "tool": "ManufactureOrder.list",
+    "tool": "manufactureOrder.list",
     "permission": "accurate:manufacture-order.view"
    },
    {
     "action": "save",
     "method": "POST",
-    "tool": "ManufactureOrder.save",
+    "tool": "manufactureOrder.save",
     "permission": "accurate:manufacture-order.save"
    }
   ],
@@ -986,31 +986,31 @@
    {
     "action": "bulk-save",
     "method": "POST",
-    "tool": "MaterialAdjustment.bulk-save",
+    "tool": "materialAdjustment.bulk-save",
     "permission": "accurate:material-adjustment.save"
    },
    {
     "action": "delete",
     "method": "DELETE",
-    "tool": "MaterialAdjustment.delete",
+    "tool": "materialAdjustment.delete",
     "permission": "accurate:material-adjustment.delete"
    },
    {
     "action": "detail",
     "method": "GET",
-    "tool": "MaterialAdjustment.detail",
+    "tool": "materialAdjustment.detail",
     "permission": "accurate:material-adjustment.view"
    },
    {
     "action": "list",
     "method": "GET",
-    "tool": "MaterialAdjustment.list",
+    "tool": "materialAdjustment.list",
     "permission": "accurate:material-adjustment.view"
    },
    {
     "action": "save",
     "method": "POST",
-    "tool": "MaterialAdjustment.save",
+    "tool": "materialAdjustment.save",
     "permission": "accurate:material-adjustment.save"
    }
   ],
@@ -1018,19 +1018,19 @@
    {
     "action": "detail",
     "method": "GET",
-    "tool": "MaterialEquipment.detail",
+    "tool": "materialEquipment.detail",
     "permission": "accurate:material-equipment.view"
    },
    {
     "action": "list",
     "method": "GET",
-    "tool": "MaterialEquipment.list",
+    "tool": "materialEquipment.list",
     "permission": "accurate:material-equipment.view"
    },
    {
     "action": "save",
     "method": "POST",
-    "tool": "MaterialEquipment.save",
+    "tool": "materialEquipment.save",
     "permission": "accurate:material-equipment.save"
    }
   ],
@@ -1038,31 +1038,31 @@
    {
     "action": "bulk-save",
     "method": "POST",
-    "tool": "MaterialSlip.bulk-save",
+    "tool": "materialSlip.bulk-save",
     "permission": "accurate:material-slip.save"
    },
    {
     "action": "delete",
     "method": "DELETE",
-    "tool": "MaterialSlip.delete",
+    "tool": "materialSlip.delete",
     "permission": "accurate:material-slip.delete"
    },
    {
     "action": "detail",
     "method": "GET",
-    "tool": "MaterialSlip.detail",
+    "tool": "materialSlip.detail",
     "permission": "accurate:material-slip.view"
    },
    {
     "action": "list",
     "method": "GET",
-    "tool": "MaterialSlip.list",
+    "tool": "materialSlip.list",
     "permission": "accurate:material-slip.view"
    },
    {
     "action": "save",
     "method": "POST",
-    "tool": "MaterialSlip.save",
+    "tool": "materialSlip.save",
     "permission": "accurate:material-slip.save"
    }
   ],
@@ -1070,19 +1070,19 @@
    {
     "action": "detail",
     "method": "GET",
-    "tool": "OnlineOrder.detail",
+    "tool": "onlineOrder.detail",
     "permission": "accurate:online-order.view"
    },
    {
     "action": "list",
     "method": "GET",
-    "tool": "OnlineOrder.list",
+    "tool": "onlineOrder.list",
     "permission": "accurate:online-order.view"
    },
    {
     "action": "save",
     "method": "POST",
-    "tool": "OnlineOrder.save",
+    "tool": "onlineOrder.save",
     "permission": "accurate:online-order.save"
    }
   ],
@@ -1090,31 +1090,31 @@
    {
     "action": "bulk-save",
     "method": "POST",
-    "tool": "OtherDeposit.bulk-save",
+    "tool": "otherDeposit.bulk-save",
     "permission": "accurate:other-deposit.save"
    },
    {
     "action": "delete",
     "method": "DELETE",
-    "tool": "OtherDeposit.delete",
+    "tool": "otherDeposit.delete",
     "permission": "accurate:other-deposit.delete"
    },
    {
     "action": "detail",
     "method": "GET",
-    "tool": "OtherDeposit.detail",
+    "tool": "otherDeposit.detail",
     "permission": "accurate:other-deposit.view"
    },
    {
     "action": "list",
     "method": "GET",
-    "tool": "OtherDeposit.list",
+    "tool": "otherDeposit.list",
     "permission": "accurate:other-deposit.view"
    },
    {
     "action": "save",
     "method": "POST",
-    "tool": "OtherDeposit.save",
+    "tool": "otherDeposit.save",
     "permission": "accurate:other-deposit.save"
    }
   ],
@@ -1122,31 +1122,31 @@
    {
     "action": "bulk-save",
     "method": "POST",
-    "tool": "OtherPayment.bulk-save",
+    "tool": "otherPayment.bulk-save",
     "permission": "accurate:other-payment.save"
    },
    {
     "action": "delete",
     "method": "DELETE",
-    "tool": "OtherPayment.delete",
+    "tool": "otherPayment.delete",
     "permission": "accurate:other-payment.delete"
    },
    {
     "action": "detail",
     "method": "GET",
-    "tool": "OtherPayment.detail",
+    "tool": "otherPayment.detail",
     "permission": "accurate:other-payment.view"
    },
    {
     "action": "list",
     "method": "GET",
-    "tool": "OtherPayment.list",
+    "tool": "otherPayment.list",
     "permission": "accurate:other-payment.view"
    },
    {
     "action": "save",
     "method": "POST",
-    "tool": "OtherPayment.save",
+    "tool": "otherPayment.save",
     "permission": "accurate:other-payment.save"
    }
   ],
@@ -1154,31 +1154,31 @@
    {
     "action": "bulk-save",
     "method": "POST",
-    "tool": "PaymentTerm.bulk-save",
+    "tool": "paymentTerm.bulk-save",
     "permission": "accurate:payment-term.save"
    },
    {
     "action": "delete",
     "method": "DELETE",
-    "tool": "PaymentTerm.delete",
+    "tool": "paymentTerm.delete",
     "permission": "accurate:payment-term.delete"
    },
    {
     "action": "detail",
     "method": "GET",
-    "tool": "PaymentTerm.detail",
+    "tool": "paymentTerm.detail",
     "permission": "accurate:payment-term.view"
    },
    {
     "action": "list",
     "method": "GET",
-    "tool": "PaymentTerm.list",
+    "tool": "paymentTerm.list",
     "permission": "accurate:payment-term.view"
    },
    {
     "action": "save",
     "method": "POST",
-    "tool": "PaymentTerm.save",
+    "tool": "paymentTerm.save",
     "permission": "accurate:payment-term.save"
    }
   ],
@@ -1186,25 +1186,25 @@
    {
     "action": "delete",
     "method": "DELETE",
-    "tool": "PosCustomer.delete",
+    "tool": "posCustomer.delete",
     "permission": "accurate:pos/customer.delete"
    },
    {
     "action": "detail",
     "method": "GET",
-    "tool": "PosCustomer.detail",
+    "tool": "posCustomer.detail",
     "permission": "accurate:pos/customer.view"
    },
    {
     "action": "list",
     "method": "GET",
-    "tool": "PosCustomer.list",
+    "tool": "posCustomer.list",
     "permission": "accurate:pos/customer.view"
    },
    {
     "action": "save",
     "method": "POST",
-    "tool": "PosCustomer.save",
+    "tool": "posCustomer.save",
     "permission": "accurate:pos/customer.save"
    }
   ],
@@ -1212,25 +1212,25 @@
    {
     "action": "delete",
     "method": "DELETE",
-    "tool": "PosItem.delete",
+    "tool": "posItem.delete",
     "permission": "accurate:pos/item.delete"
    },
    {
     "action": "detail",
     "method": "GET",
-    "tool": "PosItem.detail",
+    "tool": "posItem.detail",
     "permission": "accurate:pos/item.view"
    },
    {
     "action": "list",
     "method": "GET",
-    "tool": "PosItem.list",
+    "tool": "posItem.list",
     "permission": "accurate:pos/item.view"
    },
    {
     "action": "save",
     "method": "POST",
-    "tool": "PosItem.save",
+    "tool": "posItem.save",
     "permission": "accurate:pos/item.save"
    }
   ],
@@ -1238,19 +1238,19 @@
    {
     "action": "detail",
     "method": "GET",
-    "tool": "PosTransaction.detail",
+    "tool": "posTransaction.detail",
     "permission": "accurate:pos/transaction.view"
    },
    {
     "action": "list",
     "method": "GET",
-    "tool": "PosTransaction.list",
+    "tool": "posTransaction.list",
     "permission": "accurate:pos/transaction.view"
    },
    {
     "action": "save",
     "method": "POST",
-    "tool": "PosTransaction.save",
+    "tool": "posTransaction.save",
     "permission": "accurate:pos/transaction.save"
    }
   ],
@@ -1258,19 +1258,19 @@
    {
     "action": "detail",
     "method": "GET",
-    "tool": "PreliminarySurvey.detail",
+    "tool": "preliminarySurvey.detail",
     "permission": "accurate:preliminary-survey.view"
    },
    {
     "action": "list",
     "method": "GET",
-    "tool": "PreliminarySurvey.list",
+    "tool": "preliminarySurvey.list",
     "permission": "accurate:preliminary-survey.view"
    },
    {
     "action": "save",
     "method": "POST",
-    "tool": "PreliminarySurvey.save",
+    "tool": "preliminarySurvey.save",
     "permission": "accurate:preliminary-survey.save"
    }
   ],
@@ -1278,19 +1278,19 @@
    {
     "action": "detail",
     "method": "GET",
-    "tool": "PriceCategory.detail",
+    "tool": "priceCategory.detail",
     "permission": "accurate:price-category.view"
    },
    {
     "action": "list",
     "method": "GET",
-    "tool": "PriceCategory.list",
+    "tool": "priceCategory.list",
     "permission": "accurate:price-category.view"
    },
    {
     "action": "save",
     "method": "POST",
-    "tool": "PriceCategory.save",
+    "tool": "priceCategory.save",
     "permission": "accurate:price-category.save"
    }
   ],
@@ -1298,25 +1298,25 @@
    {
     "action": "delete",
     "method": "DELETE",
-    "tool": "ProcessStages.delete",
+    "tool": "processStages.delete",
     "permission": "accurate:process-stages.delete"
    },
    {
     "action": "detail",
     "method": "GET",
-    "tool": "ProcessStages.detail",
+    "tool": "processStages.detail",
     "permission": "accurate:process-stages.view"
    },
    {
     "action": "list",
     "method": "GET",
-    "tool": "ProcessStages.list",
+    "tool": "processStages.list",
     "permission": "accurate:process-stages.view"
    },
    {
     "action": "save",
     "method": "POST",
-    "tool": "ProcessStages.save",
+    "tool": "processStages.save",
     "permission": "accurate:process-stages.save"
    }
   ],
@@ -1324,31 +1324,31 @@
    {
     "action": "bulk-save",
     "method": "POST",
-    "tool": "Project.bulk-save",
+    "tool": "project.bulk-save",
     "permission": "accurate:project.save"
    },
    {
     "action": "delete",
     "method": "DELETE",
-    "tool": "Project.delete",
+    "tool": "project.delete",
     "permission": "accurate:project.delete"
    },
    {
     "action": "detail",
     "method": "GET",
-    "tool": "Project.detail",
+    "tool": "project.detail",
     "permission": "accurate:project.view"
    },
    {
     "action": "list",
     "method": "GET",
-    "tool": "Project.list",
+    "tool": "project.list",
     "permission": "accurate:project.view"
    },
    {
     "action": "save",
     "method": "POST",
-    "tool": "Project.save",
+    "tool": "project.save",
     "permission": "accurate:project.save"
    }
   ],
@@ -1356,19 +1356,19 @@
    {
     "action": "detail",
     "method": "GET",
-    "tool": "ProjectContractor.detail",
+    "tool": "projectContractor.detail",
     "permission": "accurate:project-contractor.view"
    },
    {
     "action": "list",
     "method": "GET",
-    "tool": "ProjectContractor.list",
+    "tool": "projectContractor.list",
     "permission": "accurate:project-contractor.view"
    },
    {
     "action": "save",
     "method": "POST",
-    "tool": "ProjectContractor.save",
+    "tool": "projectContractor.save",
     "permission": "accurate:project-contractor.save"
    }
   ],
@@ -1376,37 +1376,37 @@
    {
     "action": "bulk-save",
     "method": "POST",
-    "tool": "PurchaseInvoice.bulk-save",
+    "tool": "purchaseInvoice.bulk-save",
     "permission": "accurate:purchase-invoice.save"
    },
    {
     "action": "create-down-payment",
-    "method": "GET",
-    "tool": "PurchaseInvoice.create-down-payment",
-    "permission": "accurate:purchase-invoice.view"
+    "method": "POST",
+    "tool": "purchaseInvoice.create-down-payment",
+    "permission": "accurate:purchase-invoice.save"
    },
    {
     "action": "delete",
     "method": "DELETE",
-    "tool": "PurchaseInvoice.delete",
+    "tool": "purchaseInvoice.delete",
     "permission": "accurate:purchase-invoice.delete"
    },
    {
     "action": "detail",
     "method": "GET",
-    "tool": "PurchaseInvoice.detail",
+    "tool": "purchaseInvoice.detail",
     "permission": "accurate:purchase-invoice.view"
    },
    {
     "action": "list",
     "method": "GET",
-    "tool": "PurchaseInvoice.list",
+    "tool": "purchaseInvoice.list",
     "permission": "accurate:purchase-invoice.view"
    },
    {
     "action": "save",
     "method": "POST",
-    "tool": "PurchaseInvoice.save",
+    "tool": "purchaseInvoice.save",
     "permission": "accurate:purchase-invoice.save"
    }
   ],
@@ -1414,37 +1414,37 @@
    {
     "action": "bulk-save",
     "method": "POST",
-    "tool": "PurchaseOrder.bulk-save",
+    "tool": "purchaseOrder.bulk-save",
     "permission": "accurate:purchase-order.save"
    },
    {
     "action": "delete",
     "method": "DELETE",
-    "tool": "PurchaseOrder.delete",
+    "tool": "purchaseOrder.delete",
     "permission": "accurate:purchase-order.delete"
    },
    {
     "action": "detail",
     "method": "GET",
-    "tool": "PurchaseOrder.detail",
+    "tool": "purchaseOrder.detail",
     "permission": "accurate:purchase-order.view"
    },
    {
     "action": "list",
     "method": "GET",
-    "tool": "PurchaseOrder.list",
+    "tool": "purchaseOrder.list",
     "permission": "accurate:purchase-order.view"
    },
    {
     "action": "manual-close-order",
-    "method": "GET",
-    "tool": "PurchaseOrder.manual-close-order",
-    "permission": "accurate:purchase-order.view"
+    "method": "POST",
+    "tool": "purchaseOrder.manual-close-order",
+    "permission": "accurate:purchase-order.save"
    },
    {
     "action": "save",
     "method": "POST",
-    "tool": "PurchaseOrder.save",
+    "tool": "purchaseOrder.save",
     "permission": "accurate:purchase-order.save"
    }
   ],
@@ -1452,31 +1452,31 @@
    {
     "action": "bulk-save",
     "method": "POST",
-    "tool": "PurchasePayment.bulk-save",
+    "tool": "purchasePayment.bulk-save",
     "permission": "accurate:purchase-payment.save"
    },
    {
     "action": "delete",
     "method": "DELETE",
-    "tool": "PurchasePayment.delete",
+    "tool": "purchasePayment.delete",
     "permission": "accurate:purchase-payment.delete"
    },
    {
     "action": "detail",
     "method": "GET",
-    "tool": "PurchasePayment.detail",
+    "tool": "purchasePayment.detail",
     "permission": "accurate:purchase-payment.view"
    },
    {
     "action": "list",
     "method": "GET",
-    "tool": "PurchasePayment.list",
+    "tool": "purchasePayment.list",
     "permission": "accurate:purchase-payment.view"
    },
    {
     "action": "save",
     "method": "POST",
-    "tool": "PurchasePayment.save",
+    "tool": "purchasePayment.save",
     "permission": "accurate:purchase-payment.save"
    }
   ],
@@ -1484,31 +1484,31 @@
    {
     "action": "bulk-save",
     "method": "POST",
-    "tool": "PurchaseRequisition.bulk-save",
+    "tool": "purchaseRequisition.bulk-save",
     "permission": "accurate:purchase-requisition.save"
    },
    {
     "action": "delete",
     "method": "DELETE",
-    "tool": "PurchaseRequisition.delete",
+    "tool": "purchaseRequisition.delete",
     "permission": "accurate:purchase-requisition.delete"
    },
    {
     "action": "detail",
     "method": "GET",
-    "tool": "PurchaseRequisition.detail",
+    "tool": "purchaseRequisition.detail",
     "permission": "accurate:purchase-requisition.view"
    },
    {
     "action": "list",
     "method": "GET",
-    "tool": "PurchaseRequisition.list",
+    "tool": "purchaseRequisition.list",
     "permission": "accurate:purchase-requisition.view"
    },
    {
     "action": "save",
     "method": "POST",
-    "tool": "PurchaseRequisition.save",
+    "tool": "purchaseRequisition.save",
     "permission": "accurate:purchase-requisition.save"
    }
   ],
@@ -1516,31 +1516,31 @@
    {
     "action": "bulk-save",
     "method": "POST",
-    "tool": "PurchaseReturn.bulk-save",
+    "tool": "purchaseReturn.bulk-save",
     "permission": "accurate:purchase-return.save"
    },
    {
     "action": "delete",
     "method": "DELETE",
-    "tool": "PurchaseReturn.delete",
+    "tool": "purchaseReturn.delete",
     "permission": "accurate:purchase-return.delete"
    },
    {
     "action": "detail",
     "method": "GET",
-    "tool": "PurchaseReturn.detail",
+    "tool": "purchaseReturn.detail",
     "permission": "accurate:purchase-return.view"
    },
    {
     "action": "list",
     "method": "GET",
-    "tool": "PurchaseReturn.list",
+    "tool": "purchaseReturn.list",
     "permission": "accurate:purchase-return.view"
    },
    {
     "action": "save",
     "method": "POST",
-    "tool": "PurchaseReturn.save",
+    "tool": "purchaseReturn.save",
     "permission": "accurate:purchase-return.save"
    }
   ],
@@ -1548,31 +1548,31 @@
    {
     "action": "bulk-save",
     "method": "POST",
-    "tool": "ReceiveItem.bulk-save",
+    "tool": "receiveItem.bulk-save",
     "permission": "accurate:receive-item.save"
    },
    {
     "action": "delete",
     "method": "DELETE",
-    "tool": "ReceiveItem.delete",
+    "tool": "receiveItem.delete",
     "permission": "accurate:receive-item.delete"
    },
    {
     "action": "detail",
     "method": "GET",
-    "tool": "ReceiveItem.detail",
+    "tool": "receiveItem.detail",
     "permission": "accurate:receive-item.view"
    },
    {
     "action": "list",
     "method": "GET",
-    "tool": "ReceiveItem.list",
+    "tool": "receiveItem.list",
     "permission": "accurate:receive-item.view"
    },
    {
     "action": "save",
     "method": "POST",
-    "tool": "ReceiveItem.save",
+    "tool": "receiveItem.save",
     "permission": "accurate:receive-item.save"
    }
   ],
@@ -1580,19 +1580,19 @@
    {
     "action": "detail",
     "method": "GET",
-    "tool": "Recognition.detail",
+    "tool": "recognition.detail",
     "permission": "accurate:recognition.view"
    },
    {
     "action": "list",
     "method": "GET",
-    "tool": "Recognition.list",
+    "tool": "recognition.list",
     "permission": "accurate:recognition.view"
    },
    {
     "action": "save",
     "method": "POST",
-    "tool": "Recognition.save",
+    "tool": "recognition.save",
     "permission": "accurate:recognition.save"
    }
   ],
@@ -1600,37 +1600,37 @@
    {
     "action": "detail",
     "method": "GET",
-    "tool": "Report.detail",
+    "tool": "report.detail",
     "permission": "accurate:report.view"
    },
    {
     "action": "list",
     "method": "GET",
-    "tool": "Report.list",
+    "tool": "report.list",
     "permission": "accurate:report.view"
    },
    {
     "action": "serial-number-mutation",
     "method": "GET",
-    "tool": "Report.serial-number-mutation",
+    "tool": "report.serial-number-mutation",
     "permission": "accurate:report.view"
    },
    {
     "action": "serial-number-per-warehouse",
     "method": "GET",
-    "tool": "Report.serial-number-per-warehouse",
+    "tool": "report.serial-number-per-warehouse",
     "permission": "accurate:report.view"
    },
    {
     "action": "stock-mutation-summary",
     "method": "GET",
-    "tool": "Report.stock-mutation-summary",
+    "tool": "report.stock-mutation-summary",
     "permission": "accurate:report.view"
    },
    {
     "action": "work-order-detail",
     "method": "GET",
-    "tool": "Report.work-order-detail",
+    "tool": "report.work-order-detail",
     "permission": "accurate:report.view"
    }
   ],
@@ -1638,31 +1638,31 @@
    {
     "action": "bulk-save",
     "method": "POST",
-    "tool": "RollOver.bulk-save",
+    "tool": "rollOver.bulk-save",
     "permission": "accurate:roll-over.save"
    },
    {
     "action": "delete",
     "method": "DELETE",
-    "tool": "RollOver.delete",
+    "tool": "rollOver.delete",
     "permission": "accurate:roll-over.delete"
    },
    {
     "action": "detail",
     "method": "GET",
-    "tool": "RollOver.detail",
+    "tool": "rollOver.detail",
     "permission": "accurate:roll-over.view"
    },
    {
     "action": "list",
     "method": "GET",
-    "tool": "RollOver.list",
+    "tool": "rollOver.list",
     "permission": "accurate:roll-over.view"
    },
    {
     "action": "save",
     "method": "POST",
-    "tool": "RollOver.save",
+    "tool": "rollOver.save",
     "permission": "accurate:roll-over.save"
    }
   ],
@@ -1670,63 +1670,63 @@
    {
     "action": "detail",
     "method": "GET",
-    "tool": "SalesCheckin.detail",
+    "tool": "salesCheckin.detail",
     "permission": "accurate:sales-checkin.view"
    },
    {
     "action": "list",
     "method": "GET",
-    "tool": "SalesCheckin.list",
+    "tool": "salesCheckin.list",
     "permission": "accurate:sales-checkin.view"
    },
    {
     "action": "save",
     "method": "POST",
-    "tool": "SalesCheckin.save",
+    "tool": "salesCheckin.save",
     "permission": "accurate:sales-checkin.save"
    }
   ],
   "sales-invoice": [
    {
     "action": "bulk-save",
-    "method": "GET",
-    "tool": "SalesInvoice.bulk-save",
-    "permission": "accurate:sales-invoice.view"
+    "method": "POST",
+    "tool": "salesInvoice.bulk-save",
+    "permission": "accurate:sales-invoice.save"
    },
    {
     "action": "create-down-payment",
-    "method": "GET",
-    "tool": "SalesInvoice.create-down-payment",
-    "permission": "accurate:sales-invoice.view"
+    "method": "POST",
+    "tool": "salesInvoice.create-down-payment",
+    "permission": "accurate:sales-invoice.save"
    },
    {
     "action": "delete",
     "method": "DELETE",
-    "tool": "SalesInvoice.delete",
+    "tool": "salesInvoice.delete",
     "permission": "accurate:sales-invoice.delete"
    },
    {
     "action": "detail",
     "method": "GET",
-    "tool": "SalesInvoice.detail",
+    "tool": "salesInvoice.detail",
     "permission": "accurate:sales-invoice.view"
    },
    {
     "action": "detail-invoice",
     "method": "GET",
-    "tool": "SalesInvoice.detail-invoice",
+    "tool": "salesInvoice.detail-invoice",
     "permission": "accurate:sales-invoice.view"
    },
    {
     "action": "list",
     "method": "GET",
-    "tool": "SalesInvoice.list",
+    "tool": "salesInvoice.list",
     "permission": "accurate:sales-invoice.view"
    },
    {
     "action": "save",
     "method": "POST",
-    "tool": "SalesInvoice.save",
+    "tool": "salesInvoice.save",
     "permission": "accurate:sales-invoice.save"
    }
   ],
@@ -1734,37 +1734,37 @@
    {
     "action": "bulk-save",
     "method": "POST",
-    "tool": "SalesOrder.bulk-save",
+    "tool": "salesOrder.bulk-save",
     "permission": "accurate:sales-order.save"
    },
    {
     "action": "delete",
     "method": "DELETE",
-    "tool": "SalesOrder.delete",
+    "tool": "salesOrder.delete",
     "permission": "accurate:sales-order.delete"
    },
    {
     "action": "detail",
     "method": "GET",
-    "tool": "SalesOrder.detail",
+    "tool": "salesOrder.detail",
     "permission": "accurate:sales-order.view"
    },
    {
     "action": "list",
     "method": "GET",
-    "tool": "SalesOrder.list",
+    "tool": "salesOrder.list",
     "permission": "accurate:sales-order.view"
    },
    {
     "action": "manual-close-order",
-    "method": "GET",
-    "tool": "SalesOrder.manual-close-order",
-    "permission": "accurate:sales-order.view"
+    "method": "POST",
+    "tool": "salesOrder.manual-close-order",
+    "permission": "accurate:sales-order.save"
    },
    {
     "action": "save",
     "method": "POST",
-    "tool": "SalesOrder.save",
+    "tool": "salesOrder.save",
     "permission": "accurate:sales-order.save"
    }
   ],
@@ -1772,43 +1772,43 @@
    {
     "action": "bulk-save",
     "method": "POST",
-    "tool": "SalesQuotation.bulk-save",
+    "tool": "salesQuotation.bulk-save",
     "permission": "accurate:sales-quotation.save"
    },
    {
     "action": "create-down-payment",
     "method": "GET",
-    "tool": "SalesQuotation.create-down-payment",
+    "tool": "salesQuotation.create-down-payment",
     "permission": "accurate:sales-quotation.view"
    },
    {
     "action": "create-invoice",
     "method": "GET",
-    "tool": "SalesQuotation.create-invoice",
+    "tool": "salesQuotation.create-invoice",
     "permission": "accurate:sales-quotation.view"
    },
    {
     "action": "delete",
     "method": "DELETE",
-    "tool": "SalesQuotation.delete",
+    "tool": "salesQuotation.delete",
     "permission": "accurate:sales-quotation.delete"
    },
    {
     "action": "detail",
     "method": "GET",
-    "tool": "SalesQuotation.detail",
+    "tool": "salesQuotation.detail",
     "permission": "accurate:sales-quotation.view"
    },
    {
     "action": "list",
     "method": "GET",
-    "tool": "SalesQuotation.list",
+    "tool": "salesQuotation.list",
     "permission": "accurate:sales-quotation.view"
    },
    {
     "action": "save",
     "method": "POST",
-    "tool": "SalesQuotation.save",
+    "tool": "salesQuotation.save",
     "permission": "accurate:sales-quotation.save"
    }
   ],
@@ -1816,31 +1816,31 @@
    {
     "action": "bulk-save",
     "method": "POST",
-    "tool": "SalesReceipt.bulk-save",
+    "tool": "salesReceipt.bulk-save",
     "permission": "accurate:sales-receipt.save"
    },
    {
     "action": "delete",
     "method": "DELETE",
-    "tool": "SalesReceipt.delete",
+    "tool": "salesReceipt.delete",
     "permission": "accurate:sales-receipt.delete"
    },
    {
     "action": "detail",
     "method": "GET",
-    "tool": "SalesReceipt.detail",
+    "tool": "salesReceipt.detail",
     "permission": "accurate:sales-receipt.view"
    },
    {
     "action": "list",
     "method": "GET",
-    "tool": "SalesReceipt.list",
+    "tool": "salesReceipt.list",
     "permission": "accurate:sales-receipt.view"
    },
    {
     "action": "save",
     "method": "POST",
-    "tool": "SalesReceipt.save",
+    "tool": "salesReceipt.save",
     "permission": "accurate:sales-receipt.save"
    }
   ],
@@ -1848,37 +1848,37 @@
    {
     "action": "bulk-save",
     "method": "POST",
-    "tool": "SalesReturn.bulk-save",
+    "tool": "salesReturn.bulk-save",
     "permission": "accurate:sales-return.save"
    },
    {
     "action": "create-receive-item",
     "method": "GET",
-    "tool": "SalesReturn.create-receive-item",
+    "tool": "salesReturn.create-receive-item",
     "permission": "accurate:sales-return.view"
    },
    {
     "action": "delete",
     "method": "DELETE",
-    "tool": "SalesReturn.delete",
+    "tool": "salesReturn.delete",
     "permission": "accurate:sales-return.delete"
    },
    {
     "action": "detail",
     "method": "GET",
-    "tool": "SalesReturn.detail",
+    "tool": "salesReturn.detail",
     "permission": "accurate:sales-return.view"
    },
    {
     "action": "list",
     "method": "GET",
-    "tool": "SalesReturn.list",
+    "tool": "salesReturn.list",
     "permission": "accurate:sales-return.view"
    },
    {
     "action": "save",
     "method": "POST",
-    "tool": "SalesReturn.save",
+    "tool": "salesReturn.save",
     "permission": "accurate:sales-return.save"
    }
   ],
@@ -1886,19 +1886,19 @@
    {
     "action": "detail",
     "method": "GET",
-    "tool": "SalesmanCommission.detail",
+    "tool": "salesmanCommission.detail",
     "permission": "accurate:salesman-commission.view"
    },
    {
     "action": "list",
     "method": "GET",
-    "tool": "SalesmanCommission.list",
+    "tool": "salesmanCommission.list",
     "permission": "accurate:salesman-commission.view"
    },
    {
     "action": "save",
     "method": "POST",
-    "tool": "SalesmanCommission.save",
+    "tool": "salesmanCommission.save",
     "permission": "accurate:salesman-commission.save"
    }
   ],
@@ -1906,25 +1906,25 @@
    {
     "action": "delete",
     "method": "DELETE",
-    "tool": "SellingpriceAdjustment.delete",
+    "tool": "sellingpriceAdjustment.delete",
     "permission": "accurate:sellingprice-adjustment.delete"
    },
    {
     "action": "detail",
     "method": "GET",
-    "tool": "SellingpriceAdjustment.detail",
+    "tool": "sellingpriceAdjustment.detail",
     "permission": "accurate:sellingprice-adjustment.view"
    },
    {
     "action": "list",
     "method": "GET",
-    "tool": "SellingpriceAdjustment.list",
+    "tool": "sellingpriceAdjustment.list",
     "permission": "accurate:sellingprice-adjustment.view"
    },
    {
     "action": "save",
     "method": "POST",
-    "tool": "SellingpriceAdjustment.save",
+    "tool": "sellingpriceAdjustment.save",
     "permission": "accurate:sellingprice-adjustment.save"
    }
   ],
@@ -1932,31 +1932,31 @@
    {
     "action": "bulk-save",
     "method": "POST",
-    "tool": "Shipment.bulk-save",
+    "tool": "shipment.bulk-save",
     "permission": "accurate:shipment.save"
    },
    {
     "action": "delete",
     "method": "DELETE",
-    "tool": "Shipment.delete",
+    "tool": "shipment.delete",
     "permission": "accurate:shipment.delete"
    },
    {
     "action": "detail",
     "method": "GET",
-    "tool": "Shipment.detail",
+    "tool": "shipment.detail",
     "permission": "accurate:shipment.view"
    },
    {
     "action": "list",
     "method": "GET",
-    "tool": "Shipment.list",
+    "tool": "shipment.list",
     "permission": "accurate:shipment.view"
    },
    {
     "action": "save",
     "method": "POST",
-    "tool": "Shipment.save",
+    "tool": "shipment.save",
     "permission": "accurate:shipment.save"
    }
   ],
@@ -1964,25 +1964,25 @@
    {
     "action": "delete",
     "method": "DELETE",
-    "tool": "StandardProductCost.delete",
+    "tool": "standardProductCost.delete",
     "permission": "accurate:standard-product-cost.delete"
    },
    {
     "action": "detail",
     "method": "GET",
-    "tool": "StandardProductCost.detail",
+    "tool": "standardProductCost.detail",
     "permission": "accurate:standard-product-cost.view"
    },
    {
     "action": "list",
     "method": "GET",
-    "tool": "StandardProductCost.list",
+    "tool": "standardProductCost.list",
     "permission": "accurate:standard-product-cost.view"
    },
    {
     "action": "save",
     "method": "POST",
-    "tool": "StandardProductCost.save",
+    "tool": "standardProductCost.save",
     "permission": "accurate:standard-product-cost.save"
    }
   ],
@@ -1990,31 +1990,31 @@
    {
     "action": "bulk-save",
     "method": "POST",
-    "tool": "StockOpnameOrder.bulk-save",
+    "tool": "stockOpnameOrder.bulk-save",
     "permission": "accurate:stock-opname-order.save"
    },
    {
     "action": "delete",
     "method": "DELETE",
-    "tool": "StockOpnameOrder.delete",
+    "tool": "stockOpnameOrder.delete",
     "permission": "accurate:stock-opname-order.delete"
    },
    {
     "action": "detail",
     "method": "GET",
-    "tool": "StockOpnameOrder.detail",
+    "tool": "stockOpnameOrder.detail",
     "permission": "accurate:stock-opname-order.view"
    },
    {
     "action": "list",
     "method": "GET",
-    "tool": "StockOpnameOrder.list",
+    "tool": "stockOpnameOrder.list",
     "permission": "accurate:stock-opname-order.view"
    },
    {
     "action": "save",
     "method": "POST",
-    "tool": "StockOpnameOrder.save",
+    "tool": "stockOpnameOrder.save",
     "permission": "accurate:stock-opname-order.save"
    }
   ],
@@ -2022,31 +2022,31 @@
    {
     "action": "bulk-save",
     "method": "POST",
-    "tool": "StockOpnameResult.bulk-save",
+    "tool": "stockOpnameResult.bulk-save",
     "permission": "accurate:stock-opname-result.save"
    },
    {
     "action": "delete",
     "method": "DELETE",
-    "tool": "StockOpnameResult.delete",
+    "tool": "stockOpnameResult.delete",
     "permission": "accurate:stock-opname-result.delete"
    },
    {
     "action": "detail",
     "method": "GET",
-    "tool": "StockOpnameResult.detail",
+    "tool": "stockOpnameResult.detail",
     "permission": "accurate:stock-opname-result.view"
    },
    {
     "action": "list",
     "method": "GET",
-    "tool": "StockOpnameResult.list",
+    "tool": "stockOpnameResult.list",
     "permission": "accurate:stock-opname-result.view"
    },
    {
     "action": "save",
     "method": "POST",
-    "tool": "StockOpnameResult.save",
+    "tool": "stockOpnameResult.save",
     "permission": "accurate:stock-opname-result.save"
    }
   ],
@@ -2054,31 +2054,31 @@
    {
     "action": "bulk-save",
     "method": "POST",
-    "tool": "Tax.bulk-save",
+    "tool": "tax.bulk-save",
     "permission": "accurate:tax.save"
    },
    {
     "action": "delete",
     "method": "DELETE",
-    "tool": "Tax.delete",
+    "tool": "tax.delete",
     "permission": "accurate:tax.delete"
    },
    {
     "action": "detail",
     "method": "GET",
-    "tool": "Tax.detail",
+    "tool": "tax.detail",
     "permission": "accurate:tax.view"
    },
    {
     "action": "list",
     "method": "GET",
-    "tool": "Tax.list",
+    "tool": "tax.list",
     "permission": "accurate:tax.view"
    },
    {
     "action": "save",
     "method": "POST",
-    "tool": "Tax.save",
+    "tool": "tax.save",
     "permission": "accurate:tax.save"
    }
   ],
@@ -2086,31 +2086,31 @@
    {
     "action": "bulk-save",
     "method": "POST",
-    "tool": "Unit.bulk-save",
+    "tool": "unit.bulk-save",
     "permission": "accurate:unit.save"
    },
    {
     "action": "delete",
     "method": "DELETE",
-    "tool": "Unit.delete",
+    "tool": "unit.delete",
     "permission": "accurate:unit.delete"
    },
    {
     "action": "detail",
     "method": "GET",
-    "tool": "Unit.detail",
+    "tool": "unit.detail",
     "permission": "accurate:unit.view"
    },
    {
     "action": "list",
     "method": "GET",
-    "tool": "Unit.list",
+    "tool": "unit.list",
     "permission": "accurate:unit.view"
    },
    {
     "action": "save",
     "method": "POST",
-    "tool": "Unit.save",
+    "tool": "unit.save",
     "permission": "accurate:unit.save"
    }
   ],
@@ -2118,31 +2118,31 @@
    {
     "action": "bulk-save",
     "method": "POST",
-    "tool": "Vendor.bulk-save",
+    "tool": "vendor.bulk-save",
     "permission": "accurate:vendor.save"
    },
    {
     "action": "delete",
     "method": "DELETE",
-    "tool": "Vendor.delete",
+    "tool": "vendor.delete",
     "permission": "accurate:vendor.delete"
    },
    {
     "action": "detail",
     "method": "GET",
-    "tool": "Vendor.detail",
+    "tool": "vendor.detail",
     "permission": "accurate:vendor.view"
    },
    {
     "action": "list",
     "method": "GET",
-    "tool": "Vendor.list",
+    "tool": "vendor.list",
     "permission": "accurate:vendor.view"
    },
    {
     "action": "save",
     "method": "POST",
-    "tool": "Vendor.save",
+    "tool": "vendor.save",
     "permission": "accurate:vendor.save"
    }
   ],
@@ -2150,31 +2150,31 @@
    {
     "action": "bulk-save",
     "method": "POST",
-    "tool": "VendorCategory.bulk-save",
+    "tool": "vendorCategory.bulk-save",
     "permission": "accurate:vendor-category.save"
    },
    {
     "action": "delete",
     "method": "DELETE",
-    "tool": "VendorCategory.delete",
+    "tool": "vendorCategory.delete",
     "permission": "accurate:vendor-category.delete"
    },
    {
     "action": "detail",
     "method": "GET",
-    "tool": "VendorCategory.detail",
+    "tool": "vendorCategory.detail",
     "permission": "accurate:vendor-category.view"
    },
    {
     "action": "list",
     "method": "GET",
-    "tool": "VendorCategory.list",
+    "tool": "vendorCategory.list",
     "permission": "accurate:vendor-category.view"
    },
    {
     "action": "save",
     "method": "POST",
-    "tool": "VendorCategory.save",
+    "tool": "vendorCategory.save",
     "permission": "accurate:vendor-category.save"
    }
   ],
@@ -2182,31 +2182,31 @@
    {
     "action": "bulk-save",
     "method": "POST",
-    "tool": "VendorClaim.bulk-save",
+    "tool": "vendorClaim.bulk-save",
     "permission": "accurate:vendor-claim.save"
    },
    {
     "action": "delete",
     "method": "DELETE",
-    "tool": "VendorClaim.delete",
+    "tool": "vendorClaim.delete",
     "permission": "accurate:vendor-claim.delete"
    },
    {
     "action": "detail",
     "method": "GET",
-    "tool": "VendorClaim.detail",
+    "tool": "vendorClaim.detail",
     "permission": "accurate:vendor-claim.view"
    },
    {
     "action": "list",
     "method": "GET",
-    "tool": "VendorClaim.list",
+    "tool": "vendorClaim.list",
     "permission": "accurate:vendor-claim.view"
    },
    {
     "action": "save",
     "method": "POST",
-    "tool": "VendorClaim.save",
+    "tool": "vendorClaim.save",
     "permission": "accurate:vendor-claim.save"
    }
   ],
@@ -2214,31 +2214,31 @@
    {
     "action": "bulk-save",
     "method": "POST",
-    "tool": "VendorPrice.bulk-save",
+    "tool": "vendorPrice.bulk-save",
     "permission": "accurate:vendor-price.save"
    },
    {
     "action": "delete",
     "method": "DELETE",
-    "tool": "VendorPrice.delete",
+    "tool": "vendorPrice.delete",
     "permission": "accurate:vendor-price.delete"
    },
    {
     "action": "detail",
     "method": "GET",
-    "tool": "VendorPrice.detail",
+    "tool": "vendorPrice.detail",
     "permission": "accurate:vendor-price.view"
    },
    {
     "action": "list",
     "method": "GET",
-    "tool": "VendorPrice.list",
+    "tool": "vendorPrice.list",
     "permission": "accurate:vendor-price.view"
    },
    {
     "action": "save",
     "method": "POST",
-    "tool": "VendorPrice.save",
+    "tool": "vendorPrice.save",
     "permission": "accurate:vendor-price.save"
    }
   ],
@@ -2246,25 +2246,25 @@
    {
     "action": "delete",
     "method": "DELETE",
-    "tool": "Warehouse.delete",
+    "tool": "warehouse.delete",
     "permission": "accurate:warehouse.delete"
    },
    {
     "action": "detail",
     "method": "GET",
-    "tool": "Warehouse.detail",
+    "tool": "warehouse.detail",
     "permission": "accurate:warehouse.view"
    },
    {
     "action": "list",
     "method": "GET",
-    "tool": "Warehouse.list",
+    "tool": "warehouse.list",
     "permission": "accurate:warehouse.view"
    },
    {
     "action": "save",
     "method": "POST",
-    "tool": "Warehouse.save",
+    "tool": "warehouse.save",
     "permission": "accurate:warehouse.save"
    }
   ],
@@ -2272,19 +2272,19 @@
    {
     "action": "detail",
     "method": "GET",
-    "tool": "WoPersonInCharge.detail",
+    "tool": "woPersonInCharge.detail",
     "permission": "accurate:wo-person-in-charge.view"
    },
    {
     "action": "list",
     "method": "GET",
-    "tool": "WoPersonInCharge.list",
+    "tool": "woPersonInCharge.list",
     "permission": "accurate:wo-person-in-charge.view"
    },
    {
     "action": "save",
     "method": "POST",
-    "tool": "WoPersonInCharge.save",
+    "tool": "woPersonInCharge.save",
     "permission": "accurate:wo-person-in-charge.save"
    }
   ],
@@ -2292,19 +2292,19 @@
    {
     "action": "delete",
     "method": "DELETE",
-    "tool": "WoPic.delete",
+    "tool": "woPic.delete",
     "permission": "accurate:wo-pic.delete"
    },
    {
     "action": "list",
     "method": "GET",
-    "tool": "WoPic.list",
+    "tool": "woPic.list",
     "permission": "accurate:wo-pic.view"
    },
    {
     "action": "save",
     "method": "POST",
-    "tool": "WoPic.save",
+    "tool": "woPic.save",
     "permission": "accurate:wo-pic.save"
    }
   ],
@@ -2312,43 +2312,43 @@
    {
     "action": "delete",
     "method": "DELETE",
-    "tool": "WorkOrder.delete",
+    "tool": "workOrder.delete",
     "permission": "accurate:work-order.delete"
    },
    {
     "action": "detail",
     "method": "GET",
-    "tool": "WorkOrder.detail",
+    "tool": "workOrder.detail",
     "permission": "accurate:work-order.view"
    },
    {
     "action": "list",
     "method": "GET",
-    "tool": "WorkOrder.list",
+    "tool": "workOrder.list",
     "permission": "accurate:work-order.view"
    },
    {
     "action": "list-stock",
     "method": "GET",
-    "tool": "WorkOrder.list-stock",
+    "tool": "workOrder.list-stock",
     "permission": "accurate:work-order.view"
    },
    {
     "action": "save",
     "method": "POST",
-    "tool": "WorkOrder.save",
+    "tool": "workOrder.save",
     "permission": "accurate:work-order.save"
    },
    {
     "action": "stock-in",
     "method": "GET",
-    "tool": "WorkOrder.stock-in",
+    "tool": "workOrder.stock-in",
     "permission": "accurate:work-order.view"
    },
    {
     "action": "stock-out",
     "method": "GET",
-    "tool": "WorkOrder.stock-out",
+    "tool": "workOrder.stock-out",
     "permission": "accurate:work-order.view"
    }
   ]
