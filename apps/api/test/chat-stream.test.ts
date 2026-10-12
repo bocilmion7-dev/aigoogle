@@ -109,7 +109,12 @@ describe("chat stream", () => {
     const events = parseNdjson(res.body as string);
     expect(events.some((e) => e.type === "tool_call" && e.tool === "customer.list")).toBe(true);
     expect(events.some((e) => e.type === "tool_result" && e.ok === true)).toBe(true);
-    const audit = await prisma.auditLog.findFirst({ where: { tenantId, action: "tool.call" }, orderBy: { createdAt: "desc" } });
+    // writeAudit sengaja fire-and-forget (void) → tunggu sebentar sampai baris masuk
+    let audit = await prisma.auditLog.findFirst({ where: { tenantId, action: "tool.call" }, orderBy: { createdAt: "desc" } });
+    for (let i = 0; i < 20 && !audit; i++) {
+      await new Promise((r) => setTimeout(r, 50));
+      audit = await prisma.auditLog.findFirst({ where: { tenantId, action: "tool.call" }, orderBy: { createdAt: "desc" } });
+    }
     expect(audit).toBeTruthy();
     expect(audit!.detail).toContain("customer.list");
     const sess = await prisma.chatSession.findFirst({ where: { tenantId }, orderBy: { createdAt: "desc" } });
