@@ -28,6 +28,7 @@ export function AppHeader({ me }: { me?: Me | null }) {
   const links: Array<{ href: string; label: string }> = [
     { href: "/app", label: "Dashboard" },
     { href: "/pelanggan", label: "Pelanggan" },
+    { href: "/aktivitas", label: "Aktivitas" },
     { href: "/explore", label: "Explore Manager" },
     { href: "/whatsapp", label: "WhatsApp" },
     ...(canAdmin ? [{ href: "/admin", label: "Admin" }] : []),

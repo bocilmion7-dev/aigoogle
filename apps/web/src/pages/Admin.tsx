@@ -8,6 +8,8 @@ import {
   getRoles,
   getSettings,
   getWaStatus,
+  getWaWebhookEvents,
+  putWaWebhookEvents,
   putRolePermissions,
   putSettings,
   putUserRole,
@@ -38,6 +40,7 @@ export function Admin() {
   const [waAuto, setWaAuto] = useState(false);
   const [waDaily, setWaDaily] = useState(false);
   const [waPhone, setWaPhone] = useState("");
+  const [waWh, setWaWh] = useState<{ events: string[]; rateMin: number; options: Array<{ key: string; label: string }> } | null>(null);
   const [me, setMe] = useState<Awaited<ReturnType<typeof getMe>> | undefined>(undefined);
   const isAdmin = !!me?.permissions?.includes("app:users.manage");
   const canSettings = !!me?.permissions?.includes("app:settings.manage"); // Admin Platform saja
@@ -103,6 +106,9 @@ export function Admin() {
           setWaPhone(w.settings?.ownerPhone ?? "");
         })
         .catch(() => undefined);
+      void getWaWebhookEvents()
+        .then((s) => setWaWh({ events: s.events ?? [], rateMin: s.rateMin ?? 10, options: s.options ?? [] }))
+        .catch(() => undefined);
     }
   }, [tab, selRole, roles, isAdmin, canSettings]);
 
@@ -149,6 +155,7 @@ export function Admin() {
         ...(aset.waPricePerCredit !== undefined ? { waPricePerCredit: aset.waPricePerCredit } : {}),
       });
       await putWaSettings({ autoDueDate: waAuto, dailyReport: waDaily, ownerPhone: waPhone });
+      if (waWh) await putWaWebhookEvents({ events: waWh.events, rateMin: waWh.rateMin });
       setMsg("Pengaturan aplikasi disimpan.");
     } catch (e) {
       setErr(errText(e instanceof Error ? e.message : undefined));
@@ -444,6 +451,47 @@ export function Admin() {
                   value={waPhone}
                   onChange={(e) => setWaPhone(e.target.value)}
                   placeholder="628123456789"
+                />
+              </label>
+            </div>
+
+            <div className="card">
+              <strong className="card__title">Notifikasi perubahan data Accurate</strong>
+              <p className="small muted" style={{ margin: "0 0 var(--space-xs)" }}>
+                Kirim WhatsApp otomatis ke nomor pemilik di atas setiap ada perubahan data yang dipilih (webhook Accurate).
+                Notifikasi per jenis data dibatasi sekali per jeda yang ditentukan agar tidak spam.
+              </p>
+              <div className="stack" style={{ gap: 0 }}>
+                {(waWh?.options ?? []).map((o) => (
+                  <label className="check" key={o.key}>
+                    <input
+                      type="checkbox"
+                      checked={waWh?.events.includes(o.key) ?? false}
+                      onChange={(e) =>
+                        setWaWh((s) =>
+                          s
+                            ? {
+                                ...s,
+                                events: e.target.checked ? [...s.events, o.key] : s.events.filter((x) => x !== o.key),
+                              }
+                            : s
+                        )
+                      }
+                    />
+                    <span>{o.label}</span>
+                  </label>
+                ))}
+              </div>
+              <label className="field" style={{ maxWidth: 220, marginTop: "var(--space-xs)" }}>
+                Jeda antar-notifikasi per jenis data (menit)
+                <input
+                  className="input num"
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  max={1440}
+                  value={waWh?.rateMin ?? 10}
+                  onChange={(e) => setWaWh((s) => (s ? { ...s, rateMin: Number(e.target.value) } : s))}
                 />
               </label>
             </div>

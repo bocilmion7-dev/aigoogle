@@ -7,6 +7,7 @@ import { requireUser } from "../middleware/session.js";
 import { requirePerm, loadPermissionSet } from "../permissions.js";
 import { accurateCtxFor } from "../providers/accounting/connection.js";
 import { accurateProvider } from "../providers/accounting/index.js";
+import { cache, CACHE_TTL } from "../cache.js";
 import { writeAudit } from "../audit.js";
 import { detectKind, extractText, VISION_KINDS } from "../doc/extract.js";
 import { ocrDocument, scanDocument, suggestedTarget } from "../doc/scan.js";
@@ -41,6 +42,10 @@ customersRouter.get(
     if (!ctx) return res.status(409).json({ error: "belum_connect" });
     const provider = accurateProvider();
     const keywords = typeof req.query.keywords === "string" ? req.query.keywords : "";
+    // cache per-tenant — dibuang otomatis saat webhook CUSTOMER/SALES_INVOICE masuk
+    const key = `${req.user!.tenant.id}:accurate:customer:list:${keywords}`;
+    const hit = cache.get<Array<{ id: string; name: string; invoiceCount: number; invoiceTotal: number }>>(key);
+    if (hit) return res.json(hit);
     const rows = (await provider.execute("customer.list", keywords ? { keywords } : {}, ctx)) as Array<
       Record<string, unknown>
     >;
@@ -63,12 +68,12 @@ customersRouter.get(
       agg.total += Number(f.totalAmount ?? f.total ?? 0) || 0;
       byName.set(name, agg);
     }
-    res.json(
-      rows.map((c) => {
-        const agg = byName.get(String(c.name ?? "").toLowerCase());
-        return { id: String(c.id ?? ""), name: String(c.name ?? ""), invoiceCount: agg?.count ?? 0, invoiceTotal: agg?.total ?? 0 };
-      })
-    );
+    const out = rows.map((c) => {
+      const agg = byName.get(String(c.name ?? "").toLowerCase());
+      return { id: String(c.id ?? ""), name: String(c.name ?? ""), invoiceCount: agg?.count ?? 0, invoiceTotal: agg?.total ?? 0 };
+    });
+    cache.set(key, out, CACHE_TTL);
+    res.json(out);
   })
 );
 

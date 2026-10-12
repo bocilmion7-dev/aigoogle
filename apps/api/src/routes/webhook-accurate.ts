@@ -1,9 +1,12 @@
 import { Router } from "express";
 import { asyncHandler } from "../asyncHandler.js";
 import { prisma } from "../db.js";
+import { requireUser } from "../middleware/session.js";
 import { requirePerm } from "../permissions.js";
 import { ACCURATE_WEBHOOK_EVENTS } from "../providers/accounting/accurate-paths.js";
 import { ACCURATE_REDIRECT_URI, realAccurateProvider } from "../providers/accounting/index.js";
+import { invalidateTenantCache, EVENT_TO_CACHE_PREFIX } from "../cache.js";
+import { sendWaText } from "../wa/service.js";
 
 export const webhookAccurateRouter = Router();
 
@@ -26,6 +29,87 @@ async function resolveTenant(explicit?: string): Promise<string> {
     data: { provider: "accurate", providerDbId: "default", name: "Default", alias: "DEFAULT" },
   });
   return created.id;
+}
+
+/**
+ * Notifikasi WhatsApp otomatis saat event yang diikuti masuk.
+ * Config per tenant di appSetting: wa:webhook_events (JSON array event),
+ * wa:webhook_rate (menit antar-kirim per event, default 10), wa:owner_phone (tujuan).
+ * Rate-limit/dedup via wa:webhook_last_sent:{tenantId}:{event}.
+ */
+async function handleWebhookNotification(
+  tenantId: string,
+  event: string,
+  payload: unknown,
+  eventCreatedAt: Date,
+  dbId: string
+): Promise<void> {
+  try {
+    const keys = [
+      `wa:webhook_events:${tenantId}`,
+      `wa:webhook_rate:${tenantId}`,
+      `wa:owner_phone:${tenantId}`,
+      `wa:webhook_last_sent:${tenantId}:${event}`,
+    ];
+    const rows = await prisma.appSetting.findMany({ where: { key: { in: keys } } });
+    const m = new Map(rows.map((r) => [r.key, r.value]));
+    const follow: string[] = (() => {
+      const v = m.get(`wa:webhook_events:${tenantId}`);
+      try { return JSON.parse(v ?? "[]"); } catch { return []; }
+    })();
+    if (!follow.includes(event)) return;
+    const rateMin = Number(m.get(`wa:webhook_rate:${tenantId}`) ?? 10) || 10;
+    const lastKey = `wa:webhook_last_sent:${tenantId}:${event}`;
+    const lastSent = m.get(lastKey);
+    if (lastSent) {
+      const ms = eventCreatedAt.getTime() - new Date(lastSent).getTime();
+      if (ms < rateMin * 60000) return;
+    }
+    const to = String(m.get(`wa:owner_phone:${tenantId}`) ?? "");
+    if (!to) return;
+    const body = webhookNotificationBody(event, payload, dbId);
+    // sendWaText sudah mencatat waMessageLog (sent/failed + alasan) sendiri
+    const sent = await sendWaText(tenantId, to, body);
+    await prisma.appSetting.upsert({
+      where: { key: lastKey },
+      create: { key: lastKey, value: eventCreatedAt.toISOString() },
+      update: { value: eventCreatedAt.toISOString() },
+    });
+    if (!sent.ok) console.warn(`[webhook-notif] kirim WA gagal: ${sent.error}`);
+  } catch (e) {
+    // notifikasi = opsional; gagal jangan sampai memblokir webhook
+    console.error("[webhook-notif] gagal", String(e).slice(0, 300));
+  }
+}
+
+function webhookNotificationBody(event: string, payload: unknown, dbId: string): string {
+  const data = (payload as Record<string, unknown>)?.data ?? payload;
+  const d = data as Record<string, unknown>;
+  const parts: string[] = [];
+  parts.push(`[${event}]${dbId ? " DB " + dbId : ""} Accurate Online`);
+  if (event === "CUSTOMER") {
+    parts.push(`Pelanggan ${String(d.name ?? "")}`);
+  } else if (event === "SALES_INVOICE") {
+    parts.push(
+      `Faktur ${String(d.no ?? "")} ke ${String(d.customerName ?? d.customer ?? "")} ` +
+        `Rp${Number(d.totalAmount ?? d.total ?? 0).toLocaleString("id-ID")}`
+    );
+  } else if (event === "PURCHASE_INVOICE") {
+    parts.push(`Faktur pembelian ${String(d.no ?? "")} dari ${String(d.vendorName ?? "")} Rp${Number(d.totalAmount ?? d.total ?? 0).toLocaleString("id-ID")}`);
+  } else if (event === "SALES_ORDER") {
+    parts.push(`Pesanan penjualan ${String(d.no ?? "")} ke ${String(d.customerName ?? "")}`);
+  } else if (event === "PURCHASE_ORDER") {
+    parts.push(`Pesanan pembelian ${String(d.no ?? "")} dari ${String(d.vendorName ?? "")}`);
+  } else if (event === "VENDOR") {
+    parts.push(`Pemasok ${String(d.name ?? "")}`);
+  } else if (event === "ITEM") {
+    parts.push(`Barang/jasa ${String(d.name ?? "")}`);
+  } else if (event === "JOURNAL_VOUCHER") {
+    parts.push(`Buku jurnal ${String(d.no ?? "")}`);
+  } else {
+    parts.push(`Data ${event} berubah`);
+  }
+  return parts.filter(Boolean).join(" | ");
 }
 
 /**
@@ -77,7 +161,7 @@ export async function webhookAccurateHandler(
     return;
   }
   const tenantId = await resolveTenant(b.tenantId);
-  await prisma.accurateWebhookEvent.create({
+  const evt = await prisma.accurateWebhookEvent.create({
     data: {
       tenantId,
       event: b.event,
@@ -86,6 +170,10 @@ export async function webhookAccurateHandler(
       payload: JSON.stringify({ data: b.data ?? b, _meta: { appKey: appKey.status, headers: req.headers } }),
     },
   });
+  // tindak lanjut: notifikasi WA + invalidasi cache (asinkron, jangan blokir respons)
+  void handleWebhookNotification(tenantId, b.event, b.data ?? b, evt.createdAt, evt.dbId)
+    .catch(console.error);
+  void invalidateTenantCache(tenantId, EVENT_TO_CACHE_PREFIX[b.event] ?? "accurate:");
   res.json({ ok: true });
 }
 
@@ -97,6 +185,30 @@ webhookAccurateRouter.post("/integrations/accurate/webhook", asyncHandler(webhoo
 // (https://103.253.244.13/webhook). Di-mount di app.ts tanpa prefix /api.
 export const webhookRootRouter = Router();
 webhookRootRouter.post("/webhook", asyncHandler(webhookAccurateHandler));
+
+// GET /api/accurate/webhook-events?event=&take= — tenant-scoped (activity feed user tenant)
+webhookAccurateRouter.use(requireUser);
+webhookAccurateRouter.get(
+  "/accurate/webhook-events",
+  asyncHandler(async (req, res) => {
+    const take = Math.min(500, Number(req.query.take ?? 50) || 50);
+    const rows = await prisma.accurateWebhookEvent.findMany({
+      where: {
+        tenantId: req.user!.tenant.id,
+        ...(req.query.event ? { event: String(req.query.event) } : {}),
+      },
+      orderBy: { createdAt: "desc" },
+      take,
+      select: { id: true, event: true, dbId: true, payload: true, createdAt: true },
+    });
+    const enriched = rows.map((r) => {
+      let payload: unknown = r.payload;
+      try { payload = JSON.parse(r.payload); } catch { /* raw string */ }
+      return { ...r, payload };
+    });
+    res.json({ s: true, d: enriched });
+  })
+);
 
 // GET /api/integrations/accurate/webhook-events?event=&take= — admin (audit view)
 webhookAccurateRouter.get(

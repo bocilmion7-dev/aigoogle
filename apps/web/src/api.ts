@@ -149,6 +149,35 @@ export const putWaSettings = (body: { autoDueDate?: boolean; dailyReport?: boole
     body: JSON.stringify(body),
   });
 
+// ── Webhook Accurate: activity feed + config notifikasi WhatsApp ─────────────
+export interface AccurateEventRow {
+  id: string;
+  event: string;
+  dbId: string;
+  payload: unknown;
+  createdAt: string;
+}
+export async function getAccurateWebhookEvents(take = 50): Promise<AccurateEventRow[]> {
+  const res = await fetch(`/api/accurate/webhook-events?take=${take}`);
+  if (!res.ok) throw new Error("gagal memuat aktivitas");
+  const j = (await res.json()) as { s: boolean; d: AccurateEventRow[] };
+  return j.d ?? [];
+}
+
+export interface WaWebhookSettings {
+  events: string[];
+  rateMin: number;
+  ownerPhone: string;
+  options: Array<{ key: string; label: string }>;
+}
+export const getWaWebhookEvents = () => adminFetch<WaWebhookSettings>("/api/wa/webhook-events");
+export const putWaWebhookEvents = (body: { events?: string[]; rateMin?: number; ownerPhone?: string }) =>
+  adminFetch<WaWebhookSettings>("/api/wa/webhook-events", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
 export async function getCustomers(keywords = ""): Promise<CustomerRow[]> {
   const qs = keywords ? `?keywords=${encodeURIComponent(keywords)}` : "";
   const res = await fetch(`/api/customers${qs}`);

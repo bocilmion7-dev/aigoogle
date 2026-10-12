@@ -15,6 +15,9 @@ import {
   embeddedSignupUrl,
   getOrCreateBalance,
   getWaSettings,
+  getWaWebhookSettings,
+  setWaWebhookSettings,
+  WA_WEBHOOK_EVENT_OPTIONS,
   metaConfigured,
   setWaSettings,
   waPricePerCredit,
@@ -73,6 +76,34 @@ waRouter.put(
     await setWaSettings(req.user!.tenant.id, body.data);
     await writeAudit(req.user!.tenant.id, req.user!.id, "wa.settings", body.data);
     res.json(await getWaSettings(req.user!.tenant.id));
+  })
+);
+
+// Notifikasi WhatsApp dari webhook Accurate: event yang diikuti + jeda antar-kirim + nomor tujuan
+waRouter.get(
+  "/wa/webhook-events",
+  requirePerm("app:settings.manage"),
+  asyncHandler(async (req, res) => {
+    res.json(await getWaWebhookSettings(req.user!.tenant.id));
+  })
+);
+
+waRouter.put(
+  "/wa/webhook-events",
+  requirePerm("app:settings.manage"),
+  asyncHandler(async (req, res) => {
+    const valid = new Set(WA_WEBHOOK_EVENT_OPTIONS.map((o) => o.key));
+    const body = z
+      .object({
+        events: z.array(z.string().refine((v) => valid.has(v))).max(WA_WEBHOOK_EVENT_OPTIONS.length).optional(),
+        rateMin: z.number().int().min(1).max(1440).optional(),
+        ownerPhone: z.string().max(32).optional(),
+      })
+      .safeParse(req.body);
+    if (!body.success) return res.status(400).json({ error: "bad_request" });
+    await setWaWebhookSettings(req.user!.tenant.id, body.data);
+    await writeAudit(req.user!.tenant.id, req.user!.id, "wa.webhook_events", body.data);
+    res.json(await getWaWebhookSettings(req.user!.tenant.id));
   })
 );
 

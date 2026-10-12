@@ -132,3 +132,57 @@ export async function setWaSettings(
     });
   }
 }
+
+/** event Accurate yang bisa diikuti notifikasi (subset bisnis dari 73 event) */
+export const WA_WEBHOOK_EVENT_OPTIONS: Array<{ key: string; label: string }> = [
+  { key: "CUSTOMER", label: "Pelanggan" },
+  { key: "VENDOR", label: "Pemasok" },
+  { key: "ITEM", label: "Barang & Jasa" },
+  { key: "SALES_INVOICE", label: "Faktur penjualan" },
+  { key: "SALES_ORDER", label: "Pesanan penjualan" },
+  { key: "SALES_QUOTATION", label: "Penawaran penjualan" },
+  { key: "SALES_RECEIPT", label: "Penerimaan kas" },
+  { key: "PURCHASE_INVOICE", label: "Faktur pembelian" },
+  { key: "PURCHASE_ORDER", label: "Pesanan pembelian" },
+  { key: "JOURNAL_VOUCHER", label: "Buku jurnal" },
+  { key: "GLACCOUNT", label: "Akun GL" },
+  { key: "WAREHOUSE", label: "Gudang" },
+];
+
+export async function getWaWebhookSettings(tenantId: string): Promise<{
+  events: string[];
+  rateMin: number;
+  ownerPhone: string;
+  options: Array<{ key: string; label: string }>;
+}> {
+  const keys = [`wa:webhook_events:${tenantId}`, `wa:webhook_rate:${tenantId}`, `wa:owner_phone:${tenantId}`];
+  const rows = await prisma.appSetting.findMany({ where: { key: { in: keys } } });
+  const m = new Map(rows.map((r) => [r.key, r.value]));
+  const events: string[] = (() => {
+    try { return JSON.parse(m.get(keys[0]) ?? "[]"); } catch { return []; }
+  })();
+  const rate = Number(m.get(keys[1]) ?? 10);
+  return {
+    events: Array.isArray(events) ? events : [],
+    rateMin: Number.isFinite(rate) && rate >= 1 ? rate : 10,
+    ownerPhone: m.get(keys[2]) ?? "",
+    options: WA_WEBHOOK_EVENT_OPTIONS,
+  };
+}
+
+export async function setWaWebhookSettings(
+  tenantId: string,
+  s: { events?: string[]; rateMin?: number; ownerPhone?: string }
+): Promise<void> {
+  const ops: Array<{ key: string; value: string }> = [];
+  if (s.events !== undefined) ops.push({ key: `wa:webhook_events:${tenantId}`, value: JSON.stringify(s.events) });
+  if (s.rateMin !== undefined) ops.push({ key: `wa:webhook_rate:${tenantId}`, value: String(s.rateMin) });
+  if (s.ownerPhone !== undefined) ops.push({ key: `wa:owner_phone:${tenantId}`, value: s.ownerPhone });
+  for (const o of ops) {
+    await prisma.appSetting.upsert({
+      where: { key: o.key },
+      create: o,
+      update: { value: o.value },
+    });
+  }
+}
