@@ -1,0 +1,14 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "cd apps/web && pnpm build",
+  "outputDirectory": "apps/web/dist",
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "${API_BASE_URL}/api/$1",
+      "env": ["API_BASE_URL"]
+    },
+    { "handle": "filesystem" },
+    { "src": "/(.*)", "dest": "/index.html" }
+  ]
+}
