@@ -1,4 +1,5 @@
 import express from "express";
+import { ZodError } from "zod";
 import cookieParser from "cookie-parser";
 import { loadSession } from "./middleware/session.js";
 import { meRouter } from "./routes/me.js";
@@ -42,6 +43,12 @@ export function createApp() {
 
   app.use((err: unknown, _req: express.Request, res: express.Response, next: express.NextFunction) => {
     if (res.headersSent) return next(err);
+    if (err instanceof ZodError) {
+      return res.status(400).json({
+        error: "validasi",
+        issues: err.issues.map((i) => ({ path: i.path.join("."), message: i.message })),
+      });
+    }
     console.error(err);
     const status = (err as { status?: number; statusCode?: number })?.status
       ?? (err as { statusCode?: number })?.statusCode
