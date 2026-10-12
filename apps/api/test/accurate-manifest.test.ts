@@ -13,7 +13,7 @@ const manifest = JSON.parse(
 
 describe("manifest cakupan penuh Accurate", () => {
   it("totals sesuai union docs: 76 modul / 366 aksi / 11 util / 73 event", () => {
-    expect(manifest.totals).toEqual({ modules: 76, actions: 366, utils: 11, webhookEvents: 73 });
+    expect(manifest.totals).toEqual({ modules: 76, actions: 366, utils: 11, webhookEvents: 73, oauthScopes: 196 });
   });
 
   it("tool naming unik & permission format benar", () => {

@@ -3,8 +3,16 @@ import { asyncHandler } from "../asyncHandler.js";
 import { prisma } from "../db.js";
 import { requirePerm } from "../permissions.js";
 import { ACCURATE_WEBHOOK_EVENTS } from "../providers/accounting/accurate-paths.js";
+import { ACCURATE_REDIRECT_URI, realAccurateProvider } from "../providers/accounting/index.js";
 
 export const webhookAccurateRouter = Router();
+
+// CTA OAuth: redirect ke authorize Accurate dgn scope penuh (196 scope resmi dari manifest).
+// State SELALU kosong: /api/callback/accurate pakai requireState:false; state kustom
+// akan ditolak pending map (/ (?error=state)).
+webhookAccurateRouter.get("/integrations/accurate/authorize", (_req, res) => {
+  res.redirect(302, realAccurateProvider().authorizeUrl({ redirectUri: ACCURATE_REDIRECT_URI, state: "" }));
+});
 
 /** tenant utk event masuk: tenantId eksplisit (proses internal) → tenant pertama → default baru */
 async function resolveTenant(explicit?: string): Promise<string> {

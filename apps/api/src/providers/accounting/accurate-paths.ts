@@ -5,6 +5,8 @@ export interface ActionEntry {
   method: "GET" | "POST" | "DELETE";
   tool: string;
   permission: string;
+  /** aksi hanya ada di dokumentasi — API Accurate asli membalas HTML SPA utk path ini */
+  docsOnly?: boolean;
 }
 
 const file = new URL("../../../../../docs/spikes/accurate-actions-manifest.json", import.meta.url);
@@ -12,16 +14,26 @@ const manifest = JSON.parse(readFileSync(file, "utf8")) as {
   modules: Record<string, ActionEntry[]>;
   utils: string[];
   webhookEvents: string[];
+  oauthScopes: string[];
 };
 
 export const ACCURATE_MODULES = manifest.modules;
 export const ACCURATE_UTILS = manifest.utils;
 export const ACCURATE_WEBHOOK_EVENTS = manifest.webhookEvents;
+/** union scope OAuth resmi utk authorizeUrl (196 scope dari securitySchemes ∩ kebutuhan aksi) */
+export const ACCURATE_OAUTH_SCOPES = manifest.oauthScopes;
 
-/** tool → { path, method } utk SEMUA aksi modul */
-export const ACTION_ROUTES: Record<string, { path: string; method: "GET" | "POST" | "DELETE" }> = {};
+/** tool → { path, method, docsOnly } utk SEMUA aksi modul */
+export const ACTION_ROUTES: Record<
+  string,
+  { path: string; method: "GET" | "POST" | "DELETE"; docsOnly: boolean }
+> = {};
 for (const [mod, acts] of Object.entries(ACCURATE_MODULES)) {
   for (const a of acts) {
-    ACTION_ROUTES[a.tool] = { path: `/accurate/api/${mod}/${a.action}.do`, method: a.method };
+    ACTION_ROUTES[a.tool] = {
+      path: `/accurate/api/${mod}/${a.action}.do`,
+      method: a.method,
+      docsOnly: a.docsOnly === true,
+    };
   }
 }

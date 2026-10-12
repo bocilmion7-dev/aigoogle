@@ -9,13 +9,19 @@
     "action": "detail",
     "method": "GET",
     "tool": "accessPrivilege.detail",
-    "permission": "accurate:access-privilege.view"
+    "permission": "accurate:access-privilege.view",
+    "scope": [
+     "access_privilege_view"
+    ]
    },
    {
     "action": "list",
     "method": "GET",
     "tool": "accessPrivilege.list",
-    "permission": "accurate:access-privilege.view"
+    "permission": "accurate:access-privilege.view",
+    "scope": [
+     "access_privilege_view"
+    ]
    }
   ],
   "account-budget-target": [
@@ -23,25 +29,37 @@
     "action": "delete",
     "method": "DELETE",
     "tool": "accountBudgetTarget.delete",
-    "permission": "accurate:account-budget-target.delete"
+    "permission": "accurate:account-budget-target.delete",
+    "scope": [
+     "account_budget_target_delete"
+    ]
    },
    {
     "action": "detail",
     "method": "GET",
     "tool": "accountBudgetTarget.detail",
-    "permission": "accurate:account-budget-target.view"
+    "permission": "accurate:account-budget-target.view",
+    "scope": [
+     "account_budget_target_view"
+    ]
    },
    {
     "action": "list",
     "method": "GET",
     "tool": "accountBudgetTarget.list",
-    "permission": "accurate:account-budget-target.view"
+    "permission": "accurate:account-budget-target.view",
+    "scope": [
+     "account_budget_target_view"
+    ]
    },
    {
     "action": "save",
     "method": "POST",
     "tool": "accountBudgetTarget.save",
-    "permission": "accurate:account-budget-target.save"
+    "permission": "accurate:account-budget-target.save",
+    "scope": [
+     "account_budget_target_save"
+    ]
    }
   ],
   "auto-number": [
@@ -49,19 +67,30 @@
     "action": "detail",
     "method": "GET",
     "tool": "autoNumber.detail",
-    "permission": "accurate:auto-number.view"
+    "permission": "accurate:auto-number.view",
+    "scope": [
+     "auto_number_view"
+    ],
+    "docsOnly": true
    },
    {
     "action": "list",
     "method": "GET",
     "tool": "autoNumber.list",
-    "permission": "accurate:auto-number.view"
+    "permission": "accurate:auto-number.view",
+    "scope": [
+     "auto_number_view"
+    ]
    },
    {
     "action": "save",
     "method": "POST",
     "tool": "autoNumber.save",
-    "permission": "accurate:auto-number.save"
+    "permission": "accurate:auto-number.save",
+    "scope": [
+     "auto_number_save"
+    ],
+    "docsOnly": true
    }
   ],
   "bank-transfer": [
@@ -69,31 +98,46 @@
     "action": "bulk-save",
     "method": "POST",
     "tool": "bankTransfer.bulk-save",
-    "permission": "accurate:bank-transfer.save"
+    "permission": "accurate:bank-transfer.save",
+    "scope": [
+     "bank_transfer_save"
+    ]
    },
    {
     "action": "delete",
     "method": "DELETE",
     "tool": "bankTransfer.delete",
-    "permission": "accurate:bank-transfer.delete"
+    "permission": "accurate:bank-transfer.delete",
+    "scope": [
+     "bank_transfer_delete"
+    ]
    },
    {
     "action": "detail",
     "method": "GET",
     "tool": "bankTransfer.detail",
-    "permission": "accurate:bank-transfer.view"
+    "permission": "accurate:bank-transfer.view",
+    "scope": [
+     "bank_transfer_view"
+    ]
    },
    {
     "action": "list",
     "method": "GET",
     "tool": "bankTransfer.list",
-    "permission": "accurate:bank-transfer.view"
+    "permission": "accurate:bank-transfer.view",
+    "scope": [
+     "bank_transfer_view"
+    ]
    },
    {
     "action": "save",
     "method": "POST",
     "tool": "bankTransfer.save",
-    "permission": "accurate:bank-transfer.save"
+    "permission": "accurate:bank-transfer.save",
+    "scope": [
+     "bank_transfer_save"
+    ]
    }
   ],
   "bill-of-material": [
@@ -101,25 +145,37 @@
     "action": "delete",
     "method": "DELETE",
     "tool": "billOfMaterial.delete",
-    "permission": "accurate:bill-of-material.delete"
+    "permission": "accurate:bill-of-material.delete",
+    "scope": [
+     "bill_of_material_delete"
+    ]
    },
    {
     "action": "detail",
     "method": "GET",
     "tool": "billOfMaterial.detail",
-    "permission": "accurate:bill-of-material.view"
+    "permission": "accurate:bill-of-material.view",
+    "scope": [
+     "bill_of_material_view"
+    ]
    },
    {
     "action": "list",
     "method": "GET",
     "tool": "billOfMaterial.list",
-    "permission": "accurate:bill-of-material.view"
+    "permission": "accurate:bill-of-material.view",
+    "scope": [
+     "bill_of_material_view"
+    ]
    },
    {
     "action": "save",
     "method": "POST",
     "tool": "billOfMaterial.save",
-    "permission": "accurate:bill-of-material.save"
+    "permission": "accurate:bill-of-material.save",
+    "scope": [
+     "bill_of_material_save"
+    ]
    }
   ],
   "bom-process-category": [
@@ -127,25 +183,37 @@
     "action": "delete",
     "method": "DELETE",
     "tool": "bomProcessCategory.delete",
-    "permission": "accurate:bom-process-category.delete"
+    "permission": "accurate:bom-process-category.delete",
+    "scope": [
+     "bom_process_category_delete"
+    ]
    },
    {
     "action": "detail",
     "method": "GET",
     "tool": "bomProcessCategory.detail",
-    "permission": "accurate:bom-process-category.view"
+    "permission": "accurate:bom-process-category.view",
+    "scope": [
+     "bom_process_category_view"
+    ],
+    "docsOnly": true
    },
    {
     "action": "list",
     "method": "GET",
     "tool": "bomProcessCategory.list",
-    "permission": "accurate:bom-process-category.view"
+    "permission": "accurate:bom-process-category.view",
+    "scope": [
+     "bom_process_category_view"
+    ]
    },
    {
     "action": "save",
     "method": "POST",
     "tool": "bomProcessCategory.save",
-    "permission": "accurate:bom-process-category.save"
+    "permission": "accurate:bom-process-category.save",
+    "scope": [],
+    "docsOnly": true
    }
   ],
   "branch": [
@@ -153,31 +221,46 @@
     "action": "bulk-save",
     "method": "POST",
     "tool": "branch.bulk-save",
-    "permission": "accurate:branch.save"
+    "permission": "accurate:branch.save",
+    "scope": [
+     "branch_save"
+    ]
    },
    {
     "action": "delete",
     "method": "DELETE",
     "tool": "branch.delete",
-    "permission": "accurate:branch.delete"
+    "permission": "accurate:branch.delete",
+    "scope": [
+     "branch_delete"
+    ]
    },
    {
     "action": "detail",
     "method": "GET",
     "tool": "branch.detail",
-    "permission": "accurate:branch.view"
+    "permission": "accurate:branch.view",
+    "scope": [
+     "branch_view"
+    ]
    },
    {
     "action": "list",
     "method": "GET",
     "tool": "branch.list",
-    "permission": "accurate:branch.view"
+    "permission": "accurate:branch.view",
+    "scope": [
+     "branch_view"
+    ]
    },
    {
     "action": "save",
     "method": "POST",
     "tool": "branch.save",
-    "permission": "accurate:branch.save"
+    "permission": "accurate:branch.save",
+    "scope": [
+     "branch_save"
+    ]
    }
   ],
   "currency": [
@@ -185,37 +268,55 @@
     "action": "bulk-save",
     "method": "POST",
     "tool": "currency.bulk-save",
-    "permission": "accurate:currency.save"
+    "permission": "accurate:currency.save",
+    "scope": [
+     "currency_save"
+    ]
    },
    {
     "action": "detail",
     "method": "GET",
     "tool": "currency.detail",
-    "permission": "accurate:currency.view"
+    "permission": "accurate:currency.view",
+    "scope": [
+     "currency_view"
+    ]
    },
    {
     "action": "exchange-rate",
     "method": "GET",
     "tool": "currency.exchange-rate",
-    "permission": "accurate:currency.view"
+    "permission": "accurate:currency.view",
+    "scope": [
+     "currency_view"
+    ]
    },
    {
     "action": "fiscal-rate",
     "method": "GET",
     "tool": "currency.fiscal-rate",
-    "permission": "accurate:currency.view"
+    "permission": "accurate:currency.view",
+    "scope": [
+     "currency_view"
+    ]
    },
    {
     "action": "list",
     "method": "GET",
     "tool": "currency.list",
-    "permission": "accurate:currency.view"
+    "permission": "accurate:currency.view",
+    "scope": [
+     "currency_view"
+    ]
    },
    {
     "action": "save",
     "method": "POST",
     "tool": "currency.save",
-    "permission": "accurate:currency.save"
+    "permission": "accurate:currency.save",
+    "scope": [
+     "currency_save"
+    ]
    }
   ],
   "customer": [
@@ -223,31 +324,46 @@
     "action": "bulk-save",
     "method": "POST",
     "tool": "customer.bulk-save",
-    "permission": "accurate:customer.save"
+    "permission": "accurate:customer.save",
+    "scope": [
+     "customer_save"
+    ]
    },
    {
     "action": "delete",
     "method": "DELETE",
     "tool": "customer.delete",
-    "permission": "accurate:customer.delete"
+    "permission": "accurate:customer.delete",
+    "scope": [
+     "customer_delete"
+    ]
    },
    {
     "action": "detail",
     "method": "GET",
     "tool": "customer.detail",
-    "permission": "accurate:customer.view"
+    "permission": "accurate:customer.view",
+    "scope": [
+     "customer_view"
+    ]
    },
    {
     "action": "list",
     "method": "GET",
     "tool": "customer.list",
-    "permission": "accurate:customer.view"
+    "permission": "accurate:customer.view",
+    "scope": [
+     "customer_view"
+    ]
    },
    {
     "action": "save",
     "method": "POST",
     "tool": "customer.save",
-    "permission": "accurate:customer.save"
+    "permission": "accurate:customer.save",
+    "scope": [
+     "customer_save"
+    ]
    }
   ],
   "customer-category": [
@@ -255,31 +371,46 @@
     "action": "bulk-save",
     "method": "POST",
     "tool": "customerCategory.bulk-save",
-    "permission": "accurate:customer-category.save"
+    "permission": "accurate:customer-category.save",
+    "scope": [
+     "customer_category_save"
+    ]
    },
    {
     "action": "delete",
     "method": "DELETE",
     "tool": "customerCategory.delete",
-    "permission": "accurate:customer-category.delete"
+    "permission": "accurate:customer-category.delete",
+    "scope": [
+     "customer_category_delete"
+    ]
    },
    {
     "action": "detail",
     "method": "GET",
     "tool": "customerCategory.detail",
-    "permission": "accurate:customer-category.view"
+    "permission": "accurate:customer-category.view",
+    "scope": [
+     "customer_category_view"
+    ]
    },
    {
     "action": "list",
     "method": "GET",
     "tool": "customerCategory.list",
-    "permission": "accurate:customer-category.view"
+    "permission": "accurate:customer-category.view",
+    "scope": [
+     "customer_category_view"
+    ]
    },
    {
     "action": "save",
     "method": "POST",
     "tool": "customerCategory.save",
-    "permission": "accurate:customer-category.save"
+    "permission": "accurate:customer-category.save",
+    "scope": [
+     "customer_category_save"
+    ]
    }
   ],
   "customer-claim": [
@@ -287,31 +418,46 @@
     "action": "bulk-save",
     "method": "POST",
     "tool": "customerClaim.bulk-save",
-    "permission": "accurate:customer-claim.save"
+    "permission": "accurate:customer-claim.save",
+    "scope": [
+     "customer_claim_save"
+    ]
    },
    {
     "action": "delete",
     "method": "DELETE",
     "tool": "customerClaim.delete",
-    "permission": "accurate:customer-claim.delete"
+    "permission": "accurate:customer-claim.delete",
+    "scope": [
+     "customer_claim_delete"
+    ]
    },
    {
     "action": "detail",
     "method": "GET",
     "tool": "customerClaim.detail",
-    "permission": "accurate:customer-claim.view"
+    "permission": "accurate:customer-claim.view",
+    "scope": [
+     "customer_claim_view"
+    ]
    },
    {
     "action": "list",
     "method": "GET",
     "tool": "customerClaim.list",
-    "permission": "accurate:customer-claim.view"
+    "permission": "accurate:customer-claim.view",
+    "scope": [
+     "customer_claim_view"
+    ]
    },
    {
     "action": "save",
     "method": "POST",
     "tool": "customerClaim.save",
-    "permission": "accurate:customer-claim.save"
+    "permission": "accurate:customer-claim.save",
+    "scope": [
+     "customer_claim_save"
+    ]
    }
   ],
   "data-classification": [
@@ -319,31 +465,47 @@
     "action": "bulk-save",
     "method": "POST",
     "tool": "dataClassification.bulk-save",
-    "permission": "accurate:data-classification.save"
+    "permission": "accurate:data-classification.save",
+    "scope": [
+     "data_classification_save"
+    ]
    },
    {
     "action": "delete",
     "method": "DELETE",
     "tool": "dataClassification.delete",
-    "permission": "accurate:data-classification.delete"
+    "permission": "accurate:data-classification.delete",
+    "scope": [
+     "data_classification_delete"
+    ]
    },
    {
     "action": "detail",
     "method": "GET",
     "tool": "dataClassification.detail",
-    "permission": "accurate:data-classification.view"
+    "permission": "accurate:data-classification.view",
+    "scope": [
+     "data_classification_view"
+    ],
+    "docsOnly": true
    },
    {
     "action": "list",
     "method": "GET",
     "tool": "dataClassification.list",
-    "permission": "accurate:data-classification.view"
+    "permission": "accurate:data-classification.view",
+    "scope": [
+     "data_classification_view"
+    ]
    },
    {
     "action": "save",
     "method": "POST",
     "tool": "dataClassification.save",
-    "permission": "accurate:data-classification.save"
+    "permission": "accurate:data-classification.save",
+    "scope": [
+     "data_classification_save"
+    ]
    }
   ],
   "delivery-order": [
@@ -351,31 +513,46 @@
     "action": "bulk-save",
     "method": "POST",
     "tool": "deliveryOrder.bulk-save",
-    "permission": "accurate:delivery-order.save"
+    "permission": "accurate:delivery-order.save",
+    "scope": [
+     "delivery_order_save"
+    ]
    },
    {
     "action": "delete",
     "method": "DELETE",
     "tool": "deliveryOrder.delete",
-    "permission": "accurate:delivery-order.delete"
+    "permission": "accurate:delivery-order.delete",
+    "scope": [
+     "delivery_order_delete"
+    ]
    },
    {
     "action": "detail",
     "method": "GET",
     "tool": "deliveryOrder.detail",
-    "permission": "accurate:delivery-order.view"
+    "permission": "accurate:delivery-order.view",
+    "scope": [
+     "delivery_order_view"
+    ]
    },
    {
     "action": "list",
     "method": "GET",
     "tool": "deliveryOrder.list",
-    "permission": "accurate:delivery-order.view"
+    "permission": "accurate:delivery-order.view",
+    "scope": [
+     "delivery_order_view"
+    ]
    },
    {
     "action": "save",
     "method": "POST",
     "tool": "deliveryOrder.save",
-    "permission": "accurate:delivery-order.save"
+    "permission": "accurate:delivery-order.save",
+    "scope": [
+     "delivery_order_save"
+    ]
    }
   ],
   "department": [
@@ -383,31 +560,46 @@
     "action": "bulk-save",
     "method": "POST",
     "tool": "department.bulk-save",
-    "permission": "accurate:department.save"
+    "permission": "accurate:department.save",
+    "scope": [
+     "department_save"
+    ]
    },
    {
     "action": "delete",
     "method": "DELETE",
     "tool": "department.delete",
-    "permission": "accurate:department.delete"
+    "permission": "accurate:department.delete",
+    "scope": [
+     "department_delete"
+    ]
    },
    {
     "action": "detail",
     "method": "GET",
     "tool": "department.detail",
-    "permission": "accurate:department.view"
+    "permission": "accurate:department.view",
+    "scope": [
+     "department_view"
+    ]
    },
    {
     "action": "list",
     "method": "GET",
     "tool": "department.list",
-    "permission": "accurate:department.view"
+    "permission": "accurate:department.view",
+    "scope": [
+     "department_view"
+    ]
    },
    {
     "action": "save",
     "method": "POST",
     "tool": "department.save",
-    "permission": "accurate:department.save"
+    "permission": "accurate:department.save",
+    "scope": [
+     "department_save"
+    ]
    }
   ],
   "employee": [
@@ -415,25 +607,37 @@
     "action": "delete",
     "method": "DELETE",
     "tool": "employee.delete",
-    "permission": "accurate:employee.delete"
+    "permission": "accurate:employee.delete",
+    "scope": [
+     "employee_delete"
+    ]
    },
    {
     "action": "detail",
     "method": "GET",
     "tool": "employee.detail",
-    "permission": "accurate:employee.view"
+    "permission": "accurate:employee.view",
+    "scope": [
+     "employee_view"
+    ]
    },
    {
     "action": "list",
     "method": "GET",
     "tool": "employee.list",
-    "permission": "accurate:employee.view"
+    "permission": "accurate:employee.view",
+    "scope": [
+     "employee_view"
+    ]
    },
    {
     "action": "save",
     "method": "POST",
     "tool": "employee.save",
-    "permission": "accurate:employee.save"
+    "permission": "accurate:employee.save",
+    "scope": [
+     "employee_save"
+    ]
    }
   ],
   "exchange-invoice": [
@@ -441,31 +645,46 @@
     "action": "bulk-save",
     "method": "POST",
     "tool": "exchangeInvoice.bulk-save",
-    "permission": "accurate:exchange-invoice.save"
+    "permission": "accurate:exchange-invoice.save",
+    "scope": [
+     "exchange_invoice_save"
+    ]
    },
    {
     "action": "delete",
     "method": "DELETE",
     "tool": "exchangeInvoice.delete",
-    "permission": "accurate:exchange-invoice.delete"
+    "permission": "accurate:exchange-invoice.delete",
+    "scope": [
+     "exchange_invoice_delete"
+    ]
    },
    {
     "action": "detail",
     "method": "GET",
     "tool": "exchangeInvoice.detail",
-    "permission": "accurate:exchange-invoice.view"
+    "permission": "accurate:exchange-invoice.view",
+    "scope": [
+     "exchange_invoice_view"
+    ]
    },
    {
     "action": "list",
     "method": "GET",
     "tool": "exchangeInvoice.list",
-    "permission": "accurate:exchange-invoice.view"
+    "permission": "accurate:exchange-invoice.view",
+    "scope": [
+     "exchange_invoice_view"
+    ]
    },
    {
     "action": "save",
     "method": "POST",
     "tool": "exchangeInvoice.save",
-    "permission": "accurate:exchange-invoice.save"
+    "permission": "accurate:exchange-invoice.save",
+    "scope": [
+     "exchange_invoice_save"
+    ]
    }
   ],
   "expense": [
@@ -473,31 +692,46 @@
     "action": "bulk-save",
     "method": "POST",
     "tool": "expense.bulk-save",
-    "permission": "accurate:expense.save"
+    "permission": "accurate:expense.save",
+    "scope": [
+     "expense_accrual_save"
+    ]
    },
    {
     "action": "delete",
     "method": "DELETE",
     "tool": "expense.delete",
-    "permission": "accurate:expense.delete"
+    "permission": "accurate:expense.delete",
+    "scope": [
+     "expense_accrual_delete"
+    ]
    },
    {
     "action": "detail",
     "method": "GET",
     "tool": "expense.detail",
-    "permission": "accurate:expense.view"
+    "permission": "accurate:expense.view",
+    "scope": [
+     "expense_accrual_view"
+    ]
    },
    {
     "action": "list",
     "method": "GET",
     "tool": "expense.list",
-    "permission": "accurate:expense.view"
+    "permission": "accurate:expense.view",
+    "scope": [
+     "expense_accrual_view"
+    ]
    },
    {
     "action": "save",
     "method": "POST",
     "tool": "expense.save",
-    "permission": "accurate:expense.save"
+    "permission": "accurate:expense.save",
+    "scope": [
+     "expense_accrual_save"
+    ]
    }
   ],
   "finished-good-slip": [
@@ -505,31 +739,46 @@
     "action": "bulk-save",
     "method": "POST",
     "tool": "finishedGoodSlip.bulk-save",
-    "permission": "accurate:finished-good-slip.save"
+    "permission": "accurate:finished-good-slip.save",
+    "scope": [
+     "finished_good_slip_save"
+    ]
    },
    {
     "action": "delete",
     "method": "DELETE",
     "tool": "finishedGoodSlip.delete",
-    "permission": "accurate:finished-good-slip.delete"
+    "permission": "accurate:finished-good-slip.delete",
+    "scope": [
+     "finished_good_slip_delete"
+    ]
    },
    {
     "action": "detail",
     "method": "GET",
     "tool": "finishedGoodSlip.detail",
-    "permission": "accurate:finished-good-slip.view"
+    "permission": "accurate:finished-good-slip.view",
+    "scope": [
+     "finished_good_slip_view"
+    ]
    },
    {
     "action": "list",
     "method": "GET",
     "tool": "finishedGoodSlip.list",
-    "permission": "accurate:finished-good-slip.view"
+    "permission": "accurate:finished-good-slip.view",
+    "scope": [
+     "finished_good_slip_view"
+    ]
    },
    {
     "action": "save",
     "method": "POST",
     "tool": "finishedGoodSlip.save",
-    "permission": "accurate:finished-good-slip.save"
+    "permission": "accurate:finished-good-slip.save",
+    "scope": [
+     "finished_good_slip_save"
+    ]
    }
   ],
   "fixed-asset": [
@@ -537,31 +786,48 @@
     "action": "delete",
     "method": "DELETE",
     "tool": "fixedAsset.delete",
-    "permission": "accurate:fixed-asset.delete"
+    "permission": "accurate:fixed-asset.delete",
+    "scope": [
+     "fixed_asset_delete"
+    ]
    },
    {
     "action": "detail",
     "method": "GET",
     "tool": "fixedAsset.detail",
-    "permission": "accurate:fixed-asset.view"
+    "permission": "accurate:fixed-asset.view",
+    "scope": [
+     "fixed_asset_view"
+    ]
    },
    {
     "action": "get-history",
     "method": "GET",
     "tool": "fixedAsset.get-history",
-    "permission": "accurate:fixed-asset.view"
+    "permission": "accurate:fixed-asset.view",
+    "scope": [
+     "fixed_asset_view"
+    ],
+    "docsOnly": true
    },
    {
     "action": "list",
     "method": "GET",
     "tool": "fixedAsset.list",
-    "permission": "accurate:fixed-asset.view"
+    "permission": "accurate:fixed-asset.view",
+    "scope": [
+     "fixed_asset_view"
+    ]
    },
    {
     "action": "save",
     "method": "POST",
     "tool": "fixedAsset.save",
-    "permission": "accurate:fixed-asset.save"
+    "permission": "accurate:fixed-asset.save",
+    "scope": [
+     "fixed_asset_save"
+    ],
+    "docsOnly": true
    }
   ],
   "fob": [
@@ -569,31 +835,46 @@
     "action": "bulk-save",
     "method": "POST",
     "tool": "fob.bulk-save",
-    "permission": "accurate:fob.save"
+    "permission": "accurate:fob.save",
+    "scope": [
+     "fob_save"
+    ]
    },
    {
     "action": "delete",
     "method": "DELETE",
     "tool": "fob.delete",
-    "permission": "accurate:fob.delete"
+    "permission": "accurate:fob.delete",
+    "scope": [
+     "fob_delete"
+    ]
    },
    {
     "action": "detail",
     "method": "GET",
     "tool": "fob.detail",
-    "permission": "accurate:fob.view"
+    "permission": "accurate:fob.view",
+    "scope": [
+     "fob_view"
+    ]
    },
    {
     "action": "list",
     "method": "GET",
     "tool": "fob.list",
-    "permission": "accurate:fob.view"
+    "permission": "accurate:fob.view",
+    "scope": [
+     "fob_view"
+    ]
    },
    {
     "action": "save",
     "method": "POST",
     "tool": "fob.save",
-    "permission": "accurate:fob.save"
+    "permission": "accurate:fob.save",
+    "scope": [
+     "fob_save"
+    ]
    }
   ],
   "freeonboard": [
@@ -601,31 +882,46 @@
     "action": "bulk-save",
     "method": "POST",
     "tool": "freeonboard.bulk-save",
-    "permission": "accurate:freeonboard.save"
+    "permission": "accurate:freeonboard.save",
+    "scope": [
+     "freeonboard_save"
+    ]
    },
    {
     "action": "delete",
     "method": "DELETE",
     "tool": "freeonboard.delete",
-    "permission": "accurate:freeonboard.delete"
+    "permission": "accurate:freeonboard.delete",
+    "scope": [
+     "freeonboard_save"
+    ]
    },
    {
     "action": "detail",
     "method": "GET",
     "tool": "freeonboard.detail",
-    "permission": "accurate:freeonboard.view"
+    "permission": "accurate:freeonboard.view",
+    "scope": [
+     "freeonboard_view"
+    ]
    },
    {
     "action": "list",
     "method": "GET",
     "tool": "freeonboard.list",
-    "permission": "accurate:freeonboard.view"
+    "permission": "accurate:freeonboard.view",
+    "scope": [
+     "freeonboard_view"
+    ]
    },
    {
     "action": "save",
     "method": "POST",
     "tool": "freeonboard.save",
-    "permission": "accurate:freeonboard.save"
+    "permission": "accurate:freeonboard.save",
+    "scope": [
+     "freeonboard_save"
+    ]
    }
   ],
   "glaccount": [
@@ -633,55 +929,82 @@
     "action": "bulk-save",
     "method": "POST",
     "tool": "glaccount.bulk-save",
-    "permission": "accurate:glaccount.save"
+    "permission": "accurate:glaccount.save",
+    "scope": [
+     "glaccount_save"
+    ]
    },
    {
     "action": "delete",
     "method": "DELETE",
     "tool": "glaccount.delete",
-    "permission": "accurate:glaccount.delete"
+    "permission": "accurate:glaccount.delete",
+    "scope": [
+     "glaccount_delete"
+    ]
    },
    {
     "action": "detail",
     "method": "GET",
     "tool": "glaccount.detail",
-    "permission": "accurate:glaccount.view"
+    "permission": "accurate:glaccount.view",
+    "scope": [
+     "glaccount_view"
+    ]
    },
    {
     "action": "get-balance",
     "method": "GET",
     "tool": "glaccount.get-balance",
-    "permission": "accurate:glaccount.view"
+    "permission": "accurate:glaccount.view",
+    "scope": [
+     "glaccount_view"
+    ]
    },
    {
     "action": "get-bs-account-amount",
     "method": "GET",
     "tool": "glaccount.get-bs-account-amount",
-    "permission": "accurate:glaccount.view"
+    "permission": "accurate:glaccount.view",
+    "scope": [
+     "glaccount_view"
+    ]
    },
    {
     "action": "get-pl-account-amount",
     "method": "GET",
     "tool": "glaccount.get-pl-account-amount",
-    "permission": "accurate:glaccount.view"
+    "permission": "accurate:glaccount.view",
+    "scope": [
+     "glaccount_view"
+    ]
    },
    {
     "action": "list",
     "method": "GET",
     "tool": "glaccount.list",
-    "permission": "accurate:glaccount.view"
+    "permission": "accurate:glaccount.view",
+    "scope": [
+     "glaccount_view"
+    ]
    },
    {
     "action": "mutation",
     "method": "GET",
     "tool": "glaccount.mutation",
-    "permission": "accurate:glaccount.view"
+    "permission": "accurate:glaccount.view",
+    "scope": [
+     "glaccount_view"
+    ]
    },
    {
     "action": "save",
     "method": "POST",
     "tool": "glaccount.save",
-    "permission": "accurate:glaccount.save"
+    "permission": "accurate:glaccount.save",
+    "scope": [
+     "glaccount_save"
+    ]
    }
   ],
   "item": [
@@ -689,79 +1012,118 @@
     "action": "bulk-save",
     "method": "POST",
     "tool": "item.bulk-save",
-    "permission": "accurate:item.save"
+    "permission": "accurate:item.save",
+    "scope": [
+     "item_save"
+    ]
    },
    {
     "action": "delete",
     "method": "DELETE",
     "tool": "item.delete",
-    "permission": "accurate:item.delete"
+    "permission": "accurate:item.delete",
+    "scope": [
+     "item_delete"
+    ]
    },
    {
     "action": "detail",
     "method": "GET",
     "tool": "item.detail",
-    "permission": "accurate:item.view"
+    "permission": "accurate:item.view",
+    "scope": [
+     "item_view"
+    ]
    },
    {
     "action": "get-nearest-cost",
     "method": "GET",
     "tool": "item.get-nearest-cost",
-    "permission": "accurate:item.view"
+    "permission": "accurate:item.view",
+    "scope": [
+     "purchase_invoice_save"
+    ]
    },
    {
     "action": "get-selling-price",
     "method": "GET",
     "tool": "item.get-selling-price",
-    "permission": "accurate:item.view"
+    "permission": "accurate:item.view",
+    "scope": [
+     "item_view"
+    ]
    },
    {
     "action": "get-stock",
     "method": "GET",
     "tool": "item.get-stock",
-    "permission": "accurate:item.view"
+    "permission": "accurate:item.view",
+    "scope": [
+     "item_view"
+    ]
    },
    {
     "action": "list",
     "method": "GET",
     "tool": "item.list",
-    "permission": "accurate:item.view"
+    "permission": "accurate:item.view",
+    "scope": [
+     "item_view"
+    ]
    },
    {
     "action": "list-stock",
     "method": "GET",
     "tool": "item.list-stock",
-    "permission": "accurate:item.view"
+    "permission": "accurate:item.view",
+    "scope": [
+     "item_view"
+    ]
    },
    {
     "action": "save",
     "method": "POST",
     "tool": "item.save",
-    "permission": "accurate:item.save"
+    "permission": "accurate:item.save",
+    "scope": [
+     "item_save"
+    ]
    },
    {
     "action": "search-by-item-or-sn",
     "method": "GET",
     "tool": "item.search-by-item-or-sn",
-    "permission": "accurate:item.view"
+    "permission": "accurate:item.view",
+    "scope": [
+     "item_view"
+    ]
    },
    {
     "action": "search-by-no-upc",
     "method": "GET",
     "tool": "item.search-by-no-upc",
-    "permission": "accurate:item.view"
+    "permission": "accurate:item.view",
+    "scope": [
+     "item_view"
+    ]
    },
    {
     "action": "stock-mutation-history",
     "method": "GET",
     "tool": "item.stock-mutation-history",
-    "permission": "accurate:item.view"
+    "permission": "accurate:item.view",
+    "scope": [
+     "stock_mutation_history_view"
+    ]
    },
    {
     "action": "vendor-price",
     "method": "GET",
     "tool": "item.vendor-price",
-    "permission": "accurate:item.view"
+    "permission": "accurate:item.view",
+    "scope": [
+     "item_view"
+    ]
    }
   ],
   "item-adjustment": [
@@ -769,37 +1131,55 @@
     "action": "bulk-save",
     "method": "POST",
     "tool": "itemAdjustment.bulk-save",
-    "permission": "accurate:item-adjustment.save"
+    "permission": "accurate:item-adjustment.save",
+    "scope": [
+     "item_adjustment_save"
+    ]
    },
    {
     "action": "delete",
     "method": "DELETE",
     "tool": "itemAdjustment.delete",
-    "permission": "accurate:item-adjustment.delete"
+    "permission": "accurate:item-adjustment.delete",
+    "scope": [
+     "item_adjustment_delete"
+    ]
    },
    {
     "action": "detail",
     "method": "GET",
     "tool": "itemAdjustment.detail",
-    "permission": "accurate:item-adjustment.view"
+    "permission": "accurate:item-adjustment.view",
+    "scope": [
+     "item_adjustment_view"
+    ]
    },
    {
     "action": "list",
     "method": "GET",
     "tool": "itemAdjustment.list",
-    "permission": "accurate:item-adjustment.view"
+    "permission": "accurate:item-adjustment.view",
+    "scope": [
+     "item_adjustment_view"
+    ]
    },
    {
     "action": "save",
     "method": "POST",
     "tool": "itemAdjustment.save",
-    "permission": "accurate:item-adjustment.save"
+    "permission": "accurate:item-adjustment.save",
+    "scope": [
+     "item_adjustment_save"
+    ]
    },
    {
     "action": "save-target-quantity",
     "method": "POST",
     "tool": "itemAdjustment.save-target-quantity",
-    "permission": "accurate:item-adjustment.save"
+    "permission": "accurate:item-adjustment.save",
+    "scope": [
+     "item_adjustment_save"
+    ]
    }
   ],
   "item-brand": [
@@ -807,25 +1187,37 @@
     "action": "delete",
     "method": "DELETE",
     "tool": "itemBrand.delete",
-    "permission": "accurate:item-brand.delete"
+    "permission": "accurate:item-brand.delete",
+    "scope": [
+     "item_brand_delete"
+    ]
    },
    {
     "action": "detail",
     "method": "GET",
     "tool": "itemBrand.detail",
-    "permission": "accurate:item-brand.view"
+    "permission": "accurate:item-brand.view",
+    "scope": [
+     "item_brand_view"
+    ]
    },
    {
     "action": "list",
     "method": "GET",
     "tool": "itemBrand.list",
-    "permission": "accurate:item-brand.view"
+    "permission": "accurate:item-brand.view",
+    "scope": [
+     "item_brand_view"
+    ]
    },
    {
     "action": "save",
     "method": "POST",
     "tool": "itemBrand.save",
-    "permission": "accurate:item-brand.save"
+    "permission": "accurate:item-brand.save",
+    "scope": [
+     "item_brand_save"
+    ]
    }
   ],
   "item-category": [
@@ -833,31 +1225,46 @@
     "action": "bulk-save",
     "method": "POST",
     "tool": "itemCategory.bulk-save",
-    "permission": "accurate:item-category.save"
+    "permission": "accurate:item-category.save",
+    "scope": [
+     "item_category_save"
+    ]
    },
    {
     "action": "delete",
     "method": "DELETE",
     "tool": "itemCategory.delete",
-    "permission": "accurate:item-category.delete"
+    "permission": "accurate:item-category.delete",
+    "scope": [
+     "item_category_delete"
+    ]
    },
    {
     "action": "detail",
     "method": "GET",
     "tool": "itemCategory.detail",
-    "permission": "accurate:item-category.view"
+    "permission": "accurate:item-category.view",
+    "scope": [
+     "item_category_view"
+    ]
    },
    {
     "action": "list",
     "method": "GET",
     "tool": "itemCategory.list",
-    "permission": "accurate:item-category.view"
+    "permission": "accurate:item-category.view",
+    "scope": [
+     "item_category_view"
+    ]
    },
    {
     "action": "save",
     "method": "POST",
     "tool": "itemCategory.save",
-    "permission": "accurate:item-category.save"
+    "permission": "accurate:item-category.save",
+    "scope": [
+     "item_category_save"
+    ]
    }
   ],
   "item-transfer": [
@@ -865,31 +1272,46 @@
     "action": "bulk-save",
     "method": "POST",
     "tool": "itemTransfer.bulk-save",
-    "permission": "accurate:item-transfer.save"
+    "permission": "accurate:item-transfer.save",
+    "scope": [
+     "item_transfer_save"
+    ]
    },
    {
     "action": "delete",
     "method": "DELETE",
     "tool": "itemTransfer.delete",
-    "permission": "accurate:item-transfer.delete"
+    "permission": "accurate:item-transfer.delete",
+    "scope": [
+     "item_transfer_delete"
+    ]
    },
    {
     "action": "detail",
     "method": "GET",
     "tool": "itemTransfer.detail",
-    "permission": "accurate:item-transfer.view"
+    "permission": "accurate:item-transfer.view",
+    "scope": [
+     "item_transfer_view"
+    ]
    },
    {
     "action": "list",
     "method": "GET",
     "tool": "itemTransfer.list",
-    "permission": "accurate:item-transfer.view"
+    "permission": "accurate:item-transfer.view",
+    "scope": [
+     "item_transfer_view"
+    ]
    },
    {
     "action": "save",
     "method": "POST",
     "tool": "itemTransfer.save",
-    "permission": "accurate:item-transfer.save"
+    "permission": "accurate:item-transfer.save",
+    "scope": [
+     "item_transfer_save"
+    ]
    }
   ],
   "job-order": [
@@ -897,31 +1319,46 @@
     "action": "bulk-save",
     "method": "POST",
     "tool": "jobOrder.bulk-save",
-    "permission": "accurate:job-order.save"
+    "permission": "accurate:job-order.save",
+    "scope": [
+     "job_order_save"
+    ]
    },
    {
     "action": "delete",
     "method": "DELETE",
     "tool": "jobOrder.delete",
-    "permission": "accurate:job-order.delete"
+    "permission": "accurate:job-order.delete",
+    "scope": [
+     "job_order_delete"
+    ]
    },
    {
     "action": "detail",
     "method": "GET",
     "tool": "jobOrder.detail",
-    "permission": "accurate:job-order.view"
+    "permission": "accurate:job-order.view",
+    "scope": [
+     "job_order_view"
+    ]
    },
    {
     "action": "list",
     "method": "GET",
     "tool": "jobOrder.list",
-    "permission": "accurate:job-order.view"
+    "permission": "accurate:job-order.view",
+    "scope": [
+     "job_order_view"
+    ]
    },
    {
     "action": "save",
     "method": "POST",
     "tool": "jobOrder.save",
-    "permission": "accurate:job-order.save"
+    "permission": "accurate:job-order.save",
+    "scope": [
+     "job_order_save"
+    ]
    }
   ],
   "journal-voucher": [
@@ -929,31 +1366,46 @@
     "action": "bulk-save",
     "method": "POST",
     "tool": "journalVoucher.bulk-save",
-    "permission": "accurate:journal-voucher.save"
+    "permission": "accurate:journal-voucher.save",
+    "scope": [
+     "journal_voucher_save"
+    ]
    },
    {
     "action": "delete",
     "method": "DELETE",
     "tool": "journalVoucher.delete",
-    "permission": "accurate:journal-voucher.delete"
+    "permission": "accurate:journal-voucher.delete",
+    "scope": [
+     "journal_voucher_delete"
+    ]
    },
    {
     "action": "detail",
     "method": "GET",
     "tool": "journalVoucher.detail",
-    "permission": "accurate:journal-voucher.view"
+    "permission": "accurate:journal-voucher.view",
+    "scope": [
+     "journal_voucher_view"
+    ]
    },
    {
     "action": "list",
     "method": "GET",
     "tool": "journalVoucher.list",
-    "permission": "accurate:journal-voucher.view"
+    "permission": "accurate:journal-voucher.view",
+    "scope": [
+     "journal_voucher_view"
+    ]
    },
    {
     "action": "save",
     "method": "POST",
     "tool": "journalVoucher.save",
-    "permission": "accurate:journal-voucher.save"
+    "permission": "accurate:journal-voucher.save",
+    "scope": [
+     "journal_voucher_save"
+    ]
    }
   ],
   "manufacture-order": [
@@ -961,25 +1413,37 @@
     "action": "delete",
     "method": "DELETE",
     "tool": "manufactureOrder.delete",
-    "permission": "accurate:manufacture-order.delete"
+    "permission": "accurate:manufacture-order.delete",
+    "scope": [
+     "manufacture_order_delete"
+    ]
    },
    {
     "action": "detail",
     "method": "GET",
     "tool": "manufactureOrder.detail",
-    "permission": "accurate:manufacture-order.view"
+    "permission": "accurate:manufacture-order.view",
+    "scope": [
+     "manufacture_order_view"
+    ]
    },
    {
     "action": "list",
     "method": "GET",
     "tool": "manufactureOrder.list",
-    "permission": "accurate:manufacture-order.view"
+    "permission": "accurate:manufacture-order.view",
+    "scope": [
+     "manufacture_order_view"
+    ]
    },
    {
     "action": "save",
     "method": "POST",
     "tool": "manufactureOrder.save",
-    "permission": "accurate:manufacture-order.save"
+    "permission": "accurate:manufacture-order.save",
+    "scope": [
+     "manufacture_order_save"
+    ]
    }
   ],
   "material-adjustment": [
@@ -987,31 +1451,46 @@
     "action": "bulk-save",
     "method": "POST",
     "tool": "materialAdjustment.bulk-save",
-    "permission": "accurate:material-adjustment.save"
+    "permission": "accurate:material-adjustment.save",
+    "scope": [
+     "material_adjustment_save"
+    ]
    },
    {
     "action": "delete",
     "method": "DELETE",
     "tool": "materialAdjustment.delete",
-    "permission": "accurate:material-adjustment.delete"
+    "permission": "accurate:material-adjustment.delete",
+    "scope": [
+     "material_adjustment_delete"
+    ]
    },
    {
     "action": "detail",
     "method": "GET",
     "tool": "materialAdjustment.detail",
-    "permission": "accurate:material-adjustment.view"
+    "permission": "accurate:material-adjustment.view",
+    "scope": [
+     "material_adjustment_view"
+    ]
    },
    {
     "action": "list",
     "method": "GET",
     "tool": "materialAdjustment.list",
-    "permission": "accurate:material-adjustment.view"
+    "permission": "accurate:material-adjustment.view",
+    "scope": [
+     "material_adjustment_view"
+    ]
    },
    {
     "action": "save",
     "method": "POST",
     "tool": "materialAdjustment.save",
-    "permission": "accurate:material-adjustment.save"
+    "permission": "accurate:material-adjustment.save",
+    "scope": [
+     "material_adjustment_save"
+    ]
    }
   ],
   "material-equipment": [
@@ -1019,19 +1498,31 @@
     "action": "detail",
     "method": "GET",
     "tool": "materialEquipment.detail",
-    "permission": "accurate:material-equipment.view"
+    "permission": "accurate:material-equipment.view",
+    "scope": [
+     "material_equipment_view"
+    ],
+    "docsOnly": true
    },
    {
     "action": "list",
     "method": "GET",
     "tool": "materialEquipment.list",
-    "permission": "accurate:material-equipment.view"
+    "permission": "accurate:material-equipment.view",
+    "scope": [
+     "material_equipment_view"
+    ],
+    "docsOnly": true
    },
    {
     "action": "save",
     "method": "POST",
     "tool": "materialEquipment.save",
-    "permission": "accurate:material-equipment.save"
+    "permission": "accurate:material-equipment.save",
+    "scope": [
+     "material_equipment_save"
+    ],
+    "docsOnly": true
    }
   ],
   "material-slip": [
@@ -1039,31 +1530,46 @@
     "action": "bulk-save",
     "method": "POST",
     "tool": "materialSlip.bulk-save",
-    "permission": "accurate:material-slip.save"
+    "permission": "accurate:material-slip.save",
+    "scope": [
+     "material_slip_save"
+    ]
    },
    {
     "action": "delete",
     "method": "DELETE",
     "tool": "materialSlip.delete",
-    "permission": "accurate:material-slip.delete"
+    "permission": "accurate:material-slip.delete",
+    "scope": [
+     "material_slip_delete"
+    ]
    },
    {
     "action": "detail",
     "method": "GET",
     "tool": "materialSlip.detail",
-    "permission": "accurate:material-slip.view"
+    "permission": "accurate:material-slip.view",
+    "scope": [
+     "material_slip_view"
+    ]
    },
    {
     "action": "list",
     "method": "GET",
     "tool": "materialSlip.list",
-    "permission": "accurate:material-slip.view"
+    "permission": "accurate:material-slip.view",
+    "scope": [
+     "material_slip_view"
+    ]
    },
    {
     "action": "save",
     "method": "POST",
     "tool": "materialSlip.save",
-    "permission": "accurate:material-slip.save"
+    "permission": "accurate:material-slip.save",
+    "scope": [
+     "material_slip_save"
+    ]
    }
   ],
   "online-order": [
@@ -1071,19 +1577,31 @@
     "action": "detail",
     "method": "GET",
     "tool": "onlineOrder.detail",
-    "permission": "accurate:online-order.view"
+    "permission": "accurate:online-order.view",
+    "scope": [
+     "online_order_view"
+    ],
+    "docsOnly": true
    },
    {
     "action": "list",
     "method": "GET",
     "tool": "onlineOrder.list",
-    "permission": "accurate:online-order.view"
+    "permission": "accurate:online-order.view",
+    "scope": [
+     "online_order_view"
+    ],
+    "docsOnly": true
    },
    {
     "action": "save",
     "method": "POST",
     "tool": "onlineOrder.save",
-    "permission": "accurate:online-order.save"
+    "permission": "accurate:online-order.save",
+    "scope": [
+     "online_order_save"
+    ],
+    "docsOnly": true
    }
   ],
   "other-deposit": [
@@ -1091,31 +1609,46 @@
     "action": "bulk-save",
     "method": "POST",
     "tool": "otherDeposit.bulk-save",
-    "permission": "accurate:other-deposit.save"
+    "permission": "accurate:other-deposit.save",
+    "scope": [
+     "other_deposit_save"
+    ]
    },
    {
     "action": "delete",
     "method": "DELETE",
     "tool": "otherDeposit.delete",
-    "permission": "accurate:other-deposit.delete"
+    "permission": "accurate:other-deposit.delete",
+    "scope": [
+     "other_deposit_delete"
+    ]
    },
    {
     "action": "detail",
     "method": "GET",
     "tool": "otherDeposit.detail",
-    "permission": "accurate:other-deposit.view"
+    "permission": "accurate:other-deposit.view",
+    "scope": [
+     "other_deposit_view"
+    ]
    },
    {
     "action": "list",
     "method": "GET",
     "tool": "otherDeposit.list",
-    "permission": "accurate:other-deposit.view"
+    "permission": "accurate:other-deposit.view",
+    "scope": [
+     "other_deposit_view"
+    ]
    },
    {
     "action": "save",
     "method": "POST",
     "tool": "otherDeposit.save",
-    "permission": "accurate:other-deposit.save"
+    "permission": "accurate:other-deposit.save",
+    "scope": [
+     "other_deposit_save"
+    ]
    }
   ],
   "other-payment": [
@@ -1123,31 +1656,46 @@
     "action": "bulk-save",
     "method": "POST",
     "tool": "otherPayment.bulk-save",
-    "permission": "accurate:other-payment.save"
+    "permission": "accurate:other-payment.save",
+    "scope": [
+     "other_payment_save"
+    ]
    },
    {
     "action": "delete",
     "method": "DELETE",
     "tool": "otherPayment.delete",
-    "permission": "accurate:other-payment.delete"
+    "permission": "accurate:other-payment.delete",
+    "scope": [
+     "other_payment_delete"
+    ]
    },
    {
     "action": "detail",
     "method": "GET",
     "tool": "otherPayment.detail",
-    "permission": "accurate:other-payment.view"
+    "permission": "accurate:other-payment.view",
+    "scope": [
+     "other_payment_view"
+    ]
    },
    {
     "action": "list",
     "method": "GET",
     "tool": "otherPayment.list",
-    "permission": "accurate:other-payment.view"
+    "permission": "accurate:other-payment.view",
+    "scope": [
+     "other_payment_view"
+    ]
    },
    {
     "action": "save",
     "method": "POST",
     "tool": "otherPayment.save",
-    "permission": "accurate:other-payment.save"
+    "permission": "accurate:other-payment.save",
+    "scope": [
+     "other_payment_save"
+    ]
    }
   ],
   "payment-term": [
@@ -1155,31 +1703,46 @@
     "action": "bulk-save",
     "method": "POST",
     "tool": "paymentTerm.bulk-save",
-    "permission": "accurate:payment-term.save"
+    "permission": "accurate:payment-term.save",
+    "scope": [
+     "payment_term_save"
+    ]
    },
    {
     "action": "delete",
     "method": "DELETE",
     "tool": "paymentTerm.delete",
-    "permission": "accurate:payment-term.delete"
+    "permission": "accurate:payment-term.delete",
+    "scope": [
+     "payment_term_delete"
+    ]
    },
    {
     "action": "detail",
     "method": "GET",
     "tool": "paymentTerm.detail",
-    "permission": "accurate:payment-term.view"
+    "permission": "accurate:payment-term.view",
+    "scope": [
+     "payment_term_view"
+    ]
    },
    {
     "action": "list",
     "method": "GET",
     "tool": "paymentTerm.list",
-    "permission": "accurate:payment-term.view"
+    "permission": "accurate:payment-term.view",
+    "scope": [
+     "payment_term_view"
+    ]
    },
    {
     "action": "save",
     "method": "POST",
     "tool": "paymentTerm.save",
-    "permission": "accurate:payment-term.save"
+    "permission": "accurate:payment-term.save",
+    "scope": [
+     "payment_term_save"
+    ]
    }
   ],
   "pos/customer": [
@@ -1187,25 +1750,34 @@
     "action": "delete",
     "method": "DELETE",
     "tool": "posCustomer.delete",
-    "permission": "accurate:pos/customer.delete"
+    "permission": "accurate:pos/customer.delete",
+    "scope": [],
+    "docsOnly": true
    },
    {
     "action": "detail",
     "method": "GET",
     "tool": "posCustomer.detail",
-    "permission": "accurate:pos/customer.view"
+    "permission": "accurate:pos/customer.view",
+    "scope": [],
+    "docsOnly": true
    },
    {
     "action": "list",
     "method": "GET",
     "tool": "posCustomer.list",
-    "permission": "accurate:pos/customer.view"
+    "permission": "accurate:pos/customer.view",
+    "scope": [],
+    "docsOnly": true
    },
    {
     "action": "save",
     "method": "POST",
     "tool": "posCustomer.save",
-    "permission": "accurate:pos/customer.save"
+    "permission": "accurate:pos/customer.save",
+    "scope": [
+     "customer_save"
+    ]
    }
   ],
   "pos/item": [
@@ -1213,25 +1785,34 @@
     "action": "delete",
     "method": "DELETE",
     "tool": "posItem.delete",
-    "permission": "accurate:pos/item.delete"
+    "permission": "accurate:pos/item.delete",
+    "scope": [],
+    "docsOnly": true
    },
    {
     "action": "detail",
     "method": "GET",
     "tool": "posItem.detail",
-    "permission": "accurate:pos/item.view"
+    "permission": "accurate:pos/item.view",
+    "scope": [],
+    "docsOnly": true
    },
    {
     "action": "list",
     "method": "GET",
     "tool": "posItem.list",
-    "permission": "accurate:pos/item.view"
+    "permission": "accurate:pos/item.view",
+    "scope": [],
+    "docsOnly": true
    },
    {
     "action": "save",
     "method": "POST",
     "tool": "posItem.save",
-    "permission": "accurate:pos/item.save"
+    "permission": "accurate:pos/item.save",
+    "scope": [
+     "item_save"
+    ]
    }
   ],
   "pos/transaction": [
@@ -1239,19 +1820,28 @@
     "action": "detail",
     "method": "GET",
     "tool": "posTransaction.detail",
-    "permission": "accurate:pos/transaction.view"
+    "permission": "accurate:pos/transaction.view",
+    "scope": [],
+    "docsOnly": true
    },
    {
     "action": "list",
     "method": "GET",
     "tool": "posTransaction.list",
-    "permission": "accurate:pos/transaction.view"
+    "permission": "accurate:pos/transaction.view",
+    "scope": [],
+    "docsOnly": true
    },
    {
     "action": "save",
     "method": "POST",
     "tool": "posTransaction.save",
-    "permission": "accurate:pos/transaction.save"
+    "permission": "accurate:pos/transaction.save",
+    "scope": [
+     "sales_invoice_save",
+     "sales_receipt_save",
+     "sales_return_save"
+    ]
    }
   ],
   "preliminary-survey": [
@@ -1259,19 +1849,31 @@
     "action": "detail",
     "method": "GET",
     "tool": "preliminarySurvey.detail",
-    "permission": "accurate:preliminary-survey.view"
+    "permission": "accurate:preliminary-survey.view",
+    "scope": [
+     "preliminary_survey_view"
+    ],
+    "docsOnly": true
    },
    {
     "action": "list",
     "method": "GET",
     "tool": "preliminarySurvey.list",
-    "permission": "accurate:preliminary-survey.view"
+    "permission": "accurate:preliminary-survey.view",
+    "scope": [
+     "preliminary_survey_view"
+    ],
+    "docsOnly": true
    },
    {
     "action": "save",
     "method": "POST",
     "tool": "preliminarySurvey.save",
-    "permission": "accurate:preliminary-survey.save"
+    "permission": "accurate:preliminary-survey.save",
+    "scope": [
+     "preliminary_survey_save"
+    ],
+    "docsOnly": true
    }
   ],
   "price-category": [
@@ -1279,19 +1881,28 @@
     "action": "detail",
     "method": "GET",
     "tool": "priceCategory.detail",
-    "permission": "accurate:price-category.view"
+    "permission": "accurate:price-category.view",
+    "scope": [
+     "price_category_view"
+    ]
    },
    {
     "action": "list",
     "method": "GET",
     "tool": "priceCategory.list",
-    "permission": "accurate:price-category.view"
+    "permission": "accurate:price-category.view",
+    "scope": [
+     "price_category_view"
+    ]
    },
    {
     "action": "save",
     "method": "POST",
     "tool": "priceCategory.save",
-    "permission": "accurate:price-category.save"
+    "permission": "accurate:price-category.save",
+    "scope": [
+     "price_category_save"
+    ]
    }
   ],
   "process-stages": [
@@ -1299,25 +1910,37 @@
     "action": "delete",
     "method": "DELETE",
     "tool": "processStages.delete",
-    "permission": "accurate:process-stages.delete"
+    "permission": "accurate:process-stages.delete",
+    "scope": [
+     "process_stages_delete"
+    ]
    },
    {
     "action": "detail",
     "method": "GET",
     "tool": "processStages.detail",
-    "permission": "accurate:process-stages.view"
+    "permission": "accurate:process-stages.view",
+    "scope": [
+     "process_stages_view"
+    ]
    },
    {
     "action": "list",
     "method": "GET",
     "tool": "processStages.list",
-    "permission": "accurate:process-stages.view"
+    "permission": "accurate:process-stages.view",
+    "scope": [
+     "process_stages_view"
+    ]
    },
    {
     "action": "save",
     "method": "POST",
     "tool": "processStages.save",
-    "permission": "accurate:process-stages.save"
+    "permission": "accurate:process-stages.save",
+    "scope": [
+     "process_stages_save"
+    ]
    }
   ],
   "project": [
@@ -1325,31 +1948,46 @@
     "action": "bulk-save",
     "method": "POST",
     "tool": "project.bulk-save",
-    "permission": "accurate:project.save"
+    "permission": "accurate:project.save",
+    "scope": [
+     "project_save"
+    ]
    },
    {
     "action": "delete",
     "method": "DELETE",
     "tool": "project.delete",
-    "permission": "accurate:project.delete"
+    "permission": "accurate:project.delete",
+    "scope": [
+     "project_delete"
+    ]
    },
    {
     "action": "detail",
     "method": "GET",
     "tool": "project.detail",
-    "permission": "accurate:project.view"
+    "permission": "accurate:project.view",
+    "scope": [
+     "project_view"
+    ]
    },
    {
     "action": "list",
     "method": "GET",
     "tool": "project.list",
-    "permission": "accurate:project.view"
+    "permission": "accurate:project.view",
+    "scope": [
+     "project_view"
+    ]
    },
    {
     "action": "save",
     "method": "POST",
     "tool": "project.save",
-    "permission": "accurate:project.save"
+    "permission": "accurate:project.save",
+    "scope": [
+     "project_save"
+    ]
    }
   ],
   "project-contractor": [
@@ -1357,19 +1995,31 @@
     "action": "detail",
     "method": "GET",
     "tool": "projectContractor.detail",
-    "permission": "accurate:project-contractor.view"
+    "permission": "accurate:project-contractor.view",
+    "scope": [
+     "project_contractor_view"
+    ],
+    "docsOnly": true
    },
    {
     "action": "list",
     "method": "GET",
     "tool": "projectContractor.list",
-    "permission": "accurate:project-contractor.view"
+    "permission": "accurate:project-contractor.view",
+    "scope": [
+     "project_contractor_view"
+    ],
+    "docsOnly": true
    },
    {
     "action": "save",
     "method": "POST",
     "tool": "projectContractor.save",
-    "permission": "accurate:project-contractor.save"
+    "permission": "accurate:project-contractor.save",
+    "scope": [
+     "project_contractor_save"
+    ],
+    "docsOnly": true
    }
   ],
   "purchase-invoice": [
@@ -1377,37 +2027,55 @@
     "action": "bulk-save",
     "method": "POST",
     "tool": "purchaseInvoice.bulk-save",
-    "permission": "accurate:purchase-invoice.save"
+    "permission": "accurate:purchase-invoice.save",
+    "scope": [
+     "purchase_invoice_save"
+    ]
    },
    {
     "action": "create-down-payment",
     "method": "POST",
     "tool": "purchaseInvoice.create-down-payment",
-    "permission": "accurate:purchase-invoice.save"
+    "permission": "accurate:purchase-invoice.save",
+    "scope": [
+     "purchase_invoice_save"
+    ]
    },
    {
     "action": "delete",
     "method": "DELETE",
     "tool": "purchaseInvoice.delete",
-    "permission": "accurate:purchase-invoice.delete"
+    "permission": "accurate:purchase-invoice.delete",
+    "scope": [
+     "purchase_invoice_delete"
+    ]
    },
    {
     "action": "detail",
     "method": "GET",
     "tool": "purchaseInvoice.detail",
-    "permission": "accurate:purchase-invoice.view"
+    "permission": "accurate:purchase-invoice.view",
+    "scope": [
+     "purchase_invoice_view"
+    ]
    },
    {
     "action": "list",
     "method": "GET",
     "tool": "purchaseInvoice.list",
-    "permission": "accurate:purchase-invoice.view"
+    "permission": "accurate:purchase-invoice.view",
+    "scope": [
+     "purchase_invoice_view"
+    ]
    },
    {
     "action": "save",
     "method": "POST",
     "tool": "purchaseInvoice.save",
-    "permission": "accurate:purchase-invoice.save"
+    "permission": "accurate:purchase-invoice.save",
+    "scope": [
+     "purchase_invoice_save"
+    ]
    }
   ],
   "purchase-order": [
@@ -1415,37 +2083,55 @@
     "action": "bulk-save",
     "method": "POST",
     "tool": "purchaseOrder.bulk-save",
-    "permission": "accurate:purchase-order.save"
+    "permission": "accurate:purchase-order.save",
+    "scope": [
+     "purchase_order_save"
+    ]
    },
    {
     "action": "delete",
     "method": "DELETE",
     "tool": "purchaseOrder.delete",
-    "permission": "accurate:purchase-order.delete"
+    "permission": "accurate:purchase-order.delete",
+    "scope": [
+     "purchase_order_delete"
+    ]
    },
    {
     "action": "detail",
     "method": "GET",
     "tool": "purchaseOrder.detail",
-    "permission": "accurate:purchase-order.view"
+    "permission": "accurate:purchase-order.view",
+    "scope": [
+     "purchase_order_view"
+    ]
    },
    {
     "action": "list",
     "method": "GET",
     "tool": "purchaseOrder.list",
-    "permission": "accurate:purchase-order.view"
+    "permission": "accurate:purchase-order.view",
+    "scope": [
+     "purchase_order_view"
+    ]
    },
    {
     "action": "manual-close-order",
     "method": "POST",
     "tool": "purchaseOrder.manual-close-order",
-    "permission": "accurate:purchase-order.save"
+    "permission": "accurate:purchase-order.save",
+    "scope": [
+     "purchase_order_save"
+    ]
    },
    {
     "action": "save",
     "method": "POST",
     "tool": "purchaseOrder.save",
-    "permission": "accurate:purchase-order.save"
+    "permission": "accurate:purchase-order.save",
+    "scope": [
+     "purchase_order_save"
+    ]
    }
   ],
   "purchase-payment": [
@@ -1453,31 +2139,46 @@
     "action": "bulk-save",
     "method": "POST",
     "tool": "purchasePayment.bulk-save",
-    "permission": "accurate:purchase-payment.save"
+    "permission": "accurate:purchase-payment.save",
+    "scope": [
+     "purchase_payment_save"
+    ]
    },
    {
     "action": "delete",
     "method": "DELETE",
     "tool": "purchasePayment.delete",
-    "permission": "accurate:purchase-payment.delete"
+    "permission": "accurate:purchase-payment.delete",
+    "scope": [
+     "purchase_payment_delete"
+    ]
    },
    {
     "action": "detail",
     "method": "GET",
     "tool": "purchasePayment.detail",
-    "permission": "accurate:purchase-payment.view"
+    "permission": "accurate:purchase-payment.view",
+    "scope": [
+     "purchase_payment_view"
+    ]
    },
    {
     "action": "list",
     "method": "GET",
     "tool": "purchasePayment.list",
-    "permission": "accurate:purchase-payment.view"
+    "permission": "accurate:purchase-payment.view",
+    "scope": [
+     "purchase_payment_view"
+    ]
    },
    {
     "action": "save",
     "method": "POST",
     "tool": "purchasePayment.save",
-    "permission": "accurate:purchase-payment.save"
+    "permission": "accurate:purchase-payment.save",
+    "scope": [
+     "purchase_payment_save"
+    ]
    }
   ],
   "purchase-requisition": [
@@ -1485,31 +2186,46 @@
     "action": "bulk-save",
     "method": "POST",
     "tool": "purchaseRequisition.bulk-save",
-    "permission": "accurate:purchase-requisition.save"
+    "permission": "accurate:purchase-requisition.save",
+    "scope": [
+     "purchase_requisition_save"
+    ]
    },
    {
     "action": "delete",
     "method": "DELETE",
     "tool": "purchaseRequisition.delete",
-    "permission": "accurate:purchase-requisition.delete"
+    "permission": "accurate:purchase-requisition.delete",
+    "scope": [
+     "purchase_requisition_delete"
+    ]
    },
    {
     "action": "detail",
     "method": "GET",
     "tool": "purchaseRequisition.detail",
-    "permission": "accurate:purchase-requisition.view"
+    "permission": "accurate:purchase-requisition.view",
+    "scope": [
+     "purchase_requisition_view"
+    ]
    },
    {
     "action": "list",
     "method": "GET",
     "tool": "purchaseRequisition.list",
-    "permission": "accurate:purchase-requisition.view"
+    "permission": "accurate:purchase-requisition.view",
+    "scope": [
+     "purchase_requisition_view"
+    ]
    },
    {
     "action": "save",
     "method": "POST",
     "tool": "purchaseRequisition.save",
-    "permission": "accurate:purchase-requisition.save"
+    "permission": "accurate:purchase-requisition.save",
+    "scope": [
+     "purchase_requisition_save"
+    ]
    }
   ],
   "purchase-return": [
@@ -1517,31 +2233,46 @@
     "action": "bulk-save",
     "method": "POST",
     "tool": "purchaseReturn.bulk-save",
-    "permission": "accurate:purchase-return.save"
+    "permission": "accurate:purchase-return.save",
+    "scope": [
+     "purchase_return_save"
+    ]
    },
    {
     "action": "delete",
     "method": "DELETE",
     "tool": "purchaseReturn.delete",
-    "permission": "accurate:purchase-return.delete"
+    "permission": "accurate:purchase-return.delete",
+    "scope": [
+     "purchase_return_delete"
+    ]
    },
    {
     "action": "detail",
     "method": "GET",
     "tool": "purchaseReturn.detail",
-    "permission": "accurate:purchase-return.view"
+    "permission": "accurate:purchase-return.view",
+    "scope": [
+     "purchase_return_view"
+    ]
    },
    {
     "action": "list",
     "method": "GET",
     "tool": "purchaseReturn.list",
-    "permission": "accurate:purchase-return.view"
+    "permission": "accurate:purchase-return.view",
+    "scope": [
+     "purchase_return_view"
+    ]
    },
    {
     "action": "save",
     "method": "POST",
     "tool": "purchaseReturn.save",
-    "permission": "accurate:purchase-return.save"
+    "permission": "accurate:purchase-return.save",
+    "scope": [
+     "purchase_return_save"
+    ]
    }
   ],
   "receive-item": [
@@ -1549,31 +2280,46 @@
     "action": "bulk-save",
     "method": "POST",
     "tool": "receiveItem.bulk-save",
-    "permission": "accurate:receive-item.save"
+    "permission": "accurate:receive-item.save",
+    "scope": [
+     "receive_item_save"
+    ]
    },
    {
     "action": "delete",
     "method": "DELETE",
     "tool": "receiveItem.delete",
-    "permission": "accurate:receive-item.delete"
+    "permission": "accurate:receive-item.delete",
+    "scope": [
+     "receive_item_delete"
+    ]
    },
    {
     "action": "detail",
     "method": "GET",
     "tool": "receiveItem.detail",
-    "permission": "accurate:receive-item.view"
+    "permission": "accurate:receive-item.view",
+    "scope": [
+     "receive_item_view"
+    ]
    },
    {
     "action": "list",
     "method": "GET",
     "tool": "receiveItem.list",
-    "permission": "accurate:receive-item.view"
+    "permission": "accurate:receive-item.view",
+    "scope": [
+     "receive_item_view"
+    ]
    },
    {
     "action": "save",
     "method": "POST",
     "tool": "receiveItem.save",
-    "permission": "accurate:receive-item.save"
+    "permission": "accurate:receive-item.save",
+    "scope": [
+     "receive_item_save"
+    ]
    }
   ],
   "recognition": [
@@ -1581,19 +2327,29 @@
     "action": "detail",
     "method": "GET",
     "tool": "recognition.detail",
-    "permission": "accurate:recognition.view"
+    "permission": "accurate:recognition.view",
+    "scope": [
+     "recognition_view"
+    ],
+    "docsOnly": true
    },
    {
     "action": "list",
     "method": "GET",
     "tool": "recognition.list",
-    "permission": "accurate:recognition.view"
+    "permission": "accurate:recognition.view",
+    "scope": [
+     "recognition_view"
+    ],
+    "docsOnly": true
    },
    {
     "action": "save",
     "method": "POST",
     "tool": "recognition.save",
-    "permission": "accurate:recognition.save"
+    "permission": "accurate:recognition.save",
+    "scope": [],
+    "docsOnly": true
    }
   ],
   "report": [
@@ -1601,37 +2357,53 @@
     "action": "detail",
     "method": "GET",
     "tool": "report.detail",
-    "permission": "accurate:report.view"
+    "permission": "accurate:report.view",
+    "scope": [],
+    "docsOnly": true
    },
    {
     "action": "list",
     "method": "GET",
     "tool": "report.list",
-    "permission": "accurate:report.view"
+    "permission": "accurate:report.view",
+    "scope": [],
+    "docsOnly": true
    },
    {
     "action": "serial-number-mutation",
     "method": "GET",
     "tool": "report.serial-number-mutation",
-    "permission": "accurate:report.view"
+    "permission": "accurate:report.view",
+    "scope": [
+     "stock_mutation_history_view"
+    ]
    },
    {
     "action": "serial-number-per-warehouse",
     "method": "GET",
     "tool": "report.serial-number-per-warehouse",
-    "permission": "accurate:report.view"
+    "permission": "accurate:report.view",
+    "scope": [
+     "stock_mutation_history_view"
+    ]
    },
    {
     "action": "stock-mutation-summary",
     "method": "GET",
     "tool": "report.stock-mutation-summary",
-    "permission": "accurate:report.view"
+    "permission": "accurate:report.view",
+    "scope": [
+     "stock_mutation_history_view"
+    ]
    },
    {
     "action": "work-order-detail",
     "method": "GET",
     "tool": "report.work-order-detail",
-    "permission": "accurate:report.view"
+    "permission": "accurate:report.view",
+    "scope": [
+     "work_order_view"
+    ]
    }
   ],
   "roll-over": [
@@ -1639,31 +2411,46 @@
     "action": "bulk-save",
     "method": "POST",
     "tool": "rollOver.bulk-save",
-    "permission": "accurate:roll-over.save"
+    "permission": "accurate:roll-over.save",
+    "scope": [
+     "roll_over_save"
+    ]
    },
    {
     "action": "delete",
     "method": "DELETE",
     "tool": "rollOver.delete",
-    "permission": "accurate:roll-over.delete"
+    "permission": "accurate:roll-over.delete",
+    "scope": [
+     "roll_over_delete"
+    ]
    },
    {
     "action": "detail",
     "method": "GET",
     "tool": "rollOver.detail",
-    "permission": "accurate:roll-over.view"
+    "permission": "accurate:roll-over.view",
+    "scope": [
+     "roll_over_view"
+    ]
    },
    {
     "action": "list",
     "method": "GET",
     "tool": "rollOver.list",
-    "permission": "accurate:roll-over.view"
+    "permission": "accurate:roll-over.view",
+    "scope": [
+     "roll_over_view"
+    ]
    },
    {
     "action": "save",
     "method": "POST",
     "tool": "rollOver.save",
-    "permission": "accurate:roll-over.save"
+    "permission": "accurate:roll-over.save",
+    "scope": [
+     "roll_over_save"
+    ]
    }
   ],
   "sales-checkin": [
@@ -1671,19 +2458,27 @@
     "action": "detail",
     "method": "GET",
     "tool": "salesCheckin.detail",
-    "permission": "accurate:sales-checkin.view"
+    "permission": "accurate:sales-checkin.view",
+    "scope": [
+     "sales_checkin_view"
+    ]
    },
    {
     "action": "list",
     "method": "GET",
     "tool": "salesCheckin.list",
-    "permission": "accurate:sales-checkin.view"
+    "permission": "accurate:sales-checkin.view",
+    "scope": [
+     "sales_checkin_view"
+    ]
    },
    {
     "action": "save",
     "method": "POST",
     "tool": "salesCheckin.save",
-    "permission": "accurate:sales-checkin.save"
+    "permission": "accurate:sales-checkin.save",
+    "scope": [],
+    "docsOnly": true
    }
   ],
   "sales-invoice": [
@@ -1691,43 +2486,64 @@
     "action": "bulk-save",
     "method": "POST",
     "tool": "salesInvoice.bulk-save",
-    "permission": "accurate:sales-invoice.save"
+    "permission": "accurate:sales-invoice.save",
+    "scope": [
+     "sales_invoice_save"
+    ]
    },
    {
     "action": "create-down-payment",
     "method": "POST",
     "tool": "salesInvoice.create-down-payment",
-    "permission": "accurate:sales-invoice.save"
+    "permission": "accurate:sales-invoice.save",
+    "scope": [
+     "sales_invoice_save"
+    ]
    },
    {
     "action": "delete",
     "method": "DELETE",
     "tool": "salesInvoice.delete",
-    "permission": "accurate:sales-invoice.delete"
+    "permission": "accurate:sales-invoice.delete",
+    "scope": [
+     "sales_invoice_save"
+    ]
    },
    {
     "action": "detail",
     "method": "GET",
     "tool": "salesInvoice.detail",
-    "permission": "accurate:sales-invoice.view"
+    "permission": "accurate:sales-invoice.view",
+    "scope": [
+     "sales_invoice_view"
+    ]
    },
    {
     "action": "detail-invoice",
     "method": "GET",
     "tool": "salesInvoice.detail-invoice",
-    "permission": "accurate:sales-invoice.view"
+    "permission": "accurate:sales-invoice.view",
+    "scope": [
+     "sales_invoice_view"
+    ]
    },
    {
     "action": "list",
     "method": "GET",
     "tool": "salesInvoice.list",
-    "permission": "accurate:sales-invoice.view"
+    "permission": "accurate:sales-invoice.view",
+    "scope": [
+     "sales_invoice_view"
+    ]
    },
    {
     "action": "save",
     "method": "POST",
     "tool": "salesInvoice.save",
-    "permission": "accurate:sales-invoice.save"
+    "permission": "accurate:sales-invoice.save",
+    "scope": [
+     "sales_invoice_save"
+    ]
    }
   ],
   "sales-order": [
@@ -1735,37 +2551,55 @@
     "action": "bulk-save",
     "method": "POST",
     "tool": "salesOrder.bulk-save",
-    "permission": "accurate:sales-order.save"
+    "permission": "accurate:sales-order.save",
+    "scope": [
+     "sales_order_save"
+    ]
    },
    {
     "action": "delete",
     "method": "DELETE",
     "tool": "salesOrder.delete",
-    "permission": "accurate:sales-order.delete"
+    "permission": "accurate:sales-order.delete",
+    "scope": [
+     "sales_order_delete"
+    ]
    },
    {
     "action": "detail",
     "method": "GET",
     "tool": "salesOrder.detail",
-    "permission": "accurate:sales-order.view"
+    "permission": "accurate:sales-order.view",
+    "scope": [
+     "sales_order_view"
+    ]
    },
    {
     "action": "list",
     "method": "GET",
     "tool": "salesOrder.list",
-    "permission": "accurate:sales-order.view"
+    "permission": "accurate:sales-order.view",
+    "scope": [
+     "sales_order_view"
+    ]
    },
    {
     "action": "manual-close-order",
     "method": "POST",
     "tool": "salesOrder.manual-close-order",
-    "permission": "accurate:sales-order.save"
+    "permission": "accurate:sales-order.save",
+    "scope": [
+     "sales_order_save"
+    ]
    },
    {
     "action": "save",
     "method": "POST",
     "tool": "salesOrder.save",
-    "permission": "accurate:sales-order.save"
+    "permission": "accurate:sales-order.save",
+    "scope": [
+     "sales_order_save"
+    ]
    }
   ],
   "sales-quotation": [
@@ -1773,43 +2607,66 @@
     "action": "bulk-save",
     "method": "POST",
     "tool": "salesQuotation.bulk-save",
-    "permission": "accurate:sales-quotation.save"
+    "permission": "accurate:sales-quotation.save",
+    "scope": [
+     "sales_quotation_save"
+    ]
    },
    {
     "action": "create-down-payment",
     "method": "GET",
     "tool": "salesQuotation.create-down-payment",
-    "permission": "accurate:sales-quotation.view"
+    "permission": "accurate:sales-quotation.view",
+    "scope": [
+     "sales_quotation_view"
+    ],
+    "docsOnly": true
    },
    {
     "action": "create-invoice",
     "method": "GET",
     "tool": "salesQuotation.create-invoice",
-    "permission": "accurate:sales-quotation.view"
+    "permission": "accurate:sales-quotation.view",
+    "scope": [
+     "sales_quotation_view"
+    ],
+    "docsOnly": true
    },
    {
     "action": "delete",
     "method": "DELETE",
     "tool": "salesQuotation.delete",
-    "permission": "accurate:sales-quotation.delete"
+    "permission": "accurate:sales-quotation.delete",
+    "scope": [
+     "sales_quotation_delete"
+    ]
    },
    {
     "action": "detail",
     "method": "GET",
     "tool": "salesQuotation.detail",
-    "permission": "accurate:sales-quotation.view"
+    "permission": "accurate:sales-quotation.view",
+    "scope": [
+     "sales_quotation_view"
+    ]
    },
    {
     "action": "list",
     "method": "GET",
     "tool": "salesQuotation.list",
-    "permission": "accurate:sales-quotation.view"
+    "permission": "accurate:sales-quotation.view",
+    "scope": [
+     "sales_quotation_view"
+    ]
    },
    {
     "action": "save",
     "method": "POST",
     "tool": "salesQuotation.save",
-    "permission": "accurate:sales-quotation.save"
+    "permission": "accurate:sales-quotation.save",
+    "scope": [
+     "sales_quotation_save"
+    ]
    }
   ],
   "sales-receipt": [
@@ -1817,31 +2674,46 @@
     "action": "bulk-save",
     "method": "POST",
     "tool": "salesReceipt.bulk-save",
-    "permission": "accurate:sales-receipt.save"
+    "permission": "accurate:sales-receipt.save",
+    "scope": [
+     "sales_receipt_save"
+    ]
    },
    {
     "action": "delete",
     "method": "DELETE",
     "tool": "salesReceipt.delete",
-    "permission": "accurate:sales-receipt.delete"
+    "permission": "accurate:sales-receipt.delete",
+    "scope": [
+     "sales_receipt_delete"
+    ]
    },
    {
     "action": "detail",
     "method": "GET",
     "tool": "salesReceipt.detail",
-    "permission": "accurate:sales-receipt.view"
+    "permission": "accurate:sales-receipt.view",
+    "scope": [
+     "sales_receipt_view"
+    ]
    },
    {
     "action": "list",
     "method": "GET",
     "tool": "salesReceipt.list",
-    "permission": "accurate:sales-receipt.view"
+    "permission": "accurate:sales-receipt.view",
+    "scope": [
+     "sales_receipt_view"
+    ]
    },
    {
     "action": "save",
     "method": "POST",
     "tool": "salesReceipt.save",
-    "permission": "accurate:sales-receipt.save"
+    "permission": "accurate:sales-receipt.save",
+    "scope": [
+     "sales_receipt_save"
+    ]
    }
   ],
   "sales-return": [
@@ -1849,37 +2721,56 @@
     "action": "bulk-save",
     "method": "POST",
     "tool": "salesReturn.bulk-save",
-    "permission": "accurate:sales-return.save"
+    "permission": "accurate:sales-return.save",
+    "scope": [
+     "sales_return_save"
+    ]
    },
    {
     "action": "create-receive-item",
     "method": "GET",
     "tool": "salesReturn.create-receive-item",
-    "permission": "accurate:sales-return.view"
+    "permission": "accurate:sales-return.view",
+    "scope": [
+     "sales_return_view"
+    ],
+    "docsOnly": true
    },
    {
     "action": "delete",
     "method": "DELETE",
     "tool": "salesReturn.delete",
-    "permission": "accurate:sales-return.delete"
+    "permission": "accurate:sales-return.delete",
+    "scope": [
+     "sales_return_delete"
+    ]
    },
    {
     "action": "detail",
     "method": "GET",
     "tool": "salesReturn.detail",
-    "permission": "accurate:sales-return.view"
+    "permission": "accurate:sales-return.view",
+    "scope": [
+     "sales_return_view"
+    ]
    },
    {
     "action": "list",
     "method": "GET",
     "tool": "salesReturn.list",
-    "permission": "accurate:sales-return.view"
+    "permission": "accurate:sales-return.view",
+    "scope": [
+     "sales_return_view"
+    ]
    },
    {
     "action": "save",
     "method": "POST",
     "tool": "salesReturn.save",
-    "permission": "accurate:sales-return.save"
+    "permission": "accurate:sales-return.save",
+    "scope": [
+     "sales_return_save"
+    ]
    }
   ],
   "salesman-commission": [
@@ -1887,19 +2778,29 @@
     "action": "detail",
     "method": "GET",
     "tool": "salesmanCommission.detail",
-    "permission": "accurate:salesman-commission.view"
+    "permission": "accurate:salesman-commission.view",
+    "scope": [
+     "salesman_commission_view"
+    ]
    },
    {
     "action": "list",
     "method": "GET",
     "tool": "salesmanCommission.list",
-    "permission": "accurate:salesman-commission.view"
+    "permission": "accurate:salesman-commission.view",
+    "scope": [
+     "salesman_commission_view"
+    ]
    },
    {
     "action": "save",
     "method": "POST",
     "tool": "salesmanCommission.save",
-    "permission": "accurate:salesman-commission.save"
+    "permission": "accurate:salesman-commission.save",
+    "scope": [
+     "salesman_commission_save"
+    ],
+    "docsOnly": true
    }
   ],
   "sellingprice-adjustment": [
@@ -1907,25 +2808,37 @@
     "action": "delete",
     "method": "DELETE",
     "tool": "sellingpriceAdjustment.delete",
-    "permission": "accurate:sellingprice-adjustment.delete"
+    "permission": "accurate:sellingprice-adjustment.delete",
+    "scope": [
+     "sellingprice_adjustment_save"
+    ]
    },
    {
     "action": "detail",
     "method": "GET",
     "tool": "sellingpriceAdjustment.detail",
-    "permission": "accurate:sellingprice-adjustment.view"
+    "permission": "accurate:sellingprice-adjustment.view",
+    "scope": [
+     "sellingprice_adjustment_view"
+    ]
    },
    {
     "action": "list",
     "method": "GET",
     "tool": "sellingpriceAdjustment.list",
-    "permission": "accurate:sellingprice-adjustment.view"
+    "permission": "accurate:sellingprice-adjustment.view",
+    "scope": [
+     "sellingprice_adjustment_view"
+    ]
    },
    {
     "action": "save",
     "method": "POST",
     "tool": "sellingpriceAdjustment.save",
-    "permission": "accurate:sellingprice-adjustment.save"
+    "permission": "accurate:sellingprice-adjustment.save",
+    "scope": [
+     "sellingprice_adjustment_save"
+    ]
    }
   ],
   "shipment": [
@@ -1933,31 +2846,46 @@
     "action": "bulk-save",
     "method": "POST",
     "tool": "shipment.bulk-save",
-    "permission": "accurate:shipment.save"
+    "permission": "accurate:shipment.save",
+    "scope": [
+     "shipment_save"
+    ]
    },
    {
     "action": "delete",
     "method": "DELETE",
     "tool": "shipment.delete",
-    "permission": "accurate:shipment.delete"
+    "permission": "accurate:shipment.delete",
+    "scope": [
+     "shipment_delete"
+    ]
    },
    {
     "action": "detail",
     "method": "GET",
     "tool": "shipment.detail",
-    "permission": "accurate:shipment.view"
+    "permission": "accurate:shipment.view",
+    "scope": [
+     "shipment_view"
+    ]
    },
    {
     "action": "list",
     "method": "GET",
     "tool": "shipment.list",
-    "permission": "accurate:shipment.view"
+    "permission": "accurate:shipment.view",
+    "scope": [
+     "shipment_view"
+    ]
    },
    {
     "action": "save",
     "method": "POST",
     "tool": "shipment.save",
-    "permission": "accurate:shipment.save"
+    "permission": "accurate:shipment.save",
+    "scope": [
+     "shipment_save"
+    ]
    }
   ],
   "standard-product-cost": [
@@ -1965,25 +2893,37 @@
     "action": "delete",
     "method": "DELETE",
     "tool": "standardProductCost.delete",
-    "permission": "accurate:standard-product-cost.delete"
+    "permission": "accurate:standard-product-cost.delete",
+    "scope": [
+     "standard_product_cost_delete"
+    ]
    },
    {
     "action": "detail",
     "method": "GET",
     "tool": "standardProductCost.detail",
-    "permission": "accurate:standard-product-cost.view"
+    "permission": "accurate:standard-product-cost.view",
+    "scope": [
+     "standard_product_cost_view"
+    ]
    },
    {
     "action": "list",
     "method": "GET",
     "tool": "standardProductCost.list",
-    "permission": "accurate:standard-product-cost.view"
+    "permission": "accurate:standard-product-cost.view",
+    "scope": [
+     "standard_product_cost_view"
+    ]
    },
    {
     "action": "save",
     "method": "POST",
     "tool": "standardProductCost.save",
-    "permission": "accurate:standard-product-cost.save"
+    "permission": "accurate:standard-product-cost.save",
+    "scope": [
+     "standard_product_cost_save"
+    ]
    }
   ],
   "stock-opname-order": [
@@ -1991,31 +2931,46 @@
     "action": "bulk-save",
     "method": "POST",
     "tool": "stockOpnameOrder.bulk-save",
-    "permission": "accurate:stock-opname-order.save"
+    "permission": "accurate:stock-opname-order.save",
+    "scope": [
+     "stock_opname_order_save"
+    ]
    },
    {
     "action": "delete",
     "method": "DELETE",
     "tool": "stockOpnameOrder.delete",
-    "permission": "accurate:stock-opname-order.delete"
+    "permission": "accurate:stock-opname-order.delete",
+    "scope": [
+     "stock_opname_order_delete"
+    ]
    },
    {
     "action": "detail",
     "method": "GET",
     "tool": "stockOpnameOrder.detail",
-    "permission": "accurate:stock-opname-order.view"
+    "permission": "accurate:stock-opname-order.view",
+    "scope": [
+     "stock_opname_order_view"
+    ]
    },
    {
     "action": "list",
     "method": "GET",
     "tool": "stockOpnameOrder.list",
-    "permission": "accurate:stock-opname-order.view"
+    "permission": "accurate:stock-opname-order.view",
+    "scope": [
+     "stock_opname_order_view"
+    ]
    },
    {
     "action": "save",
     "method": "POST",
     "tool": "stockOpnameOrder.save",
-    "permission": "accurate:stock-opname-order.save"
+    "permission": "accurate:stock-opname-order.save",
+    "scope": [
+     "stock_opname_order_save"
+    ]
    }
   ],
   "stock-opname-result": [
@@ -2023,31 +2978,46 @@
     "action": "bulk-save",
     "method": "POST",
     "tool": "stockOpnameResult.bulk-save",
-    "permission": "accurate:stock-opname-result.save"
+    "permission": "accurate:stock-opname-result.save",
+    "scope": [
+     "stock_opname_result_save"
+    ]
    },
    {
     "action": "delete",
     "method": "DELETE",
     "tool": "stockOpnameResult.delete",
-    "permission": "accurate:stock-opname-result.delete"
+    "permission": "accurate:stock-opname-result.delete",
+    "scope": [
+     "stock_opname_result_delete"
+    ]
    },
    {
     "action": "detail",
     "method": "GET",
     "tool": "stockOpnameResult.detail",
-    "permission": "accurate:stock-opname-result.view"
+    "permission": "accurate:stock-opname-result.view",
+    "scope": [
+     "stock_opname_result_view"
+    ]
    },
    {
     "action": "list",
     "method": "GET",
     "tool": "stockOpnameResult.list",
-    "permission": "accurate:stock-opname-result.view"
+    "permission": "accurate:stock-opname-result.view",
+    "scope": [
+     "stock_opname_result_view"
+    ]
    },
    {
     "action": "save",
     "method": "POST",
     "tool": "stockOpnameResult.save",
-    "permission": "accurate:stock-opname-result.save"
+    "permission": "accurate:stock-opname-result.save",
+    "scope": [
+     "stock_opname_result_save"
+    ]
    }
   ],
   "tax": [
@@ -2055,31 +3025,46 @@
     "action": "bulk-save",
     "method": "POST",
     "tool": "tax.bulk-save",
-    "permission": "accurate:tax.save"
+    "permission": "accurate:tax.save",
+    "scope": [
+     "tax_save"
+    ]
    },
    {
     "action": "delete",
     "method": "DELETE",
     "tool": "tax.delete",
-    "permission": "accurate:tax.delete"
+    "permission": "accurate:tax.delete",
+    "scope": [
+     "tax_delete"
+    ]
    },
    {
     "action": "detail",
     "method": "GET",
     "tool": "tax.detail",
-    "permission": "accurate:tax.view"
+    "permission": "accurate:tax.view",
+    "scope": [
+     "tax_view"
+    ]
    },
    {
     "action": "list",
     "method": "GET",
     "tool": "tax.list",
-    "permission": "accurate:tax.view"
+    "permission": "accurate:tax.view",
+    "scope": [
+     "tax_view"
+    ]
    },
    {
     "action": "save",
     "method": "POST",
     "tool": "tax.save",
-    "permission": "accurate:tax.save"
+    "permission": "accurate:tax.save",
+    "scope": [
+     "tax_save"
+    ]
    }
   ],
   "unit": [
@@ -2087,31 +3072,46 @@
     "action": "bulk-save",
     "method": "POST",
     "tool": "unit.bulk-save",
-    "permission": "accurate:unit.save"
+    "permission": "accurate:unit.save",
+    "scope": [
+     "unit_save"
+    ]
    },
    {
     "action": "delete",
     "method": "DELETE",
     "tool": "unit.delete",
-    "permission": "accurate:unit.delete"
+    "permission": "accurate:unit.delete",
+    "scope": [
+     "unit_delete"
+    ]
    },
    {
     "action": "detail",
     "method": "GET",
     "tool": "unit.detail",
-    "permission": "accurate:unit.view"
+    "permission": "accurate:unit.view",
+    "scope": [
+     "unit_view"
+    ]
    },
    {
     "action": "list",
     "method": "GET",
     "tool": "unit.list",
-    "permission": "accurate:unit.view"
+    "permission": "accurate:unit.view",
+    "scope": [
+     "unit_view"
+    ]
    },
    {
     "action": "save",
     "method": "POST",
     "tool": "unit.save",
-    "permission": "accurate:unit.save"
+    "permission": "accurate:unit.save",
+    "scope": [
+     "unit_save"
+    ]
    }
   ],
   "vendor": [
@@ -2119,31 +3119,46 @@
     "action": "bulk-save",
     "method": "POST",
     "tool": "vendor.bulk-save",
-    "permission": "accurate:vendor.save"
+    "permission": "accurate:vendor.save",
+    "scope": [
+     "vendor_save"
+    ]
    },
    {
     "action": "delete",
     "method": "DELETE",
     "tool": "vendor.delete",
-    "permission": "accurate:vendor.delete"
+    "permission": "accurate:vendor.delete",
+    "scope": [
+     "vendor_delete"
+    ]
    },
    {
     "action": "detail",
     "method": "GET",
     "tool": "vendor.detail",
-    "permission": "accurate:vendor.view"
+    "permission": "accurate:vendor.view",
+    "scope": [
+     "vendor_view"
+    ]
    },
    {
     "action": "list",
     "method": "GET",
     "tool": "vendor.list",
-    "permission": "accurate:vendor.view"
+    "permission": "accurate:vendor.view",
+    "scope": [
+     "vendor_view"
+    ]
    },
    {
     "action": "save",
     "method": "POST",
     "tool": "vendor.save",
-    "permission": "accurate:vendor.save"
+    "permission": "accurate:vendor.save",
+    "scope": [
+     "vendor_save"
+    ]
    }
   ],
   "vendor-category": [
@@ -2151,31 +3166,46 @@
     "action": "bulk-save",
     "method": "POST",
     "tool": "vendorCategory.bulk-save",
-    "permission": "accurate:vendor-category.save"
+    "permission": "accurate:vendor-category.save",
+    "scope": [
+     "vendor_category_save"
+    ]
    },
    {
     "action": "delete",
     "method": "DELETE",
     "tool": "vendorCategory.delete",
-    "permission": "accurate:vendor-category.delete"
+    "permission": "accurate:vendor-category.delete",
+    "scope": [
+     "vendor_category_delete"
+    ]
    },
    {
     "action": "detail",
     "method": "GET",
     "tool": "vendorCategory.detail",
-    "permission": "accurate:vendor-category.view"
+    "permission": "accurate:vendor-category.view",
+    "scope": [
+     "vendor_category_view"
+    ]
    },
    {
     "action": "list",
     "method": "GET",
     "tool": "vendorCategory.list",
-    "permission": "accurate:vendor-category.view"
+    "permission": "accurate:vendor-category.view",
+    "scope": [
+     "vendor_category_view"
+    ]
    },
    {
     "action": "save",
     "method": "POST",
     "tool": "vendorCategory.save",
-    "permission": "accurate:vendor-category.save"
+    "permission": "accurate:vendor-category.save",
+    "scope": [
+     "vendor_category_save"
+    ]
    }
   ],
   "vendor-claim": [
@@ -2183,31 +3213,46 @@
     "action": "bulk-save",
     "method": "POST",
     "tool": "vendorClaim.bulk-save",
-    "permission": "accurate:vendor-claim.save"
+    "permission": "accurate:vendor-claim.save",
+    "scope": [
+     "vendor_claim_save"
+    ]
    },
    {
     "action": "delete",
     "method": "DELETE",
     "tool": "vendorClaim.delete",
-    "permission": "accurate:vendor-claim.delete"
+    "permission": "accurate:vendor-claim.delete",
+    "scope": [
+     "vendor_claim_delete"
+    ]
    },
    {
     "action": "detail",
     "method": "GET",
     "tool": "vendorClaim.detail",
-    "permission": "accurate:vendor-claim.view"
+    "permission": "accurate:vendor-claim.view",
+    "scope": [
+     "vendor_claim_view"
+    ]
    },
    {
     "action": "list",
     "method": "GET",
     "tool": "vendorClaim.list",
-    "permission": "accurate:vendor-claim.view"
+    "permission": "accurate:vendor-claim.view",
+    "scope": [
+     "vendor_claim_view"
+    ]
    },
    {
     "action": "save",
     "method": "POST",
     "tool": "vendorClaim.save",
-    "permission": "accurate:vendor-claim.save"
+    "permission": "accurate:vendor-claim.save",
+    "scope": [
+     "vendor_claim_save"
+    ]
    }
   ],
   "vendor-price": [
@@ -2215,31 +3260,46 @@
     "action": "bulk-save",
     "method": "POST",
     "tool": "vendorPrice.bulk-save",
-    "permission": "accurate:vendor-price.save"
+    "permission": "accurate:vendor-price.save",
+    "scope": [
+     "vendor_price_save"
+    ]
    },
    {
     "action": "delete",
     "method": "DELETE",
     "tool": "vendorPrice.delete",
-    "permission": "accurate:vendor-price.delete"
+    "permission": "accurate:vendor-price.delete",
+    "scope": [
+     "vendor_price_delete"
+    ]
    },
    {
     "action": "detail",
     "method": "GET",
     "tool": "vendorPrice.detail",
-    "permission": "accurate:vendor-price.view"
+    "permission": "accurate:vendor-price.view",
+    "scope": [
+     "vendor_price_view"
+    ]
    },
    {
     "action": "list",
     "method": "GET",
     "tool": "vendorPrice.list",
-    "permission": "accurate:vendor-price.view"
+    "permission": "accurate:vendor-price.view",
+    "scope": [
+     "vendor_price_view"
+    ]
    },
    {
     "action": "save",
     "method": "POST",
     "tool": "vendorPrice.save",
-    "permission": "accurate:vendor-price.save"
+    "permission": "accurate:vendor-price.save",
+    "scope": [
+     "vendor_price_save"
+    ]
    }
   ],
   "warehouse": [
@@ -2247,25 +3307,37 @@
     "action": "delete",
     "method": "DELETE",
     "tool": "warehouse.delete",
-    "permission": "accurate:warehouse.delete"
+    "permission": "accurate:warehouse.delete",
+    "scope": [
+     "warehouse_delete"
+    ]
    },
    {
     "action": "detail",
     "method": "GET",
     "tool": "warehouse.detail",
-    "permission": "accurate:warehouse.view"
+    "permission": "accurate:warehouse.view",
+    "scope": [
+     "warehouse_view"
+    ]
    },
    {
     "action": "list",
     "method": "GET",
     "tool": "warehouse.list",
-    "permission": "accurate:warehouse.view"
+    "permission": "accurate:warehouse.view",
+    "scope": [
+     "warehouse_view"
+    ]
    },
    {
     "action": "save",
     "method": "POST",
     "tool": "warehouse.save",
-    "permission": "accurate:warehouse.save"
+    "permission": "accurate:warehouse.save",
+    "scope": [
+     "warehouse_save"
+    ]
    }
   ],
   "wo-person-in-charge": [
@@ -2273,19 +3345,31 @@
     "action": "detail",
     "method": "GET",
     "tool": "woPersonInCharge.detail",
-    "permission": "accurate:wo-person-in-charge.view"
+    "permission": "accurate:wo-person-in-charge.view",
+    "scope": [
+     "wo_person_in_charge_view"
+    ],
+    "docsOnly": true
    },
    {
     "action": "list",
     "method": "GET",
     "tool": "woPersonInCharge.list",
-    "permission": "accurate:wo-person-in-charge.view"
+    "permission": "accurate:wo-person-in-charge.view",
+    "scope": [
+     "wo_person_in_charge_view"
+    ],
+    "docsOnly": true
    },
    {
     "action": "save",
     "method": "POST",
     "tool": "woPersonInCharge.save",
-    "permission": "accurate:wo-person-in-charge.save"
+    "permission": "accurate:wo-person-in-charge.save",
+    "scope": [
+     "wo_person_in_charge_save"
+    ],
+    "docsOnly": true
    }
   ],
   "wo-pic": [
@@ -2293,19 +3377,28 @@
     "action": "delete",
     "method": "DELETE",
     "tool": "woPic.delete",
-    "permission": "accurate:wo-pic.delete"
+    "permission": "accurate:wo-pic.delete",
+    "scope": [
+     "wo_person_in_charge_delete"
+    ]
    },
    {
     "action": "list",
     "method": "GET",
     "tool": "woPic.list",
-    "permission": "accurate:wo-pic.view"
+    "permission": "accurate:wo-pic.view",
+    "scope": [
+     "wo_person_in_charge_view"
+    ]
    },
    {
     "action": "save",
     "method": "POST",
     "tool": "woPic.save",
-    "permission": "accurate:wo-pic.save"
+    "permission": "accurate:wo-pic.save",
+    "scope": [
+     "wo_person_in_charge_save"
+    ]
    }
   ],
   "work-order": [
@@ -2313,43 +3406,67 @@
     "action": "delete",
     "method": "DELETE",
     "tool": "workOrder.delete",
-    "permission": "accurate:work-order.delete"
+    "permission": "accurate:work-order.delete",
+    "scope": [
+     "work_order_delete"
+    ]
    },
    {
     "action": "detail",
     "method": "GET",
     "tool": "workOrder.detail",
-    "permission": "accurate:work-order.view"
+    "permission": "accurate:work-order.view",
+    "scope": [
+     "work_order_view"
+    ]
    },
    {
     "action": "list",
     "method": "GET",
     "tool": "workOrder.list",
-    "permission": "accurate:work-order.view"
+    "permission": "accurate:work-order.view",
+    "scope": [
+     "work_order_view"
+    ]
    },
    {
     "action": "list-stock",
     "method": "GET",
     "tool": "workOrder.list-stock",
-    "permission": "accurate:work-order.view"
+    "permission": "accurate:work-order.view",
+    "scope": [
+     "work_order_view"
+    ],
+    "docsOnly": true
    },
    {
     "action": "save",
     "method": "POST",
     "tool": "workOrder.save",
-    "permission": "accurate:work-order.save"
+    "permission": "accurate:work-order.save",
+    "scope": [
+     "work_order_save"
+    ]
    },
    {
     "action": "stock-in",
     "method": "GET",
     "tool": "workOrder.stock-in",
-    "permission": "accurate:work-order.view"
+    "permission": "accurate:work-order.view",
+    "scope": [
+     "work_order_view"
+    ],
+    "docsOnly": true
    },
    {
     "action": "stock-out",
     "method": "GET",
     "tool": "workOrder.stock-out",
-    "permission": "accurate:work-order.view"
+    "permission": "accurate:work-order.view",
+    "scope": [
+     "work_order_view"
+    ],
+    "docsOnly": true
    }
   ]
  },
@@ -2441,10 +3558,209 @@
   "RECEIVE_ITEM_DONE",
   "WEBHOOK"
  ],
+ "oauthScopes": [
+  "access_privilege_view",
+  "account_budget_target_delete",
+  "account_budget_target_save",
+  "account_budget_target_view",
+  "auto_number_save",
+  "auto_number_view",
+  "bank_transfer_delete",
+  "bank_transfer_save",
+  "bank_transfer_view",
+  "bill_of_material_delete",
+  "bill_of_material_save",
+  "bill_of_material_view",
+  "bom_process_category_delete",
+  "bom_process_category_view",
+  "branch_delete",
+  "branch_save",
+  "branch_view",
+  "currency_save",
+  "currency_view",
+  "customer_category_delete",
+  "customer_category_save",
+  "customer_category_view",
+  "customer_claim_delete",
+  "customer_claim_save",
+  "customer_claim_view",
+  "customer_delete",
+  "customer_save",
+  "customer_view",
+  "data_classification_delete",
+  "data_classification_save",
+  "data_classification_view",
+  "delivery_order_delete",
+  "delivery_order_save",
+  "delivery_order_view",
+  "department_delete",
+  "department_save",
+  "department_view",
+  "employee_delete",
+  "employee_save",
+  "employee_view",
+  "exchange_invoice_delete",
+  "exchange_invoice_save",
+  "exchange_invoice_view",
+  "expense_accrual_delete",
+  "expense_accrual_save",
+  "expense_accrual_view",
+  "finished_good_slip_delete",
+  "finished_good_slip_save",
+  "finished_good_slip_view",
+  "fixed_asset_delete",
+  "fixed_asset_save",
+  "fixed_asset_view",
+  "fob_delete",
+  "fob_save",
+  "fob_view",
+  "freeonboard_save",
+  "freeonboard_view",
+  "glaccount_delete",
+  "glaccount_save",
+  "glaccount_view",
+  "item_adjustment_delete",
+  "item_adjustment_save",
+  "item_adjustment_view",
+  "item_brand_delete",
+  "item_brand_save",
+  "item_brand_view",
+  "item_category_delete",
+  "item_category_save",
+  "item_category_view",
+  "item_delete",
+  "item_save",
+  "item_transfer_delete",
+  "item_transfer_save",
+  "item_transfer_view",
+  "item_view",
+  "job_order_delete",
+  "job_order_save",
+  "job_order_view",
+  "journal_voucher_delete",
+  "journal_voucher_save",
+  "journal_voucher_view",
+  "manufacture_order_delete",
+  "manufacture_order_save",
+  "manufacture_order_view",
+  "material_adjustment_delete",
+  "material_adjustment_save",
+  "material_adjustment_view",
+  "material_equipment_save",
+  "material_equipment_view",
+  "material_slip_delete",
+  "material_slip_save",
+  "material_slip_view",
+  "online_order_save",
+  "online_order_view",
+  "other_deposit_delete",
+  "other_deposit_save",
+  "other_deposit_view",
+  "other_payment_delete",
+  "other_payment_save",
+  "other_payment_view",
+  "payment_term_delete",
+  "payment_term_save",
+  "payment_term_view",
+  "preliminary_survey_save",
+  "preliminary_survey_view",
+  "price_category_save",
+  "price_category_view",
+  "process_stages_delete",
+  "process_stages_save",
+  "process_stages_view",
+  "project_contractor_save",
+  "project_contractor_view",
+  "project_delete",
+  "project_save",
+  "project_view",
+  "purchase_invoice_delete",
+  "purchase_invoice_save",
+  "purchase_invoice_view",
+  "purchase_order_delete",
+  "purchase_order_save",
+  "purchase_order_view",
+  "purchase_payment_delete",
+  "purchase_payment_save",
+  "purchase_payment_view",
+  "purchase_requisition_delete",
+  "purchase_requisition_save",
+  "purchase_requisition_view",
+  "purchase_return_delete",
+  "purchase_return_save",
+  "purchase_return_view",
+  "receive_item_delete",
+  "receive_item_save",
+  "receive_item_view",
+  "recognition_view",
+  "roll_over_delete",
+  "roll_over_save",
+  "roll_over_view",
+  "sales_checkin_view",
+  "sales_invoice_save",
+  "sales_invoice_view",
+  "sales_order_delete",
+  "sales_order_save",
+  "sales_order_view",
+  "sales_quotation_delete",
+  "sales_quotation_save",
+  "sales_quotation_view",
+  "sales_receipt_delete",
+  "sales_receipt_save",
+  "sales_receipt_view",
+  "sales_return_delete",
+  "sales_return_save",
+  "sales_return_view",
+  "salesman_commission_save",
+  "salesman_commission_view",
+  "sellingprice_adjustment_save",
+  "sellingprice_adjustment_view",
+  "shipment_delete",
+  "shipment_save",
+  "shipment_view",
+  "standard_product_cost_delete",
+  "standard_product_cost_save",
+  "standard_product_cost_view",
+  "stock_mutation_history_view",
+  "stock_opname_order_delete",
+  "stock_opname_order_save",
+  "stock_opname_order_view",
+  "stock_opname_result_delete",
+  "stock_opname_result_save",
+  "stock_opname_result_view",
+  "tax_delete",
+  "tax_save",
+  "tax_view",
+  "unit_delete",
+  "unit_save",
+  "unit_view",
+  "vendor_category_delete",
+  "vendor_category_save",
+  "vendor_category_view",
+  "vendor_claim_delete",
+  "vendor_claim_save",
+  "vendor_claim_view",
+  "vendor_delete",
+  "vendor_price_delete",
+  "vendor_price_save",
+  "vendor_price_view",
+  "vendor_save",
+  "vendor_view",
+  "warehouse_delete",
+  "warehouse_save",
+  "warehouse_view",
+  "wo_person_in_charge_delete",
+  "wo_person_in_charge_save",
+  "wo_person_in_charge_view",
+  "work_order_delete",
+  "work_order_save",
+  "work_order_view"
+ ],
  "totals": {
   "modules": 76,
   "actions": 366,
   "utils": 11,
-  "webhookEvents": 73
+  "webhookEvents": 73,
+  "oauthScopes": 196
  }
 }

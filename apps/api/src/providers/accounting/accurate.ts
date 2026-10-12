@@ -22,11 +22,13 @@ import type {
   ToolSpec,
 } from "./types.js";
 import { ACCURATE_CATALOG } from "./catalog.js";
-import { ACTION_ROUTES } from "./accurate-paths.js";
+import { ACTION_ROUTES, ACCURATE_OAUTH_SCOPES } from "./accurate-paths.js";
 
 interface Envelope<T> {
-  s: boolean;
-  d: T;
+  s?: boolean;
+  d?: T;
+  /** sebagian aksi save membalas objek hasil di "r" (bukan "s"/"d") */
+  r?: unknown;
   session?: string;
   host?: string;
   admin?: boolean;
@@ -41,7 +43,8 @@ export class AccurateAdapter implements AccountingProvider {
     u.searchParams.set("client_id", this.cfg.clientId);
     u.searchParams.set("redirect_uri", opts.redirectUri);
     u.searchParams.set("response_type", "code");
-    u.searchParams.set("scope", "item_view customer_view sales_invoice_view sales_invoice_save");
+    // scope resmi dari manifest (196 scope securitySchemes ∩ kebutuhan aksi; util tanpa scope)
+    u.searchParams.set("scope", ACCURATE_OAUTH_SCOPES.join(" "));
     u.searchParams.set("state", opts.state);
     return u.toString();
   }
@@ -125,7 +128,14 @@ export class AccurateAdapter implements AccountingProvider {
   }
 
   private async utilGet(util: string, ctx: ProviderCtx, extraQuery = ""): Promise<unknown> {
-    const j = await this.moduleGet(`/api/${util}.do${extraQuery}`, ctx);
+    // seluruh util ada di API Dasar (account.accurate.id), bukan host company
+    const res = await fetch(`${this.cfg.apiBase}/api/${util}.do${extraQuery}`, {
+      headers: { Authorization: `Bearer ${ctx.accessToken}` },
+      redirect: "follow",
+    });
+    if (res.status === 401) throw new Error("token ditolak provider (401)");
+    const j = (await res.json()) as Envelope<unknown>;
+    if (!j.s) throw new Error(`provider gagal: ${JSON.stringify(j.d)}`);
     return j.d;
   }
   approvedScope(ctx: ProviderCtx): Promise<unknown> {
@@ -134,20 +144,20 @@ export class AccurateAdapter implements AccountingProvider {
   authInfo(ctx: ProviderCtx): Promise<unknown> {
     return this.utilGet("auth-info", ctx);
   }
-  dbCheckSession(ctx: ProviderCtx): Promise<unknown> {
-    return this.utilGet("db-check-session", ctx);
+  dbCheckSession(ctx: ProviderCtx, dbId?: string): Promise<unknown> {
+    return this.utilGet("db-check-session", ctx, dbId ? `?id=${encodeURIComponent(dbId)}` : "");
   }
-  dbDetail(ctx: ProviderCtx): Promise<unknown> {
-    return this.utilGet("db-detail", ctx);
+  dbDetail(ctx: ProviderCtx, dbId?: string): Promise<unknown> {
+    return this.utilGet("db-detail", ctx, dbId ? `?id=${encodeURIComponent(dbId)}` : "");
   }
   dbList(ctx: ProviderCtx): Promise<unknown> {
     return this.utilGet("db-list", ctx);
   }
-  dbRefreshSession(ctx: ProviderCtx): Promise<unknown> {
-    return this.utilGet("db-refresh-session", ctx);
+  dbRefreshSession(ctx: ProviderCtx, dbId?: string): Promise<unknown> {
+    return this.utilGet("db-refresh-session", ctx, dbId ? `?id=${encodeURIComponent(dbId)}` : "");
   }
-  dbStatus(ctx: ProviderCtx): Promise<unknown> {
-    return this.utilGet("db-status", ctx);
+  dbStatus(ctx: ProviderCtx, dbId?: string): Promise<unknown> {
+    return this.utilGet("db-status", ctx, dbId ? `?id=${encodeURIComponent(dbId)}` : "");
   }
   webhookHistory(ctx: ProviderCtx, from?: string, to?: string): Promise<unknown> {
     const q = from ? `?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to ?? from)}` : "";
@@ -161,15 +171,60 @@ export class AccurateAdapter implements AccountingProvider {
     return ACCURATE_CATALOG;
   }
 
-  private async moduleGet(path: string, ctx: ProviderCtx): Promise<Envelope<unknown>> {
-    const res = await fetch(`${ctx.host}${path}`, {
-      headers: { Authorization: `Bearer ${ctx.accessToken}`, "X-Session-ID": ctx.session },
-      redirect: "follow",
-    });
-    if (res.status === 401) throw new Error("sesi/token ditolak provider (401)");
-    const j = (await res.json()) as Envelope<unknown>;
-    if (!j.s) throw new Error(`provider gagal: ${JSON.stringify(j.d)}`);
+  /** fetch API company dgn deteksi HTML (SPA = path tak ada / transient 302) + retry utk non-docsOnly */
+  private async requestText(
+    method: string,
+    url: string,
+    headers: Record<string, string>,
+    body: string | undefined,
+    docsOnly: boolean
+  ): Promise<string> {
+    const attempt = async (): Promise<string> => {
+      const res = await fetch(url, {
+        method: method as "GET" | "POST" | "DELETE",
+        headers,
+        redirect: "follow",
+        body,
+      });
+      if (res.status === 401) throw new Error("sesi/token ditolak provider (401)");
+      const txt = await res.text();
+      if (/^\s*</.test(txt)) {
+        if (docsOnly) {
+          throw new Error(
+            "tolak-dokumentasi: path docs-only tidak tersedia di API Accurate asli (respons HTML SPA)"
+          );
+        }
+        // transient (rate-limit/idle) — bukan kesalahan payload
+        throw new Error("html-transient: provider membalas HTML (kemungkinan transient 302)");
+      }
+      return txt;
+    };
+    try {
+      return await attempt();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (docsOnly || !msg.startsWith("html-transient")) throw e;
+      await new Promise((r) => setTimeout(r, 1500));
+      return await attempt();
+    }
+  }
+
+  private parseEnvelope(txt: string): Envelope<unknown> {
+    const j = JSON.parse(txt) as Envelope<unknown>;
+    // envelope standar {s,d}; sebagian save membalas {r:{...data dgn id}} tanpa field s
+    if (j.s === false) throw new Error(`provider gagal: ${JSON.stringify(j.d)}`);
     return j;
+  }
+
+  private async moduleGet(path: string, ctx: ProviderCtx, docsOnly = false): Promise<Envelope<unknown>> {
+    const txt = await this.requestText(
+      "GET",
+      `${ctx.host}${path}`,
+      { Authorization: `Bearer ${ctx.accessToken}`, "X-Session-ID": ctx.session },
+      undefined,
+      docsOnly
+    );
+    return this.parseEnvelope(txt);
   }
 
   private buildQuery(args: Record<string, unknown>): string {
@@ -212,41 +267,40 @@ export class AccurateAdapter implements AccountingProvider {
       if (tool.endsWith(".list") && !(typeof args.fields === "string" && args.fields) && DEFAULT_LIST_FIELDS[tool]) {
         merged = { ...args, fields: DEFAULT_LIST_FIELDS[tool] };
       }
-      const j = await this.moduleGet(`${route.path}${this.buildQuery(merged)}`, ctx);
+      const j = await this.moduleGet(`${route.path}${this.buildQuery(merged)}`, ctx, route.docsOnly);
       return j.d;
     }
     if (route.method === "DELETE") {
       const id = args.id;
       if (typeof id !== "string" || !id) throw new Error("args.id wajib string untuk aksi delete");
-      const res = await fetch(`${ctx.host}${route.path}?id=${encodeURIComponent(id)}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${ctx.accessToken}`, "X-Session-ID": ctx.session },
-        redirect: "follow",
-      });
-      if (res.status === 401) throw new Error("sesi/token ditolak provider (401)");
-      const j = (await res.json()) as Envelope<unknown>;
-      if (!j.s) throw new Error(`provider gagal: ${JSON.stringify(j.d)}`);
+      const txt = await this.requestText(
+        "DELETE",
+        `${ctx.host}${route.path}?id=${encodeURIComponent(id)}`,
+        { Authorization: `Bearer ${ctx.accessToken}`, "X-Session-ID": ctx.session },
+        undefined,
+        route.docsOnly
+      );
+      const j = this.parseEnvelope(txt);
       return j.d;
     }
-    const j = await this.modulePost(route.path, args, ctx);
-    return j.d;
+    const j = await this.modulePost(route.path, args, ctx, route.docsOnly);
+    // save membalas objek hasil di "r" (berisi id) — fallback ke "d" (pesan array)
+    return j.r ?? j.d;
   }
 
-  private async modulePost(path: string, body: unknown, ctx: ProviderCtx): Promise<Envelope<unknown>> {
-    const res = await fetch(`${ctx.host}${path}`, {
-      method: "POST",
-      headers: {
+  private async modulePost(path: string, body: unknown, ctx: ProviderCtx, docsOnly = false): Promise<Envelope<unknown>> {
+    const txt = await this.requestText(
+      "POST",
+      `${ctx.host}${path}`,
+      {
         Authorization: `Bearer ${ctx.accessToken}`,
         "X-Session-ID": ctx.session,
         "Content-Type": "application/json",
       },
-      redirect: "follow",
-      body: JSON.stringify(body),
-    });
-    if (res.status === 401) throw new Error("sesi/token ditolak provider (401)");
-    const j = (await res.json()) as Envelope<unknown>;
-    if (!j.s) throw new Error(`provider gagal: ${JSON.stringify(j.d)}`);
-    return j;
+      JSON.stringify(body),
+      docsOnly
+    );
+    return this.parseEnvelope(txt);
   }
 
   async createSalesInvoice(ctx: ProviderCtx, data: SalesInvoiceInput): Promise<{ id: string }> {
