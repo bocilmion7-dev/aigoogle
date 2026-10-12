@@ -1,21 +1,25 @@
 import "./landing.css";
 
-const FEATURES = [
+const STORY = [
   {
-    title: "Chat AI akuntansi",
-    desc: "Tanya data Accurate dengan bahasa alami — faktur, pelanggan, laporan. Jawaban streaming dengan jejak tool.",
+    time: "06:45",
+    line: "“Selamat pagi. Tiga faktur jatuh tempo hari ini.”",
+    body: "Sebelum Anda selesai minum kopi, pengingat untuk pelanggan sudah terkirim ke WhatsApp masing-masing — sopan, tepat waktu, tanpa Anda mengetik satu pun pesan.",
   },
   {
-    title: "Explore Manager",
-    desc: "Rapikan folder Google Drive otomatis: klasifikasi PDF, folder kategori, urungkan massal bila salah.",
+    time: "09:30",
+    line: "“Berapa piutang CV Sentosa?”",
+    body: "Tidak perlu buka laporan, tidak perlu sorot kolom. Tanya seperti bertanya ke rekan di sebelah — angkanya muncul seketika, beserta faktur yang menyusunnya.",
   },
   {
-    title: "WhatsApp otomatis",
-    desc: "Pengingat jatuh tempo ke pelanggan & laporan harian ke pemilik — saldo topup 200 rupiah per kirim.",
+    time: "13:10",
+    line: "Folder penuh PDF tak bernama? Bukan urusan Anda lagi.",
+    body: "Sambil makan siang, semuanya sudah terurus: masuk kategori sendiri, nama rapi, siap dicari. Salah beres? Satu klik — semuanya kembali seperti semula.",
   },
   {
-    title: "Suara Edge & Gemini",
-    desc: "Bicara dengan asisten: STT browser, TTS neural Edge gratis — tanpa mengirim audio ke Gemini.",
+    time: "20:00",
+    line: "“Penjualan hari ini Rp 8.750.000.”",
+    body: "Laporan harian mendarat di WhatsApp Anda — bukan di meja menumpuk. Anda cukup membaca dan memutuskan. Penyusunannya sudah lama selesai.",
   },
 ];
 
@@ -36,13 +40,14 @@ export function Landing() {
 
       <section className="ld-hero">
         <div>
-          <p className="ld-eyebrow ld-rise ld-rise-1">Add-on untuk Accurate Online</p>
+          <p className="ld-eyebrow ld-rise ld-rise-1">Untuk pemilik usaha & akuntan</p>
           <h1 className="ld-h1 ld-rise ld-rise-1">
-            Akuntansi Anda, <em>dibantu AI</em> — tanpa meninggalkan Accurate.
+            Pekerjaan rutin Anda di Accurate selesai <em>sebelum hari dimulai</em>.
           </h1>
           <p className="ld-lede ld-rise ld-rise-2">
-            Chat, rapikan Drive, kirim WhatsApp jatuh tempo — satu dashboard. Masuk lewat Accurate
-            sekali, setelah itu cukup email & password.
+            Setiap hari hal yang sama berulang: menagih, mencari file, menjumlah, menyusun
+            laporan. Biar bagian itu yang dikerjakan — Anda tinggal membaca hasilnya dan
+            memutuskan, bersama Accurate yang sudah Anda pakai selama ini.
           </p>
           <div className="ld-actions ld-rise ld-rise-3">
             <a className="ld-btn ld-btn-primary" href="/api/launch">
@@ -87,14 +92,14 @@ export function Landing() {
         </div>
       </section>
 
-      <section className="ld-features" aria-labelledby="fitur-heading">
-        <h2 id="fitur-heading">Yang bisa dilakukan</h2>
+      <section className="ld-features" aria-labelledby="hari-heading">
+        <h2 id="hari-heading">Sehari bersama AI Google</h2>
         <ul>
-          {FEATURES.map((f, i) => (
-            <li key={f.title} className="ld-rise">
-              <span className="ld-idx">{String(i + 1).padStart(2, "0")}</span>
-              <span className="ld-feat-title">{f.title}</span>
-              <p className="ld-feat-desc">{f.desc}</p>
+          {STORY.map((s) => (
+            <li key={s.time} className="ld-rise">
+              <span className="ld-idx">{s.time}</span>
+              <span className="ld-feat-title">{s.line}</span>
+              <p className="ld-feat-desc">{s.body}</p>
             </li>
           ))}
         </ul>

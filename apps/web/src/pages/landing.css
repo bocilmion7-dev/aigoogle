@@ -69,6 +69,14 @@
   color: var(--accent);
 }
 
+.landing a.ld-btn-primary {
+  color: #fff;
+}
+
+.landing a.ld-btn-secondary {
+  color: var(--ink);
+}
+
 /* ---------- header ---------- */
 .ld-header {
   display: flex;
@@ -348,7 +356,7 @@
 
 .ld-features li {
   display: grid;
-  grid-template-columns: 3ch minmax(0, 1fr) minmax(0, 2fr);
+  grid-template-columns: 5ch minmax(0, 5fr) minmax(0, 6fr);
   gap: var(--space-m);
   align-items: baseline;
   padding: var(--space-m) 0;
@@ -366,6 +374,7 @@
   font-family: var(--font-display);
   font-size: var(--step-1);
   font-weight: 600;
+  line-height: 1.4;
   color: var(--ink);
 }
 
@@ -451,7 +460,7 @@
   }
 
   .ld-features li {
-    grid-template-columns: 3ch 1fr;
+    grid-template-columns: 5ch 1fr;
     gap: var(--space-2xs) var(--space-s);
   }
 
