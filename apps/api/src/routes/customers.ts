@@ -4,6 +4,7 @@ import { prisma } from "../db.js";
 import { env } from "../env.js";
 import { asyncHandler } from "../asyncHandler.js";
 import { requireUser } from "../middleware/session.js";
+import { requirePerm, loadPermissionSet } from "../permissions.js";
 import { accurateCtxFor } from "../providers/accounting/connection.js";
 import { accurateProvider } from "../providers/accounting/index.js";
 import { writeAudit } from "../audit.js";
@@ -34,7 +35,7 @@ async function ocrMode(): Promise<"vision" | "text"> {
 
 customersRouter.get(
   "/customers",
-  requireUser,
+  requirePerm("accurate:customer.view"),
   asyncHandler(async (req, res) => {
     const ctx = await accurateCtxFor(req.user!.tenant.id);
     if (!ctx) return res.status(409).json({ error: "belum_connect" });
@@ -125,6 +126,10 @@ customersRouter.post(
   "/customers/entries",
   requireUser,
   asyncHandler(async (req, res) => {
+    const targetRaw = (req.body as { target?: unknown } | undefined)?.target;
+    const needed = targetRaw === "salesReceipt" ? "accurate:sales-receipt.view" : "accurate:sales-invoice.view";
+    const perms = await loadPermissionSet(req.user!.roleId);
+    if (!perms.has(needed)) return res.status(403).json({ error: "tidak_punya_hak" });
     const body = EntryBody.safeParse(req.body);
     if (!body.success) return res.status(400).json({ error: "bad_request", issues: body.error.issues });
     const ctx = await accurateCtxFor(req.user!.tenant.id);

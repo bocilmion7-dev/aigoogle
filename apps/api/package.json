@@ -7,7 +7,7 @@
     "start": "tsx --env-file=../../.env src/index.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "demo:accounts": "tsx scripts/demo-accounts.ts"
+    "demo:accounts": "tsx --env-file=../../.env scripts/demo-accounts.ts"
   },
   "dependencies": {
     "@aigoogle/shared": "workspace:*",

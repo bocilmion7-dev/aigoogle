@@ -78,80 +78,59 @@ export function Chat() {
   }
 
   return (
-    <div style={{ display: "flex", gap: 16, maxWidth: 960, margin: "0 auto", padding: 16, fontFamily: "system-ui" }}>
-      <aside style={{ width: 200, flexShrink: 0 }}>
-        <button style={btn} onClick={() => { setSessionId(null); setMsgs([]); }}>
+    <div className="chat">
+      <aside aria-label="Riwayat percakapan">
+        <button
+          className="btn"
+          style={{ width: "100%", marginBottom: "var(--space-xs)" }}
+          onClick={() => { setSessionId(null); setMsgs([]); }}
+        >
           + Percakapan baru
         </button>
-        <ul style={{ listStyle: "none", padding: 0, marginTop: 12 }}>
+        <div className="chat-sessions">
           {sessions.map((s) => (
-            <li key={s.id}>
-              <button
-                style={{
-                  ...btn,
-                  background: sessionId === s.id ? "#3d6b54" : "#eeeae3",
-                  color: sessionId === s.id ? "#fff" : "#333",
-                  width: "100%",
-                  textAlign: "left",
-                  marginBottom: 6,
-                }}
-                onClick={() => void openSession(s.id)}
-              >
-                {s.title.slice(0, 28)}
-              </button>
-            </li>
+            <button
+              key={s.id}
+              className="session"
+              aria-current={sessionId === s.id ? "true" : undefined}
+              onClick={() => void openSession(s.id)}
+            >
+              {s.title.slice(0, 28)}
+            </button>
           ))}
-        </ul>
+        </div>
       </aside>
-      <section style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 420 }}>
+
+      <section style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
         <div
           role="log"
           aria-live="polite"
           aria-label="Transkrip percakapan"
-          style={{
-            flex: 1,
-            background: "#faf8f5",
-            border: "1px solid #e3ddd4",
-            borderRadius: 6,
-            padding: 16,
-            overflowY: "auto",
-          }}
+          className="chat-log"
         >
           {msgs.length === 0 && (
-            <div>
-              <p style={{ color: "#555" }}>Tanya data akuntansi Anda — ketik atau pakai mic.</p>
-              {SUGGESTED.map((s) => (
-                <button
-                  key={s}
-                  style={{ ...btn, background: "#eeeae3", color: "#333", marginRight: 8, marginBottom: 8 }}
-                  onClick={() => void send(s)}
-                >
-                  {s}
-                </button>
-              ))}
+            <div className="empty" style={{ padding: "var(--space-l) 0" }}>
+              <p style={{ color: "var(--ink-2)", fontSize: "var(--step-0)" }}>
+                Tanya data akuntansi Anda — ketik atau pakai mic.
+              </p>
+              <div className="btn-row" style={{ justifyContent: "flex-start" }}>
+                {SUGGESTED.map((s) => (
+                  <button key={s} className="btn btn--2 btn--sm" onClick={() => void send(s)}>
+                    {s}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
           {msgs.map((m, i) => (
-            <div key={i} style={{ marginBottom: 12 }}>
-              <strong style={{ color: m.role === "user" ? "#3d6b54" : "#333" }}>
-                {m.role === "user" ? "Anda" : "AI"}
-              </strong>
+            <div key={i} className={`msg ${m.role === "ai" ? "msg--ai" : ""}`}>
+              <strong className="msg__who">{m.role === "user" ? "Anda" : "AI"}</strong>
               {m.badges.map((b, bi) => (
-                <span
-                  key={bi}
-                  style={{
-                    marginLeft: 8,
-                    fontSize: 12,
-                    background: "#e8efe9",
-                    borderRadius: 4,
-                    padding: "2px 8px",
-                    color: "#3d6b54",
-                  }}
-                >
+                <span key={bi} className="badge" style={{ marginLeft: 8 }}>
                   {b}
                 </span>
               ))}
-              <div style={{ whiteSpace: "pre-wrap", color: "#222" }}>
+              <div className="msg__body">
                 {m.content}
                 {busy && i === msgs.length - 1 ? " ▌" : ""}
               </div>
@@ -160,27 +139,27 @@ export function Chat() {
           <div ref={bottomRef} />
         </div>
         {error && (
-          <div role="alert" style={{ color: "#a33", marginTop: 8 }}>
+          <div role="alert" className="banner banner--err" style={{ marginTop: "var(--space-xs)", marginBottom: 0 }}>
             {error} —{" "}
             <button
-              style={{ border: "none", background: "none", color: "#3d6b54", cursor: "pointer" }}
+              className="btn btn--ghost btn--sm"
               onClick={() => void send(input || msgs[msgs.length - 2]?.content || "")}
             >
               Coba lagi
             </button>
           </div>
         )}
-        <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+        <div className="composer">
           <input
+            className="input"
             aria-label="Tanya data akuntansi"
-            style={{ flex: 1, padding: 10, borderRadius: 4, border: "1px solid #e3ddd4" }}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && void send(input)}
             placeholder="Tanya sesuatu…"
           />
           <MicButton onText={(t) => void send(t)} disabled={busy} />
-          <button style={btn} onClick={() => void send(input)} disabled={busy}>
+          <button className="btn" onClick={() => void send(input)} disabled={busy}>
             {busy ? "…" : "Kirim"}
           </button>
         </div>
@@ -188,13 +167,3 @@ export function Chat() {
     </div>
   );
 }
-
-const btn: React.CSSProperties = {
-  border: "none",
-  borderRadius: 4,
-  padding: "8px 12px",
-  cursor: "pointer",
-  background: "#3d6b54",
-  color: "white",
-  fontSize: 14,
-};

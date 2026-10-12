@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { AppHeader } from "../ui";
 
 interface WaStatus {
   connected: boolean;
@@ -12,19 +13,6 @@ interface WaStatus {
   billingEnabled: boolean;
   recent: Array<{ id: string; to: string; body: string; status: string; error: string; createdAt: string }>;
 }
-
-const card: React.CSSProperties = {
-  border: "1px solid #e3ddd4", borderRadius: 6, padding: 16, marginBottom: 12,
-  background: "#faf8f5", fontFamily: "system-ui",
-};
-const btn: React.CSSProperties = {
-  border: "none", borderRadius: 4, padding: "8px 14px", cursor: "pointer",
-  background: "#3d6b54", color: "white", fontSize: 14,
-};
-const input: React.CSSProperties = {
-  width: "100%", padding: "8px 10px", borderRadius: 4, border: "1px solid #ccc",
-  fontSize: 14, marginBottom: 8, boxSizing: "border-box", fontFamily: "inherit",
-};
 
 export function WhatsApp() {
   const [st, setSt] = useState<WaStatus | null>(null);
@@ -52,7 +40,16 @@ export function WhatsApp() {
     load();
   }, [load]);
 
-  if (!st) return <p style={{ padding: 24, fontFamily: "system-ui" }}>Memuat…</p>;
+  if (!st) {
+    return (
+      <div className="app">
+        <AppHeader />
+        <main className="page page--narrow">
+          <p className="meta">Memuat…</p>
+        </main>
+      </div>
+    );
+  }
 
   async function topup() {
     setError(null);
@@ -81,69 +78,96 @@ export function WhatsApp() {
   }
 
   return (
-    <main style={{ fontFamily: "system-ui", maxWidth: 640, margin: "0 auto", padding: 16 }}>
-      <h1 style={{ fontSize: 20, color: "#3d6b54" }}>WhatsApp</h1>
-      <a href="/app" style={{ color: "#3d6b54", fontSize: 14 }}>← Dashboard</a>
+    <div className="app">
+      <AppHeader />
+      <main className="page page--narrow">
+        <h1>WhatsApp</h1>
+        <p className="page__sub">Gateway pesan, saldo kredit, dan agregator Meta.</p>
 
-      <section style={{ ...card, marginTop: 12 }}>
-        <strong>Status</strong>
-        <p style={{ fontSize: 14, color: "#555" }}>
-          {st.connected ? `Terhubung (${st.account?.displayName || st.account?.phoneNumberId})` : "Belum terhubung"}
-        </p>
-        <p style={{ fontSize: 14 }}>
-          Saldo: <strong>{st.balance}</strong> kredit · {st.rupiahPerCredit} Rp/kirim (diatur di menu Admin)
-        </p>
-      </section>
+        <section className="card">
+          <strong className="card__title">Status</strong>
+          <p className="small muted" style={{ margin: "0 0 4px" }}>
+            {st.connected ? `Terhubung (${st.account?.displayName || st.account?.phoneNumberId})` : "Belum terhubung"}
+          </p>
+          <p className="small" style={{ margin: 0 }}>
+            Saldo: <strong className="num">{st.balance}</strong> kredit ·{" "}
+            <span className="num">{st.rupiahPerCredit}</span> Rp/kirim (diatur di menu Admin)
+          </p>
+        </section>
 
-      <section style={card}>
-        <strong>Daftar sebagai agregator (Meta Embedded Signup)</strong>
-        <p style={{ fontSize: 13, color: "#666" }}>
-          Platform kami membayar Meta. Anda daftarkan nomor bisnis Anda lewat form Meta di bawah.
-          {!st.metaConfigured && " (Credential Meta App belum diset — menu aktif setelah konfigurasi.)"}
-        </p>
-        {st.embedUrl ? (
-          <iframe
-            title="Meta WhatsApp Embedded Signup"
-            src={st.embedUrl}
-            style={{ width: "100%", height: 480, border: "1px solid #ddd", borderRadius: 6, background: "#fff" }}
-          />
-        ) : (
-          <p style={{ fontSize: 13, color: "#888" }}>Embed signup siap setelah META_APP_ID & META_EMBEDDED_CONFIG_ID diisi.</p>
-        )}
-      </section>
+        <section className="card">
+          <strong className="card__title">Daftar sebagai agregator (Meta Embedded Signup)</strong>
+          <p className="meta">
+            Platform kami membayar Meta. Anda daftarkan nomor bisnis Anda lewat form Meta di bawah.
+            {!st.metaConfigured && " (Credential Meta App belum diset — menu aktif setelah konfigurasi.)"}
+          </p>
+          {st.embedUrl ? (
+            <iframe title="Meta WhatsApp Embedded Signup" src={st.embedUrl} className="embed" />
+          ) : (
+            <p className="meta" style={{ marginBottom: 0 }}>
+              Embed signup siap setelah META_APP_ID & META_EMBEDDED_CONFIG_ID diisi.
+            </p>
+          )}
+        </section>
 
-      <section style={card}>
-        <strong>Topup saldo</strong>
-        <p style={{ fontSize: 13, color: "#666" }}>1 kredit = {st.rupiahPerCredit} rupiah (biaya kirim 1 pesan).</p>
-        <label style={{ fontSize: 13 }}>
-          Jumlah rupiah
-          <input type="number" min={2000} step={1000} value={amount} onChange={(e) => setAmount(Number(e.target.value))} style={input} />
-        </label>
-        <button style={btn} onClick={() => void topup()} disabled={busy} aria-label="Topup saldo WhatsApp">
-          Topup {amount.toLocaleString("id-ID")} Rp ({Math.floor(amount / st.rupiahPerCredit)} kredit)
-        </button>
-        {error && <p style={{ color: "#a33", fontSize: 13 }} role="alert">{error}</p>}
-      </section>
+        <section className="card">
+          <strong className="card__title">Topup saldo</strong>
+          <p className="meta">
+            1 kredit = <span className="num">{st.rupiahPerCredit}</span> rupiah (biaya kirim 1 pesan).
+          </p>
+          <div className="row" style={{ alignItems: "flex-end" }}>
+            <label className="field" style={{ flex: "1 1 180px" }}>
+              Jumlah rupiah
+              <input
+                className="input num"
+                type="number"
+                inputMode="numeric"
+                min={2000}
+                step={1000}
+                value={amount}
+                onChange={(e) => setAmount(Number(e.target.value))}
+              />
+            </label>
+            <button className="btn" onClick={() => void topup()} disabled={busy} aria-label="Topup saldo WhatsApp">
+              Topup {amount.toLocaleString("id-ID")} Rp ({Math.floor(amount / st.rupiahPerCredit)} kredit)
+            </button>
+          </div>
+          {error && (
+            <p className="banner banner--err" role="alert" style={{ marginTop: "var(--space-xs)", marginBottom: 0 }}>
+              {error}
+            </p>
+          )}
+        </section>
 
-      <section style={card}>
-        <strong>Otomasi</strong>
-        <p style={{ fontSize: 13, color: "#666" }}>
-          Pengingat jatuh tempo & laporan harian diatur oleh Admin di menu Admin → tab Pengaturan.
-        </p>
-      </section>
+        <section className="card">
+          <strong className="card__title">Otomasi</strong>
+          <p className="meta" style={{ marginBottom: 0 }}>
+            Pengingat jatuh tempo &amp; laporan harian diatur oleh Admin di menu Admin → tab Pengaturan.
+          </p>
+        </section>
 
-      <section style={card}>
-        <strong>Riwayat pesan (20 terakhir)</strong>
-        {st.recent.length === 0 && <p style={{ fontSize: 13, color: "#888" }}>Belum ada pesan.</p>}
-        <ul style={{ listStyle: "none", padding: 0, fontSize: 13 }}>
-          {st.recent.map((m) => (
-            <li key={m.id} style={{ padding: "4px 0", borderBottom: "1px solid #eee" }}>
-              <span style={{ color: m.status === "sent" ? "#3d6b54" : "#a33" }}>{m.status}</span> → {m.to}: {m.body.slice(0, 60)}
-              {m.error && <span style={{ color: "#a33" }}> ({m.error})</span>}
-            </li>
-          ))}
-        </ul>
-      </section>
-    </main>
+        <section className="card">
+          <strong className="card__title">Riwayat pesan (20 terakhir)</strong>
+          {st.recent.length === 0 ? (
+            <p className="empty" style={{ padding: "var(--space-m) 0" }}>
+              Belum ada pesan terkirim.
+            </p>
+          ) : (
+            <ul className="file-list">
+              {st.recent.map((m) => (
+                <li key={m.id} className="file-row">
+                  <span style={{ color: m.status === "sent" ? "var(--accent)" : "var(--danger)" }}>{m.status}</span>
+                  <span className="num">{m.to}</span>
+                  <span className="muted" style={{ flex: 1, minWidth: 0 }}>
+                    {m.body.slice(0, 60)}
+                  </span>
+                  {m.error && <span style={{ color: "var(--danger)" }}>{m.error}</span>}
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      </main>
+    </div>
   );
 }

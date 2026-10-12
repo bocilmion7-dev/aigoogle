@@ -86,19 +86,19 @@ export function MicButton({ onText, disabled }: { onText: (t: string) => void; d
 
   return (
     <button
-      style={{
-        border: "none",
-        borderRadius: 4,
-        padding: "8px 12px",
-        cursor: "pointer",
-        background: listening ? "#a33" : "#eeeae3",
-        fontSize: 14,
-      }}
+      className="btn btn--2"
+      style={listening ? { background: "var(--danger)", borderColor: "var(--danger)", color: "#fff" } : undefined}
       onClick={() => void click()}
       disabled={disabled}
       aria-label="Rekam suara"
+      title="Rekam suara"
     >
-      {listening ? "●…" : "🎤"}
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+        <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z" />
+        <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+        <line x1="12" y1="19" x2="12" y2="22" />
+      </svg>
+      {listening ? "●…" : ""}
     </button>
   );
 }

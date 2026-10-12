@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { Me } from "@aigoogle/shared";
 import { getMe } from "../api";
+import { AppHeader } from "../ui";
 import { Chat } from "./Chat";
 
 export function Shell() {
@@ -18,45 +19,8 @@ export function Shell() {
     return null;
   }
   return (
-    <div style={{ fontFamily: "system-ui" }}>
-      <header
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          padding: "10px 16px",
-          borderBottom: "1px solid #e3ddd4",
-          background: "#faf8f5",
-        }}
-      >
-        <strong style={{ color: "#3d6b54" }}>{me.tenant.name}</strong>
-        <span style={{ fontSize: 13, color: "#666" }}>
-          {me.name} · {me.roleKey} ·{" "}
-          <a href="/pelanggan" style={{ color: "#3d6b54" }}>
-            Pelanggan
-          </a>{" "}
-          ·{" "}
-          <a href="/explore" style={{ color: "#3d6b54" }}>
-            Explore Manager
-          </a>{" "}
-          ·{" "}
-          <a href="/whatsapp" style={{ color: "#3d6b54" }}>
-            WhatsApp
-          </a>{" "}
-          ·{" "}
-          {me.permissions?.includes("app:users.manage") && (
-            <>
-              <a href="/admin" style={{ color: "#3d6b54" }}>
-                Admin
-              </a>{" "}
-              ·{" "}
-            </>
-          )}
-          <a href="/settings" style={{ color: "#3d6b54" }}>
-            Pengaturan
-          </a>
-        </span>
-      </header>
+    <div className="app">
+      <AppHeader me={me} />
       <Chat />
     </div>
   );

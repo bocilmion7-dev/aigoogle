@@ -11,22 +11,7 @@ import {
   type CustomerRow,
   type ScanResponse,
 } from "../api";
-
-const card: React.CSSProperties = {
-  border: "1px solid #e3ddd4", borderRadius: 6, padding: 16, marginBottom: 12,
-  background: "#faf8f5", fontFamily: "system-ui",
-};
-const btn: React.CSSProperties = {
-  border: "none", borderRadius: 4, padding: "8px 14px", cursor: "pointer",
-  background: "#3d6b54", color: "white", fontSize: 14,
-};
-const input: React.CSSProperties = {
-  border: "1px solid #d8d1c6", borderRadius: 4, padding: "7px 9px", fontSize: 14,
-  background: "white", fontFamily: "system-ui", width: "100%", boxSizing: "border-box",
-};
-const label: React.CSSProperties = { display: "block", fontSize: 13, color: "#5c544b", marginBottom: 4 };
-const errBox: React.CSSProperties = { ...card, borderLeft: "3px solid #b3453a", color: "#8d352c", fontSize: 14 };
-const okBox: React.CSSProperties = { ...card, borderLeft: "3px solid #3d6b54", color: "#2f5a44", fontSize: 14 };
+import { AppHeader } from "../ui";
 
 const rp = (n: number | null | undefined) =>
   n === null || n === undefined ? "—" : `Rp ${Math.round(n).toLocaleString("id-ID")}`;
@@ -64,10 +49,23 @@ export function Pelanggan() {
   useEffect(() => {
     void getMe().then(setMe);
     void getConnections().then(setConns).catch(() => undefined);
-    reload();
   }, []);
 
-  if (me === undefined) return <p style={{ padding: 24, fontFamily: "system-ui" }}>Memuat…</p>;
+  const canCustomer = !!me?.permissions?.includes("accurate:customer.view");
+  useEffect(() => {
+    if (canCustomer) reload();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canCustomer]);
+
+  if (me === undefined) {
+    return (
+      <div className="app">
+        <main className="page page--narrow">
+          <p className="meta">Memuat…</p>
+        </main>
+      </div>
+    );
+  }
   if (me === null) {
     window.location.href = "/login";
     return null;
@@ -75,6 +73,28 @@ export function Pelanggan() {
 
   const accurate = conns.find((c) => c.provider === "accurate");
   const connected = accurate?.status === "connected";
+  const canInvoice = !!me.permissions?.includes("accurate:sales-invoice.view");
+  const canReceipt = !!me.permissions?.includes("accurate:sales-receipt.view");
+
+  if (!canCustomer) {
+    return (
+      <div className="app">
+        <AppHeader me={me} />
+        <main className="page page--narrow">
+          <h1>Pelanggan</h1>
+          <div className="card">
+            <strong>Anda tidak punya akses menu Pelanggan.</strong>
+            <p className="meta" style={{ marginTop: 6, marginBottom: 0 }}>
+              Hak akses data pelanggan diatur oleh Admin → Peran. Hubungi administrator Anda.
+            </p>
+          </div>
+          <a className="btn btn--ghost btn--sm" href="/app">
+            ← Kembali ke dashboard
+          </a>
+        </main>
+      </div>
+    );
+  }
 
   const onScanFile = async (file: File | undefined) => {
     if (!file) return;
@@ -116,6 +136,8 @@ export function Pelanggan() {
 
   const saveEntry = async () => {
     if (!target) return setErr("Pilih tujuan penyimpanan (faktur penjualan atau penerimaan kas).");
+    if (target === "salesInvoice" && !canInvoice) return setErr("Anda tidak punya hak membuat faktur penjualan.");
+    if (target === "salesReceipt" && !canReceipt) return setErr("Anda tidak punya hak membuat penerimaan kas.");
     if (!form.customerName.trim()) return setErr("Nama pelanggan wajib diisi.");
     setErr(""); setBusy(true);
     try {
@@ -139,207 +161,214 @@ export function Pelanggan() {
   };
 
   return (
-    <main style={{ fontFamily: "system-ui", maxWidth: 720, margin: "40px auto", padding: 24 }}>
-      <h1 style={{ fontSize: 24 }}>Pelanggan</h1>
-      <p style={{ color: "#666" }}>
-        {me.tenant.name} · {connected ? "Accurate terhubung" : "Accurate belum terhubung"}
-      </p>
+    <div className="app">
+      <AppHeader me={me} />
+      <main className="page">
+        <h1>Pelanggan</h1>
+        <p className="page__sub">
+          {me.tenant.name} · {connected ? "Accurate terhubung" : "Accurate belum terhubung"}
+        </p>
 
-      <h2 style={{ fontSize: 16, marginTop: 24 }}>Data pelanggan</h2>
-      <div style={{ ...card, display: "flex", gap: 8, alignItems: "center" }}>
-        <input
-          style={{ ...input, maxWidth: 260 }}
-          placeholder="Cari pelanggan…"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter") reload(q); }}
-        />
-        <button style={btn} onClick={() => reload(q)}>Cari</button>
-        {customers && (
-          <span style={{ fontSize: 13, color: "#666" }}>{customers.length} pelanggan</span>
-        )}
-      </div>
-      <div style={{ ...card, padding: 0, overflow: "hidden" }}>
-        {customers === null ? (
-          <p style={{ padding: 16, color: "#666", fontSize: 14 }}>Memuat…</p>
-        ) : customers.length === 0 ? (
-          <p style={{ padding: 16, color: "#666", fontSize: 14 }}>
-            {connected ? "Tidak ada pelanggan cocok." : "Hubungkan Accurate dulu untuk melihat data pelanggan."}
-          </p>
-        ) : (
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
-            <thead>
-              <tr style={{ background: "#f1ece4", color: "#5c544b", textAlign: "left" }}>
-                <th style={{ padding: "8px 12px" }}>Nama</th>
-                <th style={{ padding: "8px 12px", textAlign: "right" }}>Faktur</th>
-                <th style={{ padding: "8px 12px", textAlign: "right" }}>Total faktur</th>
-                <th style={{ padding: "8px 12px" }} />
-              </tr>
-            </thead>
-            <tbody>
-              {customers.map((c) => (
-                <tr key={c.id} style={{ borderTop: "1px solid #eee7dd" }}>
-                  <td style={{ padding: "8px 12px" }}>{c.name}</td>
-                  <td style={{ padding: "8px 12px", textAlign: "right" }}>{c.invoiceCount}</td>
-                  <td style={{ padding: "8px 12px", textAlign: "right" }}>{rp(c.invoiceTotal)}</td>
-                  <td style={{ padding: "8px 12px" }}>
-                    <button
-                      style={{ ...btn, padding: "4px 10px", fontSize: 13, background: selected === c.name ? "#5c544b" : "#3d6b54" }}
-                      onClick={() => setSelected(selected === c.name ? "" : c.name)}
-                    >
-                      {selected === c.name ? "Terpilih ✓" : "Pilih"}
-                    </button>
-                  </td>
+        <h2 className="section-title" style={{ marginTop: 0 }}>Data pelanggan</h2>
+        <div className="card" style={{ marginBottom: "var(--space-xs)" }}>
+          <div className="row">
+            <input
+              className="input"
+              style={{ flex: "1 1 220px", maxWidth: 360 }}
+              type="search"
+              inputMode="search"
+              placeholder="Cari pelanggan…"
+              aria-label="Cari pelanggan"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") reload(q); }}
+            />
+            <button className="btn" onClick={() => reload(q)}>Cari</button>
+            {customers && (
+              <span className="meta num">{customers.length} pelanggan</span>
+            )}
+          </div>
+        </div>
+
+        <div className="table-wrap" style={{ marginBottom: "var(--space-s)" }}>
+          {customers === null ? (
+            <p className="empty">Memuat data pelanggan…</p>
+          ) : customers.length === 0 ? (
+            <p className="empty">
+              {connected ? "Tidak ada pelanggan yang cocok." : "Hubungkan Accurate dulu untuk melihat data pelanggan."}
+            </p>
+          ) : (
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Nama</th>
+                  <th className="num">Faktur</th>
+                  <th className="num">Total faktur</th>
+                  <th />
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+              </thead>
+              <tbody>
+                {customers.map((c) => (
+                  <tr key={c.id}>
+                    <td>{c.name}</td>
+                    <td className="num">{c.invoiceCount}</td>
+                    <td className="num">{rp(c.invoiceTotal)}</td>
+                    <td>
+                      <button
+                        className={`btn btn--sm ${selected === c.name ? "" : "btn--2"}`}
+                        onClick={() => setSelected(selected === c.name ? "" : c.name)}
+                        aria-pressed={selected === c.name}
+                      >
+                        {selected === c.name ? "Terpilih ✓" : "Pilih"}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
 
-      <div style={{ display: "flex", gap: 8, margin: "20px 0 12px" }}>
-        <button
-          style={{ ...btn, background: tab === "scan" ? "#3d6b54" : "#cfc7bb" }}
-          onClick={() => setTab("scan")}
-        >
-          Scan → Input Accurate
-        </button>
-        <button
-          style={{ ...btn, background: tab === "reader" ? "#3d6b54" : "#cfc7bb" }}
-          onClick={() => setTab("reader")}
-        >
-          Baca file
-        </button>
-      </div>
+        <div className="tabs" role="group" aria-label="Mode input">
+          <button className="tab" aria-pressed={tab === "scan"} onClick={() => setTab("scan")}>
+            Scan → Input Accurate
+          </button>
+          <button className="tab" aria-pressed={tab === "reader"} onClick={() => setTab("reader")}>
+            Baca file
+          </button>
+        </div>
 
-      {err && <div style={errBox}>{err}</div>}
-      {okMsg && <div style={okBox}>{okMsg}</div>}
+        {err && <p className="banner banner--err" role="alert">{err}</p>}
+        {okMsg && <p className="banner banner--ok" role="status">{okMsg}</p>}
 
-      {tab === "scan" ? (
-        <div style={card}>
-          <strong>Scan nota / faktur / kwitansi</strong>
-          <p style={{ color: "#666", fontSize: 13, margin: "6px 0 10px" }}>
-            Foto atau unggah gambar/PDF (nota, bukti transfer, faktur, kwitansi, screenshot) atau file teks
-            (MD, TXT, DOCX, PPTX). Hasil baca ditampilkan untuk diperiksa dulu sebelum disimpan ke Accurate.
-            {selected && <> · Pelanggan terpilih: <b>{selected}</b></>}
-          </p>
-          <input
-            type="file"
-            accept="image/*,.pdf,.docx,.pptx,.doc,.ppt,.md,.txt"
-            onChange={(e) => void onScanFile(e.target.files?.[0])}
-          />
-          {busy && <p style={{ color: "#666", fontSize: 14 }}>Membaca dokumen…</p>}
+        {tab === "scan" ? (
+          <section className="card">
+            <strong className="card__title">Scan nota / faktur / kwitansi</strong>
+            <p className="meta">
+              Foto atau unggah gambar/PDF (nota, bukti transfer, faktur, kwitansi, screenshot) atau file teks
+              (MD, TXT, DOCX, PPTX). Hasil baca ditampilkan untuk diperiksa dulu sebelum disimpan ke Accurate.
+              {selected && <> · Pelanggan terpilih: <b>{selected}</b></>}
+            </p>
+            <input
+              className="input-file"
+              type="file"
+              accept="image/*,.pdf,.docx,.pptx,.doc,.ppt,.md,.txt"
+              onChange={(e) => void onScanFile(e.target.files?.[0])}
+            />
+            {busy && <p className="meta">Membaca dokumen…</p>}
 
-          {scan && (
-            <div style={{ marginTop: 14 }}>
-              <details style={{ fontSize: 13, color: "#5c544b", marginBottom: 10 }}>
-                <summary>Teks terbaca: {scan.fileName}</summary>
-                <pre style={{ whiteSpace: "pre-wrap", background: "#f1ece4", padding: 10, borderRadius: 4 }}>
-                  {scan.rawText || "(kosong)"}
-                </pre>
-              </details>
+            {scan && (
+              <div style={{ marginTop: "var(--space-s)" }}>
+                <details style={{ fontSize: "var(--step--1)", color: "var(--ink-2)", marginBottom: "var(--space-xs)" }}>
+                  <summary style={{ cursor: "pointer" }}>Teks terbaca: {scan.fileName}</summary>
+                  <pre className="block">{scan.rawText || "(kosong)"}</pre>
+                </details>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                <div>
-                  <label style={label}>Simpan sebagai</label>
-                  <select
-                    style={{ ...input, padding: "7px 9px" }}
-                    value={target}
-                    onChange={(e) => setTarget(e.target.value as typeof target)}
+                <div className="grid-2">
+                  <label className="field">
+                    Simpan sebagai
+                    <select
+                      className="select"
+                      value={target}
+                      onChange={(e) => setTarget(e.target.value as typeof target)}
+                    >
+                      <option value="">— pilih —</option>
+                      <option value="salesInvoice" disabled={!canInvoice}>Faktur penjualan{canInvoice ? "" : " — tanpa hak"}</option>
+                      <option value="salesReceipt" disabled={!canReceipt}>Penerimaan kas{canReceipt ? "" : " — tanpa hak"}</option>
+                    </select>
+                  </label>
+                  <label className="field">
+                    Nama pelanggan
+                    <input
+                      className="input"
+                      value={form.customerName}
+                      onChange={(e) => setForm({ ...form, customerName: e.target.value })}
+                      placeholder="cth. Budi Santoso"
+                    />
+                  </label>
+                  <label className="field">
+                    Tanggal (YYYY-MM-DD)
+                    <input
+                      className="input num"
+                      type="date"
+                      value={form.date}
+                      onChange={(e) => setForm({ ...form, date: e.target.value })}
+                      placeholder="2026-10-05"
+                    />
+                  </label>
+                  <label className="field">
+                    Nomor dokumen
+                    <input
+                      className="input"
+                      value={form.no}
+                      onChange={(e) => setForm({ ...form, no: e.target.value })}
+                      placeholder="NOTA-7"
+                    />
+                  </label>
+                  <label className="field">
+                    Total (Rp)
+                    <input
+                      className="input num"
+                      inputMode="numeric"
+                      value={form.total}
+                      onChange={(e) => setForm({ ...form, total: e.target.value })}
+                      placeholder="150000"
+                    />
+                  </label>
+                  <label className="field">
+                    Keterangan
+                    <input
+                      className="input"
+                      value={form.description}
+                      onChange={(e) => setForm({ ...form, description: e.target.value })}
+                      placeholder="Penjualan kertas"
+                    />
+                  </label>
+                </div>
+
+                <div className="btn-row" style={{ marginTop: "var(--space-s)" }}>
+                  <button className="btn" disabled={busy} onClick={() => void saveEntry()}>
+                    {busy ? "Menyimpan…" : "Simpan ke Accurate"}
+                  </button>
+                  <button
+                    className="btn btn--2"
+                    onClick={() => { setScan(null); setErr(""); }}
                   >
-                    <option value="">— pilih —</option>
-                    <option value="salesInvoice">Faktur penjualan</option>
-                    <option value="salesReceipt">Penerimaan kas</option>
-                  </select>
-                </div>
-                <div>
-                  <label style={label}>Nama pelanggan</label>
-                  <input
-                    style={input}
-                    value={form.customerName}
-                    onChange={(e) => setForm({ ...form, customerName: e.target.value })}
-                    placeholder="cth. Budi Santoso"
-                  />
-                </div>
-                <div>
-                  <label style={label}>Tanggal (YYYY-MM-DD)</label>
-                  <input
-                    style={input}
-                    value={form.date}
-                    onChange={(e) => setForm({ ...form, date: e.target.value })}
-                    placeholder="2026-10-05"
-                  />
-                </div>
-                <div>
-                  <label style={label}>Nomor dokumen</label>
-                  <input
-                    style={input}
-                    value={form.no}
-                    onChange={(e) => setForm({ ...form, no: e.target.value })}
-                    placeholder="NOTA-7"
-                  />
-                </div>
-                <div>
-                  <label style={label}>Total (Rp)</label>
-                  <input
-                    style={input}
-                    value={form.total}
-                    onChange={(e) => setForm({ ...form, total: e.target.value })}
-                    placeholder="150000"
-                    inputMode="numeric"
-                  />
-                </div>
-                <div>
-                  <label style={label}>Keterangan</label>
-                  <input
-                    style={input}
-                    value={form.description}
-                    onChange={(e) => setForm({ ...form, description: e.target.value })}
-                    placeholder="Penjualan kertas"
-                  />
+                    Batal
+                  </button>
                 </div>
               </div>
-              <div style={{ marginTop: 12, display: "flex", gap: 8, alignItems: "center" }}>
-                <button style={btn} disabled={busy} onClick={() => void saveEntry()}>
-                  {busy ? "Menyimpan…" : "Simpan ke Accurate"}
-                </button>
-                <button
-                  style={{ ...btn, background: "#cfc7bb", color: "#3f3a33" }}
-                  onClick={() => { setScan(null); setErr(""); }}
-                >
-                  Batal
-                </button>
+            )}
+          </section>
+        ) : (
+          <section className="card">
+            <strong className="card__title">Baca file</strong>
+            <p className="meta">
+              Baca isi PDF, gambar (foto nota, bukti transfer, kwitansi, screenshot), PowerPoint (PPT/PPTX),
+              Word (DOC/DOCX), Markdown, atau teks biasa. Mode Vision &amp; OCR menentukan apakah gambar/PDF bisa dibaca.
+            </p>
+            <input
+              className="input-file"
+              type="file"
+              accept="image/*,.pdf,.docx,.pptx,.doc,.ppt,.md,.txt"
+              onChange={(e) => void onReadFile(e.target.files?.[0])}
+            />
+            {busy && <p className="meta">Membaca file…</p>}
+            {readText && (
+              <div style={{ marginTop: "var(--space-xs)" }}>
+                <p className="meta">
+                  {readText.fileName} · mesin: {readText.engine}
+                </p>
+                <pre className="block">{readText.text}</pre>
               </div>
-            </div>
-          )}
-        </div>
-      ) : (
-        <div style={card}>
-          <strong>Baca file</strong>
-          <p style={{ color: "#666", fontSize: 13, margin: "6px 0 10px" }}>
-            Baca isi PDF, gambar (foto nota, bukti transfer, kwitansi, screenshot), PowerPoint (PPT/PPTX),
-            Word (DOC/DOCX), Markdown, atau teks biasa. Mode Vision & OCR menentukan apakah gambar/PDF bisa dibaca.
-          </p>
-          <input
-            type="file"
-            accept="image/*,.pdf,.docx,.pptx,.doc,.ppt,.md,.txt"
-            onChange={(e) => void onReadFile(e.target.files?.[0])}
-          />
-          {busy && <p style={{ color: "#666", fontSize: 14 }}>Membaca file…</p>}
-          {readText && (
-            <div style={{ marginTop: 12 }}>
-              <p style={{ fontSize: 13, color: "#5c544b" }}>
-                {readText.fileName} · mesin: {readText.engine}
-              </p>
-              <pre style={{ whiteSpace: "pre-wrap", background: "#f1ece4", padding: 12, borderRadius: 4, fontSize: 13 }}>
-                {readText.text}
-              </pre>
-            </div>
-          )}
-        </div>
-      )}
+            )}
+          </section>
+        )}
 
-      <a href="/app" style={{ color: "#3d6b54", fontSize: 14 }}>← Kembali</a>
-    </main>
+        <a className="btn btn--ghost btn--sm" href="/app">
+          ← Kembali
+        </a>
+      </main>
+    </div>
   );
 }

@@ -110,6 +110,7 @@ export interface ReadResponse {
 
 const MSG: Record<string, string> = {
     belum_connect: "Accurate belum terhubung — hubungkan dulu di Pengaturan.",
+    tidak_punya_hak: "Anda tidak punya hak mengakses data ini — hubungi Admin.",
     vision_ocr_nonaktif:
       "Vision & OCR nonaktif. Minta Admin mengaktifkannya di menu Admin → tab Pengaturan.",
     gemini_unavailable: "Vision & OCR butuh API key Gemini — hubungi administrator.",

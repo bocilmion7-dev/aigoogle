@@ -3,6 +3,7 @@ import {
   getAdminUsers,
   getAuditLogs,
   getConnections,
+  getMe,
   getPrivileges,
   getRoles,
   getSettings,
@@ -17,30 +18,7 @@ import {
   type PrivilegesPayload,
 } from "../api";
 import type { AppSettings, ConnectionInfo } from "@aigoogle/shared";
-
-const card: React.CSSProperties = {
-  border: "1px solid #e3ddd4",
-  borderRadius: 6,
-  padding: 16,
-  marginBottom: 12,
-  background: "#faf8f5",
-  fontFamily: "system-ui",
-};
-const btn: React.CSSProperties = {
-  border: "none",
-  borderRadius: 4,
-  padding: "8px 14px",
-  cursor: "pointer",
-  background: "#3d6b54",
-  color: "white",
-  fontSize: 14,
-};
-const tabBtn = (active: boolean): React.CSSProperties => ({
-  ...btn,
-  background: active ? "#3d6b54" : "#eeeae3",
-  color: active ? "white" : "#333",
-  marginRight: 8,
-});
+import { AppHeader } from "../ui";
 
 type Tab = "users" | "roles" | "audit" | "settings";
 
@@ -59,6 +37,12 @@ export function Admin() {
   const [waAuto, setWaAuto] = useState(false);
   const [waDaily, setWaDaily] = useState(false);
   const [waPhone, setWaPhone] = useState("");
+  const [me, setMe] = useState<Awaited<ReturnType<typeof getMe>> | undefined>(undefined);
+  const isAdmin = !!me?.permissions?.includes("app:users.manage");
+
+  useEffect(() => {
+    void getMe().then(setMe);
+  }, []);
 
   const loadRoles = useCallback(async () => {
     const r = await getRoles();
@@ -67,6 +51,7 @@ export function Admin() {
   }, []);
 
   useEffect(() => {
+    if (!isAdmin) return;
     void loadRoles()
       .then((r) => {
         if (r[0]) setSelRole(r[0].id);
@@ -78,7 +63,7 @@ export function Admin() {
     void getPrivileges()
       .then(setPriv)
       .catch(() => undefined);
-  }, [loadRoles]);
+  }, [loadRoles, isAdmin]);
 
   const onFetchErr = (e: unknown) => {
     if (e instanceof Error && e.message === "belum_login") window.location.href = "/login";
@@ -86,6 +71,7 @@ export function Admin() {
   };
 
   useEffect(() => {
+    if (!isAdmin) return;
     if (tab === "users") {
       setErr(null);
       void getAdminUsers().then(setUsers).catch(onFetchErr);
@@ -112,7 +98,7 @@ export function Admin() {
         })
         .catch(() => undefined);
     }
-  }, [tab, selRole, roles]);
+  }, [tab, selRole, roles, isAdmin]);
 
   const errText = (code?: string) =>
     code === "tidak_boleh_ubah_role_sendiri"
@@ -163,229 +149,323 @@ export function Admin() {
     }
   }
 
-  return (
-    <main style={{ fontFamily: "system-ui", maxWidth: 720, margin: "40px auto", padding: 24 }}>
-      <h1 style={{ fontSize: 24 }}>Admin</h1>
-      <div style={{ margin: "16px 0" }}>
-        <button style={tabBtn(tab === "users")} onClick={() => setTab("users")}>
-          User
-        </button>
-        <button style={tabBtn(tab === "roles")} onClick={() => setTab("roles")}>
-          Peran
-        </button>
-        <button style={tabBtn(tab === "audit")} onClick={() => setTab("audit")}>
-          Audit
-        </button>
-        <button style={tabBtn(tab === "settings")} onClick={() => setTab("settings")}>
-          Pengaturan
-        </button>
+  if (me === undefined) {
+    return (
+      <div className="app">
+        <main className="page page--narrow">
+          <p className="meta">Memuat…</p>
+        </main>
       </div>
-      {msg && <p style={{ color: "#3d6b54", fontSize: 14 }}>{msg}</p>}
-      {err && <p style={{ color: "#a33", fontSize: 14 }}>{err}</p>}
+    );
+  }
+  if (me === null) {
+    window.location.href = "/login";
+    return null;
+  }
 
-      {tab === "users" && (
-        <div style={card}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
-            <thead>
-              <tr style={{ textAlign: "left", color: "#666" }}>
-                <th style={{ padding: 6 }}>Nama</th>
-                <th style={{ padding: 6 }}>Email</th>
-                <th style={{ padding: 6 }}>Role</th>
-              </tr>
-            </thead>
-            <tbody>
-              {users.map((u) => (
-                <tr key={u.id} style={{ borderTop: "1px solid #e3ddd4" }}>
-                  <td style={{ padding: 6 }}>{u.name}</td>
-                  <td style={{ padding: 6, color: "#555" }}>{u.email}</td>
-                  <td style={{ padding: 6 }}>
-                    <select value={u.roleKey} onChange={(e) => void changeRole(u.id, e.target.value)} style={{ padding: 4 }}>
-                      {roles.map((r) => (
-                        <option key={r.key} value={r.key}>
-                          {r.name}
-                        </option>
-                      ))}
-                    </select>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+  if (!isAdmin) {
+    return (
+      <div className="app">
+        <AppHeader me={me} />
+        <main className="page page--narrow">
+          <h1>Admin</h1>
+          <div className="card">
+            <strong>Anda tidak punya akses menu Admin.</strong>
+            <p className="meta" style={{ marginTop: 6, marginBottom: 0 }}>
+              Menu ini hanya untuk pengelola platform (hak kelola user &amp; pengaturan).
+              Hubungi administrator Anda jika Anda membutuhkannya.
+            </p>
+          </div>
+          <a className="btn btn--ghost btn--sm" href="/app">
+            ← Kembali ke dashboard
+          </a>
+        </main>
+      </div>
+    );
+  }
+
+  return (
+    <div className="app">
+      <AppHeader me={me} />
+      <main className="page">
+        <h1>Admin</h1>
+        <p className="page__sub">Kelola user, hak akses peran, jejak audit, dan pengaturan aplikasi.</p>
+
+        <div className="tabs" role="group" aria-label="Bagian Admin">
+          <button className="tab" aria-pressed={tab === "users"} onClick={() => setTab("users")}>
+            User
+          </button>
+          <button className="tab" aria-pressed={tab === "roles"} onClick={() => setTab("roles")}>
+            Peran
+          </button>
+          <button className="tab" aria-pressed={tab === "audit"} onClick={() => setTab("audit")}>
+            Audit
+          </button>
+          <button className="tab" aria-pressed={tab === "settings"} onClick={() => setTab("settings")}>
+            Pengaturan
+          </button>
         </div>
-      )}
 
-      {tab === "roles" && (
-        <div style={card}>
-          <label style={{ fontSize: 14, color: "#555" }}>
-            Role:{" "}
-            <select value={selRole} onChange={(e) => setSelRole(e.target.value)} style={{ padding: 4 }}>
-              {roles.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.name}
-                </option>
+        {msg && <p className="banner banner--ok" role="status">{msg}</p>}
+        {err && <p className="banner banner--err" role="alert">{err}</p>}
+
+        {tab === "users" && (
+          <div className="table-wrap">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Nama</th>
+                  <th>Email</th>
+                  <th>Role</th>
+                </tr>
+              </thead>
+              <tbody>
+                {users.map((u) => (
+                  <tr key={u.id}>
+                    <td>{u.name}</td>
+                    <td className="muted">{u.email}</td>
+                    <td>
+                      <select
+                        className="select"
+                        style={{ maxWidth: 180 }}
+                        value={u.roleKey}
+                        onChange={(e) => void changeRole(u.id, e.target.value)}
+                        aria-label={`Role ${u.name}`}
+                      >
+                        {roles.map((r) => (
+                          <option key={r.key} value={r.key}>
+                            {r.name}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                  </tr>
+                ))}
+                {users.length === 0 && (
+                  <tr>
+                    <td colSpan={3} className="empty">Belum ada user.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {tab === "roles" && (
+          <div className="card">
+            <label className="field" style={{ maxWidth: 320 }}>
+              Role
+              <select className="select" value={selRole} onChange={(e) => setSelRole(e.target.value)}>
+                {roles.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <h3 className="section-title" style={{ marginTop: "var(--space-m)" }}>Modul Accurate</h3>
+            <div className="stack" style={{ gap: 0 }}>
+              {priv?.modules.map((m) => (
+                <label key={m.key} className="check">
+                  <input
+                    type="checkbox"
+                    checked={checked.has(m.key)}
+                    onChange={(e) => {
+                      const next = new Set(checked);
+                      e.target.checked ? next.add(m.key) : next.delete(m.key);
+                      setChecked(next);
+                    }}
+                  />
+                  <span>
+                    {m.label} <span className="meta">({m.key})</span>
+                    {m.mirrorChecked && !checked.has(m.key) && (
+                      <span className="check__hint">— default Accurate: aktif</span>
+                    )}
+                  </span>
+                </label>
               ))}
-            </select>
-          </label>
-          <h3 style={{ fontSize: 15, color: "#3d6b54", marginTop: 16 }}>Modul Accurate</h3>
-          {priv?.modules.map((m) => (
-            <label key={m.key} style={{ display: "block", fontSize: 14, padding: "4px 0" }}>
-              <input
-                type="checkbox"
-                checked={checked.has(m.key)}
-                onChange={(e) => {
-                  const next = new Set(checked);
-                  e.target.checked ? next.add(m.key) : next.delete(m.key);
-                  setChecked(next);
-                }}
-              />{" "}
-              {m.label} <span style={{ color: "#888", fontSize: 12 }}>({m.key})</span>
-              {m.mirrorChecked && !checked.has(m.key) && (
-                <span style={{ color: "#888", fontSize: 12 }}> — default Accurate: aktif</span>
+            </div>
+
+            <h3 className="section-title">Fitur Aplikasi</h3>
+            <div className="stack" style={{ gap: 0 }}>
+              {priv?.appFeatures.map((f) => (
+                <label key={f.key} className="check">
+                  <input
+                    type="checkbox"
+                    checked={checked.has(f.key)}
+                    onChange={(e) => {
+                      const next = new Set(checked);
+                      e.target.checked ? next.add(f.key) : next.delete(f.key);
+                      setChecked(next);
+                    }}
+                  />
+                  <span>
+                    {f.label} <span className="meta">({f.key})</span>
+                  </span>
+                </label>
+              ))}
+            </div>
+
+            <div className="btn-row" style={{ marginTop: "var(--space-s)" }}>
+              <button className="btn" onClick={() => void saveRole()}>
+                Simpan Hak Akses
+              </button>
+            </div>
+          </div>
+        )}
+
+        {tab === "audit" && (
+          <div className="table-wrap">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Waktu</th>
+                  <th>User</th>
+                  <th>Aksi</th>
+                  <th>Detail</th>
+                </tr>
+              </thead>
+              <tbody>
+                {audit.map((a) => (
+                  <tr key={a.id}>
+                    <td className="meta" style={{ whiteSpace: "nowrap" }}>
+                      {new Date(a.createdAt).toLocaleString("id-ID")}
+                    </td>
+                    <td>{a.userEmail}</td>
+                    <td>{a.action}</td>
+                    <td className="muted" style={{ maxWidth: 240, overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {a.detail}
+                    </td>
+                  </tr>
+                ))}
+                {audit.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="empty">Belum ada aktivitas tercatat.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {tab === "settings" && (
+          <>
+            <div className="card">
+              <strong className="card__title">Mode baca dokumen</strong>
+              <div className="stack" style={{ gap: 0 }}>
+                <label className="check">
+                  <input
+                    type="radio" name="ocr" checked={(aset?.ocrMode ?? "vision") === "vision"}
+                    onChange={() => aset && setAset({ ...aset, ocrMode: "vision" })}
+                  />
+                  <span>
+                    Vision &amp; OCR — gambar/PDF dibaca AI (nota, bukti transfer, faktur, screenshot)
+                  </span>
+                </label>
+                <label className="check">
+                  <input
+                    type="radio" name="ocr" checked={aset?.ocrMode === "text"}
+                    onChange={() => aset && setAset({ ...aset, ocrMode: "text" })}
+                  />
+                  <span>Teks saja — hanya file teks (MD, TXT, DOCX, PPTX)</span>
+                </label>
+              </div>
+
+              <strong className="card__title" style={{ marginTop: "var(--space-s)" }}>
+                Mesin suara (chat &amp; panggilan suara)
+              </strong>
+              <div className="stack" style={{ gap: 0 }}>
+                <label className="check">
+                  <input
+                    type="radio" name="voice" checked={aset?.voiceEngine === "web-speech"}
+                    onChange={() => aset && setAset({ ...aset, voiceEngine: "web-speech" })}
+                  />
+                  <span>Browser (Web Speech) — ringan</span>
+                </label>
+                <label className="check">
+                  <input
+                    type="radio" name="voice" checked={aset?.voiceEngine === "edge"}
+                    onChange={() => aset && setAset({ ...aset, voiceEngine: "edge" })}
+                  />
+                  <span>Edge — STT di browser, TTS neural (gratis)</span>
+                </label>
+                <label className="check">
+                  <input
+                    type="radio" name="voice" checked={aset?.voiceEngine === "gemini-native"}
+                    onChange={() => aset && setAset({ ...aset, voiceEngine: "gemini-native" })}
+                  />
+                  <span>Gemini native audio — kualitas terbaik</span>
+                </label>
+              </div>
+
+              <strong className="card__title" style={{ marginTop: "var(--space-s)" }}>Biaya WhatsApp</strong>
+              <label className="field" style={{ maxWidth: 260 }}>
+                Harga per kredit (Rp, biaya 1 pesan)
+                <input
+                  className="input num"
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  max={1000000}
+                  value={aset?.waPricePerCredit ?? 200}
+                  onChange={(e) => aset && setAset({ ...aset, waPricePerCredit: Number(e.target.value) })}
+                />
+              </label>
+            </div>
+
+            <div className="card">
+              <strong className="card__title">Otomasi WhatsApp</strong>
+              <div className="stack" style={{ gap: 0 }}>
+                <label className="check">
+                  <input type="checkbox" checked={waAuto} onChange={(e) => setWaAuto(e.target.checked)} />
+                  <span>Ingatkan tagihan jatuh tempo ke pelanggan</span>
+                </label>
+                <label className="check">
+                  <input type="checkbox" checked={waDaily} onChange={(e) => setWaDaily(e.target.checked)} />
+                  <span>Laporan harian ke pemilik usaha (jam 08.00)</span>
+                </label>
+              </div>
+              <label className="field" style={{ maxWidth: 300, marginTop: "var(--space-xs)" }}>
+                Nomor WhatsApp pemilik (format 62…)
+                <input
+                  className="input num"
+                  type="tel"
+                  inputMode="tel"
+                  autoComplete="tel"
+                  value={waPhone}
+                  onChange={(e) => setWaPhone(e.target.value)}
+                  placeholder="628123456789"
+                />
+              </label>
+            </div>
+
+            <div className="card">
+              <strong className="card__title">Koneksi</strong>
+              <p className="small muted" style={{ margin: "0 0 var(--space-xs)" }}>
+                Accurate Online:{" "}
+                {(conns.find((c) => c.provider === "accurate")?.status ?? "none") === "connected"
+                  ? `terhubung (${conns.find((c) => c.provider === "accurate")?.accountLabel})`
+                  : conns.find((c) => c.provider === "accurate")?.status ?? "none"}
+              </p>
+              {conns.find((c) => c.provider === "accurate")?.status !== "connected" && (
+                <a className="btn" href="/api/launch" style={{ marginBottom: "var(--space-xs)" }}>
+                  Hubungkan Accurate
+                </a>
               )}
-            </label>
-          ))}
-          <h3 style={{ fontSize: 15, color: "#3d6b54", marginTop: 16 }}>Fitur Aplikasi</h3>
-          {priv?.appFeatures.map((f) => (
-            <label key={f.key} style={{ display: "block", fontSize: 14, padding: "4px 0" }}>
-              <input
-                type="checkbox"
-                checked={checked.has(f.key)}
-                onChange={(e) => {
-                  const next = new Set(checked);
-                  e.target.checked ? next.add(f.key) : next.delete(f.key);
-                  setChecked(next);
-                }}
-              />{" "}
-              {f.label} <span style={{ color: "#888", fontSize: 12 }}>({f.key})</span>
-            </label>
-          ))}
-          <button style={{ ...btn, marginTop: 12 }} onClick={() => void saveRole()}>
-            Simpan Hak Akses
-          </button>
-        </div>
-      )}
+              <p className="small muted" style={{ margin: 0 }}>
+                Google Drive: {conns.find((c) => c.provider === "google")?.status ?? "none"} — menyusul
+              </p>
+            </div>
 
-      {tab === "audit" && (
-        <div style={card}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-            <thead>
-              <tr style={{ textAlign: "left", color: "#666" }}>
-                <th style={{ padding: 6 }}>Waktu</th>
-                <th style={{ padding: 6 }}>User</th>
-                <th style={{ padding: 6 }}>Aksi</th>
-                <th style={{ padding: 6 }}>Detail</th>
-              </tr>
-            </thead>
-            <tbody>
-              {audit.map((a) => (
-                <tr key={a.id} style={{ borderTop: "1px solid #e3ddd4" }}>
-                  <td style={{ padding: 6, whiteSpace: "nowrap" }}>{new Date(a.createdAt).toLocaleString("id-ID")}</td>
-                  <td style={{ padding: 6 }}>{a.userEmail}</td>
-                  <td style={{ padding: 6 }}>{a.action}</td>
-                  <td style={{ padding: 6, color: "#555", maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis" }}>{a.detail}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {tab === "settings" && (
-        <>
-          <div style={card}>
-            <strong>Mode baca dokumen</strong>
-            <label style={{ display: "block", fontSize: 14, marginTop: 8 }}>
-              <input
-                type="radio" name="ocr" checked={(aset?.ocrMode ?? "vision") === "vision"}
-                onChange={() => aset && setAset({ ...aset, ocrMode: "vision" })}
-              />{" "}
-              Vision &amp; OCR — gambar/PDF dibaca AI (nota, bukti transfer, faktur, screenshot)
-            </label>
-            <label style={{ display: "block", fontSize: 14 }}>
-              <input
-                type="radio" name="ocr" checked={aset?.ocrMode === "text"}
-                onChange={() => aset && setAset({ ...aset, ocrMode: "text" })}
-              />{" "}
-              Teks saja — hanya file teks (MD, TXT, DOCX, PPTX)
-            </label>
-
-            <strong style={{ display: "block", marginTop: 14 }}>Mesin suara (chat &amp; panggilan suara)</strong>
-            <label style={{ display: "block", fontSize: 14, marginTop: 8 }}>
-              <input
-                type="radio" name="voice" checked={aset?.voiceEngine === "web-speech"}
-                onChange={() => aset && setAset({ ...aset, voiceEngine: "web-speech" })}
-              />{" "}
-              Browser (Web Speech) — ringan
-            </label>
-            <label style={{ display: "block", fontSize: 14 }}>
-              <input
-                type="radio" name="voice" checked={aset?.voiceEngine === "edge"}
-                onChange={() => aset && setAset({ ...aset, voiceEngine: "edge" })}
-              />{" "}
-              Edge — STT di browser, TTS neural (gratis)
-            </label>
-            <label style={{ display: "block", fontSize: 14 }}>
-              <input
-                type="radio" name="voice" checked={aset?.voiceEngine === "gemini-native"}
-                onChange={() => aset && setAset({ ...aset, voiceEngine: "gemini-native" })}
-              />{" "}
-              Gemini native audio — kualitas terbaik
-            </label>
-
-            <strong style={{ display: "block", marginTop: 14 }}>Biaya WhatsApp</strong>
-            <label style={{ display: "block", fontSize: 14, marginTop: 8 }}>
-              Harga per kredit (Rp, biaya 1 pesan)
-              <input
-                type="number" min={1} max={1000000}
-                value={aset?.waPricePerCredit ?? 200}
-                onChange={(e) => aset && setAset({ ...aset, waPricePerCredit: Number(e.target.value) })}
-                style={{ display: "block", width: 200, padding: "7px 9px", marginTop: 4, border: "1px solid #d8d1c6", borderRadius: 4 }}
-              />
-            </label>
-          </div>
-
-          <div style={card}>
-            <strong>Otomasi WhatsApp</strong>
-            <label style={{ display: "block", fontSize: 14, marginTop: 8 }}>
-              <input type="checkbox" checked={waAuto} onChange={(e) => setWaAuto(e.target.checked)} />{" "}
-              Ingatkan tagihan jatuh tempo ke pelanggan
-            </label>
-            <label style={{ display: "block", fontSize: 14 }}>
-              <input type="checkbox" checked={waDaily} onChange={(e) => setWaDaily(e.target.checked)} />{" "}
-              Laporan harian ke pemilik usaha (jam 08.00)
-            </label>
-            <label style={{ fontSize: 14 }}>
-              Nomor WhatsApp pemilik (format 62…)
-              <input
-                value={waPhone} onChange={(e) => setWaPhone(e.target.value)} placeholder="628123456789"
-                style={{ display: "block", width: 260, padding: "7px 9px", marginTop: 4, border: "1px solid #d8d1c6", borderRadius: 4 }}
-              />
-            </label>
-          </div>
-
-          <div style={card}>
-            <strong>Koneksi</strong>
-            <p style={{ fontSize: 14, color: "#555", marginTop: 6 }}>
-              Accurate Online:{" "}
-              {(conns.find((c) => c.provider === "accurate")?.status ?? "none") === "connected"
-                ? `terhubung (${conns.find((c) => c.provider === "accurate")?.accountLabel})`
-                : conns.find((c) => c.provider === "accurate")?.status ?? "none"}
-            </p>
-            {conns.find((c) => c.provider === "accurate")?.status !== "connected" && (
-              <a href="/api/launch">
-                <button style={btn}>Hubungkan Accurate</button>
-              </a>
-            )}
-            <p style={{ fontSize: 14, color: "#555" }}>
-              Google Drive: {conns.find((c) => c.provider === "google")?.status ?? "none"} — menyusul
-            </p>
-          </div>
-
-          <button style={btn} disabled={!aset} onClick={() => void saveAppSettings()}>
-            Simpan pengaturan
-          </button>
-        </>
-      )}
-    </main>
+            <div className="btn-row">
+              <button className="btn" disabled={!aset} onClick={() => void saveAppSettings()}>
+                Simpan pengaturan
+              </button>
+            </div>
+          </>
+        )}
+      </main>
+    </div>
   );
 }

@@ -2,19 +2,6 @@ import { useEffect, useState } from "react";
 import type { Me } from "@aigoogle/shared";
 import { getMe } from "../api";
 
-const card: React.CSSProperties = {
-  border: "1px solid #e3ddd4", borderRadius: 6, padding: 16, marginBottom: 12,
-  background: "#faf8f5", fontFamily: "system-ui",
-};
-const btn: React.CSSProperties = {
-  border: "none", borderRadius: 4, padding: "8px 14px", cursor: "pointer",
-  background: "#3d6b54", color: "white", fontSize: 14,
-};
-const input: React.CSSProperties = {
-  width: "100%", padding: "8px 10px", borderRadius: 4, border: "1px solid #ccc",
-  fontSize: 14, marginBottom: 8, boxSizing: "border-box", fontFamily: "inherit",
-};
-
 export function SetPassword() {
   const [me, setMe] = useState<Me | null | undefined>(undefined);
   const [password, setPassword] = useState("");
@@ -26,7 +13,7 @@ export function SetPassword() {
     void getMe().then(setMe);
   }, []);
 
-  if (me === undefined) return <p style={{ padding: 24, fontFamily: "system-ui" }}>Memuat…</p>;
+  if (me === undefined) return <p style={{ padding: 24 }}>Memuat…</p>;
   if (me === null) {
     window.location.href = "/";
     return null;
@@ -70,24 +57,46 @@ export function SetPassword() {
   }
 
   return (
-    <main style={{ fontFamily: "system-ui", maxWidth: 400, margin: "60px auto", padding: 24 }}>
-      <h1 style={{ fontSize: 22, color: "#3d6b54" }}>Buat Password</h1>
-      <p style={{ color: "#666", fontSize: 14 }}>
+    <main className="auth">
+      <span className="auth__brand">Accurate Accelerator</span>
+      <h1>Buat Password</h1>
+      <p className="page__sub">
         Selamat datang, <strong>{me.name}</strong>. Buat password untuk masuk tanpa Accurate.
       </p>
-      <form onSubmit={(e) => void submit(e)} style={card}>
-        <label style={{ fontSize: 13, color: "#555" }}>
-          Password baru (min. 8 karakter, ada angka)
-          <input type="password" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} style={input} />
-        </label>
-        <label style={{ fontSize: 13, color: "#555" }}>
-          Ulangi password
-          <input type="password" required value={confirm} onChange={(e) => setConfirm(e.target.value)} style={input} />
-        </label>
-        {error && <p style={{ color: "#a33", fontSize: 13 }} role="alert">{error}</p>}
-        <button type="submit" style={btn} disabled={busy} aria-label="Simpan password">
-          {busy ? "Menyimpan…" : "Simpan & masuk"}
-        </button>
+      <form onSubmit={(e) => void submit(e)} className="card">
+        <div className="stack">
+          <label className="field">
+            Password baru (min. 8 karakter, ada angka)
+            <input
+              className="input"
+              type="password"
+              autoComplete="new-password"
+              required
+              minLength={8}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+          </label>
+          <label className="field">
+            Ulangi password
+            <input
+              className="input"
+              type="password"
+              autoComplete="new-password"
+              required
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+            />
+          </label>
+          {error && (
+            <p className="banner banner--err" role="alert" style={{ marginBottom: 0 }}>
+              {error}
+            </p>
+          )}
+          <button className="btn" type="submit" disabled={busy} aria-label="Simpan password">
+            {busy ? "Menyimpan…" : "Simpan & masuk"}
+          </button>
+        </div>
       </form>
     </main>
   );

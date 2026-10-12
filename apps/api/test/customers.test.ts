@@ -10,6 +10,7 @@ let api: ReturnType<typeof createApp>;
 let mockSrv: Server;
 let mockBase: string;
 let cookie = "";
+let bareCookie = "";
 
 const realFetch = globalThis.fetch.bind(globalThis);
 let geminiReply: Record<string, unknown> = {
@@ -37,6 +38,9 @@ beforeAll(async () => {
   });
   const role = await prisma.role.create({ data: { tenantId: tenant.id, key: "admin", name: "Admin" } });
   await prisma.rolePermission.create({ data: { roleId: role.id, permissionKey: "app:settings.manage" } });
+  for (const permissionKey of ["accurate:customer.view", "accurate:sales-invoice.view", "accurate:sales-receipt.view"]) {
+    await prisma.rolePermission.create({ data: { roleId: role.id, permissionKey } });
+  }
   const user = await prisma.user.create({
     data: { tenantId: tenant.id, providerUserId: `cu-${randomBytes(4).toString("hex")}`, email: "plg@demo.local", name: "Plg", roleId: role.id },
   });
@@ -67,6 +71,14 @@ beforeAll(async () => {
   const sid = randomBytes(32).toString("hex");
   await prisma.session.create({ data: { id: sid, userId: user.id, expiresAt: new Date(Date.now() + 86400_000) } });
   cookie = `sid=${sid}`;
+
+  const bareRole = await prisma.role.create({ data: { tenantId: tenant.id, key: "guest", name: "Guest" } });
+  const bareUser = await prisma.user.create({
+    data: { tenantId: tenant.id, providerUserId: `cg-${randomBytes(4).toString("hex")}`, email: "guest@demo.local", name: "Guest", roleId: bareRole.id },
+  });
+  const bareSid = randomBytes(32).toString("hex");
+  await prisma.session.create({ data: { id: bareSid, userId: bareUser.id, expiresAt: new Date(Date.now() + 86400_000) } });
+  bareCookie = `sid=${bareSid}`;
 
   vi.stubGlobal(
     "fetch",
@@ -239,5 +251,32 @@ describe("POST /api/reader", () => {
       .set("Content-Type", "text/plain")
       .send(Buffer.from(""));
     expect(res.status).toBe(400);
+  });
+});
+
+
+describe("isolation: hak modul", () => {
+  it("menolak daftar pelanggan tanpa accurate:customer.view", async () => {
+    expect((await request(api).get("/api/customers").set("Cookie", bareCookie)).status).toBe(403);
+  });
+
+  it("menolak entri faktur tanpa accurate:sales-invoice.view", async () => {
+    const res = await request(api)
+      .post("/api/customers/entries")
+      .set("Cookie", bareCookie)
+      .send({ target: "salesInvoice", customerName: "X", date: "2026-01-01", total: "1000" });
+    expect(res.status).toBe(403);
+  });
+
+  it("menolak entri kwitansi tanpa accurate:sales-receipt.view", async () => {
+    const res = await request(api)
+      .post("/api/customers/entries")
+      .set("Cookie", bareCookie)
+      .send({ target: "salesReceipt", customerName: "X", date: "2026-01-01", total: "1000" });
+    expect(res.status).toBe(403);
+  });
+
+  it("lulus hak untuk user ber-role admin demo (customer+invoice+receipt)", async () => {
+    expect((await request(api).get("/api/customers").set("Cookie", cookie)).status).toBe(200);
   });
 });

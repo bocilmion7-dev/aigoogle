@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { getMe } from "../api";
+import { AppHeader } from "../ui";
 import {
   driveCancel,
   driveList,
@@ -34,6 +36,7 @@ type Phase = "idle" | "planning" | "preview" | "running" | "done";
 
 export function Explore() {
   const [status, setStatus] = useState<DriveStatus | null>(null);
+  const [canTidy, setCanTidy] = useState<boolean | null>(null);
   const [folderId, setFolderId] = useState("root");
   const [folders, setFolders] = useState<DriveFolder[]>([]);
   const [files, setFiles] = useState<DriveFile[]>([]);
@@ -76,6 +79,9 @@ export function Explore() {
 
   useEffect(() => {
     void driveStatus().then(setStatus);
+    void getMe()
+      .then((me) => setCanTidy(!!me?.permissions?.includes("app:drive.tidy")))
+      .catch(() => setCanTidy(false));
   }, []);
 
   useEffect(() => {
@@ -202,21 +208,36 @@ export function Explore() {
     }
   }
 
-  if (!status) return <p style={{ padding: 24 }}>Memuat…</p>;
+  if (!status) {
+    return (
+      <div className="app">
+        <AppHeader />
+        <main className="page">
+          <p className="meta">Memuat…</p>
+        </main>
+      </div>
+    );
+  }
 
   if (!status.connected) {
     return (
-      <div style={{ padding: 24, fontFamily: "system-ui", maxWidth: 560 }}>
-        <h2 style={{ fontSize: 18, color: "#3d6b54" }}>Explore Manager</h2>
-        <p style={{ color: "#555" }}>
-          Hubungkan Google Drive untuk merapikan folder. Status engine:{" "}
-          <strong>{status.engine === "mock" ? "mock" : "Google Drive"}</strong>.
-        </p>
-        {status.engine === "google" && (
-          <a href="/api/oauth/google/start" style={{ color: "#3d6b54" }}>
-            Hubungkan Google Drive →
-          </a>
-        )}
+      <div className="app">
+        <AppHeader />
+        <main className="page page--narrow">
+          <h1>Explore Manager</h1>
+          <div className="card">
+            <strong className="card__title">Google Drive belum terhubung</strong>
+            <p className="small muted" style={{ marginBottom: 8 }}>
+              Hubungkan Google Drive untuk merapikan folder. Status engine:{" "}
+              <strong>{status.engine === "mock" ? "mock" : "Google Drive"}</strong>.
+            </p>
+            {status.engine === "google" && (
+              <a className="btn" href="/api/oauth/google/start">
+                Hubungkan Google Drive →
+              </a>
+            )}
+          </div>
+        </main>
       </div>
     );
   }
@@ -224,163 +245,180 @@ export function Explore() {
   const pdfCount = files.filter((f) => f.mimeType === "application/pdf").length;
 
   return (
-    <div style={{ display: "flex", gap: 16, maxWidth: 960, margin: "0 auto", padding: 16, fontFamily: "system-ui" }}>
-      <section style={{ flex: 1 }}>
-        <nav aria-label="Breadcrumb" style={{ fontSize: 13, color: "#666", marginBottom: 8 }}>
-          {trail.map((t, i) => (
-            <span key={t.id}>
-              {i > 0 && " / "}
-              <button
-                style={{ border: "none", background: "none", color: "#3d6b54", cursor: "pointer", padding: 0, fontSize: 13 }}
-                onClick={() => goto(i)}
-              >
-                {t.name}
-              </button>
-            </span>
-          ))}
-        </nav>
-        <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
-          <button style={btn} onClick={() => void load(folderId)}>
-            Refresh
-          </button>
-          <button style={btn} onClick={() => void makePlan()} disabled={phase === "planning" || phase === "running"} aria-label="Rapikan folder ini">
-            Rapikan Folder Ini
-          </button>
-          <span style={{ fontSize: 13, color: "#666", alignSelf: "center" }}>{pdfCount} PDF</span>
-        </div>
-        {error && <p style={{ color: "#a33", fontSize: 13 }}>{error}</p>}
-        <div style={{ background: "#faf8f5", border: "1px solid #e3ddd4", borderRadius: 6, padding: 12 }}>
-          {folders.length === 0 && files.length === 0 && (
-            <p style={{ color: "#555" }}>Tidak ada file untuk dirapikan.</p>
-          )}
-          {folders.map((f) => (
-            <div key={f.id} style={{ padding: "6px 0" }}>
-              <button style={{ ...btn, background: "#eeeae3", color: "#333", width: "100%", textAlign: "left" }} onClick={() => enter(f)}>
-                📁 {f.name}
-              </button>
-            </div>
-          ))}
-          {files.map((f) => (
-            <div key={f.id} style={{ padding: "6px 0", color: "#333", fontSize: 14 }}>
-              {f.mimeType === "application/pdf" ? "📄" : "📎"} {f.name}
-            </div>
-          ))}
-        </div>
-      </section>
+    <div className="app">
+      <AppHeader />
+      <main className="page">
+        <h1>Explore Manager</h1>
+        <p className="page__sub">Telusuri Drive, rapikan PDF ke folder kategori — dengan pratinjau &amp; urungkan.</p>
 
-      <aside style={{ width: 280, flexShrink: 0 }}>
-        {phase === "planning" && <p style={{ color: "#555" }}>Menganalisa isi PDF…</p>}
-        {phase === "preview" && plan && (
-          <div style={{ background: "#faf8f5", border: "1px solid #e3ddd4", borderRadius: 6, padding: 12 }}>
-            <strong style={{ color: "#3d6b54" }}>Preview rencana</strong>
-            <ul style={{ paddingLeft: 16, fontSize: 13, color: "#333" }}>
-              {plan
-                .filter((p) => p.action === "create_folder")
-                .map((p) => (
-                  <li key={`c-${p.toName}`}>Buat folder “{p.toName}”</li>
-                ))}
-              {plan
-                .filter((p) => p.action === "move")
-                .map((p) => (
-                  <li key={p.fileId}>
-                    Pindah {p.fileName} → {p.category}
+        <div className="explore">
+          <section>
+            <nav aria-label="Breadcrumb" className="crumb">
+              {trail.map((t, i) => (
+                <span key={t.id}>
+                  {i > 0 && " / "}
+                  <button onClick={() => goto(i)}>{t.name}</button>
+                </span>
+              ))}
+            </nav>
+            <div className="btn-row" style={{ marginBottom: "var(--space-xs)" }}>
+              <button className="btn btn--2 btn--sm" onClick={() => void load(folderId)}>
+                Refresh
+              </button>
+              {canTidy !== false && (
+                <button
+                  className="btn btn--sm"
+                  onClick={() => void makePlan()}
+                  disabled={phase === "planning" || phase === "running"}
+                  aria-label="Rapikan folder ini"
+                >
+                  Rapikan Folder Ini
+                </button>
+              )}
+              <span className="meta" style={{ marginLeft: "auto" }}>
+                <span className="num">{pdfCount}</span> PDF
+              </span>
+            </div>
+            {error && <p className="banner banner--err" role="alert">{error}</p>}
+            <div className="panel">
+              {folders.length === 0 && files.length === 0 && (
+                <p className="empty" style={{ padding: "var(--space-m) 0" }}>
+                  Tidak ada file untuk dirapikan.
+                </p>
+              )}
+              <ul className="file-list">
+                {folders.map((f) => (
+                  <li key={f.id} className="file-row">
+                    <button
+                      className="btn btn--2 btn--sm"
+                      style={{ flex: 1, justifyContent: "flex-start", textAlign: "left" }}
+                      onClick={() => enter(f)}
+                    >
+                      <span aria-hidden="true">▸</span> {f.name}
+                    </button>
                   </li>
                 ))}
-            </ul>
-            {plan.filter((p) => p.action === "move").length === 0 && (
-              <p style={{ fontSize: 13, color: "#555" }}>Tidak ada PDF untuk dirapikan.</p>
+                {files.map((f) => (
+                  <li key={f.id} className="file-row">
+                    <span aria-hidden="true">{f.mimeType === "application/pdf" ? "PDF" : "file"}</span>
+                    <span className="muted" style={{ flex: 1, minWidth: 0 }}>{f.name}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </section>
+
+          <aside className="stack">
+            {phase === "planning" && (
+              <div className="panel progress-line">Menganalisa isi PDF…</div>
             )}
-            <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-              <button style={btn} onClick={() => void run()} disabled={plan.every((p) => p.action !== "move")}>
-                Jalankan
-              </button>
-              <button style={{ ...btn, background: "#eeeae3", color: "#333" }} onClick={() => setPhase("idle")}>
-                Batal
-              </button>
-            </div>
-          </div>
-        )}
-        {phase === "running" && (
-          <div style={{ background: "#faf8f5", border: "1px solid #e3ddd4", borderRadius: 6, padding: 12 }}>
-            <strong style={{ color: "#3d6b54" }}>
-              {progress ? `${progress.done}/${progress.total} dianalisa` : "Berjalan…"}
-            </strong>
-            <div style={{ marginTop: 8 }}>
-              <button style={{ ...btn, background: "#a33" }} onClick={() => void cancel()} disabled={cancelRef.current}>
-                Batalkan
-              </button>
-            </div>
-          </div>
-        )}
-        {phase === "done" && result && (
-          <div style={{ background: "#faf8f5", border: "1px solid #e3ddd4", borderRadius: 6, padding: 12 }}>
-            <strong style={{ color: cancelled ? "#a33" : jobStatus === "undone" ? "#3d6b54" : "#3d6b54" }}>
-              {jobStatus === "undone" ? "Sudah diurungkan" : cancelled ? "Dibatalkan" : "Selesai"}
-            </strong>
-            <ul style={{ fontSize: 13, color: "#333", listStyle: "none", paddingLeft: 0, margin: 0 }}>
-              {result.map((r) => (
-                <li key={r.fileId} style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 0" }}>
-                  {r.status === "ok" && jobStatus !== "undone" && (
-                    <input
-                      type="checkbox"
-                      checked={undoSelected.has(r.fileId)}
-                      onChange={() => toggleUndo(r.fileId)}
-                      aria-label={`Pilih ${r.fileName} untuk diurungkan`}
-                      disabled={undoBusy}
-                    />
+            {phase === "preview" && plan && (
+              <div className="panel">
+                <strong className="card__title">Preview rencana</strong>
+                <ul style={{ paddingLeft: 18, fontSize: "var(--step--1)", color: "var(--ink-2)", margin: 0 }}>
+                  {plan
+                    .filter((p) => p.action === "create_folder")
+                    .map((p) => (
+                      <li key={`c-${p.toName}`}>Buat folder “{p.toName}”</li>
+                    ))}
+                  {plan
+                    .filter((p) => p.action === "move")
+                    .map((p) => (
+                      <li key={p.fileId}>
+                        Pindah {p.fileName} → {p.category}
+                      </li>
+                    ))}
+                </ul>
+                {plan.filter((p) => p.action === "move").length === 0 && (
+                  <p className="meta" style={{ marginBottom: 0 }}>
+                    Tidak ada PDF untuk dirapikan.
+                  </p>
+                )}
+                <div className="btn-row" style={{ marginTop: "var(--space-xs)" }}>
+                  <button className="btn" onClick={() => void run()} disabled={plan.every((p) => p.action !== "move")}>
+                    Jalankan
+                  </button>
+                  <button className="btn btn--2" onClick={() => setPhase("idle")}>
+                    Batal
+                  </button>
+                </div>
+              </div>
+            )}
+            {phase === "running" && (
+              <div className="panel">
+                <strong className="card__title" style={{ color: "var(--accent)" }}>
+                  {progress ? `${progress.done}/${progress.total} dianalisa` : "Berjalan…"}
+                </strong>
+                <div className="btn-row">
+                  <button className="btn btn--danger" onClick={() => void cancel()} disabled={cancelRef.current}>
+                    Batalkan
+                  </button>
+                </div>
+              </div>
+            )}
+            {phase === "done" && result && (
+              <div className="panel">
+                <strong className="card__title" style={{ color: cancelled ? "var(--danger)" : "var(--accent)" }}>
+                  {jobStatus === "undone" ? "Sudah diurungkan" : cancelled ? "Dibatalkan" : "Selesai"}
+                </strong>
+                <ul className="file-list">
+                  {result.map((r) => (
+                    <li key={r.fileId} className="file-row">
+                      {r.status === "ok" && jobStatus !== "undone" && (
+                        <input
+                          type="checkbox"
+                          checked={undoSelected.has(r.fileId)}
+                          onChange={() => toggleUndo(r.fileId)}
+                          aria-label={`Pilih ${r.fileName} untuk diurungkan`}
+                          disabled={undoBusy}
+                        />
+                      )}
+                      <span style={{ flex: 1, minWidth: 0 }}>
+                        <strong>{r.fileName}</strong> —{" "}
+                        {r.undoStatus === "ok"
+                          ? "Dikembalikan"
+                          : r.undoStatus === "failed"
+                            ? `Undo gagal (${r.undoError})`
+                            : r.status === "ok"
+                              ? "OK"
+                              : r.status === "failed"
+                                ? `Gagal (${r.error})`
+                                : "Dilewati"}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                {undoError && <p className="banner banner--err" role="alert">{undoError}</p>}
+                {undoBusy && (
+                  <p className="progress-line" aria-live="polite">
+                    {undoProgress ? `${undoProgress.done}/${undoProgress.total} dikembalikan…` : "Mengembalikan…"}
+                  </p>
+                )}
+                <div className="btn-row" style={{ marginTop: "var(--space-xs)" }}>
+                  {jobStatus !== "undone" && !cancelled && result.some((r) => r.status === "ok") && (
+                    <button
+                      className="btn"
+                      onClick={() => void undo()}
+                      disabled={undoBusy || undoSelected.size === 0}
+                      aria-label="Urungkan rapikan"
+                    >
+                      Urungkan
+                    </button>
                   )}
-                  <span>
-                    {r.fileName} —{" "}
-                    {r.undoStatus === "ok"
-                      ? "Dikembalikan"
-                      : r.undoStatus === "failed"
-                        ? `Undo gagal (${r.undoError})`
-                        : r.status === "ok"
-                          ? "OK"
-                          : r.status === "failed"
-                            ? `Gagal (${r.error})`
-                            : "Dilewati"}
-                  </span>
-                </li>
-              ))}
-            </ul>
-            {undoError && <p style={{ color: "#a33", fontSize: 13 }}>{undoError}</p>}
-            {undoBusy && (
-              <p style={{ fontSize: 13, color: "#555" }} aria-live="polite">
-                {undoProgress ? `${undoProgress.done}/${undoProgress.total} dikembalikan…` : "Mengembalikan…"}
-              </p>
+                  {jobStatus === "undone" && (
+                    <button className="btn" disabled aria-label="Urungkan rapikan">
+                      Urungkan
+                    </button>
+                  )}
+                  <button className="btn btn--2" onClick={() => setPhase("idle")}>
+                    Tutup
+                  </button>
+                </div>
+              </div>
             )}
-            {jobStatus !== "undone" && !cancelled && result.some((r) => r.status === "ok") && (
-              <button
-                style={{ ...btn, marginTop: 8, background: "#3d6b54" }}
-                onClick={() => void undo()}
-                disabled={undoBusy || undoSelected.size === 0}
-                aria-label="Urungkan rapikan"
-              >
-                Urungkan
-              </button>
-            )}
-            {jobStatus === "undone" && (
-              <button style={{ ...btn, marginTop: 8, background: "#999" }} disabled aria-label="Urungkan rapikan">
-                Urungkan
-              </button>
-            )}
-            <button style={{ ...btn, background: "#eeeae3", color: "#333", marginTop: 8 }} onClick={() => setPhase("idle")}>
-              Tutup
-            </button>
-          </div>
-        )}
-      </aside>
+          </aside>
+        </div>
+      </main>
     </div>
   );
 }
-
-const btn: React.CSSProperties = {
-  border: "none",
-  borderRadius: 4,
-  padding: "8px 12px",
-  cursor: "pointer",
-  background: "#3d6b54",
-  color: "white",
-  fontSize: 14,
-};
