@@ -27,12 +27,20 @@ async function tenantScope(req: import("express").Request): Promise<{
   return { isPlatform, tenantId };
 }
 
-// GET /api/admin/tenants — daftar perusahaan (khusus Admin Platform, utk pemilih tenant)
+// GET /api/admin/tenants — daftar perusahaan pelanggan sistem ini (khusus Admin Platform).
+// Hanya tenant dengan koneksi Accurate Online ASLI (host *.accurate.id) — data test/mock (host lokal) disembunyikan.
 adminRouter.get(
   "/admin/tenants",
   requirePerm("app:settings.manage"),
   asyncHandler(async (_req, res) => {
+    const cons = await prisma.connection.findMany({
+      where: { provider: "accurate", host: { contains: "accurate.id" } },
+      select: { tenantId: true },
+    });
+    const ids = [...new Set(cons.map((c) => c.tenantId))];
+    if (!ids.length) return res.json([]);
     const tenants = await prisma.tenant.findMany({
+      where: { id: { in: ids } },
       orderBy: { createdAt: "asc" },
       select: { id: true, name: true, alias: true },
     });

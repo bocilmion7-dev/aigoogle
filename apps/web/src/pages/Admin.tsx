@@ -3,28 +3,19 @@ import {
   getAdminTenants,
   getAdminUsers,
   getAuditLogs,
-  getConnections,
   getMe,
   getPrivileges,
   getRoles,
-  getSettings,
-  getWaStatus,
-  getWaWebhookEvents,
-  putWaWebhookEvents,
   putRolePermissions,
-  putSettings,
   putUserRole,
-  putWaSettings,
   type AdminRole,
   type AdminUser,
   type AuditRow,
   type PrivilegesPayload,
 } from "../api";
-import type { AppSettings, ConnectionInfo } from "@aigoogle/shared";
 import { AppHeader } from "../ui";
-import { ACCURATE_OAUTH_CTA } from "../oauth";
 
-type Tab = "users" | "roles" | "audit" | "settings";
+type Tab = "users" | "roles" | "audit";
 
 export function Admin() {
   const [tab, setTab] = useState<Tab>("users");
@@ -36,12 +27,6 @@ export function Admin() {
   const [checked, setChecked] = useState<Set<string>>(new Set());
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
-  const [aset, setAset] = useState<AppSettings | null>(null);
-  const [conns, setConns] = useState<ConnectionInfo[]>([]);
-  const [waAuto, setWaAuto] = useState(false);
-  const [waDaily, setWaDaily] = useState(false);
-  const [waPhone, setWaPhone] = useState("");
-  const [waWh, setWaWh] = useState<{ events: string[]; rateMin: number; options: Array<{ key: string; label: string }> } | null>(null);
   const [tenants, setTenants] = useState<Array<{ id: string; name: string; alias: string }>>([]);
   const [selTenant, setSelTenant] = useState<string>(""); // Admin Platform: perusahaan yang sedang dikelola
   const [me, setMe] = useState<Awaited<ReturnType<typeof getMe>> | undefined>(undefined);
@@ -102,27 +87,6 @@ export function Admin() {
       const role = roles.find((x) => x.id === selRole);
       setChecked(new Set(role?.permissions ?? []));
     }
-    if (tab === "settings" && !canSettings) {
-      setTab("users");
-      return;
-    }
-    if (tab === "settings") {
-      setErr(null);
-      void getSettings()
-        .then(setAset)
-        .catch(onFetchErr);
-      void getConnections().then(setConns).catch(() => undefined);
-      void getWaStatus()
-        .then((w) => {
-          setWaAuto(!!w.settings?.autoDueDate);
-          setWaDaily(!!w.settings?.dailyReport);
-          setWaPhone(w.settings?.ownerPhone ?? "");
-        })
-        .catch(() => undefined);
-      void getWaWebhookEvents()
-        .then((s) => setWaWh({ events: s.events ?? [], rateMin: s.rateMin ?? 10, options: s.options ?? [] }))
-        .catch(() => undefined);
-    }
   }, [tab, selRole, roles, isAdmin, canSettings, selTenant]);
 
   const errText = (code?: string) =>
@@ -154,24 +118,6 @@ export function Admin() {
     } catch (e) {
       setErr(errText(e instanceof Error ? e.message : undefined));
       void getAdminUsers(selTenant || undefined).then(setUsers);
-    }
-  }
-
-  async function saveAppSettings() {
-    if (!aset) return;
-    setMsg(null);
-    setErr(null);
-    try {
-      await putSettings({
-        voiceEngine: aset.voiceEngine,
-        ocrMode: aset.ocrMode ?? "vision",
-        ...(aset.waPricePerCredit !== undefined ? { waPricePerCredit: aset.waPricePerCredit } : {}),
-      });
-      await putWaSettings({ autoDueDate: waAuto, dailyReport: waDaily, ownerPhone: waPhone });
-      if (waWh) await putWaWebhookEvents({ events: waWh.events, rateMin: waWh.rateMin });
-      setMsg("Pengaturan aplikasi disimpan.");
-    } catch (e) {
-      setErr(errText(e instanceof Error ? e.message : undefined));
     }
   }
 
@@ -215,7 +161,7 @@ export function Admin() {
       <AppHeader me={me} />
       <main className="page">
         <h1>Admin</h1>
-        <p className="page__sub">Kelola user, hak akses peran, jejak audit, dan pengaturan aplikasi.</p>
+        <p className="page__sub">Kelola user dan hak akses peran perusahaan, serta jejak audit.</p>
 
         {canSettings && tenants.length > 0 && (
           <div className="card" style={{ marginBottom: "var(--space-s)", maxWidth: 420 }}>
@@ -248,11 +194,6 @@ export function Admin() {
           <button className="tab" aria-pressed={tab === "audit"} onClick={() => setTab("audit")}>
             Audit
           </button>
-          {canSettings && (
-            <button className="tab" aria-pressed={tab === "settings"} onClick={() => setTab("settings")}>
-              Pengaturan
-            </button>
-          )}
         </div>
 
         {msg && <p className="banner banner--ok" role="status">{msg}</p>}
@@ -398,163 +339,6 @@ export function Admin() {
           </div>
         )}
 
-        {tab === "settings" && (
-          <>
-            <div className="card">
-              <strong className="card__title">Mode baca dokumen</strong>
-              <div className="stack" style={{ gap: 0 }}>
-                <label className="check">
-                  <input
-                    type="radio" name="ocr" checked={(aset?.ocrMode ?? "vision") === "vision"}
-                    onChange={() => aset && setAset({ ...aset, ocrMode: "vision" })}
-                  />
-                  <span>
-                    Vision &amp; OCR — gambar/PDF dibaca AI (nota, bukti transfer, faktur, screenshot)
-                  </span>
-                </label>
-                <label className="check">
-                  <input
-                    type="radio" name="ocr" checked={aset?.ocrMode === "text"}
-                    onChange={() => aset && setAset({ ...aset, ocrMode: "text" })}
-                  />
-                  <span>Teks saja — hanya file teks (MD, TXT, DOCX, PPTX)</span>
-                </label>
-              </div>
-
-              <strong className="card__title" style={{ marginTop: "var(--space-s)" }}>
-                Mesin suara (chat &amp; panggilan suara)
-              </strong>
-              <div className="stack" style={{ gap: 0 }}>
-                <label className="check">
-                  <input
-                    type="radio" name="voice" checked={aset?.voiceEngine === "web-speech"}
-                    onChange={() => aset && setAset({ ...aset, voiceEngine: "web-speech" })}
-                  />
-                  <span>Browser (Web Speech) — ringan</span>
-                </label>
-                <label className="check">
-                  <input
-                    type="radio" name="voice" checked={aset?.voiceEngine === "edge"}
-                    onChange={() => aset && setAset({ ...aset, voiceEngine: "edge" })}
-                  />
-                  <span>Edge — STT di browser, TTS neural (gratis)</span>
-                </label>
-                <label className="check">
-                  <input
-                    type="radio" name="voice" checked={aset?.voiceEngine === "gemini-native"}
-                    onChange={() => aset && setAset({ ...aset, voiceEngine: "gemini-native" })}
-                  />
-                  <span>Gemini native audio — kualitas terbaik</span>
-                </label>
-              </div>
-
-              <strong className="card__title" style={{ marginTop: "var(--space-s)" }}>Biaya WhatsApp</strong>
-              <label className="field" style={{ maxWidth: 260 }}>
-                Harga per kredit (Rp, biaya 1 pesan)
-                <input
-                  className="input num"
-                  type="number"
-                  inputMode="numeric"
-                  min={1}
-                  max={1000000}
-                  value={aset?.waPricePerCredit ?? 200}
-                  onChange={(e) => aset && setAset({ ...aset, waPricePerCredit: Number(e.target.value) })}
-                />
-              </label>
-            </div>
-
-            <div className="card">
-              <strong className="card__title">Otomasi WhatsApp</strong>
-              <div className="stack" style={{ gap: 0 }}>
-                <label className="check">
-                  <input type="checkbox" checked={waAuto} onChange={(e) => setWaAuto(e.target.checked)} />
-                  <span>Ingatkan tagihan jatuh tempo ke pelanggan</span>
-                </label>
-                <label className="check">
-                  <input type="checkbox" checked={waDaily} onChange={(e) => setWaDaily(e.target.checked)} />
-                  <span>Laporan harian ke pemilik usaha (jam 08.00)</span>
-                </label>
-              </div>
-              <label className="field" style={{ maxWidth: 300, marginTop: "var(--space-xs)" }}>
-                Nomor WhatsApp pemilik (format 62…)
-                <input
-                  className="input num"
-                  type="tel"
-                  inputMode="tel"
-                  autoComplete="tel"
-                  value={waPhone}
-                  onChange={(e) => setWaPhone(e.target.value)}
-                  placeholder="628123456789"
-                />
-              </label>
-            </div>
-
-            <div className="card">
-              <strong className="card__title">Notifikasi perubahan data Accurate</strong>
-              <p className="small muted" style={{ margin: "0 0 var(--space-xs)" }}>
-                Kirim WhatsApp otomatis ke nomor pemilik di atas setiap ada perubahan data yang dipilih (webhook Accurate).
-                Notifikasi per jenis data dibatasi sekali per jeda yang ditentukan agar tidak spam.
-              </p>
-              <div className="stack" style={{ gap: 0 }}>
-                {(waWh?.options ?? []).map((o) => (
-                  <label className="check" key={o.key}>
-                    <input
-                      type="checkbox"
-                      checked={waWh?.events.includes(o.key) ?? false}
-                      onChange={(e) =>
-                        setWaWh((s) =>
-                          s
-                            ? {
-                                ...s,
-                                events: e.target.checked ? [...s.events, o.key] : s.events.filter((x) => x !== o.key),
-                              }
-                            : s
-                        )
-                      }
-                    />
-                    <span>{o.label}</span>
-                  </label>
-                ))}
-              </div>
-              <label className="field" style={{ maxWidth: 220, marginTop: "var(--space-xs)" }}>
-                Jeda antar-notifikasi per jenis data (menit)
-                <input
-                  className="input num"
-                  type="number"
-                  inputMode="numeric"
-                  min={1}
-                  max={1440}
-                  value={waWh?.rateMin ?? 10}
-                  onChange={(e) => setWaWh((s) => (s ? { ...s, rateMin: Number(e.target.value) } : s))}
-                />
-              </label>
-            </div>
-
-            <div className="card">
-              <strong className="card__title">Koneksi</strong>
-              <p className="small muted" style={{ margin: "0 0 var(--space-xs)" }}>
-                Accurate Online:{" "}
-                {(conns.find((c) => c.provider === "accurate")?.status ?? "none") === "connected"
-                  ? `terhubung (${conns.find((c) => c.provider === "accurate")?.accountLabel})`
-                  : conns.find((c) => c.provider === "accurate")?.status ?? "none"}
-              </p>
-              {conns.find((c) => c.provider === "accurate")?.status !== "connected" && (
-                <a className="btn" href={ACCURATE_OAUTH_CTA} style={{ marginBottom: "var(--space-xs)" }}>
-                  Hubungkan Accurate
-                </a>
-              )}
-              <p className="small muted" style={{ margin: 0 }}>
-                Google Drive: {conns.find((c) => c.provider === "google")?.status ?? "none"} — menyusul
-              </p>
-            </div>
-
-            <div className="btn-row">
-              <button className="btn" disabled={!aset} onClick={() => void saveAppSettings()}>
-                Simpan pengaturan
-              </button>
-            </div>
-          </>
-        )}
       </main>
     </div>
   );
