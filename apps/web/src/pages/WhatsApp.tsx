@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { AppHeader } from "../ui";
+import { getMe, getWaWebhookEvents, putWaSettings, putWaWebhookEvents } from "../api";
 
 interface WaStatus {
   connected: boolean;
@@ -19,6 +20,12 @@ export function WhatsApp() {
   const [error, setError] = useState<string | null>(null);
   const [amount, setAmount] = useState(10000);
   const [busy, setBusy] = useState(false);
+  const [me, setMe] = useState<Awaited<ReturnType<typeof getMe>> | undefined>(undefined);
+  const [waAuto, setWaAuto] = useState(false);
+  const [waDaily, setWaDaily] = useState(false);
+  const [waPhone, setWaPhone] = useState("");
+  const [waWh, setWaWh] = useState<{ events: string[]; rateMin: number; options: Array<{ key: string; label: string }> } | null>(null);
+  const [admMsg, setAdmMsg] = useState<string | null>(null);
 
   const load = useCallback(() => {
     void fetch("/api/wa/status")
@@ -39,6 +46,32 @@ export function WhatsApp() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    void getMe().then(setMe);
+  }, []);
+  const isAdmin = !!me?.permissions?.includes("app:users.manage");
+  useEffect(() => {
+    if (!isAdmin || !st) return;
+    setWaAuto(!!st.settings?.autoDueDate);
+    setWaDaily(!!st.settings?.dailyReport);
+    setWaPhone(st.settings?.ownerPhone ?? "");
+    void getWaWebhookEvents()
+      .then((s) => setWaWh({ events: s.events ?? [], rateMin: s.rateMin ?? 10, options: s.options ?? [] }))
+      .catch(() => undefined);
+  }, [isAdmin, st]);
+
+  async function saveAdmin() {
+    setAdmMsg(null);
+    try {
+      await putWaSettings({ autoDueDate: waAuto, dailyReport: waDaily, ownerPhone: waPhone });
+      if (waWh) await putWaWebhookEvents({ events: waWh.events, rateMin: waWh.rateMin });
+      setAdmMsg("Setelan perusahaan disimpan.");
+      load();
+    } catch {
+      setAdmMsg("Gagal menyimpan setelan.");
+    }
+  }
 
   if (!st) {
     return (
@@ -139,12 +172,75 @@ export function WhatsApp() {
           )}
         </section>
 
-        <section className="card">
-          <strong className="card__title">Otomasi</strong>
-          <p className="meta" style={{ marginBottom: 0 }}>
-            Pengingat jatuh tempo &amp; laporan harian diatur oleh Admin di menu Admin → tab Pengaturan.
-          </p>
-        </section>
+        {isAdmin && (
+          <section className="card">
+            <strong className="card__title">Setelan perusahaan — Otomasi WhatsApp</strong>
+            <div className="stack" style={{ gap: 0 }}>
+              <label className="check">
+                <input type="checkbox" checked={waAuto} onChange={(e) => setWaAuto(e.target.checked)} />
+                <span>Ingatkan tagihan jatuh tempo ke pelanggan</span>
+              </label>
+              <label className="check">
+                <input type="checkbox" checked={waDaily} onChange={(e) => setWaDaily(e.target.checked)} />
+                <span>Laporan harian ke pemilik usaha (jam 08.00)</span>
+              </label>
+            </div>
+            <label className="field" style={{ maxWidth: 300, marginTop: "var(--space-xs)" }}>
+              Nomor WhatsApp pemilik (format 62…)
+              <input
+                className="input num"
+                type="tel"
+                inputMode="tel"
+                autoComplete="tel"
+                value={waPhone}
+                onChange={(e) => setWaPhone(e.target.value)}
+                placeholder="628123456789"
+              />
+            </label>
+
+            <strong className="card__title" style={{ marginTop: "var(--space-s)" }}>
+              Notifikasi perubahan data Accurate
+            </strong>
+            <p className="small muted" style={{ margin: "0 0 var(--space-xs)" }}>
+              Kirim WhatsApp otomatis ke nomor pemilik setiap ada perubahan data yang dipilih (webhook Accurate),
+              dibatasi sekali per jeda per jenis data agar tidak spam.
+            </p>
+            <div className="stack" style={{ gap: 0 }}>
+              {(waWh?.options ?? []).map((o) => (
+                <label className="check" key={o.key}>
+                  <input
+                    type="checkbox"
+                    checked={waWh?.events.includes(o.key) ?? false}
+                    onChange={(e) =>
+                      setWaWh((s) =>
+                        s
+                          ? { ...s, events: e.target.checked ? [...s.events, o.key] : s.events.filter((x) => x !== o.key) }
+                          : s
+                      )
+                    }
+                  />
+                  <span>{o.label}</span>
+                </label>
+              ))}
+            </div>
+            <label className="field" style={{ maxWidth: 220, marginTop: "var(--space-xs)" }}>
+              Jeda antar-notifikasi per jenis data (menit)
+              <input
+                className="input num"
+                type="number"
+                inputMode="numeric"
+                min={1}
+                max={1440}
+                value={waWh?.rateMin ?? 10}
+                onChange={(e) => setWaWh((s) => (s ? { ...s, rateMin: Number(e.target.value) } : s))}
+              />
+            </label>
+            {admMsg && <p className="banner banner--ok" role="status" style={{ marginTop: "var(--space-xs)", marginBottom: 0 }}>{admMsg}</p>}
+            <div className="btn-row" style={{ marginTop: "var(--space-xs)" }}>
+              <button className="btn" onClick={() => void saveAdmin()}>Simpan setelan perusahaan</button>
+            </div>
+          </section>
+        )}
 
         <section className="card">
           <strong className="card__title">Riwayat pesan (20 terakhir)</strong>

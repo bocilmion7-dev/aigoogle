@@ -3,6 +3,7 @@ import {
   getAdminTenants,
   getAdminUsers,
   getAuditLogs,
+  getConnections,
   getMe,
   getPrivileges,
   getRoles,
@@ -13,7 +14,9 @@ import {
   type AuditRow,
   type PrivilegesPayload,
 } from "../api";
+import type { ConnectionInfo } from "@aigoogle/shared";
 import { AppHeader } from "../ui";
+import { ACCURATE_OAUTH_CTA } from "../oauth";
 
 type Tab = "users" | "roles" | "audit";
 
@@ -27,6 +30,7 @@ export function Admin() {
   const [checked, setChecked] = useState<Set<string>>(new Set());
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [conns, setConns] = useState<ConnectionInfo[]>([]);
   const [tenants, setTenants] = useState<Array<{ id: string; name: string; alias: string }>>([]);
   const [selTenant, setSelTenant] = useState<string>(""); // Admin Platform: perusahaan yang sedang dikelola
   const [me, setMe] = useState<Awaited<ReturnType<typeof getMe>> | undefined>(undefined);
@@ -57,6 +61,12 @@ export function Admin() {
       .then(setPriv)
       .catch(() => undefined);
   }, [loadRoles, isAdmin, selTenant]);
+
+  useEffect(() => {
+    if (me && !me.permissions?.includes("app:settings.manage")) {
+      void getConnections().then(setConns).catch(() => undefined);
+    }
+  }, [me]);
 
   useEffect(() => {
     if (!canSettings) return;
@@ -162,6 +172,24 @@ export function Admin() {
       <main className="page">
         <h1>Admin</h1>
         <p className="page__sub">Kelola user dan hak akses peran perusahaan, serta jejak audit.</p>
+
+        {/* Koneksi Accurate milik perusahaan — hanya sisi perusahaan (Admin Platform tidak punya koneksi) */}
+        {!canSettings && (
+          <div className="card" style={{ marginBottom: "var(--space-s)", maxWidth: 560 }}>
+            <strong className="card__title">Koneksi Accurate</strong>
+            <p className="small muted" style={{ margin: "0 0 var(--space-xs)" }}>
+              Accurate Online:{" "}
+              {(conns.find((c) => c.provider === "accurate")?.status ?? "none") === "connected"
+                ? `terhubung (${conns.find((c) => c.provider === "accurate")?.accountLabel})`
+                : conns.find((c) => c.provider === "accurate")?.status ?? "none"}
+            </p>
+            {conns.find((c) => c.provider === "accurate")?.status !== "connected" && (
+              <a className="btn" href={ACCURATE_OAUTH_CTA}>
+                Hubungkan Accurate
+              </a>
+            )}
+          </div>
+        )}
 
         {canSettings && tenants.length > 0 && (
           <div className="card" style={{ marginBottom: "var(--space-s)", maxWidth: 420 }}>

@@ -6,6 +6,30 @@ export async function getMe(): Promise<Me | null> {
   return res.json();
 }
 
+export interface Membership {
+  tenantId: string;
+  name: string;
+  alias: string;
+  provider: string;
+  roleKey: string;
+  current: boolean;
+}
+/** identitas user ini di semua konteks (platform internal + perusahaan) */
+export async function getMemberships(): Promise<Membership[]> {
+  const res = await fetch("/api/auth/memberships");
+  if (!res.ok) return [];
+  return res.json();
+}
+/** pindah konteks (platform ⇄ perusahaan; antar-perusahaan) */
+export async function switchTenant(tenantId: string): Promise<void> {
+  const res = await fetch("/api/auth/switch", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ tenantId }),
+  });
+  if (!res.ok) throw new Error("gagal pindah konteks");
+}
+
 export async function getSettings(): Promise<AppSettings> {
   const res = await fetch("/api/settings");
   if (!res.ok) throw new Error("gagal memuat pengaturan");
