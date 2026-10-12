@@ -1,4 +1,5 @@
 import type { ToolSpec } from "./types.js";
+import { ACCURATE_MODULES, type ActionEntry } from "./accurate-paths.js";
 
 const listProps = {
   fields: { type: "string", description: "Field yang ditampilkan, dipisah koma (contoh: id,name)" },
@@ -13,40 +14,27 @@ const listProps = {
   },
 } as const;
 
-const listTool = (
-  name: string,
-  description: string,
-  requiredPermission: string,
-  label: string
-): ToolSpec => ({
-  name,
-  description,
-  jsonSchema: { type: "object", properties: listProps },
-  requiredPermission,
-  label,
-});
+const labelModul = (mod: string) => mod.replace(/[-/]/g, " ");
 
-export const ACCURATE_CATALOG: ToolSpec[] = [
-  listTool("customer.list", "Daftar pelanggan (id, name)", "accurate:customer.view", "Mengambil data pelanggan…"),
-  {
-    name: "customer.detail",
-    description: "Detail satu pelanggan berdasarkan id",
-    jsonSchema: { type: "object", properties: { id: { type: "string" } }, required: ["id"] },
-    requiredPermission: "accurate:customer.view",
-    label: "Mengambil detail pelanggan…",
-  },
-  listTool("salesInvoice.list", "Daftar faktur penjualan (no, customerName, date, total, status)", "accurate:sales-invoice.view", "Mengambil data faktur penjualan…"),
-  {
-    name: "salesInvoice.detail",
-    description: "Detail satu faktur penjualan berdasarkan id",
-    jsonSchema: { type: "object", properties: { id: { type: "string" } }, required: ["id"] },
-    requiredPermission: "accurate:sales-invoice.view",
-    label: "Mengambil detail faktur penjualan…",
-  },
-  listTool("salesOrder.list", "Daftar pesanan penjualan (SO)", "accurate:sales-order.view", "Mengambil data pesanan jual…"),
-  listTool("item.list", "Daftar item/barang (code, name, sellingPrice)", "accurate:item.view", "Mengambil data item…"),
-  listTool("vendor.list", "Daftar vendor/supplier", "accurate:vendor.view", "Mengambil data vendor…"),
-  listTool("glAccount.list", "Daftar akun COA (code, name, type)", "accurate:glaccount.view", "Mengambil data akun…"),
-  listTool("purchaseInvoice.list", "Daftar faktur pembelian", "accurate:purchase-invoice.view", "Mengambil data faktur beli…"),
-  listTool("salesReceipt.list", "Daftar penerimaan kas/penjualan", "accurate:sales-receipt.view", "Mengambil data penerimaan…"),
-];
+const spec = (mod: string, a: ActionEntry): ToolSpec => {
+  const isRead = a.method === "GET";
+  const verb =
+    a.action === "list" ? "Daftar" : a.action === "detail" ? "Detail" : a.action.replace(/-/g, " ");
+  return {
+    name: a.tool,
+    description: `${verb} ${labelModul(mod)}${isRead ? "" : ` (${a.method.toLowerCase()} ${a.action})`}`,
+    jsonSchema: isRead
+      ? a.action === "detail"
+        ? { type: "object", properties: { id: { type: "string" } }, required: ["id"] }
+        : { type: "object", properties: listProps }
+      : a.action === "delete"
+        ? { type: "object", properties: { id: { type: "string" } }, required: ["id"] }
+        : { type: "object", properties: {}, additionalProperties: true },
+    requiredPermission: a.permission,
+    label: `${verb} ${labelModul(mod)}…`,
+  };
+};
+
+export const ACCURATE_CATALOG: ToolSpec[] = Object.entries(ACCURATE_MODULES)
+  .flatMap(([mod, acts]) => acts.map((a) => spec(mod, a)))
+  .sort((x, y) => x.name.localeCompare(y.name));

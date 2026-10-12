@@ -66,13 +66,16 @@ describe("AccurateAdapter execute/refresh/privilege", () => {
     expect(admin.allowViewModules).toEqual(expect.arrayContaining(["customer", "sales-invoice"]));
   });
 
-  it("capabilityCatalog → 10 tool teranotasi permission", () => {
+  it("capabilityCatalog → 366 tool cakupan penuh teranotasi permission", () => {
     const cat = adapter.capabilityCatalog();
-    expect(cat.map((t) => t.name).sort()).toEqual([
-      "customer.detail", "customer.list", "glAccount.list", "item.list",
-      "purchaseInvoice.list", "salesInvoice.detail", "salesInvoice.list",
-      "salesOrder.list", "salesReceipt.list", "vendor.list",
-    ]);
+    expect(cat).toHaveLength(366);
+    expect(cat.map((t) => t.name)).toEqual(
+      expect.arrayContaining([
+        "customer.detail", "customer.list", "glaccount.list", "item.list",
+        "purchaseInvoice.list", "salesInvoice.detail", "salesInvoice.list",
+        "salesOrder.list", "salesReceipt.list", "vendor.list",
+      ])
+    );
     expect(cat.every((t) => t.requiredPermission.startsWith("accurate:"))).toBe(true);
   });
 
@@ -84,7 +87,7 @@ describe("AccurateAdapter execute/refresh/privilege", () => {
   it("item.list & glAccount.list admin → ada data", async () => {
     const items = (await adapter.execute("item.list", {}, adminCtx)) as Array<{ name: string }>;
     expect(items.map((i) => i.name)).toContain("Kertas A4");
-    const accounts = (await adapter.execute("glAccount.list", {}, adminCtx)) as Array<{ code: string }>;
+    const accounts = (await adapter.execute("glaccount.list", {}, adminCtx)) as Array<{ code: string }>;
     expect(accounts.map((a) => a.code)).toContain("1000");
   });
 
