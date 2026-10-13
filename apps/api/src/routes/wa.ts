@@ -44,12 +44,13 @@ waRouter.get(
     });
     res.json({
       // terhubung = akun milik PERUSAHAAN sendiri (hasil onboarding/embedded signup),
-      // BUKAN sekadar key sandbox platform tersedia
+      // BUKAN sekadar key sandbox platform tersedia — nomor (phoneNumberId) juga wajib ada,
+      // baris setengah jadi (token ada, nomor kosong) dianggap belum terhubung
       connected:
         !!acct &&
         acct.status === "connected" &&
         !!acct.tokenEnc &&
-        (acct.provider === "d360" ? true : !!acct.phoneNumberId),
+        !!acct.phoneNumberId,
       // jalur global platform (sandbox) siap — kirim terbatas ke nomor verified platform
       platformReady:
         (await getWaProviderGlobal()).provider === "d360" &&
