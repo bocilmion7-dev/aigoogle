@@ -162,17 +162,18 @@ export function WhatsApp() {
               API dikelola platform — tidak perlu mengurus API key. Tekan tombol, masuk dengan akun Meta Business
               Anda, pilih/daftarkan nomor — setelah selesai, nomor langsung terhubung ke sistem.
             </p>
-            {st.waD360PartnerId ? (
-              <div className="wa-connect">
-                <ConnectButton
-                  partnerId={st.waD360PartnerId}
-                  label="Hubungkan WhatsApp Bisnis"
-                  callback={(cb) => void onboardD360(cb.client, cb.channels)}
-                />
-              </div>
-            ) : (
-              <p className="banner banner--err" role="alert" style={{ margin: 0 }}>
-                Embedded Signup belum aktif — Admin Platform perlu mengisi Partner ID di menu Pengaturan.
+            <div className="wa-connect">
+              <ConnectButton
+                partnerId={st.waD360PartnerId}
+                label="Hubungkan WhatsApp Bisnis"
+                callback={(cb) => void onboardD360(cb.client, cb.channels)}
+              />
+            </div>
+            {!st.waD360PartnerId && (
+              <p className="meta" style={{ margin: "var(--space-xs) 0 0" }}>
+                Catatan: Partner ID platform belum diisi — popup akan membuka pendaftaran umum. Setelah Partner ID
+                diisi Admin Platform di Pengaturan, pendaftaran otomatis terhubung ke platform dan API key dibuat
+                otomatis.
               </p>
             )}
             {d360Busy && <p className="meta">Memproses onboarding…</p>}
