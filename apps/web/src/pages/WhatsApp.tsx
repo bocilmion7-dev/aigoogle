@@ -6,6 +6,7 @@ import { getMe, getWaWebhookEvents, waD360Onboard, putWaSettings, putWaWebhookEv
 
 interface WaStatus {
   connected: boolean;
+  platformReady: boolean;
   waProvider: "meta" | "d360";
   accountProvider: string | null;
   waD360PartnerId: string;
@@ -176,11 +177,16 @@ export function WhatsApp() {
             )}
             {d360Busy && <p className="meta">Memproses onboarding…</p>}
             {d360Msg && <p className="banner banner--ok" role="status" style={{ marginTop: "var(--space-xs)", marginBottom: 0 }}>{d360Msg}</p>}
-            {st.connected && (
+            {st.connected ? (
               <p className="banner banner--ok" role="status" style={{ marginTop: "var(--space-xs)", marginBottom: 0 }}>
                 Nomor WhatsApp perusahaan terhubung — notifikasi & otomasi siap dikirim.
               </p>
-            )}
+            ) : st.platformReady ? (
+              <p className="meta" style={{ margin: "var(--space-xs) 0 0" }}>
+                Jalur sandbox platform siap (kirim terbatas ke nomor verified platform). Hubungkan nomor perusahaan
+                Anda dengan tombol di atas agar notifikasi berjalan penuh.
+              </p>
+            ) : null}
           </section>
         ) : (
           <section className="card">

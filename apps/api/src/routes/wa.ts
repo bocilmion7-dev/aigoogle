@@ -41,9 +41,17 @@ waRouter.get(
       select: { id: true, to: true, body: true, status: true, error: true, createdAt: true },
     });
     res.json({
+      // terhubung = akun milik PERUSAHAAN sendiri (hasil onboarding/embedded signup),
+      // BUKAN sekadar key sandbox platform tersedia
       connected:
-        (!!acct && acct.status === "connected" && (!!acct.phoneNumberId || acct.provider === "d360")) ||
-        ((await getWaProviderGlobal()).provider === "d360" && !!(await prisma.appSetting.findUnique({ where: { key: "waD360ApiKey" } }))?.value),
+        !!acct &&
+        acct.status === "connected" &&
+        !!acct.tokenEnc &&
+        (acct.provider === "d360" ? true : !!acct.phoneNumberId),
+      // jalur global platform (sandbox) siap — kirim terbatas ke nomor verified platform
+      platformReady:
+        (await getWaProviderGlobal()).provider === "d360" &&
+        !!(await prisma.appSetting.findUnique({ where: { key: "waD360ApiKey" } }))?.value,
       waProvider: (await getWaProviderGlobal()).provider,
       accountProvider: acct?.provider ?? null,
       waD360PartnerId:
