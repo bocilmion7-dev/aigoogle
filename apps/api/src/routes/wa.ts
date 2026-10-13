@@ -9,6 +9,7 @@ import { requireUser } from "../middleware/session.js";
 import { requirePerm } from "../permissions.js";
 import { writeAudit } from "../audit.js";
 import { isBillingEnabled, billingServerKey, verifyWebhookSignature, type MidtransNotification } from "../billing/midtrans.js";
+import { generateQris, isBillingActive, paymentProvider, queryQris, winpayReady } from "../billing/winpay.js";
 import {
   WA_COST_CREDITS_PER_MESSAGE,
   creditsFromRupiah,
@@ -22,6 +23,7 @@ import {
   metaConfigured,
   setWaSettings,
   waPricePerCredit,
+  finalizeWaTopup,
 } from "../wa/service.js";
 
 export const waRouter = Router();
@@ -70,7 +72,8 @@ waRouter.get(
       settings,
       metaConfigured: metaConfigured(),
       embedUrl: embeddedSignupUrl(`${env.APP_ORIGIN}/wa/embed-callback`),
-      billingEnabled: isBillingEnabled(),
+      billingEnabled: await isBillingActive(),
+      paymentProvider: await paymentProvider(),
       recent,
     });
   })
@@ -188,6 +191,31 @@ waRouter.post(
     await prisma.waTopup.create({
       data: { tenantId, orderId, amount: body.data.amount, credits },
     });
+
+    // ── QRIS via Winpay (default) ──
+    if ((await paymentProvider()) === "winpay") {
+      if (!(await winpayReady())) {
+        // belum dikonfigurasi platform → dormant (dev/mock)
+        return res.status(503).json({ error: "billing_dormant", orderId, credits, amount: body.data.amount });
+      }
+      try {
+        const qr = await generateQris(orderId, body.data.amount);
+        await prisma.waTopup.update({
+          where: { orderId },
+          data: { paymentMethod: "winpay", providerRef: qr.contractId },
+        });
+        return res.json({ orderId, credits, amount: body.data.amount, provider: "winpay", qris: qr });
+      } catch (e) {
+        return res.status(502).json({
+          error: "qris_gagal",
+          detail: String(e instanceof Error ? e.message : e).slice(0, 200),
+          orderId,
+          credits,
+        });
+      }
+    }
+
+    // ── Midtrans (legacy) ──
     if (!isBillingEnabled()) {
       return res.status(503).json({ error: "billing_dormant", orderId, credits, amount: body.data.amount });
     }
@@ -237,12 +265,40 @@ waRouter.post(
   })
 );
 
+/** Status topup utk polling UI — sertakan query Winpay bila notifikasi belum masuk. */
+waRouter.get(
+  "/wa/topup/:orderId/status",
+  requireUser,
+  asyncHandler(async (req, res) => {
+    let order = await prisma.waTopup.findFirst({
+      where: { orderId: req.params.orderId, tenantId: req.user!.tenant.id },
+    });
+    if (!order) return res.status(404).json({ error: "tidak_ditemukan" });
+    if (order.status === "pending" && order.paymentMethod === "winpay" && order.providerRef && (await winpayReady())) {
+      try {
+        const q = await queryQris(order.orderId, order.providerRef);
+        if (q === "paid") await finalizeWaTopup(order.orderId, true, "settlement", "winpay");
+        else if (q === "failed") await finalizeWaTopup(order.orderId, false, "cancel", "winpay");
+        order = (await prisma.waTopup.findUnique({ where: { id: order.id } })) ?? order;
+      } catch {
+        // provider tak terjangkau — biarkan notifikasi yg menyelesaikan
+      }
+    }
+    res.json({
+      status: order.status,
+      settled: order.status === "settlement",
+      credits: order.credits,
+      balance: await getOrCreateBalance(order.tenantId),
+    });
+  })
+);
+
 /** Dev/mock: selesaikan topup tanpa Midtrans (hanya bila billing dormant). */
 waRouter.post(
   "/wa/topup/:orderId/mock-settle",
   requireUser,
   asyncHandler(async (req, res) => {
-    if (isBillingEnabled()) return res.status(409).json({ error: "billing_aktif" });
+    if (await isBillingActive()) return res.status(409).json({ error: "billing_aktif" });
     const topup = await prisma.waTopup.findFirst({
       where: { orderId: req.params.orderId, tenantId: req.user!.tenant.id },
     });

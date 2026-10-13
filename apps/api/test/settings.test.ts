@@ -21,7 +21,14 @@ beforeAll(async () => {
   await prisma.platformSession.create({ data: { id: psid, platformUserId: pu.id, expiresAt: new Date(Date.now() + 86400_000) } });
   platCookie = `psid=${psid}`;
   await prisma.appSetting.deleteMany({
-    where: { key: { in: ["voiceEngine", "ocrMode", "waProvider", "waD360ApiKey", "waD360BaseUrl"] } },
+    where: {
+      key: {
+        in: [
+          "voiceEngine", "ocrMode", "waProvider", "waD360ApiKey", "waD360BaseUrl",
+          "paymentProvider", "winpayEnv", "winpayClientId", "winpayPrivateKey", "winpayPublicKey",
+        ],
+      },
+    },
   });
   const tenant = await prisma.tenant.create({
     data: { provider: "accurate", providerDbId: `s-${randomBytes(3).toString("hex")}`, name: "PT Set", alias: "SET" },
@@ -73,6 +80,11 @@ describe("settings & connections", () => {
       waD360BaseUrl: "https://waba-v2.360dialog.io",
       waD360PartnerId: "",
       waD360PartnerKey: "",
+      paymentProvider: "winpay",
+      winpayEnv: "production",
+      winpayClientId: "3ae34b38-24c6-4fe4-8b26-9deb548020e7",
+      winpayPrivateKey: "",
+      winpayPublicKey: "",
     });
     const put = await request(api).put("/api/settings").set("Cookie", platCookie).send({ voiceEngine: "gemini-native" });
     expect(put.status).toBe(200);
@@ -93,6 +105,11 @@ describe("settings & connections", () => {
       waD360BaseUrl: "https://waba-v2.360dialog.io",
       waD360PartnerId: "",
       waD360PartnerKey: "",
+      paymentProvider: "winpay",
+      winpayEnv: "production",
+      winpayClientId: "3ae34b38-24c6-4fe4-8b26-9deb548020e7",
+      winpayPrivateKey: "",
+      winpayPublicKey: "",
     });
     await request(api).put("/api/settings").set("Cookie", platCookie).send({ ocrMode: "vision", waPricePerCredit: 200 });
   });
@@ -106,6 +123,31 @@ describe("settings & connections", () => {
   it("PUT voiceEngine ngawur → 400", async () => {
     const res = await request(api).put("/api/settings").set("Cookie", platCookie).send({ voiceEngine: "asal" });
     expect(res.status).toBe(400);
+  });
+
+  it("user tanpa settings.manage tak melihat kunci tersembunyi", async () => {
+    const r = await request(api).get("/api/settings").set("Cookie", staffCookie);
+    expect(r.status).toBe(200);
+    expect(r.body).not.toHaveProperty("waD360ApiKey");
+    expect(r.body).not.toHaveProperty("winpayPrivateKey");
+    expect(r.body.paymentProvider).toBe("winpay");
+  });
+
+  it("PUT paymentProvider winpay↔midtrans oleh platform; default kembali winpay", async () => {
+    const p1 = await request(api).put("/api/settings").set("Cookie", platCookie).send({ paymentProvider: "midtrans" });
+    expect(p1.status).toBe(200);
+    expect(p1.body.paymentProvider).toBe("midtrans");
+    const g = await request(api).get("/api/settings").set("Cookie", cookie);
+    expect(g.body.paymentProvider).toBe("midtrans");
+    await request(api).put("/api/settings").set("Cookie", platCookie).send({ paymentProvider: "winpay" });
+    const g2 = await request(api).get("/api/settings").set("Cookie", cookie);
+    expect(g2.body.paymentProvider).toBe("winpay");
+  });
+
+  it("GET /settings dengan sesi platform (psid) saja → 200", async () => {
+    const r = await request(api).get("/api/settings").set("Cookie", platCookie);
+    expect(r.status).toBe(200);
+    expect(r.body.winpayClientId).toBe("3ae34b38-24c6-4fe4-8b26-9deb548020e7");
   });
 
   it("GET /api/connections → mengandung accurate connected", async () => {

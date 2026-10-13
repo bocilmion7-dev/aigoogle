@@ -187,9 +187,10 @@ export const webhookRootRouter = Router();
 webhookRootRouter.post("/webhook", asyncHandler(webhookAccurateHandler));
 
 // GET /api/accurate/webhook-events?event=&take= — tenant-scoped (activity feed Admin Accurate)
-webhookAccurateRouter.use(requireUser);
+// (requireUser ikut di route ini saja — .use() tanpa path akan menangkap semua path router ini)
 webhookAccurateRouter.get(
   "/accurate/webhook-events",
+  requireUser,
   requirePerm("app:audit.view"), // staf tidak melihat aktivitas; admin perusahaan & platform boleh
   asyncHandler(async (req, res) => {
     const take = Math.min(500, Number(req.query.take ?? 50) || 50);

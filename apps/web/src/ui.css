@@ -1087,12 +1087,42 @@ pre.block {
 }
 
 .busy-dot {
+  display: inline-block;
+  vertical-align: middle;
   width: 10px;
   height: 10px;
+  margin-right: 6px;
   flex-shrink: 0;
   border-radius: var(--radius);
   background: var(--accent-strong);
   animation: busy-pulse 900ms ease-in-out infinite;
+}
+
+/* ---------- panel QRIS topup ---------- */
+.qris-panel {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-m);
+  align-items: flex-start;
+  margin-top: var(--space-s);
+  padding: var(--space-s);
+  border: var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+
+.qris-panel img {
+  width: 200px;
+  height: 200px;
+  object-fit: contain;
+  background: #fff;
+  border: var(--border);
+  border-radius: var(--radius);
+}
+
+.qris-panel .qris-info {
+  flex: 1 1 200px;
+  min-width: 0;
 }
 
 @keyframes busy-pulse {

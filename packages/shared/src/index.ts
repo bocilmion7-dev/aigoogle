@@ -24,4 +24,17 @@ export interface AppSettings {
   waD360BaseUrl?: string;
   waD360PartnerId?: string;
   waD360PartnerKey?: string;
+  /** penyedia pembayaran QRIS: winpay (default) | midtrans */
+  paymentProvider?: "winpay" | "midtrans";
+  /** lingkungan API Winpay */
+  winpayEnv?: "production" | "sandbox";
+  /** Client ID / Partner ID merchant Winpay */
+  winpayClientId?: string;
+  /** private key RSA merchant (PEM) — utk menandatangani request */
+  winpayPrivateKey?: string;
+  /** public key Winpay (PEM/base64) — utk memverifikasi notifikasi */
+  winpayPublicKey?: string;
 }
+
+/** Client ID Winpay default (diisi Winpay saat onboarding merchant) */
+export const WINPAY_DEFAULT_CLIENT_ID = "3ae34b38-24c6-4fe4-8b26-9deb548020e7";

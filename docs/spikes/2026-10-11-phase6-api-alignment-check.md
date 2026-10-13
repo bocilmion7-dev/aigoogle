@@ -28,7 +28,7 @@
 | golden-set | 17 | **20** |
 | typecheck mock/api/web | OK | **OK** |
 
-Catatan: suite API yang butuh DB Neon (`oauth-launch`, `admin`, `chat-stream`, `chat-gemini-live`, `audio-real`) tidak dapat dijalankan di environment ini — koneksi ke `ep-icy-frog-…neon.tech:5432` ditolak. Baseline sebelum perubahan pun sudah gagal di suite tersebut.
+Catatan (per 2026-10-13): semua koneksi DB dialihkan ke PostgreSQL lokal `127.0.0.1:5432/aigoogle` (root `.env` + `apps/api/.env`); tidak ada lagi referensi Neon. Suite API berjalan penuh di environment ini.
 
 ## Hasil smoke live mock (`/tmp/opencode/e2e-smoke-phase6.sh`)
 

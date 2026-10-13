@@ -32,8 +32,60 @@ const EVENT_LABEL: Record<string, string> = {
   RECEIVE_ITEM: "Penerimaan Barang",
   FIXED_ASSET: "Aset Tetap",
   GOLIVE: "Go Live",
-  ACCESS_PRIVILEGE: "Hak Akses",  ACCOUNT: "Akun",  ACCOUNT_BUDGET_TARGET: "Target Anggaran Akun",  ATTACHMENT: "Lampiran",  AUTO_NUMBER: "Penomoran Otomatis",  BANK_STATEMENT: "Mutasi Rekening",  BANK_TRANSFER: "Transfer Bank",  BILL_OF_MATERIAL: "Daftar Kebutuhan Bahan",  BOM_PROCESS_CATEGORY: "Kategori Proses Produksi",  CUSTOMER_CATEGORY: "Kategori Pelanggan",  DATA_CLASSIFICATION: "Klasifikasi Data",  EXCHANGE_INVOICE: "Faktur Pertukaran",  EXPENSE: "Biaya",  FINISHED_GOOD_SLIP: "Slip Barang Jadi",  FOB: "FOB",  FREEONBOARD: "Free on Board",  ITEM_BRAND: "Merek Barang",  JOB_ORDER: "Job Order",  MANUFACTURE_ORDER: "Order Produksi",  MATERIAL_ADJUSTMENT: "Penyesuaian Material",  MATERIAL_EQUIPMENT: "Material & Peralatan",  MATERIAL_SLIP: "Slip Material",  ONLINE_ORDER: "Pesanan Online",  OTHER_DEPOSIT: "Setoran Lain",  OTHER_PAYMENT: "Pembayaran Lain",  PAYMENT_TERM: "Syarat Pembayaran",  PRELIMINARY_SURVEY: "Survei Awal",  PRICE_CATEGORY: "Kategori Harga",  PROCESS_STAGES: "Tahap Proses",  PROJECT_CONTRACTOR: "Kontraktor Proyek",  RECEIVE_ITEM_DONE: "Penerimaan Barang Selesai",  RECOGNITION: "Pengakuan",  ROLL_OVER: "Roll Over Tahun Buku",  SALES_CHECKIN: "Check-in Penjualan",  SALES_MAN_COMMISSION: "Komisi Salesman",  SELLINGPRICE_ADJUSTMENT: "Penyesuaian Harga Jual",  SHIPMENT: "Pengiriman",  STANDARD_PRODUCT_COST: "Biaya Standar Produk",  STOCK_MUTATION_HISTORY: "Riwayat Mutasi Stok",  STOCK_OPNAME_ORDER: "Order Stock Opname",  STOCK_OPNAME_RESULT: "Hasil Stock Opname",  VENDOR_CATEGORY: "Kategori Pemasok",  WEBHOOK: "Integrasi Data",  WORK_ORDER: "Work Order",  WO_PERSON_IN_CHARGE: "Penanggung Jawab Order Kerja",
+  ACCESS_PRIVILEGE: "Hak Akses",
+  ACCOUNT: "Akun",
+  ACCOUNT_BUDGET_TARGET: "Target Anggaran Akun",
+  ATTACHMENT: "Lampiran",
+  AUTO_NUMBER: "Penomoran Otomatis",
+  BANK_STATEMENT: "Mutasi Rekening",
+  BANK_TRANSFER: "Transfer Bank",
+  BILL_OF_MATERIAL: "Daftar Kebutuhan Bahan",
+  BOM_PROCESS_CATEGORY: "Kategori Proses Produksi",
+  CUSTOMER_CATEGORY: "Kategori Pelanggan",
+  DATA_CLASSIFICATION: "Klasifikasi Data",
+  EXCHANGE_INVOICE: "Faktur Pertukaran",
+  EXPENSE: "Biaya",
+  FINISHED_GOOD_SLIP: "Slip Barang Jadi",
+  FOB: "FOB",
+  FREEONBOARD: "Free on Board",
+  ITEM_BRAND: "Merek Barang",
+  JOB_ORDER: "Job Order",
+  MANUFACTURE_ORDER: "Order Produksi",
+  MATERIAL_ADJUSTMENT: "Penyesuaian Material",
+  MATERIAL_EQUIPMENT: "Material & Peralatan",
+  MATERIAL_SLIP: "Slip Material",
+  ONLINE_ORDER: "Pesanan Online",
+  OTHER_DEPOSIT: "Setoran Lain",
+  OTHER_PAYMENT: "Pembayaran Lain",
+  PAYMENT_TERM: "Syarat Pembayaran",
+  PRELIMINARY_SURVEY: "Survei Awal",
+  PRICE_CATEGORY: "Kategori Harga",
+  PROCESS_STAGES: "Tahap Proses",
+  PROJECT_CONTRACTOR: "Kontraktor Proyek",
+  RECEIVE_ITEM_DONE: "Penerimaan Barang Selesai",
+  RECOGNITION: "Pengakuan",
+  ROLL_OVER: "Roll Over Tahun Buku",
+  SALES_CHECKIN: "Check-in Penjualan",
+  SALES_MAN_COMMISSION: "Komisi Salesman",
+  SELLINGPRICE_ADJUSTMENT: "Penyesuaian Harga Jual",
+  SHIPMENT: "Pengiriman",
+  STANDARD_PRODUCT_COST: "Biaya Standar Produk",
+  STOCK_MUTATION_HISTORY: "Riwayat Mutasi Stok",
+  STOCK_OPNAME_ORDER: "Order Stock Opname",
+  STOCK_OPNAME_RESULT: "Hasil Stock Opname",
+  VENDOR_CATEGORY: "Kategori Pemasok",
+  WEBHOOK: "Integrasi Data",
+  WORK_ORDER: "Work Order",
+  WO_PERSON_IN_CHARGE: "Penanggung Jawab Order Kerja",
 };
+
+/** kode event tak dikenal → "Receive item stock" alih-alih CODE_CASE */
+const humanize = (code: string) =>
+  code
+    .toLowerCase()
+    .split("_")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
 
 /** label id-ID utk field payload yang umum */
 const FIELD_LABEL: Record<string, string> = {

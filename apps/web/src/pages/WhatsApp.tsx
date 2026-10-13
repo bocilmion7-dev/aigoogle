@@ -34,6 +34,10 @@ export function WhatsApp() {
   const [admMsg, setAdmMsg] = useState<string | null>(null);
   const [d360Msg, setD360Msg] = useState<string | null>(null);
   const [d360Busy, setD360Busy] = useState(false);
+  const [qris, setQris] = useState<
+    { orderId: string; credits: number; amount: number; qrUrl: string; qrContent: string; expiredAt: string } | null
+  >(null);
+  const [topupMsg, setTopupMsg] = useState<string | null>(null);
 
   const load = useCallback(() => {
     void fetch("/api/wa/status")
@@ -59,6 +63,29 @@ export function WhatsApp() {
     void getMe().then(setMe);
   }, []);
   const isAdmin = !!me?.permissions?.includes("app:users.manage");
+
+  // polling status topup selama QRIS tampil
+  useEffect(() => {
+    if (!qris) return;
+    const t = window.setInterval(() => {
+      void fetch(`/api/wa/topup/${qris.orderId}/status`)
+        .then((r) => (r.ok ? (r.json() as Promise<{ status: string; settled: boolean; credits: number }>) : null))
+        .then((j) => {
+          if (!j) return;
+          if (j.settled) {
+            setQris(null);
+            setTopupMsg(`Pembayaran berhasil — +${j.credits} kredit masuk ke saldo.`);
+            load();
+          } else if (j.status === "cancel" || j.status === "expire") {
+            setQris(null);
+            setTopupMsg(null);
+            setError("QRIS kedaluwarsa atau dibatalkan.");
+          }
+        })
+        .catch(() => undefined);
+    }, 4000);
+    return () => window.clearInterval(t);
+  }, [qris, load]);
   useEffect(() => {
     if (!isAdmin || !st) return;
     setWaAuto(!!st.settings?.autoDueDate);
@@ -127,7 +154,19 @@ export function WhatsApp() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ amount }),
       });
-      const j = (await res.json()) as { error?: string; orderId?: string; credits?: number; min?: number };
+      const j = (await res.json()) as {
+        error?: string;
+        orderId?: string;
+        credits?: number;
+        min?: number;
+        amount?: number;
+        qris?: { qrUrl: string; qrContent: string; contractId: string; expiredAt: string };
+      };
+      if (res.ok && j.qris && j.orderId) {
+        setTopupMsg(null);
+        setQris({ orderId: j.orderId, credits: j.credits ?? 0, amount: j.amount ?? amount, ...j.qris });
+        return;
+      }
       if (res.status === 503 && j.orderId) {
         // billing dormant → mock settle untuk dev
         const s = await fetch(`/api/wa/topup/${j.orderId}/mock-settle`, { method: "POST" });
@@ -137,8 +176,15 @@ export function WhatsApp() {
           return;
         }
       }
-      if (!res.ok) setError(j.error === "minimal_topup" ? `Minimal topup Rp ${(j.min ?? 200).toLocaleString("id-ID")}` : j.error ?? "Gagal topup");
-      else load();
+      if (!res.ok) {
+        setError(
+          j.error === "minimal_topup"
+            ? `Minimal topup Rp ${(j.min ?? 200).toLocaleString("id-ID")}`
+            : j.error === "qris_gagal"
+              ? "Gagal membuat kode QRIS — coba lagi."
+              : j.error ?? "Gagal topup"
+        );
+      } else load();
     } finally {
       setBusy(false);
     }
@@ -224,10 +270,45 @@ export function WhatsApp() {
               Topup {amount.toLocaleString("id-ID")} Rp ({Math.floor(amount / st.rupiahPerCredit)} kredit)
             </button>
           </div>
+          {topupMsg && (
+            <p className="banner banner--ok" role="status" style={{ marginTop: "var(--space-xs)", marginBottom: 0 }}>
+              {topupMsg}
+            </p>
+          )}
           {error && (
             <p className="banner banner--err" role="alert" style={{ marginTop: "var(--space-xs)", marginBottom: 0 }}>
               {error}
             </p>
+          )}
+          {qris && (
+            <div className="qris-panel" role="status">
+              <img src={qris.qrUrl} alt="Kode QRIS pembayaran" width={200} height={200} />
+              <div className="qris-info">
+                <strong>
+                  {qris.amount.toLocaleString("id-ID")} Rp · {qris.credits} kredit
+                </strong>
+                <p className="meta" style={{ margin: "4px 0 0" }}>
+                  Scan dengan aplikasi pembayaran apa pun (m-Banking, GoPay, OVO, DANA). Berlaku sampai{" "}
+                  {qris.expiredAt
+                    ? new Date(qris.expiredAt).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })
+                    : "15 menit lagi"}
+                  .
+                </p>
+                <p className="meta" style={{ margin: "4px 0 0" }}>
+                  <span className="busy-dot" aria-hidden="true" /> Menunggu pembayaran…
+                </p>
+                <button
+                  className="btn btn--2"
+                  style={{ marginTop: "var(--space-xs)" }}
+                  onClick={() => {
+                    setQris(null);
+                    setTopupMsg(null);
+                  }}
+                >
+                  Tutup
+                </button>
+              </div>
+            </div>
           )}
         </section>
 

@@ -15,6 +15,10 @@ beforeAll(async () => {
   mockBase = `http://127.0.0.1:${(mockSrv.address() as { port: number }).port}`;
   process.env.MOCK_ACCURATE_URL = mockBase;
   api = createApp();
+  // DB lokal persisten antar-run: reset password fixture dbId=1001 agar test "user baru"
+  // (→ /set-password) selalu diulang dengan kondisi awal
+  const fixture = await prisma.tenant.findFirst({ where: { providerDbId: "1001" }, select: { id: true } });
+  if (fixture) await prisma.user.updateMany({ where: { tenantId: fixture.id }, data: { passwordHash: "" } });
 });
 afterAll(async () => {
   mockSrv.closeAllConnections();
@@ -73,7 +77,8 @@ describe("launch & callback", () => {
     const cb2 = await request(api).get(`/api/oauth/accurate/callback?code=${code2}&state=${state2}`).redirects(0);
     expect(cb2.headers.location).toContain("/app");
     expect(await prisma.tenant.count({ where: { providerDbId: "1001" } })).toBe(1);
-    expect(await prisma.user.count({ where: { email: "admin@demo.local" } })).toBe(1);
+    // scoped ke tenant fixture — ada admin@demo.local lain di tenant internal (seed/bikinan suite lain)
+    expect(await prisma.user.count({ where: { email: "admin@demo.local", tenantId: tenant!.id } })).toBe(1);
   });
 
   it("state tidak dikenal → redirect error", async () => {

@@ -238,6 +238,7 @@ model WaTopup {
   credits       Int      // amount / 200
   status        String   @default("pending") // pending|settlement|deny|cancel|expire
   paymentMethod String   @default("")
+  providerRef   String   @default("") // contractId Winpay / referensi provider pembayaran
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   @@index([tenantId])

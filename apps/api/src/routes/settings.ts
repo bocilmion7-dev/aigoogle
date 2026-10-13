@@ -2,7 +2,9 @@ import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../db.js";
 import { env } from "../env.js";
-import { requireUser, requirePlatform } from "../middleware/session.js";
+import { requireUser, requireUserOrPlatform, requirePlatform } from "../middleware/session.js";
+import { loadPermissionSet } from "../permissions.js";
+import { WINPAY_DEFAULT_CLIENT_ID } from "@aigoogle/shared";
 import { asyncHandler } from "../asyncHandler.js";
 import { WA_TOPUP_RUPIAH_PER_CREDIT } from "../wa/service.js";
 import { writeAudit } from "../audit.js";
@@ -21,30 +23,49 @@ const PutBody = z
     /** kredensial PARTNER 360dialog — utk Connect Button + generate API key klien */
     waD360PartnerId: z.string().max(100).optional(),
     waD360PartnerKey: z.string().max(200).optional(),
+    /** penyedia pembayaran QRIS: winpay (default) | midtrans */
+    paymentProvider: z.enum(["winpay", "midtrans"]).optional(),
+    winpayEnv: z.enum(["production", "sandbox"]).optional(),
+    winpayClientId: z.string().max(100).optional(),
+    winpayPrivateKey: z.string().max(20000).optional(),
+    winpayPublicKey: z.string().max(20000).optional(),
   })
   .refine((b) => Object.values(b).some((v) => v !== undefined), { message: "tidak ada field" });
 
 const D360_DEFAULT_BASE = "https://waba-v2.360dialog.io";
 
-async function settingsSnapshot() {
+async function settingsSnapshot(includeSecrets: boolean) {
   const rows = await prisma.appSetting.findMany({
     where: {
       key: {
-        in: ["voiceEngine", "ocrMode", "waPricePerCredit", "waProvider", "waD360ApiKey", "waD360BaseUrl", "waD360PartnerId", "waD360PartnerKey"],
+        in: [
+          "voiceEngine", "ocrMode", "waPricePerCredit", "waProvider",
+          "waD360ApiKey", "waD360BaseUrl", "waD360PartnerId", "waD360PartnerKey",
+          "paymentProvider", "winpayEnv", "winpayClientId", "winpayPrivateKey", "winpayPublicKey",
+        ],
       },
     },
   });
   const get = (k: string) => rows.find((r) => r.key === k)?.value;
   const price = Number(get("waPricePerCredit"));
-  return {
+  const base = {
     voiceEngine: get("voiceEngine") ?? "web-speech",
     ocrMode: get("ocrMode") === "text" ? "text" : "vision",
     waPricePerCredit: Number.isFinite(price) && price >= 1 ? price : WA_TOPUP_RUPIAH_PER_CREDIT,
     waProvider: get("waProvider") === "meta" ? "meta" : "d360",
+    paymentProvider: get("paymentProvider") === "midtrans" ? "midtrans" : "winpay",
+    winpayEnv: get("winpayEnv") === "sandbox" ? "sandbox" : "production",
+  };
+  if (!includeSecrets) return base;
+  return {
+    ...base,
     waD360ApiKey: get("waD360ApiKey") ?? "",
     waD360BaseUrl: get("waD360BaseUrl") ?? D360_DEFAULT_BASE,
     waD360PartnerId: get("waD360PartnerId") ?? "",
     waD360PartnerKey: get("waD360PartnerKey") ?? "",
+    winpayClientId: get("winpayClientId") || WINPAY_DEFAULT_CLIENT_ID,
+    winpayPrivateKey: get("winpayPrivateKey") ?? "",
+    winpayPublicKey: get("winpayPublicKey") ?? "",
   };
 }
 
@@ -74,9 +95,12 @@ settingsRouter.post(
 
 settingsRouter.get(
   "/settings",
-  requireUser,
-  asyncHandler(async (_req, res) => {
-    res.json(await settingsSnapshot());
+  requireUserOrPlatform,
+  asyncHandler(async (req, res) => {
+    const includeSecrets =
+      !!req.platform ||
+      (!!req.user && (await loadPermissionSet(req.user.roleId)).has("app:settings.manage"));
+    res.json(await settingsSnapshot(includeSecrets));
   })
 );
 
@@ -100,7 +124,7 @@ settingsRouter.put(
       "settings.update",
       body.data
     );
-    res.json(await settingsSnapshot());
+    res.json(await settingsSnapshot(true));
   })
 );
 

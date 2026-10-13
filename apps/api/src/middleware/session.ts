@@ -15,6 +15,8 @@ declare global {
       };
       /** operator platform (tabel PlatformUser terpisah — bukan akun Accurate) */
       platform?: { id: string; email: string; name: string };
+      /** body JSON mentah (untuk verifikasi signature notifikasi pembayaran) */
+      rawBody?: string;
     }
   }
 }
@@ -49,6 +51,12 @@ export function loadSession(req: Request, res: Response, next: NextFunction) {
 
 export function requireUser(req: Request, res: Response, next: NextFunction) {
   if (!req.user) return res.status(401).json({ error: "belum_login" });
+  next();
+}
+
+/** sesi perusahaan ATAU sesi platform (psid) — utk halaman konfigurasi milik platform */
+export function requireUserOrPlatform(req: Request, res: Response, next: NextFunction) {
+  if (!req.user && !req.platform) return res.status(401).json({ error: "belum_login" });
   next();
 }
 

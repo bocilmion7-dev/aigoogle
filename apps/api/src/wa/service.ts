@@ -1,6 +1,7 @@
 import { env } from "../env.js";
 import { decryptToken, encryptToken } from "../crypto.js";
 import { prisma } from "../db.js";
+import { writeAudit } from "../audit.js";
 
 export const WA_COST_CREDITS_PER_MESSAGE = 1;
 export const WA_TOPUP_RUPIAH_PER_CREDIT = 200;
@@ -277,4 +278,40 @@ export async function setWaWebhookSettings(
       update: { value: o.value },
     });
   }
+}
+
+/** Selesaikan topup (dipanggil webhook Winpay / query status / mock).
+ *  Idempoten: order yg sudah settlement tak dikreditkan dua kali. */
+export async function finalizeWaTopup(
+  orderId: string,
+  paid: boolean,
+  finalStatus: string,
+  paymentMethod: string
+): Promise<boolean> {
+  const topup = await prisma.waTopup.findUnique({ where: { orderId } });
+  if (!topup) return false;
+  if (topup.status === "settlement") return true;
+  await prisma.waTopup.update({
+    where: { id: topup.id },
+    data: { status: finalStatus, paymentMethod },
+  });
+  if (paid) {
+    await prisma.waBalance.upsert({
+      where: { tenantId: topup.tenantId },
+      create: { tenantId: topup.tenantId, amount: topup.credits },
+      update: { amount: { increment: topup.credits } },
+    });
+    await writeAudit(topup.tenantId, "system", "wa.topup_settled", {
+      orderId: topup.orderId,
+      credits: topup.credits,
+      paymentMethod,
+    });
+  } else {
+    await writeAudit(topup.tenantId, "system", "wa.topup_failed", {
+      orderId: topup.orderId,
+      status: finalStatus,
+      paymentMethod,
+    });
+  }
+  return true;
 }

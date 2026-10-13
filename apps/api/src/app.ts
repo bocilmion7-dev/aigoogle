@@ -15,6 +15,7 @@ import { authRouter } from "./routes/auth.js";
 import { waRouter } from "./routes/wa.js";
 import { customersRouter } from "./routes/customers.js";
 import { webhookAccurateRouter, webhookRootRouter } from "./routes/webhook-accurate.js";
+import { winpayNotifyRouter } from "./routes/winpay.js";
 
 export function createApp() {
   const app = express();
@@ -25,11 +26,21 @@ export function createApp() {
     res.setHeader("Referrer-Policy", "same-origin");
     next();
   });
-  app.use(express.json());
+  app.use(
+    express.json({
+      verify: (req, _res, buf) => {
+        (req as express.Request & { rawBody?: string }).rawBody = buf.toString("utf8");
+      },
+    })
+  );
   app.use(cookieParser());
   app.use(loadSession);
   app.use(loadPlatformSession);
   app.get("/api/health", (_req, res) => res.json({ ok: true }));
+  // Notifikasi QRIS Winpay — pasang paling awal agar tak tertangkap router lain
+  // (ada router dengan .use(middleware) tanpa path yang menangkap semua request)
+  app.use("/api", winpayNotifyRouter);
+  app.use(winpayNotifyRouter);
   app.use("/api", meRouter);
   app.use("/api", authRouter);
   app.use("/api", launchRouter);

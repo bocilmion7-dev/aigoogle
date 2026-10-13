@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import type { AppSettings } from "@aigoogle/shared";
+import { WINPAY_DEFAULT_CLIENT_ID } from "@aigoogle/shared";
 import { getMe, getSettings, putSettings, setD360Redirect } from "../api";
 import { AppHeader } from "../ui";
 
@@ -40,6 +41,11 @@ export function Settings() {
         ...(aset.waD360BaseUrl !== undefined ? { waD360BaseUrl: aset.waD360BaseUrl } : {}),
         ...(aset.waD360PartnerId !== undefined ? { waD360PartnerId: aset.waD360PartnerId } : {}),
         ...(aset.waD360PartnerKey !== undefined ? { waD360PartnerKey: aset.waD360PartnerKey } : {}),
+        paymentProvider: aset.paymentProvider ?? "winpay",
+        winpayEnv: aset.winpayEnv ?? "production",
+        ...(aset.winpayClientId !== undefined ? { winpayClientId: aset.winpayClientId } : {}),
+        ...(aset.winpayPrivateKey !== undefined ? { winpayPrivateKey: aset.winpayPrivateKey } : {}),
+        ...(aset.winpayPublicKey !== undefined ? { winpayPublicKey: aset.winpayPublicKey } : {}),
       });
       setMsg("Pengaturan disimpan.");
     } catch (e) {
@@ -139,6 +145,79 @@ export function Settings() {
               onChange={(e) => aset && setAset({ ...aset, waPricePerCredit: Number(e.target.value) })}
             />
           </label>
+        </section>
+
+        <section className="card">
+          <strong className="card__title">Pembayaran QRIS</strong>
+          <div className="stack" style={{ gap: 0 }}>
+            <label className="check">
+              <input
+                type="radio" name="payprov" checked={(aset?.paymentProvider ?? "winpay") === "winpay"}
+                onChange={() => aset && setAset({ ...aset, paymentProvider: "winpay" })}
+              />
+              <span>Winpay (default) — QRIS MPM lewat SNAP API Winpay</span>
+            </label>
+            <label className="check">
+              <input
+                type="radio" name="payprov" checked={aset?.paymentProvider === "midtrans"}
+                onChange={() => aset && setAset({ ...aset, paymentProvider: "midtrans" })}
+              />
+              <span>Midtrans</span>
+            </label>
+          </div>
+          {(aset?.paymentProvider ?? "winpay") === "winpay" && (
+            <>
+              <label className="field" style={{ maxWidth: 420, marginTop: "var(--space-xs)" }}>
+                Client ID
+                <input
+                  className="input"
+                  type="text"
+                  value={aset?.winpayClientId ?? WINPAY_DEFAULT_CLIENT_ID}
+                  onChange={(e) => aset && setAset({ ...aset, winpayClientId: e.target.value })}
+                  placeholder="Client ID merchant Winpay"
+                />
+              </label>
+              <label className="field" style={{ maxWidth: 260 }}>
+                Lingkungan
+                <select
+                  className="input"
+                  value={aset?.winpayEnv ?? "production"}
+                  onChange={(e) =>
+                    aset && setAset({ ...aset, winpayEnv: e.target.value === "sandbox" ? "sandbox" : "production" })
+                  }
+                >
+                  <option value="production">Produksi (snap.winpay.id)</option>
+                  <option value="sandbox">Sandbox (sandbox-snap.winpay.id)</option>
+                </select>
+              </label>
+              <label className="field" style={{ maxWidth: 560 }}>
+                Private key merchant (PEM)
+                <textarea
+                  className="input"
+                  rows={4}
+                  style={{ fontFamily: "monospace", fontSize: 12, resize: "vertical" }}
+                  value={aset?.winpayPrivateKey ?? ""}
+                  onChange={(e) => aset && setAset({ ...aset, winpayPrivateKey: e.target.value })}
+                  placeholder="tempel private key RSA merchant (-----BEGIN PRIVATE KEY-----)"
+                />
+              </label>
+              <label className="field" style={{ maxWidth: 560 }}>
+                Public key Winpay (untuk verifikasi notifikasi)
+                <textarea
+                  className="input"
+                  rows={3}
+                  style={{ fontFamily: "monospace", fontSize: 12, resize: "vertical" }}
+                  value={aset?.winpayPublicKey ?? ""}
+                  onChange={(e) => aset && setAset({ ...aset, winpayPublicKey: e.target.value })}
+                  placeholder="public key Winpay dari dashboard (base64 / PEM)"
+                />
+              </label>
+              <p className="meta" style={{ margin: 0 }}>
+                Kunci di-generate merchant (mis. cryptotools.net/rsagen); public key diunggah ke dashboard Winpay
+                di menu Pengaturan API. Isi kedua kunci agar topup QRIS aktif.
+              </p>
+            </>
+          )}
         </section>
 
         <section className="card">
