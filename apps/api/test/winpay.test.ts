@@ -9,6 +9,9 @@ let api: ReturnType<typeof createApp>;
 let cookie = "";
 let tenantId = "";
 
+const SETTING_KEYS = ["paymentProvider", "winpayEnv", "winpayClientId", "winpayPrivateKey", "winpayPublicKey"] as const;
+let settingBackup: { key: string; value: string }[] = [];
+
 const { privateKey, publicKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
 const privPem = privateKey.export({ type: "pkcs8", format: "pem" }).toString();
 const pubPem = publicKey.export({ type: "spki", format: "pem" }).toString();
@@ -16,9 +19,8 @@ const pubB64 = publicKey.export({ type: "spki", format: "der" }).toString("base6
 
 beforeAll(async () => {
   api = createApp();
-  await prisma.appSetting.deleteMany({
-    where: { key: { in: ["paymentProvider", "winpayEnv", "winpayClientId", "winpayPrivateKey", "winpayPublicKey"] } },
-  });
+  settingBackup = await prisma.appSetting.findMany({ where: { key: { in: [...SETTING_KEYS] } } });
+  await prisma.appSetting.deleteMany({ where: { key: { in: [...SETTING_KEYS] } } });
   await prisma.appSetting.createMany({
     data: [
       { key: "paymentProvider", value: "winpay" },
@@ -51,6 +53,8 @@ afterEach(() => {
 
 afterAll(async () => {
   await prisma.waTopup.deleteMany({ where: { tenantId } });
+  await prisma.appSetting.deleteMany({ where: { key: { in: [...SETTING_KEYS] } } });
+  if (settingBackup.length) await prisma.appSetting.createMany({ data: settingBackup });
   await prisma.$disconnect();
 });
 
@@ -82,7 +86,7 @@ describe("signature Winpay (unit)", () => {
 });
 
 describe("topup QRIS Winpay", () => {
-  it("winpayReady = true saat kunci lengkap & provider winpay", async () => {
+  it("winpayReady = true dengan kunci merchant (client id + private key); provider winpay", async () => {
     expect(await winpayReady()).toBe(true);
   });
 
@@ -196,6 +200,23 @@ describe("topup QRIS Winpay", () => {
     expect(r2.status).toBe(200);
     const bal2 = await prisma.waBalance.findUnique({ where: { tenantId } });
     expect(bal2?.amount).toBe(bal1?.amount);
+  });
+
+  it("tanpa public key Winpay: topup tetap siap; notifikasi ditolak (verifikasi butuh public key)", async () => {
+    await prisma.appSetting.deleteMany({ where: { key: "winpayPublicKey" } });
+    expect(await winpayReady()).toBe(true);
+    const r = await request(api)
+      .post("/api/v1.0/qr/qr-mpm-notify")
+      .set("Content-Type", "application/json")
+      .set("X-Timestamp", "2026-10-13T12:00:00+07:00")
+      .set("X-Signature", Buffer.alloc(256).toString("base64"))
+      .send({ originalPartnerReferenceNo: "wa-x", latestTransactionStatus: "00" });
+    expect(r.status).toBe(401);
+    await prisma.appSetting.upsert({
+      where: { key: "winpayPublicKey" },
+      create: { key: "winpayPublicKey", value: pubPem },
+      update: { value: pubPem },
+    });
   });
 
   it("notifikasi signature salah → 401 & tak mengkredit", async () => {

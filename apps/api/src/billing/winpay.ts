@@ -34,16 +34,18 @@ export function winpayBaseUrl(env: WinpayEnv): string {
   return env === "sandbox" ? "https://sandbox-snap.winpay.id" : "https://snap.winpay.id";
 }
 
-/** Winpay siap dipakai bila provider = winpay dan kunci merchant + public key Winpay lengkap. */
+/** Winpay siap dipakai bila provider = winpay dan kunci merchant (Client ID + private key) ada.
+ *  Public key Winpay TIDAK dibutuhkan di sini — hanya utk verifikasi notifikasi (routes/winpay). */
 export async function winpayReady(): Promise<boolean> {
   const s = await paymentSettings();
-  return s.provider === "winpay" && !!s.winpay.clientId && !!s.winpay.privateKey && !!s.winpay.publicKey;
+  return s.provider === "winpay" && !!s.winpay.clientId && !!s.winpay.privateKey;
 }
 
-/** Billing aktif bila provider terpilih benar-benar dikonfigurasi. */
+/** Billing aktif bila provider terpilih benar-benar dikonfigurasi.
+ *  Winpay: cukup kunci merchant — status pembayaran jalan via polling query tanpa notifikasi. */
 export async function isBillingActive(): Promise<boolean> {
   const s = await paymentSettings();
-  if (s.provider === "winpay") return !!s.winpay.clientId && !!s.winpay.privateKey && !!s.winpay.publicKey;
+  if (s.provider === "winpay") return !!s.winpay.clientId && !!s.winpay.privateKey;
   const { isBillingEnabled } = await import("./midtrans.js");
   return isBillingEnabled();
 }

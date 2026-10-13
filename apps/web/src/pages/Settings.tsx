@@ -213,8 +213,9 @@ export function Settings() {
                 />
               </label>
               <p className="meta" style={{ margin: 0 }}>
-                Kunci di-generate merchant (mis. cryptotools.net/rsagen); public key diunggah ke dashboard Winpay
-                di menu Pengaturan API. Isi kedua kunci agar topup QRIS aktif.
+                Tempel private key merchant (hasil generate di server) untuk mengaktifkan topup QRIS. Public key
+                Winpay dari dashboard dipakai memverifikasi notifikasi — tanpa itu pembayaran tetap terkonfirmasi
+                otomatis lewat pengecekan status berkala.
               </p>
             </>
           )}

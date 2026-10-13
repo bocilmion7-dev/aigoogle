@@ -9,6 +9,13 @@ let cookie = "";
 let staffCookie = "";
 let platCookie = "";
 
+// DB lokal persisten antar-run: backup setelan asli sebelum di-reset, kembalikan setelah test
+const SETTING_KEYS = [
+  "voiceEngine", "ocrMode", "waProvider", "waD360ApiKey", "waD360BaseUrl",
+  "paymentProvider", "winpayEnv", "winpayClientId", "winpayPrivateKey", "winpayPublicKey",
+] as const;
+let settingBackup: { key: string; value: string }[] = [];
+
 beforeAll(async () => {
   api = createApp();
   // sesi platform (PUT /settings khusus platform — tabel PlatformUser terpisah)
@@ -20,16 +27,8 @@ beforeAll(async () => {
   const psid = randomBytes(32).toString("hex");
   await prisma.platformSession.create({ data: { id: psid, platformUserId: pu.id, expiresAt: new Date(Date.now() + 86400_000) } });
   platCookie = `psid=${psid}`;
-  await prisma.appSetting.deleteMany({
-    where: {
-      key: {
-        in: [
-          "voiceEngine", "ocrMode", "waProvider", "waD360ApiKey", "waD360BaseUrl",
-          "paymentProvider", "winpayEnv", "winpayClientId", "winpayPrivateKey", "winpayPublicKey",
-        ],
-      },
-    },
-  });
+  settingBackup = await prisma.appSetting.findMany({ where: { key: { in: [...SETTING_KEYS] } } });
+  await prisma.appSetting.deleteMany({ where: { key: { in: [...SETTING_KEYS] } } });
   const tenant = await prisma.tenant.create({
     data: { provider: "accurate", providerDbId: `s-${randomBytes(3).toString("hex")}`, name: "PT Set", alias: "SET" },
   });
@@ -61,6 +60,8 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  await prisma.appSetting.deleteMany({ where: { key: { in: [...SETTING_KEYS] } } });
+  if (settingBackup.length) await prisma.appSetting.createMany({ data: settingBackup });
   await prisma.$disconnect();
 });
 
