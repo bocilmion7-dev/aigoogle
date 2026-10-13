@@ -102,13 +102,11 @@ export async function refreshModelsLive(): Promise<number> {
       try {
         const nv = new RealNvidiaClient(env.NVIDIA_API_KEY);
         const nvModels = await nv.listModels();
-        // utamakan model NIM yg dikenal mampu function-calling
+        // utamakan model NIM yg cepat & andal function-calling (diurut dari tercepat);
+        // llama-vision & nemotron-ultra/gpt-oss dibuang — tak andal pakai tool_calls asli
         const preferredNv = [
-          "nvidia/nemotron-3.5-lightning-30b-a3b",
-          "nvidia/nemotron-3-super-120b-a12b",
-          "nvidia/nemotron-3-ultra-550b-a55b",
-          "openai/gpt-oss-20b",
-          "meta/llama-3.2-11b-vision-instruct",
+          "nvidia/nemotron-3-super-120b-a12b", // ~2.2s, function-calling andal
+          "nvidia/nemotron-3.5-lightning-30b-a3b", // cadangan (lambat ~4.7s)
         ];
         const ordered = [
           ...preferredNv.filter((m) => nvModels.includes(m)),

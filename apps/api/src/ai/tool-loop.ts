@@ -32,7 +32,7 @@ export async function runToolLoop(
 ): Promise<{ text: string; trace: Array<Record<string, unknown>> }> {
   const maxSteps = opts.maxSteps ?? 8;
   const now = opts.now ?? Date.now;
-  const deadline = now() + 60_000;
+  const deadline = now() + 120_000;
   const trace: Array<Record<string, unknown>> = [];
   const contents: GeminiContent[] = [
     ...(opts.history ?? []),
@@ -40,6 +40,10 @@ export async function runToolLoop(
   ];
   opts.onEvent({ type: "start" });
   let text = "";
+  // hitung gagal per tool — bila1 tool gagal berulang (mis. koneksi mati),
+  // berhenti & jelaskan alih-alih loop "Daftar…" yang sama berkali-kali
+  const failCount = new Map<string, number>();
+  const FAIL_CAP = 2;
 
   for (let step = 0; step < maxSteps; step++) {
     if (now() > deadline) {
@@ -113,16 +117,31 @@ export async function runToolLoop(
           parts: [{ functionResponse: { name: spec.name, response: wrapped, id: call.functionCall!.id } }],
         });
       } catch (e) {
+        const errMsg = e instanceof Error ? e.message : "gagal";
+        console.error(`[tool-loop] ${spec.name} gagal:`, errMsg, "| args:", JSON.stringify(call.functionCall!.args).slice(0, 200));
         trace.push({ tool: spec.name, args: call.functionCall!.args, ok: false, reason: "execute_error" });
         opts.onEvent({ type: "tool_result", tool: spec.name, ok: false });
         contents.push({
           role: "user",
           parts: [
             {
-              functionResponse: { name: spec.name, response: { error: e instanceof Error ? e.message : "gagal" }, id: call.functionCall!.id },
+              functionResponse: { name: spec.name, response: { error: errMsg }, id: call.functionCall!.id },
             },
           ],
         });
+        // error koneksi (Accurate terputus) → langsung jelaskan, jangan serahkan ke model (bisa salah tebak)
+        if (/koneksi|hubungi|terputus|belum aktif|fetch failed|ECONNREFUSED|ENOTFOUND/i.test(errMsg)) {
+          const msg = `Saya tidak dapat mengambil data karena ${errMsg.replace(/^tidak dapat menghubungi /, "")}. Silakan periksa koneksi Anda lalu coba lagi.`;
+          opts.onEvent({ type: "text_delta", delta: msg });
+          return { text: msg, trace };
+        }
+        // tool yg sama gagal berkali-kali → hentikan agar tak loop membingungkan
+        const n = (failCount.get(spec.name) ?? 0) + 1;
+        failCount.set(spec.name, n);
+        if (n >= FAIL_CAP) {
+          opts.onEvent({ type: "text_delta", delta: "Data belum bisa diambil saat ini — coba lagi beberapa saat lagi." });
+          return { text: "Data belum bisa diambil saat ini — coba lagi beberapa saat lagi.", trace };
+        }
       }
     }
   }

@@ -145,7 +145,14 @@ export function Chat() {
               ))}
               <div className="msg__body">
                 {m.content}
-                {busy && i === msgs.length - 1 ? " ▌" : ""}
+                {busy && i === msgs.length - 1 && !m.content && (
+                  <span className="thinking" role="status" aria-label="AI sedang berpikir">
+                    <span className="thinking__dot" />
+                    <span className="thinking__dot" />
+                    <span className="thinking__dot" />
+                  </span>
+                )}
+                {busy && i === msgs.length - 1 && m.content ? " ▌" : ""}
               </div>
             </div>
           ))}

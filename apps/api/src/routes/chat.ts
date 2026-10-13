@@ -84,7 +84,14 @@ chatRouter.post(
         gemini: geminiClient(),
         providerExecute: (tool, args) => {
           if (!ctx) return Promise.reject(new Error("koneksi Accurate belum aktif — hubungkan ulang di Pengaturan"));
-          return provider.execute(tool, args, ctx);
+          return provider.execute(tool, args, ctx).catch((e: unknown) => {
+            // pesan jelas agar model langsung menjelaskan ke pengguna, bukan mencoba ulang tool yg sama
+            const m = e instanceof Error ? e.message : String(e);
+            if (/fetch failed|ECONNREFUSED|ENOTFOUND|socket|network/i.test(m)) {
+              throw new Error("tidak dapat menghubungi Accurate — koneksi ke server akuntansi terputus");
+            }
+            throw e;
+          });
         },
         permissions,
         system: buildSystemPrompt({ tenantName: user.tenant.name }),
