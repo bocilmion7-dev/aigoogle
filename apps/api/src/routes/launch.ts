@@ -75,56 +75,6 @@ async function handleCallback(
     }
     const open = await provider.openDb(tok.accessToken, db.providerDbId);
 
-    const platformEmails = env.PLATFORM_ADMIN_EMAILS.split(",")
-      .map((e) => e.trim().toLowerCase())
-      .filter(Boolean);
-    const isPlatform = platformEmails.includes(pUser.email.toLowerCase());
-
-    if (isPlatform) {
-      // Operator platform → tabel PlatformUser TERPISAH (bukan akun Accurate).
-      // Koneksi Accurate milik db perusahaannya tetap disimpan agar sisi perusahaan tetap hidup,
-      // tapi TIDAK membuat User/Role di tenant perusahaan dan sesi mengarah ke platform.
-      const tenant = await prisma.tenant.upsert({
-        where: { provider_providerDbId: { provider: "accurate", providerDbId: db.providerDbId } },
-        create: { provider: "accurate", providerDbId: db.providerDbId, name: db.name, alias: db.alias },
-        update: {},
-      });
-      const open = await provider.openDb(tok.accessToken, db.providerDbId);
-      await prisma.connection.upsert({
-        where: { tenantId_provider: { tenantId: tenant.id, provider: "accurate" } },
-        create: {
-          tenantId: tenant.id,
-          provider: "accurate",
-          accessTokenEnc: encryptToken(tok.accessToken),
-          refreshTokenEnc: encryptToken(tok.refreshToken),
-          expiresAt: tok.expiresAt,
-          host: open.host,
-          session: open.session,
-          status: "connected",
-        },
-        update: {
-          accessTokenEnc: encryptToken(tok.accessToken),
-          refreshTokenEnc: encryptToken(tok.refreshToken),
-          expiresAt: tok.expiresAt,
-          host: open.host,
-          session: open.session,
-          status: "connected",
-        },
-      });
-      const pu = await prisma.platformUser.upsert({
-        where: { email: pUser.email.toLowerCase() },
-        create: { email: pUser.email.toLowerCase(), name: pUser.name },
-        update: { name: pUser.name },
-      });
-      const psid = randomBytes(32).toString("hex");
-      await prisma.platformSession.create({
-        data: { id: psid, platformUserId: pu.id, expiresAt: new Date(Date.now() + 7 * 86400_000) },
-      });
-      res.cookie("psid", psid, { httpOnly: true, sameSite: "lax", maxAge: 7 * 86400_000 });
-      res.redirect(`${opts.origin}/admin`);
-      return;
-    }
-
     // ── Alur perusahaan pelanggan ────────────────────────────────────────────
     const tenant = await prisma.tenant.upsert({
       where: { provider_providerDbId: { provider: "accurate", providerDbId: db.providerDbId } },
@@ -191,6 +141,8 @@ async function handleCallback(
       data: { id: sid, userId: user.id, expiresAt: new Date(Date.now() + 7 * 86400_000) },
     });
     res.cookie("sid", sid, { httpOnly: true, sameSite: "lax", maxAge: 7 * 86400_000 });
+    // login perusahaan membersihkan sesi platform lama di browser yang sama
+    res.clearCookie("psid");
     if (!user.passwordHash) {
       res.redirect(`${opts.origin}/set-password`);
       return;

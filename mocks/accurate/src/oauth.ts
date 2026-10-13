@@ -6,7 +6,7 @@ export const oauthRouter = Router();
 oauthRouter.get("/authorize", (req, res) => {
   const { redirect_uri, state, user } = req.query as Record<string, string>;
   if (!redirect_uri) return res.status(400).json({ error: "redirect_uri required" });
-  const userId = user === "staff" ? "user-staff" : "user-admin";
+  const userId = user === "staff" ? "user-staff" : user === "platform" ? "user-platform" : "user-admin";
   const url = new URL(redirect_uri);
   url.searchParams.set("code", issueCode(userId));
   if (state) url.searchParams.set("state", state);

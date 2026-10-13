@@ -105,6 +105,8 @@ const dbs: Record<string, MockDb> = {
 const users: Record<string, MockUser> = {
   "user-admin": { id: "user-admin", email: "admin@demo.local", name: "Admin Demo", phone: "6281234567890" },
   "user-staff": { id: "user-staff", email: "staff@demo.local", name: "Staff Demo", phone: "6289876543210" },
+  // dipakai test regresi OAuth — email operator platform (PLATFORM_ADMIN_EMAILS)
+  "user-platform": { id: "user-platform", email: "bocilmion7@gmail.com", name: "Platform Operator", phone: "628111111111" },
 };
 
 const codes = new Map<string, string>();

@@ -34,6 +34,7 @@ authRouter.post(
       data: { id: sid, userId: user.id, expiresAt: new Date(Date.now() + 7 * 86400_000) },
     });
     res.cookie("sid", sid, { httpOnly: true, sameSite: "lax", maxAge: 7 * 86400_000 });
+    res.clearCookie("psid"); // sesi platform tidak boleh menumpuk di browser yg sama
     await writeAudit(user.tenantId, user.id, "auth.login", { via: "password" });
     res.json({ ok: true });
   })
@@ -59,6 +60,7 @@ authRouter.post(
       data: { id: sid, platformUserId: u.id, expiresAt: new Date(Date.now() + 7 * 86400_000) },
     });
     res.cookie("psid", sid, { httpOnly: true, sameSite: "lax", maxAge: 7 * 86400_000 });
+    res.clearCookie("sid"); // sesi perusahaan tidak boleh menumpuk di browser yg sama
     res.json({ ok: true });
   })
 );

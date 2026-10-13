@@ -35,6 +35,26 @@ describe("launch & callback", () => {
     expect(u.searchParams.get("state")).toMatch(/^ls-/);
   });
 
+  it("email operator platform di OAuth tetap alur perusahaan — cookie sid, tanpa sesi platform baru", async () => {
+    const sessBefore = await prisma.platformSession.count();
+    const launch = await request(api).get("/api/launch?dbId=1001").redirects(0);
+    const state = new URL(launch.headers.location).searchParams.get("state")!;
+    const cbUrl = encodeURIComponent("http://localhost:3001/api/oauth/accurate/callback");
+    const au = await fetch(`${mockBase}/oauth/authorize?client_id=c&redirect_uri=${cbUrl}&state=${state}&user=platform`, {
+      redirect: "manual",
+    });
+    const code = new URL(au.headers.get("location")!).searchParams.get("code")!;
+    const cb = await request(api).get(`/api/oauth/accurate/callback?code=${code}&state=${state}`).redirects(0);
+    expect(cb.status).toBe(302);
+    const raw = cb.headers["set-cookie"];
+    const all = (Array.isArray(raw) ? raw : [raw]).join(";");
+    expect(all).toContain("sid=");
+    // clearCookie("psid") boleh muncul sbg cookie kedaluwarsa — yang penting tak ada sesi platform baru
+    expect(await prisma.platformSession.count()).toBe(sessBefore);
+    expect(await prisma.tenant.count({ where: { providerDbId: "1001" } })).toBe(1);
+    expect(cb.headers.location).toMatch(/\/set-password|\/app/);
+  });
+
   it("callback penuh: code → session cookie → /api/me + tenant & connection tersimpan, tanpa duplikasi", async () => {
     const launch = await request(api).get("/api/launch?dbId=1001").redirects(0);
     const state = new URL(launch.headers.location).searchParams.get("state")!;
