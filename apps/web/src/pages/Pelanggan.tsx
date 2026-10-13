@@ -9,7 +9,7 @@ import {
   uploadScan,
   type ScanResponse,
 } from "../api";
-import { AppHeader } from "../ui";
+import { AppHeader, PageLoader } from "../ui";
 import { IconCamera, IconCheck, IconFileText, IconUpload } from "../icons";
 
 const rp = (n: number | null | undefined) =>
@@ -60,7 +60,7 @@ export function Pelanggan() {
     return (
       <div className="app">
         <main className="page page--narrow">
-          <p className="meta">Memuat…</p>
+          <PageLoader />
         </main>
       </div>
     );

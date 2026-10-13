@@ -106,3 +106,13 @@ export function AppHeader({ me }: { me?: Me | null }) {
     </>
   );
 }
+
+/** Overlay memuat — menutup area konten (di bawah header, di atas bottom bar). */
+export function PageLoader({ label = "Memuat…" }: { label?: string }) {
+  return (
+    <div className="page-loader" role="status" aria-live="polite">
+      <span className="spinner spinner--lg" aria-hidden="true" />
+      <span className="page-loader__label">{label}</span>
+    </div>
+  );
+}

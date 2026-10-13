@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getMe } from "../api";
-import { AppHeader } from "../ui";
+import { AppHeader, PageLoader } from "../ui";
 import {
   driveCancel,
   driveList,
@@ -213,7 +213,7 @@ export function Explore() {
       <div className="app">
         <AppHeader />
         <main className="page">
-          <p className="meta">Memuat…</p>
+          <PageLoader />
         </main>
       </div>
     );

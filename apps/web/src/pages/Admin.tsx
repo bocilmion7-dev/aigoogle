@@ -15,7 +15,7 @@ import {
   type PrivilegesPayload,
 } from "../api";
 import type { ConnectionInfo } from "@aigoogle/shared";
-import { AppHeader } from "../ui";
+import { AppHeader, PageLoader } from "../ui";
 import { ACCURATE_OAUTH_CTA } from "../oauth";
 
 type Tab = "users" | "roles" | "audit";
@@ -135,7 +135,7 @@ export function Admin() {
     return (
       <div className="app">
         <main className="page page--narrow">
-          <p className="meta">Memuat…</p>
+          <PageLoader />
         </main>
       </div>
     );

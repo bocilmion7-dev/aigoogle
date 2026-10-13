@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { AppHeader } from "../ui";
+import { AppHeader, PageLoader } from "../ui";
 // package.json paket menunjuk file yang tak ada — impor langsung bundel ESM aslinya
 import { ConnectButton } from "360dialog-connect-button/dist/dialog-connect-button.esm.js";
 import { getMe, getWaWebhookEvents, waD360Onboard, putWaSettings, putWaWebhookEvents } from "../api";
@@ -32,6 +32,7 @@ export function WhatsApp() {
   const [waPhone, setWaPhone] = useState("");
   const [waWh, setWaWh] = useState<{ events: string[]; rateMin: number; options: Array<{ key: string; label: string }> } | null>(null);
   const [admMsg, setAdmMsg] = useState<string | null>(null);
+  const [admBusy, setAdmBusy] = useState(false);
   const [d360Msg, setD360Msg] = useState<string | null>(null);
   const [d360Busy, setD360Busy] = useState(false);
   const [qris, setQris] = useState<
@@ -123,7 +124,9 @@ export function WhatsApp() {
   );
 
   async function saveAdmin() {
+    setError(null);
     setAdmMsg(null);
+    setAdmBusy(true);
     try {
       await putWaSettings({ autoDueDate: waAuto, dailyReport: waDaily, ownerPhone: waPhone });
       if (waWh) await putWaWebhookEvents({ events: waWh.events, rateMin: waWh.rateMin });
@@ -131,6 +134,8 @@ export function WhatsApp() {
       load();
     } catch {
       setAdmMsg("Gagal menyimpan setelan.");
+    } finally {
+      setAdmBusy(false);
     }
   }
 
@@ -139,7 +144,7 @@ export function WhatsApp() {
       <div className="app">
         <AppHeader />
         <main className="page page--narrow">
-          <p className="meta">Memuat…</p>
+          <PageLoader />
         </main>
       </div>
     );
@@ -226,7 +231,11 @@ export function WhatsApp() {
                 callback={(cb) => void onboardD360(cb.client, cb.channels)}
               />
             </div>
-            {d360Busy && <p className="meta">Memproses…</p>}
+            {d360Busy && (
+              <p className="meta" style={{ margin: "var(--space-xs) 0 0" }}>
+                <span className="spinner" aria-hidden="true" /> Memproses…
+              </p>
+            )}
             {d360Msg && <p className="banner banner--ok" role="status" style={{ marginTop: "var(--space-xs)", marginBottom: 0 }}>{d360Msg}</p>}
             {st.connected ? (
               <p className="banner banner--ok" role="status" style={{ marginTop: "var(--space-xs)", marginBottom: 0 }}>
@@ -253,23 +262,29 @@ export function WhatsApp() {
           <p className="meta">
             1 kredit = <span className="num">{st.rupiahPerCredit}</span> rupiah (biaya kirim 1 pesan).
           </p>
-          <div className="row" style={{ alignItems: "flex-end" }}>
-            <label className="field" style={{ flex: "1 1 180px" }}>
-              Jumlah rupiah
-              <input
-                className="input num"
-                type="number"
-                inputMode="numeric"
-                min={2000}
-                step={1000}
-                value={amount}
-                onChange={(e) => setAmount(Number(e.target.value))}
-              />
-            </label>
-            <button className="btn" onClick={() => void topup()} disabled={busy} aria-label="Topup saldo WhatsApp">
-              Topup {amount.toLocaleString("id-ID")} Rp ({Math.floor(amount / st.rupiahPerCredit)} kredit)
-            </button>
-          </div>
+          <label className="field" style={{ display: "block" }}>
+            Jumlah rupiah
+            <input
+              className="input num"
+              type="number"
+              inputMode="numeric"
+              min={2000}
+              step={1000}
+              value={amount}
+              onChange={(e) => setAmount(Number(e.target.value))}
+            />
+          </label>
+          <button
+            className="btn btn--block"
+            style={{ marginTop: "var(--space-xs)" }}
+            onClick={() => void topup()}
+            disabled={busy}
+            aria-busy={busy}
+            aria-label="Topup saldo WhatsApp"
+          >
+            {busy && <span className="spinner" aria-hidden="true" />}
+            Topup {amount.toLocaleString("id-ID")} Rp ({Math.floor(amount / st.rupiahPerCredit)} kredit)
+          </button>
           {topupMsg && (
             <p className="banner banner--ok" role="status" style={{ marginTop: "var(--space-xs)", marginBottom: 0 }}>
               {topupMsg}
@@ -298,7 +313,7 @@ export function WhatsApp() {
                   <span className="busy-dot" aria-hidden="true" /> Menunggu pembayaran…
                 </p>
                 <button
-                  className="btn btn--2"
+                  className="btn btn--2 btn--block"
                   style={{ marginTop: "var(--space-xs)" }}
                   onClick={() => {
                     setQris(null);
@@ -376,9 +391,16 @@ export function WhatsApp() {
               />
             </label>
             {admMsg && <p className="banner banner--ok" role="status" style={{ marginTop: "var(--space-xs)", marginBottom: 0 }}>{admMsg}</p>}
-            <div className="btn-row" style={{ marginTop: "var(--space-xs)" }}>
-              <button className="btn" onClick={() => void saveAdmin()}>Simpan setelan perusahaan</button>
-            </div>
+            <button
+              className="btn btn--block"
+              style={{ marginTop: "var(--space-xs)" }}
+              onClick={() => void saveAdmin()}
+              disabled={admBusy}
+              aria-busy={admBusy}
+            >
+              {admBusy && <span className="spinner" aria-hidden="true" />}
+              Simpan setelan perusahaan
+            </button>
           </section>
         )}
 

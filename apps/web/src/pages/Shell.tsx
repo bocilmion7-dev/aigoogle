@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { Me } from "@aigoogle/shared";
 import { getMe } from "../api";
-import { AppHeader } from "../ui";
+import { AppHeader, PageLoader } from "../ui";
 import { Chat } from "./Chat";
 
 export function Shell() {
@@ -9,7 +9,15 @@ export function Shell() {
   useEffect(() => {
     void getMe().then(setMe);
   }, []);
-  if (me === undefined) return <p style={{ padding: 24 }}>Memuat…</p>;
+  if (me === undefined) {
+    return (
+      <div className="app">
+        <main className="page page--narrow">
+          <PageLoader />
+        </main>
+      </div>
+    );
+  }
   if (me === null) {
     window.location.href = "/";
     return null;

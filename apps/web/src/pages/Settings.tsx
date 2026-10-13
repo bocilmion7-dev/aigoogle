@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { AppSettings } from "@aigoogle/shared";
 import { WINPAY_DEFAULT_CLIENT_ID } from "@aigoogle/shared";
 import { getMe, getSettings, putSettings, setD360Redirect } from "../api";
-import { AppHeader } from "../ui";
+import { AppHeader, PageLoader } from "../ui";
 
 /** Pengaturan PLATFORM (global, berlaku semua perusahaan) — khusus Admin Platform.
  *  Setelan milik perusahaan (Otomasi WA, Notifikasi webhook, Koneksi) ada di sisi perusahaan. */
@@ -53,7 +53,15 @@ export function Settings() {
     }
   }, [aset]);
 
-  if (me === undefined) return <p style={{ padding: 24 }}>Memuat…</p>;
+  if (me === undefined) {
+    return (
+      <div className="app">
+        <main className="page page--narrow">
+          <PageLoader />
+        </main>
+      </div>
+    );
+  }
   if (me === null) {
     window.location.href = "/login";
     return null;

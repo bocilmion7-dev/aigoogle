@@ -262,7 +262,7 @@ export function Aktivitas() {
             </p>
           </div>
         ) : rows === null ? (
-          <p className="meta">Memuat…</p>
+          <p className="meta"><span className="spinner" aria-hidden="true" /> Memuat…</p>
         ) : filtered.length === 0 ? (
           <div className="card">
             <strong>Belum ada aktivitas.</strong>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { Me } from "@aigoogle/shared";
 import { getMe } from "../api";
+import { PageLoader } from "../ui";
 
 export function SetPassword() {
   const [me, setMe] = useState<Me | null | undefined>(undefined);
@@ -13,7 +14,15 @@ export function SetPassword() {
     void getMe().then(setMe);
   }, []);
 
-  if (me === undefined) return <p style={{ padding: 24 }}>Memuat…</p>;
+  if (me === undefined) {
+    return (
+      <div className="app">
+        <main className="page page--narrow">
+          <PageLoader />
+        </main>
+      </div>
+    );
+  }
   if (me === null) {
     window.location.href = "/";
     return null;
