@@ -10,12 +10,6 @@ interface UiMsg {
   badges: string[];
 }
 
-const SUGGESTED = [
-  "Berapa total penjualan bulan ini?",
-  "Siapa saja pelanggan saya?",
-  "Rincikan penjualan per pelanggan",
-];
-
 // daftar contoh — dibalas sistem saat pengguna mengetik /contoh (tanpa AI)
 const CONTOH_TANYAAN = [
   "Berapa total penjualan bulan ini?",
@@ -36,6 +30,7 @@ export function Chat() {
   const [msgs, setMsgs] = useState<UiMsg[]>([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
+  const [composerFocused, setComposerFocused] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -135,15 +130,9 @@ export function Chat() {
           {msgs.length === 0 && (
             <div className="empty" style={{ padding: "var(--space-l) 0" }}>
               <p style={{ color: "var(--ink-2)", fontSize: "var(--step-0)" }}>
-                Tanya data akuntansi Anda — ketik atau pakai mic.
+                Tanya data akuntansi Anda — ketik atau pakai mic. Ketik{" "}
+                <code>/contoh</code> untuk melihat contoh pertanyaan.
               </p>
-              <div className="btn-row" style={{ justifyContent: "flex-start" }}>
-                {SUGGESTED.map((s) => (
-                  <button key={s} className="btn btn--2 btn--sm" onClick={() => void send(s)}>
-                    {s}
-                  </button>
-                ))}
-              </div>
             </div>
           )}
           {msgs.map((m, i) => (
@@ -173,16 +162,24 @@ export function Chat() {
             </button>
           </div>
         )}
-        <div className="composer">
+        <div className={`composer${composerFocused ? " composer--focus" : ""}`}>
           <input
             className="input"
             aria-label="Tanya data akuntansi"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && void send(input)}
+            onFocus={() => setComposerFocused(true)}
+            onBlur={() => setComposerFocused(false)}
+            onKeyDown={(e) => {
+              if (e.key !== "Enter" || !input.trim()) return;
+              void send(input);
+              (e.target as HTMLInputElement).blur(); // Enter-kirim: composer kembali ke ukuran semula
+            }}
             placeholder="Tanya sesuatu…"
           />
-          <MicButton onText={(t) => void send(t)} disabled={busy} />
+          <span className="composer__mic">
+            <MicButton onText={(t) => void send(t)} disabled={busy} />
+          </span>
           <button className="btn" onClick={() => void send(input)} disabled={busy}>
             {busy ? "…" : "Kirim"}
           </button>
