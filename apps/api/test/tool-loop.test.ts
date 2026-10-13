@@ -33,6 +33,31 @@ describe("runToolLoop (fake gemini)", () => {
     expect(events.filter((e) => e.type === "text_delta")).toHaveLength(1);
   });
 
+  it("bagian thought (model thinking) tidak ditampilkan & tidak ikut tersimpan", async () => {
+    const fake = new FakeGeminiClient([
+      {
+        parts: [
+          { text: "Pengguna bertanya soal penjualan… (penalaran internal)", thought: true },
+          { functionCall: { name: "customer.list", args: {}, id: "c1" } },
+        ],
+      },
+      {
+        parts: [
+          { text: "Saya cek datanya dulu…", thought: true },
+          { text: "Jawaban akhir: ada 2 pelanggan." },
+        ],
+      },
+    ]);
+    const { opts, events } = deps({ gemini: fake });
+    const out = await runToolLoop(opts);
+    expect(out.text).toBe("Jawaban akhir: ada 2 pelanggan.");
+    const deltas = events.filter((e) => e.type === "text_delta").map((e) => e.delta).join("");
+    expect(deltas).not.toContain("penalaran internal");
+    expect(deltas).not.toContain("Saya cek datanya");
+    // riwayat percakapan ke Gemini juga bersih dari thought
+    expect(JSON.stringify(fake.calls[1].contents)).not.toContain("penalaran internal");
+  });
+
   it("tool dipanggil → event badge + providerExecute + functionResponse lanjut teks", async () => {
     const fake = new FakeGeminiClient([
       { parts: [{ functionCall: { name: "customer.list", args: {}, id: "c1" } }] },

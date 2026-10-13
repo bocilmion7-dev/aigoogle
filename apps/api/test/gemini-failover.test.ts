@@ -45,7 +45,7 @@ describe("pool model Gemini (failover)", () => {
         throw new Error(`fetch tak terduga: ${url}`);
       })
     );
-    const got = await withModelFailover("generate", async (m) => `pakai:${m}`);
+    const got = await withModelFailover("generate", async (c) => `pakai:${c.model}`);
     expect(got).toMatch(/^pakai:/);
 
     const rows = await prisma.geminiModel.findMany({ orderBy: { rank: "asc" } });
@@ -70,10 +70,10 @@ describe("pool model Gemini (failover)", () => {
     const tried: string[] = [];
     const out = await withModelFailover(
       "generate",
-      async (m) => {
-        tried.push(m);
-        if (m === "a") throw new GeminiHttpError(429, "quota harian habis");
-        return `ok-${m}`;
+      async (c) => {
+        tried.push(c.model);
+        if (c.model === "a") throw new GeminiHttpError(429, "quota harian habis");
+        return `ok-${c.model}`;
       },
       "a"
     );
@@ -103,8 +103,8 @@ describe("pool model Gemini (failover)", () => {
         return new Response("gagal", { status: 500 });
       })
     );
-    const out = await withModelFailover("generate", async (m) => {
-      if (m === "gemini-baru-flash") return "ok-baru";
+    const out = await withModelFailover("generate", async (c) => {
+      if (c.model === "gemini-baru-flash") return "ok-baru";
       throw new GeminiHttpError(429, "semua model ditolak");
     });
     expect(out).toBe("ok-baru");
@@ -129,8 +129,8 @@ describe("pool model Gemini (failover)", () => {
         throw new Error(`fetch tak terduga: ${url}`);
       })
     );
-    const out = await withModelFailover("generate", async (m) => {
-      if (m === "gemini-hidup-flash" || m === env.GEMINI_MODEL) return `ok-${m}`;
+    const out = await withModelFailover("generate", async (c) => {
+      if (c.model === "gemini-hidup-flash" || c.model === env.GEMINI_MODEL) return `ok-${c.model}`;
       throw new GeminiHttpError(429, "mati");
     });
     expect(out).toMatch(/^ok-/);
@@ -155,8 +155,8 @@ describe("pool model Gemini (failover)", () => {
     );
     const tried: string[] = [];
     await expect(
-      withModelFailover("generate", async (m) => {
-        tried.push(m);
+      withModelFailover("generate", async (c) => {
+        tried.push(c.model);
         throw new GeminiHttpError(401, "API key tidak valid");
       })
     ).rejects.toThrow(/API key/);
@@ -183,8 +183,8 @@ describe("pool model Gemini (failover)", () => {
     );
     const tried: string[] = [];
     await expect(
-      withModelFailover("generate", async (m) => {
-        tried.push(m);
+      withModelFailover("generate", async (c) => {
+        tried.push(c.model);
         throw new GeminiHttpError(400, "permintaan tidak valid");
       })
     ).rejects.toThrow(/tidak valid/);

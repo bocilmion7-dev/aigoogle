@@ -260,8 +260,9 @@ model WaMessageLog {
 
 // Pool model Gemini — daftar model "live" dari API (di-refresh saat SEMUA model gagal)
 model GeminiModel {
-  id           String    @id // "generate:gemini-x-flash"
+  id           String    @id // "generate:gemini-x-flash" | "generate:nvidia:llama-.."
   action       String // generate | tts | stt
+  provider     String    @default("gemini") // gemini | nvidia
   name         String
   rank         Int       @default(0) // urutan percobaan (0 = utama)
   failureCount Int       @default(0) // gagal berutun → menunggu refresh live

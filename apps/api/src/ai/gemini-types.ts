@@ -5,6 +5,8 @@ export interface GeminiFunctionCall {
 }
 export interface GeminiPart {
   text?: string;
+  /** model thinking (2.5): penalaran internal — JANGAN ditampilkan ke pengguna */
+  thought?: boolean;
   functionCall?: GeminiFunctionCall;
   functionResponse?: { name: string; response: unknown; id?: string };
   inlineData?: { mimeType: string; data: string };

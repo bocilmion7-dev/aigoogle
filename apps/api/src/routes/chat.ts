@@ -6,6 +6,7 @@ import { asyncHandler } from "../asyncHandler.js";
 import { requireUser } from "../middleware/session.js";
 import { geminiClient } from "../ai/gemini-client.js";
 import { runToolLoop } from "../ai/tool-loop.js";
+import { buildSystemPrompt } from "../ai/system-prompt.js";
 import { loadPermissionSet } from "../permissions.js";
 import { writeAudit } from "../audit.js";
 import { accurateProvider } from "../providers/accounting/index.js";
@@ -86,6 +87,7 @@ chatRouter.post(
           return provider.execute(tool, args, ctx);
         },
         permissions,
+        system: buildSystemPrompt({ tenantName: user.tenant.name }),
         tools,
         userMessage: body.data.message,
         onEvent: (e) => send(e as Record<string, unknown>),

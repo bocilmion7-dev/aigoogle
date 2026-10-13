@@ -21,6 +21,7 @@ export interface ToolLoopOpts {
   userMessage: string;
   history?: GeminiContent[];
   onEvent: (e: ToolLoopEvent) => void;
+  system?: string;
   model?: string;
   maxSteps?: number;
   now?: () => number;
@@ -57,18 +58,20 @@ export async function runToolLoop(
           })),
         },
       ],
-      system: SYSTEM_PROMPT,
+      system: opts.system ?? SYSTEM_PROMPT,
       model: opts.model,
     });
     const calls = res.parts.filter((p) => p.functionCall);
-    const texts = res.parts.filter((p) => p.text).map((p) => p.text!);
+    // bagian `thought` = penalaran internal model thinking — jangan tampilkan/simpan
+    const visible = res.parts.filter((p) => !p.thought);
+    const texts = visible.filter((p) => p.text).map((p) => p.text!);
     for (const t of texts) {
       text += t;
       opts.onEvent({ type: "text_delta", delta: t });
     }
     if (calls.length === 0) return { text, trace };
 
-    contents.push({ role: "model", parts: res.parts });
+    contents.push({ role: "model", parts: visible });
     for (const call of calls) {
       const spec = opts.tools.find((t) => t.name === call.functionCall!.name);
       if (!spec) {

@@ -1,7 +1,8 @@
 import { env } from "../env.js";
 import { GeminiHttpError } from "./gemini-error.js";
 import { sanitizeToolSchema } from "./schema-sanitize.js";
-import { withModelFailover } from "./model-pool.js";
+import { withModelFailover, type ModelCandidate } from "./model-pool.js";
+import { RealNvidiaClient } from "./nvidia.js";
 import type { GenerateOpts, GeminiPart } from "./gemini-types.js";
 
 export { GeminiHttpError };
@@ -36,21 +37,15 @@ export class RealGeminiClient implements GeminiClient {
     });
   }
 
-  private async post(path: string, opts: GenerateOpts): Promise<Response> {
-    // failover: coba model satu per satu dari pool; semua gagal → refresh live
-    return withModelFailover(
-      opts.action ?? "generate",
-      async (model) => {
-        const res = await fetch(`${BASE}/models/${model}:${path}`, {
-          method: "POST",
-          headers: { "x-goog-api-key": this.apiKey, "Content-Type": "application/json" },
-          body: this.body(opts),
-        });
-        if (!res.ok) throw new GeminiHttpError(res.status, await res.text().catch(() => ""));
-        return res;
-      },
-      opts.model ?? env.GEMINI_MODEL
-    );
+  /** Panggil Gemini utk satu model → Response (path: generateContent / streamGenerateContent). */
+  private async geminiPost(model: string, path: string, opts: GenerateOpts): Promise<Response> {
+    const res = await fetch(`${BASE}/models/${model}:${path}`, {
+      method: "POST",
+      headers: { "x-goog-api-key": this.apiKey, "Content-Type": "application/json" },
+      body: this.body(opts),
+    });
+    if (!res.ok) throw new GeminiHttpError(res.status, await res.text().catch(() => ""));
+    return res;
   }
 
   private partsFrom(json: { candidates?: Array<{ content?: { parts?: GeminiPart[] } }> }): GeminiPart[] {
@@ -58,12 +53,43 @@ export class RealGeminiClient implements GeminiClient {
   }
 
   async generate(opts: GenerateOpts): Promise<{ parts: GeminiPart[] }> {
-    const res = await this.post("generateContent", opts);
-    return { parts: this.partsFrom(await res.json()) };
+    return withModelFailover(
+      opts.action ?? "generate",
+      async (c: ModelCandidate) => {
+        if (c.provider === "nvidia") {
+          const nv = new RealNvidiaClient(env.NVIDIA_API_KEY);
+          return nv.generate({ ...opts, model: c.model });
+        }
+        const res = await this.geminiPost(c.model, "generateContent", opts);
+        return { parts: this.partsFrom(await res.json()) };
+      },
+      opts.model ?? env.GEMINI_MODEL
+    );
   }
 
   async *generateStream(opts: GenerateOpts): AsyncGenerator<GeminiPart> {
-    const res = await this.post("streamGenerateContent?alt=sse", opts);
+    // failover menghasilkan generator per-provider: Gemini via SSE stream,
+    // NVIDIA via generate utuh lalu di-yield. Gemini tetap prioritas (rank lebih depan).
+    const gen = await withModelFailover(
+      opts.action ?? "generate",
+      async (c: ModelCandidate): Promise<AsyncGenerator<GeminiPart>> => {
+        if (c.provider === "nvidia") {
+          const nv = new RealNvidiaClient(env.NVIDIA_API_KEY);
+          const { parts } = await nv.generate({ ...opts, model: c.model });
+          return (async function* () {
+            for (const p of parts) yield p;
+          })();
+        }
+        const res = await this.geminiPost(c.model, "streamGenerateContent?alt=sse", opts);
+        return this.sseParts(res);
+      },
+      opts.model ?? env.GEMINI_MODEL
+    );
+    yield* gen;
+  }
+
+  /** Baca response SSE Gemini → parts. */
+  private async *sseParts(res: Response): AsyncGenerator<GeminiPart> {
     const reader = res.body!.getReader();
     const decoder = new TextDecoder();
     let buf = "";

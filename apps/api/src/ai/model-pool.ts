@@ -1,6 +1,7 @@
 import { prisma } from "../db.js";
 import { env } from "../env.js";
 import { GeminiHttpError } from "./gemini-error.js";
+import { RealNvidiaClient } from "./nvidia.js";
 
 /**
  * Pool model Gemini dengan failover.
@@ -14,8 +15,16 @@ import { GeminiHttpError } from "./gemini-error.js";
  *   reset hitungan) → coba satu siklus lagi; tetap gagal → lempar error terakhir.
  */
 export type ModelAction = "generate" | "tts" | "stt";
+export type ModelProvider = "gemini" | "nvidia";
+
+/** Kandidat model: provider + nama model (NVIDIA hanya utk ember generate). */
+export interface ModelCandidate {
+  provider: ModelProvider;
+  model: string;
+}
 
 const API = "https://generativelanguage.googleapis.com/v1beta";
+/** NVIDIA NIM di-seed SETELAH Gemini (rank lebih besar) → Gemini tetap utama. */
 
 /** Gagal beruntun sebelum model dianggap "mati" sampai refresh. */
 export const MAX_FAILURES = 3;
@@ -73,7 +82,7 @@ export async function refreshModelsLive(): Promise<number> {
       if (!pageToken) break;
     }
     // model pilihan env selalu di urutan pertama tiap ember
-    const rows: Array<{ id: string; action: string; name: string; rank: number; failureCount?: number; lastError?: string }> = [];
+    const rows: Array<{ id: string; action: string; provider: string; name: string; rank: number; failureCount?: number; lastError?: string }> = [];
     for (const action of ["generate", "tts", "stt"] as ModelAction[]) {
       const list = buckets[action];
       const pref = envModel(action);
@@ -86,7 +95,32 @@ export async function refreshModelsLive(): Promise<number> {
           list.unshift(pref);
         }
       }
-      list.forEach((name, rank) => rows.push({ id: `${action}:${name}`, action, name, rank }));
+      list.forEach((name, rank) => rows.push({ id: `${action}:${name}`, action, provider: "gemini", name, rank }));
+    }
+    // provider kedua (NVIDIA NIM) — hanya utk ember generate, diurutkan setelah Gemini
+    if (env.NVIDIA_API_KEY.length > 10) {
+      try {
+        const nv = new RealNvidiaClient(env.NVIDIA_API_KEY);
+        const nvModels = await nv.listModels();
+        // utamakan model NIM yg dikenal mampu function-calling
+        const preferredNv = [
+          "nvidia/nemotron-3.5-lightning-30b-a3b",
+          "nvidia/nemotron-3-super-120b-a12b",
+          "nvidia/nemotron-3-ultra-550b-a55b",
+          "openai/gpt-oss-20b",
+          "meta/llama-3.2-11b-vision-instruct",
+        ];
+        const ordered = [
+          ...preferredNv.filter((m) => nvModels.includes(m)),
+          ...nvModels.filter((m) => !preferredNv.includes(m)),
+        ];
+        const base = buckets.generate.length;
+        ordered.forEach((name, i) =>
+          rows.push({ id: `generate:nvidia:${name}`, action: "generate", provider: "nvidia", name, rank: base + i })
+        );
+      } catch {
+        /* daftar NVIDIA tak terjangkau → lanjut tanpa provider ini */
+      }
     }
     if (rows.length === 0) return 0;
     // model yang pernah 404 (tak tersedia utk key ini) tetap ditandai mati agar
@@ -127,33 +161,47 @@ async function ensureSeeded(): Promise<void> {
   }
 }
 
-async function candidates(action: ModelAction, preferred?: string): Promise<string[]> {
+async function candidates(action: ModelAction, preferred?: string): Promise<ModelCandidate[]> {
   const rows = await prisma.geminiModel.findMany({
     where: { action, failureCount: { lt: MAX_FAILURES } },
     orderBy: { rank: "asc" },
-    take: MAX_TRY,
   });
-  const names = rows.map((r) => r.name);
-  if (preferred && !names.includes(preferred)) {
+  const all: ModelCandidate[] = rows.map((r) => ({
+    provider: (r.provider as ModelProvider) || "gemini",
+    model: r.name,
+  }));
+  if (preferred && !all.some((c) => c.model === preferred)) {
     const pref = await prisma.geminiModel.findUnique({ where: { id: `${action}:${preferred}` } });
-    if (!pref || pref.failureCount < MAX_FAILURES) names.unshift(preferred);
+    if (pref && pref.failureCount < MAX_FAILURES) all.unshift({ provider: "gemini", model: preferred });
   }
-  return names.slice(0, MAX_TRY);
+  // jamin tiap provider dapat slot dlm MAX_TRY: Gemini (rank terdepan) dulu,
+  // lalu selipkan minimal satu kandidan NVIDIA bila ada — agar kredit Gemini habis → NVIDIA kejatuhan.
+  const gemini = all.filter((c) => c.provider === "gemini");
+  const nvidia = all.filter((c) => c.provider === "nvidia");
+  const out: ModelCandidate[] = [];
+  const gLimit = nvidia.length ? Math.max(1, MAX_TRY - 1) : MAX_TRY;
+  out.push(...gemini.slice(0, gLimit));
+  if (nvidia.length) out.push(nvidia[0]); // slot NVIDIA dijamin utk failover
+  return out.slice(0, MAX_TRY);
 }
 
-async function markOk(action: ModelAction, name: string): Promise<void> {
+function rowId(action: ModelAction, c: ModelCandidate): string {
+  return c.provider === "nvidia" ? `${action}:nvidia:${c.model}` : `${action}:${c.model}`;
+}
+
+async function markOk(action: ModelAction, c: ModelCandidate): Promise<void> {
   await prisma.geminiModel.updateMany({
-    where: { id: `${action}:${name}` },
+    where: { id: rowId(action, c) },
     data: { failureCount: 0, lastError: "", lastOkAt: new Date() },
   });
 }
 
-async function markFail(action: ModelAction, name: string, status: number, message: string): Promise<void> {
+async function markFail(action: ModelAction, c: ModelCandidate, status: number, message: string): Promise<void> {
   // 404 = model tidak tersedia untuk key ini → langsung dianggap mati (bukan
   // kegagalan sementara), penanda "404:" dipakai lagi saat refresh
   const isGone = status === 404;
   await prisma.geminiModel.updateMany({
-    where: { id: `${action}:${name}` },
+    where: { id: rowId(action, c) },
     data: isGone
       ? { failureCount: MAX_FAILURES, lastError: `404: ${message}`.slice(0, 500), lastFailAt: new Date() }
       : { failureCount: { increment: 1 }, lastError: message.slice(0, 500), lastFailAt: new Date() },
@@ -165,18 +213,18 @@ type Cycle<T> = { ok: true; value: T } | { ok: false };
 /** Coba model berurutan utk aksi; semua gagal → refresh live → satu siklus lagi. */
 export async function withModelFailover<T>(
   action: ModelAction,
-  run: (model: string) => Promise<T>,
+  run: (c: ModelCandidate) => Promise<T>,
   preferred?: string
 ): Promise<T> {
   await ensureSeeded();
   let lastErr: unknown = null;
   let sawTransient = false;
 
-  const cycle = async (models: string[]): Promise<Cycle<T>> => {
-    for (const model of models) {
+  const cycle = async (cands: ModelCandidate[]): Promise<Cycle<T>> => {
+    for (const c of cands) {
       try {
-        const value = await run(model);
-        await markOk(action, model);
+        const value = await run(c);
+        await markOk(action, c);
         return { ok: true, value };
       } catch (e) {
         const st = errStatus(e);
@@ -184,7 +232,7 @@ export async function withModelFailover<T>(
         lastErr = e;
         if (isTransient(st)) {
           sawTransient = true;
-          await markFail(action, model, st, errMsg(e));
+          await markFail(action, c, st, errMsg(e));
         }
       }
     }
@@ -218,7 +266,7 @@ export async function withModelFailover<T>(
   if (!lastErr) {
     const fb = envModel(action);
     if (fb) {
-      out = await cycle([fb]);
+      out = await cycle([{ provider: "gemini", model: fb }]);
       if (out.ok) return out.value;
     }
   }

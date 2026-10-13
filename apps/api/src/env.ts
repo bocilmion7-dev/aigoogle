@@ -14,6 +14,8 @@ const Env = z.object({
   GOOGLE_OAUTH_CLIENT_ID: z.string().default(""),
   GOOGLE_OAUTH_CLIENT_SECRET: z.string().default(""),
   GEMINI_API_KEY: z.string().default(""),
+  /** NVIDIA NIM (OpenAI-compatible) — opsional, utk failover provider kedua */
+  NVIDIA_API_KEY: z.string().default(""),
   GEMINI_MODEL: z.string().default("gemini-3.6-flash"),
   GEMINI_TTS_MODEL: z.string().default("gemini-3.8-flash-tts"),
   GEMINI_TRANSCRIBE_MODEL: z.string().default("gemini-3.5-transcribe"),
