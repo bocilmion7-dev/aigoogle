@@ -528,6 +528,11 @@ input[type="radio"] {
   cursor: pointer;
 }
 
+.check--sm {
+  font-size: var(--step--1);
+  color: var(--ink-2);
+}
+
 .check__hint {
   display: block;
   font-size: var(--step--1);
@@ -1208,6 +1213,125 @@ pre.block {
 
 .file-row:first-child {
   border-top: none;
+}
+
+/* ---------- riwayat pesan (WhatsApp) ---------- */
+
+.msg-list .file-row {
+  display: block;
+  padding: 0;
+}
+
+.msg-row__head {
+  display: grid;
+  width: 100%;
+  grid-template-columns: auto auto 1fr auto auto;
+  grid-template-areas: "no time to status chev";
+  align-items: center;
+  gap: var(--space-2xs) var(--space-xs);
+  min-height: 44px;
+  padding: var(--space-2xs) 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: var(--step--1);
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+
+.msg-row__no {
+  grid-area: no;
+  color: var(--ink-3);
+}
+
+.msg-row__time {
+  grid-area: time;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+
+.msg-row__to {
+  grid-area: to;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.msg-row__status {
+  grid-area: status;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.msg-row__status.is-sent {
+  color: var(--accent);
+}
+
+.msg-row__status.is-pending {
+  color: var(--ink-3);
+}
+
+.msg-row__status.is-failed {
+  color: var(--danger);
+}
+
+.msg-row__snippet {
+  grid-area: snippet;
+  display: none;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.msg-row__head::after {
+  content: "";
+  grid-area: chev;
+  width: 7px;
+  height: 7px;
+  border-right: 1.75px solid var(--ink-3);
+  border-bottom: 1.75px solid var(--ink-3);
+  transform: rotate(45deg) translateY(-2px);
+  transition: transform var(--dur-fast);
+}
+
+.msg-row__head[aria-expanded="true"]::after {
+  transform: rotate(225deg) translateY(-2px);
+}
+
+.msg-row__detail {
+  padding: 0 0 var(--space-xs) 1.6em;
+  margin-bottom: var(--space-2xs);
+  background: var(--surface-2);
+  border-radius: var(--radius);
+  font-size: var(--step--1);
+  line-height: 1.5;
+  color: var(--ink);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.msg-row__err {
+  margin: 4px 0 0;
+  color: var(--danger);
+}
+
+/* desktop: kolom isi pesan tampil langsung di baris, detail tidak dipakai */
+@media (min-width: 641px) {
+  .msg-row__head {
+    grid-template-columns: auto auto 1fr auto 2fr auto;
+    grid-template-areas: "no time to status snippet chev";
+  }
+
+  .msg-row__snippet {
+    display: block;
+  }
+
+  .msg-row__detail {
+    display: none;
+  }
 }
 
 .crumb {

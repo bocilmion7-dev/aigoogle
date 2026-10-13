@@ -20,6 +20,7 @@ interface WaStatus {
   embedUrl: string | null;
   billingEnabled: boolean;
   recent: Array<{ id: string; to: string; body: string; status: string; error: string; createdAt: string }>;
+
 }
 
 export function WhatsApp() {
@@ -40,6 +41,7 @@ export function WhatsApp() {
     { orderId: string; credits: number; amount: number; qrUrl: string; qrContent: string; expiredAt: string } | null
   >(null);
   const [topupMsg, setTopupMsg] = useState<string | null>(null);
+  const [openMsg, setOpenMsg] = useState<string | null>(null);
 
   const load = useCallback(() => {
     void fetch("/api/wa/status")
@@ -123,6 +125,12 @@ export function WhatsApp() {
     },
     [d360Busy, load]
   );
+
+  function fmtStamp(iso: string): string {
+    const d = new Date(iso);
+    const p = (n: number) => String(n).padStart(2, "0");
+    return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
+  }
 
   async function saveAdmin() {
     setError(null);
@@ -351,11 +359,11 @@ export function WhatsApp() {
           <section className="card">
             <strong className="card__title">Setelan perusahaan — Otomasi WhatsApp</strong>
             <div className="stack" style={{ gap: 0 }}>
-              <label className="check">
+              <label className="check check--sm">
                 <input type="checkbox" checked={waAuto} onChange={(e) => setWaAuto(e.target.checked)} />
                 <span>Ingatkan tagihan jatuh tempo ke pelanggan</span>
               </label>
-              <label className="check">
+              <label className="check check--sm">
                 <input type="checkbox" checked={waDaily} onChange={(e) => setWaDaily(e.target.checked)} />
                 <span>Laporan harian ke pemilik usaha (jam 08.00)</span>
               </label>
@@ -382,7 +390,7 @@ export function WhatsApp() {
             </p>
             <div className="stack" style={{ gap: 0 }}>
               {(waWh?.options ?? []).map((o) => (
-                <label className="check" key={o.key}>
+                <label className="check check--sm" key={o.key}>
                   <input
                     type="checkbox"
                     checked={waWh?.events.includes(o.key) ?? false}
@@ -431,25 +439,41 @@ export function WhatsApp() {
               Belum ada pesan terkirim.
             </p>
           ) : (
-            <ul className="file-list">
-              {st.recent.map((m) => (
-                <li key={m.id} className="file-row">
-                  <span style={{ color: m.status === "sent" ? "var(--accent)" : "var(--danger)" }}>{m.status === "sent" ? "Terkirim" : m.status === "pending" ? "Tertunda" : "Gagal"}</span>
-                  <span className="num">{m.to}</span>
-                  <span className="muted" style={{ flex: 1, minWidth: 0 }}>
-                    {m.body.slice(0, 60)}
-                  </span>
-                  {m.error && (
-                    <span style={{ color: "var(--danger)" }}>
-                      {m.error === "belum_connect"
-                        ? "Nomor belum terhubung"
-                        : m.error.includes("rate")
-                          ? "Batas kirim tercapai"
-                          : "Gagal dikirim"}
-                    </span>
-                  )}
-                </li>
-              ))}
+            <ul className="file-list msg-list">
+              {st.recent.map((m, i) => {
+                const open = openMsg === m.id;
+                const label = m.status === "sent" ? "Terkirim" : m.status === "pending" ? "Tertunda" : "Gagal";
+                const errText =
+                  m.error === "belum_connect"
+                    ? "Nomor belum terhubung"
+                    : m.error.includes("rate")
+                      ? "Batas kirim tercapai"
+                      : m.error
+                        ? "Gagal dikirim"
+                        : "";
+                return (
+                  <li key={m.id} className="file-row msg-row">
+                    <button
+                      type="button"
+                      className="msg-row__head"
+                      aria-expanded={open}
+                      onClick={() => setOpenMsg(open ? null : m.id)}
+                    >
+                      <span className="msg-row__no num">{i + 1}</span>
+                      <span className="msg-row__time num">{fmtStamp(m.createdAt)}</span>
+                      <span className="msg-row__to num">{m.to}</span>
+                      <span className={`msg-row__status is-${m.status === "sent" ? "sent" : m.status === "pending" ? "pending" : "failed"}`}>
+                        {label}
+                      </span>
+                      <span className="msg-row__snippet muted">{m.body.slice(0, 60)}</span>
+                    </button>
+                    <div className="msg-row__detail" hidden={!open}>
+                      {m.body}
+                      {errText && <p className="msg-row__err">{errText}</p>}
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </section>
