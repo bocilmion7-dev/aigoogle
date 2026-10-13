@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { AppHeader, PageLoader } from "../ui";
+import { IconCheck } from "../icons";
 // package.json paket menunjuk file yang tak ada — impor langsung bundel ESM aslinya
 import { ConnectButton } from "360dialog-connect-button/dist/dialog-connect-button.esm.js";
 import { getMe, getWaWebhookEvents, waD360Onboard, putWaSettings, putWaWebhookEvents } from "../api";
@@ -200,16 +201,24 @@ export function WhatsApp() {
       <AppHeader />
       <main className="page page--narrow">
         <h1>WhatsApp</h1>
-        <p className="page__sub">Kirim pesan dan notifikasi otomatis untuk bisnis Anda.</p>
+        <p className="page__sub">
+          Kirim pesan & notifikasi otomatis lewat <strong>WhatsApp Business resmi Meta</strong> — saluran
+          resmi WhatsApp Business Platform (Cloud API), aman dan sesuai kebijakan WhatsApp.
+        </p>
 
         <section className="card">
           <strong className="card__title">Status</strong>
           <p className="small muted" style={{ margin: "0 0 4px" }}>
-            {st.connected
-              ? st.account?.displayName
-                ? `Terhubung (${st.account.displayName})`
-                : "Terhubung"
-              : "Belum terhubung"}
+            {st.connected ? (
+              <>
+                Terhubung{st.account?.displayName ? ` (${st.account.displayName})` : ""}
+                <span className="trust-tag">
+                  <IconCheck size={14} /> WhatsApp Business resmi Meta
+                </span>
+              </>
+            ) : (
+              "Belum terhubung"
+            )}
           </p>
           <p className="small" style={{ margin: 0 }}>
             Saldo: <strong className="num">{st.balance}</strong> kredit ·{" "}
@@ -219,10 +228,15 @@ export function WhatsApp() {
 
         {st.waProvider === "d360" ? (
           <section className="card">
-            <strong className="card__title">Hubungkan nomor WhatsApp</strong>
+            <strong className="card__title">Hubungkan WhatsApp Business (resmi Meta)</strong>
             <p className="meta">
               Tekan tombol, masuk dengan akun Meta Business Anda, lalu pilih atau daftarkan nomor —
-              setelah selesai, nomor langsung terhubung ke sistem.
+              memakai Embedded Signup resmi Meta, cara sah menghubungkan WhatsApp Business Platform
+              (Cloud API) ke bisnis Anda. Setelah selesai, nomor langsung terhubung ke sistem.
+            </p>
+            <p className="trust-line">
+              <IconCheck size={15} /> Pesan terkirim lewat saluran resmi Meta — bukan WhatsApp pribadi.
+              Nomor & riwayat chat dikelola aman, terpisah dari akun pribadi Anda.
             </p>
             <div className="wa-connect">
               <ConnectButton
@@ -239,14 +253,20 @@ export function WhatsApp() {
             {d360Msg && <p className="banner banner--ok" role="status" style={{ marginTop: "var(--space-xs)", marginBottom: 0 }}>{d360Msg}</p>}
             {st.connected ? (
               <p className="banner banner--ok" role="status" style={{ marginTop: "var(--space-xs)", marginBottom: 0 }}>
-                Nomor WhatsApp perusahaan terhubung — notifikasi & otomasi siap dikirim.
+                Nomor WhatsApp Business perusahaan terhubung — notifikasi & otomasi siap dikirim lewat saluran resmi Meta.
               </p>
             ) : null}
           </section>
         ) : (
           <section className="card">
-            <strong className="card__title">Hubungkan nomor WhatsApp</strong>
-            <p className="meta">Daftarkan nomor bisnis Anda lewat formulir di bawah.</p>
+            <strong className="card__title">Hubungkan WhatsApp Business (resmi Meta)</strong>
+            <p className="meta">
+              Daftarkan nomor bisnis Anda lewat formulir Embedded Signup resmi Meta di bawah —
+              setelah disetujui Meta, nomor aktif sebagai WhatsApp Business Platform resmi.
+            </p>
+            <p className="trust-line">
+              <IconCheck size={15} /> Saluran resmi Meta Cloud API — aman & sesuai kebijakan WhatsApp.
+            </p>
             {st.embedUrl ? (
               <iframe title="Meta WhatsApp Embedded Signup" src={st.embedUrl} className="embed" />
             ) : (

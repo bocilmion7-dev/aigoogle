@@ -610,6 +610,26 @@ input[type="radio"] {
   margin-top: 3px;
 }
 
+.trust-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 6px;
+  color: var(--accent-strong);
+  font-size: var(--step--1);
+  font-weight: 500;
+}
+
+.trust-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: var(--space-xs) 0 0;
+  color: var(--accent-strong);
+  font-size: var(--step--1);
+  line-height: 1.45;
+}
+
 .banner--err {
   background: var(--danger-tint);
   border-left-color: var(--danger);
