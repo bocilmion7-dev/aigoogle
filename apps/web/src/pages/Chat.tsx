@@ -3,7 +3,6 @@ import type { MessageInfo, SessionInfo } from "../chat-api";
 import { listMessages, listSessions, streamChat } from "../chat-api";
 import { getSettings } from "../api";
 import { MicButton, speakWeb, ttsEdge, ttsGemini } from "../voice";
-import { IconPlus } from "../icons";
 
 interface UiMsg {
   role: "user" | "ai";
@@ -15,6 +14,20 @@ const SUGGESTED = [
   "Berapa total penjualan bulan ini?",
   "Siapa saja pelanggan saya?",
   "Rincikan penjualan per pelanggan",
+];
+
+// daftar contoh — dibalas sistem saat pengguna mengetik /contoh (tanpa AI)
+const CONTOH_TANYAAN = [
+  "Berapa total penjualan bulan ini?",
+  "Berapa total pembelian bulan ini?",
+  "Siapa saja pelanggan saya?",
+  "Siapa saja pemasok saya?",
+  "Rincikan penjualan per pelanggan",
+  "Berapa piutang yang belum tertagih?",
+  "Berapa utang yang belum dibayar?",
+  "Barang apa yang paling laris bulan ini?",
+  "Stok barang apa yang menipis?",
+  "Berapa laba kotor bulan ini?",
 ];
 
 export function Chat() {
@@ -42,6 +55,23 @@ export function Chat() {
 
   async function send(text: string) {
     if (!text.trim() || busy) return;
+    // perintah sistem /contoh — balas daftar template tanyaan tanpa memanggil AI
+    if (text.trim() === "/contoh") {
+      setInput("");
+      setMsgs((m) => [
+        ...m,
+        { role: "user", content: "/contoh", badges: [] },
+        {
+          role: "ai",
+          badges: [],
+          content:
+            "Contoh pertanyaan yang bisa Anda tanyakan:\n" +
+            CONTOH_TANYAAN.map((q, i) => `${i + 1}. ${q}`).join("\n") +
+            "\n\nKetik salah satunya di kolom bawah — atau tekan mic dan ucapkan.",
+        },
+      ]);
+      return;
+    }
     setBusy(true);
     setError(null);
     setMsgs((m) => [...m, { role: "user", content: text, badges: [] }, { role: "ai", content: "", badges: [] }]);
@@ -82,15 +112,6 @@ export function Chat() {
     <div className="chat">
       <aside aria-label="Riwayat percakapan">
         <div className="chat-sessions">
-          <button
-            className="session session--new"
-            aria-current={sessionId === null ? "true" : undefined}
-            aria-label="Percakapan baru"
-            title="Percakapan baru"
-            onClick={() => { setSessionId(null); setMsgs([]); }}
-          >
-            <IconPlus size={14} /> Baru
-          </button>
           {sessions.map((s) => (
             <button
               key={s.id}

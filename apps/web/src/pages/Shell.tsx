@@ -32,7 +32,7 @@ export function Shell() {
     return null;
   }
   return (
-    <div className="app">
+    <div className="app app--chat">
       <AppHeader me={me} />
       <Chat />
     </div>

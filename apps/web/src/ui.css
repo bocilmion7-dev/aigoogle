@@ -754,9 +754,33 @@ pre.block {
   align-items: start;
 }
 
+/* shell chat: viewport terkunci — transkrip scroll sendiri, composer menempel di bawah */
+.app--chat {
+  height: 100dvh;
+  overflow: hidden;
+}
+
+.app--chat .chat {
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 0;
+  align-items: stretch;
+}
+
+.app--chat .chat > section {
+  min-height: 0;
+}
+
+.app--chat .chat-log {
+  flex: 1;
+  min-height: 0;
+  max-height: none;
+}
+
 @media (min-width: 900px) {
   .chat {
     grid-template-columns: 240px 1fr;
+    grid-template-rows: minmax(0, 1fr);
+    align-items: stretch;
     padding: var(--space-m);
   }
 }
