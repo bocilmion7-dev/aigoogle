@@ -2,6 +2,7 @@ import { Router } from "express";
 import { MsEdgeTTS, OUTPUT_FORMAT } from "msedge-tts";
 import { env } from "../env.js";
 import { asyncHandler } from "../asyncHandler.js";
+import { requireUser } from "../middleware/session.js";
 import { RealGeminiClient, GeminiHttpError } from "../ai/gemini-client.js";
 
 export const audioRouter = Router();
@@ -15,6 +16,7 @@ function real(): RealGeminiClient {
 
 audioRouter.post(
   "/stt",
+  requireUser,
   asyncHandler(async (req, res) => {
     const chunks: Buffer[] = [];
     for await (const c of req as AsyncIterable<Buffer>) chunks.push(c);
@@ -43,6 +45,7 @@ audioRouter.post(
 
 audioRouter.post(
   "/tts",
+  requireUser,
   asyncHandler(async (req, res) => {
     const body = req.body as { text?: string; engine?: string };
     if (!body?.text || typeof body.text !== "string" || body.text.length === 0 || body.text.length > 2000) {

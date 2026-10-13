@@ -23,9 +23,18 @@ authRouter.post(
   asyncHandler(async (req, res) => {
     const body = LoginBody.safeParse(req.body);
     if (!body.success) return res.status(400).json({ error: "bad_request" });
-    const user = await prisma.user.findFirst({
+    // Email TIDAK unik global — bisa sama di banyak tenant. findFirst sembarangan
+    // akan memilih tenant secara arbitrer (→ bocor antar-tenant). Bila email
+    // terdaftar di >1 perusahaan, tolak dan minta login via Accurate (OAuth)
+    // supaya tenant dipilih berdasarkan kredensial provider, bukan tebakan.
+    const candidates = await prisma.user.findMany({
       where: { email: body.data.email.toLowerCase(), passwordHash: { not: "" } },
+      select: { id: true, passwordHash: true, tenantId: true },
     });
+    if (candidates.length > 1) {
+      return res.status(409).json({ error: "email_terdaftar_di_banyak_perusahaan" });
+    }
+    const user = candidates[0];
     if (!user || !verifyPassword(body.data.password, user.passwordHash)) {
       return res.status(401).json({ error: "email_atau_password_salah" });
     }

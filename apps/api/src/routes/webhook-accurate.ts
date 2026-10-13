@@ -17,18 +17,24 @@ webhookAccurateRouter.get("/integrations/accurate/authorize", (_req, res) => {
   res.redirect(302, realAccurateProvider().authorizeUrl({ redirectUri: ACCURATE_REDIRECT_URI, state: "" }));
 });
 
-/** tenant utk event masuk: tenantId eksplisit (proses internal) → tenant pertama → default baru */
-async function resolveTenant(explicit?: string): Promise<string> {
+/**
+ * tenant utk event masuk: tenantId eksplisit (proses internal) → petakan dbId ke
+ * tenant (provider+providerDbId) → TOLAK bila tak terpetakan.
+ * JANGAN jatuh ke "tenant pertama": payload perusahaan lain akan tercatat sbg
+ * event (dan notifikasi WA) milik tenant yang salah → bocor antar-tenant.
+ */
+async function resolveTenant(explicit: string | undefined, dbId: string | undefined): Promise<string | null> {
   if (explicit) {
     const t = await prisma.tenant.findUnique({ where: { id: explicit } });
     if (t) return t.id;
   }
-  const first = await prisma.tenant.findFirst({ orderBy: { createdAt: "asc" } });
-  if (first) return first.id;
-  const created = await prisma.tenant.create({
-    data: { provider: "accurate", providerDbId: "default", name: "Default", alias: "DEFAULT" },
-  });
-  return created.id;
+  if (dbId) {
+    const t = await prisma.tenant.findFirst({
+      where: { provider: "accurate", providerDbId: dbId },
+    });
+    if (t) return t.id;
+  }
+  return null;
 }
 
 /**
@@ -160,7 +166,12 @@ export async function webhookAccurateHandler(
     res.status(401).json({ error: "app_key_salah" });
     return;
   }
-  const tenantId = await resolveTenant(b.tenantId);
+  const tenantId = await resolveTenant(b.tenantId, b.dbId ? String(b.dbId) : undefined);
+  if (!tenantId) {
+    // dbId tidak dikenal → JANGAN jatuh ke tenant lain (mencegah bocor antar-tenant)
+    res.status(404).json({ error: "tenant_tidak_dikenal" });
+    return;
+  }
   const evt = await prisma.accurateWebhookEvent.create({
     data: {
       tenantId,

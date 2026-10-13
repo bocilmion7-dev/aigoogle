@@ -30,8 +30,16 @@ export async function accurateCtxFor(tenantId: string): Promise<ProviderCtx | nu
     }
   }
   if (!host || !session) {
+    // Buka DB milik tenant (providerDbId), JANGAN dbs[0] — akun multi-database
+    // bisa salah-binding & menampilkan data perusahaan lain.
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { providerDbId: true },
+    });
     const dbs = await provider.listDbs(accessToken);
-    const open = await provider.openDb(accessToken, dbs[0]?.providerDbId ?? "");
+    const target = dbs.find((d) => d.providerDbId === tenant?.providerDbId);
+    if (!target) return null; // DB tenant tak ditemukan → jangan buka DB yang salah
+    const open = await provider.openDb(accessToken, target.providerDbId);
     host = open.host;
     session = open.session;
     await prisma.connection.update({ where: { id: conn.id }, data: { host, session } });
