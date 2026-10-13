@@ -493,6 +493,24 @@ a {
   color: var(--ink-3);
 }
 
+/* input pencarian dengan ikon kaca di kiri */
+.search-wrap {
+  position: relative;
+}
+
+.search-wrap .input {
+  padding-left: 34px;
+}
+
+.search-wrap > svg {
+  position: absolute;
+  left: 11px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--ink-3);
+  pointer-events: none;
+}
+
 .input-file {
   font-size: var(--step--1);
   color: var(--ink-2);

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { AppHeader } from "../ui";
+import { IconSearch } from "../icons";
 import { getAccurateWebhookEvents, getMe, type AccurateEventRow } from "../api";
 
 const EVENT_LABEL: Record<string, string> = {
@@ -245,14 +246,17 @@ export function Aktivitas() {
         </p>
         {err && <div className="card" style={{ borderColor: "var(--danger, #c0392b)" }}>{err}</div>}
         <div className="card" style={{ marginBottom: "var(--space-s)" }}>
-          <input
-            type="search"
-            placeholder="Saring jenis data… (mis. faktur, pelanggan)"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            style={{ width: "100%" }}
-            aria-label="Saring aktivitas"
-          />
+          <div className="search-wrap">
+            <IconSearch size={16} />
+            <input
+              className="input"
+              type="search"
+              placeholder="Saring jenis data… (mis. faktur, pelanggan)"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              aria-label="Saring aktivitas"
+            />
+          </div>
         </div>
         {meLoaded && !bolehLihat ? (
           <div className="card">

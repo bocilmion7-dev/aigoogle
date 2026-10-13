@@ -88,6 +88,13 @@ export const IconCamera: ComponentType<IconProps> = ({ size }) => (
   </Base>
 );
 
+export const IconSearch: ComponentType<IconProps> = ({ size }) => (
+  <Base size={size}>
+    <circle cx="11" cy="11" r="7" />
+    <path d="m21 21-4.35-4.35" />
+  </Base>
+);
+
 export const IconPlus: ComponentType<IconProps> = ({ size }) => (
   <Base size={size}>
     <path d="M12 5v14" />
