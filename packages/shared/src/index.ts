@@ -22,4 +22,6 @@ export interface AppSettings {
   waProvider?: "meta" | "d360";
   waD360ApiKey?: string;
   waD360BaseUrl?: string;
+  waD360PartnerId?: string;
+  waD360PartnerKey?: string;
 }

@@ -1,8 +1,8 @@
 import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../db.js";
-import { requireUser } from "../middleware/session.js";
-import { requirePlatform } from "../middleware/session.js";
+import { env } from "../env.js";
+import { requireUser, requirePlatform } from "../middleware/session.js";
 import { asyncHandler } from "../asyncHandler.js";
 import { WA_TOPUP_RUPIAH_PER_CREDIT } from "../wa/service.js";
 import { writeAudit } from "../audit.js";
@@ -18,6 +18,9 @@ const PutBody = z
     waProvider: z.enum(["meta", "d360"]).optional(),
     waD360ApiKey: z.string().max(200).optional(),
     waD360BaseUrl: z.string().url().max(200).optional(),
+    /** kredensial PARTNER 360dialog — utk Connect Button + generate API key klien */
+    waD360PartnerId: z.string().max(100).optional(),
+    waD360PartnerKey: z.string().max(200).optional(),
   })
   .refine((b) => Object.values(b).some((v) => v !== undefined), { message: "tidak ada field" });
 
@@ -25,7 +28,11 @@ const D360_DEFAULT_BASE = "https://waba-v2.360dialog.io";
 
 async function settingsSnapshot() {
   const rows = await prisma.appSetting.findMany({
-    where: { key: { in: ["voiceEngine", "ocrMode", "waPricePerCredit", "waProvider", "waD360ApiKey", "waD360BaseUrl"] } },
+    where: {
+      key: {
+        in: ["voiceEngine", "ocrMode", "waPricePerCredit", "waProvider", "waD360ApiKey", "waD360BaseUrl", "waD360PartnerId", "waD360PartnerKey"],
+      },
+    },
   });
   const get = (k: string) => rows.find((r) => r.key === k)?.value;
   const price = Number(get("waPricePerCredit"));
@@ -36,8 +43,34 @@ async function settingsSnapshot() {
     waProvider: get("waProvider") === "meta" ? "meta" : "d360",
     waD360ApiKey: get("waD360ApiKey") ?? "",
     waD360BaseUrl: get("waD360BaseUrl") ?? D360_DEFAULT_BASE,
+    waD360PartnerId: get("waD360PartnerId") ?? "",
+    waD360PartnerKey: get("waD360PartnerKey") ?? "",
   };
 }
+
+// Daftarkan redirect URL Integrated Onboarding ke halaman WhatsApp (prasyarat Connect Button)
+settingsRouter.post(
+  "/settings/d360-redirect",
+  requirePlatform,
+  asyncHandler(async (req, res) => {
+    const partnerId = (await prisma.appSetting.findUnique({ where: { key: "waD360PartnerId" } }))?.value ?? "";
+    const partnerKey = (await prisma.appSetting.findUnique({ where: { key: "waD360PartnerKey" } }))?.value ?? "";
+    if (!partnerId || !partnerKey) return res.status(409).json({ error: "partner_id_key_belum_diisi" });
+    const origin = env.APP_ORIGIN.replace(/\/$/, "");
+    const redirect = `${origin}/whatsapp`;
+    const r = await fetch(`https://hub.360dialog.io/api/v2/partners/${encodeURIComponent(partnerId)}`, {
+      method: "PATCH",
+      headers: { "X-API-Key": partnerKey, "Content-Type": "application/json" },
+      body: JSON.stringify({ partner_redirect_url: redirect }),
+    });
+    if (!r.ok) {
+      const t = await r.text().catch(() => "");
+      return res.status(502).json({ error: `d360_${r.status}:${t.slice(0, 200)}` });
+    }
+    await writeAudit("platform", req.platform!.id, "settings.d360_redirect", { redirect });
+    res.json({ ok: true, redirect });
+  })
+);
 
 settingsRouter.get(
   "/settings",

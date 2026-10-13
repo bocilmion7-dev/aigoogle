@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { AppHeader } from "../ui";
-import { getMe, getWaWebhookEvents, putWaSettings, putWaWebhookEvents } from "../api";
+import { ConnectButton } from "360dialog-connect-button";
+import { getMe, getWaWebhookEvents, waD360Onboard, putWaSettings, putWaWebhookEvents } from "../api";
 
 interface WaStatus {
   connected: boolean;
   waProvider: "meta" | "d360";
   accountProvider: string | null;
+  waD360PartnerId: string;
   account: { wabaId: string; phoneNumberId: string; displayName: string; status: string } | null;
   balance: number;
   costPerMessage: number;
@@ -28,6 +30,8 @@ export function WhatsApp() {
   const [waPhone, setWaPhone] = useState("");
   const [waWh, setWaWh] = useState<{ events: string[]; rateMin: number; options: Array<{ key: string; label: string }> } | null>(null);
   const [admMsg, setAdmMsg] = useState<string | null>(null);
+  const [d360Msg, setD360Msg] = useState<string | null>(null);
+  const [d360Busy, setD360Busy] = useState(false);
 
   const load = useCallback(() => {
     void fetch("/api/wa/status")
@@ -62,6 +66,25 @@ export function WhatsApp() {
       .then((s) => setWaWh({ events: s.events ?? [], rateMin: s.rateMin ?? 10, options: s.options ?? [] }))
       .catch(() => undefined);
   }, [isAdmin, st]);
+
+  // callback Connect Button: klien selesai Embedded Signup → generate & simpan API key channel
+  async function onboardD360(client: string, channels: string[]) {
+    setD360Busy(true);
+    setD360Msg(null);
+    try {
+      await waD360Onboard(client, channels);
+      setD360Msg("Nomor WhatsApp terhubung — API key perusahaan dibuat otomatis.");
+      load();
+    } catch (e) {
+      setD360Msg(
+        e instanceof Error && e.message.includes("d360_")
+          ? "360dialog belum menandai channel siap (onboarding Meta diproses). Coba tombol lagi beberapa saat."
+          : "Gagal menyelesaikan onboarding."
+      );
+    } finally {
+      setD360Busy(false);
+    }
+  }
 
   async function saveAdmin() {
     setAdmMsg(null);
@@ -134,28 +157,27 @@ export function WhatsApp() {
           <section className="card">
             <strong className="card__title">Hubungkan nomor WhatsApp via 360dialog</strong>
             <p className="meta">
-              API dikelola platform — perusahaan tidak perlu mengurus API key. Jalankan <b>Embedded Signup</b>
-              untuk mendaftarkan/menghubungkan nomor WhatsApp bisnis Anda:
+              API dikelola platform — tidak perlu mengurus API key. Tekan tombol, masuk dengan akun Meta Business
+              Anda, pilih/daftarkan nomor — setelah selesai, nomor langsung terhubung ke sistem.
             </p>
-            <div className="btn-row">
-              <a
-                className="btn"
-                href="https://app.360dialog.com/"
-                target="_blank"
-                rel="noreferrer"
-              >
-                Mulai Embedded Signup — Hub 360dialog ↗
-              </a>
-            </div>
-            <ol className="small muted" style={{ margin: "var(--space-xs) 0 0", paddingLeft: 18 }}>
-              <li>Masuk/daftar akun 360dialog (atau lewat tautan yang dibagikan platform).</li>
-              <li>Klik <b>Add channel</b> (+) → pilih paket → masukkan nomor bisnis Anda.</li>
-              <li>Klik <b>Embedded Signup</b>, masuk sebagai admin Meta Business Portfolio.</li>
-              <li>Pilih/verifikasi nomor (SMS atau panggilan OTP) → selesai — nomor terhubung ke platform.</li>
-            </ol>
+            {st.waD360PartnerId ? (
+              <div className="wa-connect">
+                <ConnectButton
+                  partnerId={st.waD360PartnerId}
+                  label="Hubungkan WhatsApp Bisnis"
+                  callback={(cb) => void onboardD360(cb.client, cb.channels)}
+                />
+              </div>
+            ) : (
+              <p className="banner banner--err" role="alert" style={{ margin: 0 }}>
+                Embedded Signup belum aktif — Admin Platform perlu mengisi Partner ID di menu Pengaturan.
+              </p>
+            )}
+            {d360Busy && <p className="meta">Memproses onboarding…</p>}
+            {d360Msg && <p className="banner banner--ok" role="status" style={{ marginTop: "var(--space-xs)", marginBottom: 0 }}>{d360Msg}</p>}
             {st.connected && (
               <p className="banner banner--ok" role="status" style={{ marginTop: "var(--space-xs)", marginBottom: 0 }}>
-                Jalur WhatsApp 360dialog platform aktif — notifikasi & otomasi siap dikirim.
+                Nomor WhatsApp perusahaan terhubung — notifikasi & otomasi siap dikirim.
               </p>
             )}
           </section>

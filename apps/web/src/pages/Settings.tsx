@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import type { AppSettings } from "@aigoogle/shared";
-import { getMe, getSettings, putSettings } from "../api";
+import { getMe, getSettings, putSettings, setD360Redirect } from "../api";
 import { AppHeader } from "../ui";
 
 /** Pengaturan PLATFORM (global, berlaku semua perusahaan) — khusus Admin Platform.
@@ -10,6 +10,7 @@ export function Settings() {
   const [aset, setAset] = useState<AppSettings | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [d360Msg, setD360Msg] = useState<string | null>(null);
 
   useEffect(() => {
     void getMe().then(setMe);
@@ -37,6 +38,8 @@ export function Settings() {
         waProvider: aset.waProvider ?? "d360",
         ...(aset.waD360ApiKey !== undefined ? { waD360ApiKey: aset.waD360ApiKey } : {}),
         ...(aset.waD360BaseUrl !== undefined ? { waD360BaseUrl: aset.waD360BaseUrl } : {}),
+        ...(aset.waD360PartnerId !== undefined ? { waD360PartnerId: aset.waD360PartnerId } : {}),
+        ...(aset.waD360PartnerKey !== undefined ? { waD360PartnerKey: aset.waD360PartnerKey } : {}),
       });
       setMsg("Pengaturan disimpan.");
     } catch (e) {
@@ -179,9 +182,45 @@ export function Settings() {
                 />
               </label>
               <p className="meta" style={{ margin: 0 }}>
-                Sandbox hanya bisa kirim ke nomor penerima tetap (maks 200 pesan). Untuk produksi, tiap perusahaan
-                mendaftar nomornya di Hub 360dialog lalu menempel API key-nya di menu WhatsApp.
+                Sandbox hanya bisa kirim ke nomor penerima tetap (maks 200 pesan). Untuk produksi, daftarkan platform
+                sebagai <b>360dialog Partner</b> — API key klien dibuat otomatis setelah Embedded Signup.
               </p>
+              <strong className="card__title" style={{ marginTop: "var(--space-s)" }}>
+                Partner (Embedded Signup otomatis)
+              </strong>
+              <label className="field" style={{ maxWidth: 420 }}>
+                Partner ID
+                <input
+                  className="input"
+                  type="text"
+                  value={aset?.waD360PartnerId ?? ""}
+                  onChange={(e) => aset && setAset({ ...aset, waD360PartnerId: e.target.value })}
+                  placeholder="partner ID dari 360dialog"
+                />
+              </label>
+              <label className="field" style={{ maxWidth: 420 }}>
+                Partner API Key (header X-API-Key)
+                <input
+                  className="input"
+                  type="text"
+                  value={aset?.waD360PartnerKey ?? ""}
+                  onChange={(e) => aset && setAset({ ...aset, waD360PartnerKey: e.target.value })}
+                  placeholder="Partner API key"
+                />
+              </label>
+              <div className="btn-row">
+                <button
+                  className="btn btn--2"
+                  onClick={() =>
+                    void setD360Redirect()
+                      .then((r) => setD360Msg(`Redirect onboarding didaftarkan: ${r.redirect}`))
+                      .catch(() => setD360Msg("Gagal — pastikan Partner ID & Partner API Key tersimpan dulu."))
+                  }
+                >
+                  Daftarkan redirect URL ke halaman WhatsApp
+                </button>
+                {d360Msg && <p className="meta" style={{ margin: 0, alignSelf: "center" }}>{d360Msg}</p>}
+              </div>
             </>
           )}
         </section>

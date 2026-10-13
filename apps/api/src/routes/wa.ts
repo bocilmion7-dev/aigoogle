@@ -46,6 +46,8 @@ waRouter.get(
         ((await getWaProviderGlobal()).provider === "d360" && !!(await prisma.appSetting.findUnique({ where: { key: "waD360ApiKey" } }))?.value),
       waProvider: (await getWaProviderGlobal()).provider,
       accountProvider: acct?.provider ?? null,
+      waD360PartnerId:
+        (await prisma.appSetting.findUnique({ where: { key: "waD360PartnerId" } }))?.value ?? "",
       account: acct
         ? {
             wabaId: acct.wabaId,
@@ -81,6 +83,58 @@ waRouter.put(
     await setWaSettings(req.user!.tenant.id, body.data);
     await writeAudit(req.user!.tenant.id, req.user!.id, "wa.settings", body.data);
     res.json(await getWaSettings(req.user!.tenant.id));
+  })
+);
+
+// Callback Integrated Onboarding (Connect Button 360dialog): simpan client/channel,
+// generate API key channel via Partner API, simpan sbg akun WhatsApp perusahaan.
+// Model "managed by partner": kunci perusahaan dibuat otomatis — tanpa input manual.
+waRouter.post(
+  "/wa/d360/onboard",
+  requirePerm("app:users.manage"),
+  asyncHandler(async (req, res) => {
+    const body = z
+      .object({ client: z.string().min(1).max(100), channels: z.array(z.string().min(1).max(100)).max(20) })
+      .safeParse(req.body);
+    if (!body.success) return res.status(400).json({ error: "bad_request" });
+    const partnerId = (await prisma.appSetting.findUnique({ where: { key: "waD360PartnerId" } }))?.value ?? "";
+    const partnerKey = (await prisma.appSetting.findUnique({ where: { key: "waD360PartnerKey" } }))?.value ?? "";
+    if (!partnerId || !partnerKey) return res.status(409).json({ error: "partner_belum_dikonfigurasi" });
+
+    const channelId = body.data.channels[0];
+    if (!channelId) return res.status(400).json({ error: "channel_kosong" });
+    const kr = await fetch(
+      `https://hub.360dialog.io/api/v2/partners/${encodeURIComponent(partnerId)}/channels/${encodeURIComponent(channelId)}/api_keys`,
+      { method: "POST", headers: { "X-API-Key": partnerKey } }
+    );
+    if (!kr.ok) {
+      const t = await kr.text().catch(() => "");
+      // channel belum "running" (onboarding Meta masih diproses) → user klik lagi nanti
+      return res.status(502).json({ error: `d360_${kr.status}:${t.slice(0, 220)}` });
+    }
+    const kj = (await kr.json()) as { api_key?: string; address?: string };
+    if (!kj.api_key) return res.status(502).json({ error: "api_key_tidak_ada" });
+
+    await prisma.waAccount.upsert({
+      where: { tenantId: req.user!.tenant.id },
+      create: {
+        tenantId: req.user!.tenant.id,
+        provider: "d360",
+        wabaId: body.data.client,
+        phoneNumberId: channelId,
+        tokenEnc: encryptToken(kj.api_key),
+        status: "connected",
+      },
+      update: {
+        provider: "d360",
+        wabaId: body.data.client,
+        phoneNumberId: channelId,
+        tokenEnc: encryptToken(kj.api_key),
+        status: "connected",
+      },
+    });
+    await writeAudit(req.user!.tenant.id, req.user!.id, "wa.d360.onboard", { client: body.data.client, channel: channelId });
+    res.json({ ok: true, channel: channelId });
   })
 );
 

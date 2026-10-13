@@ -71,6 +71,8 @@ describe("settings & connections", () => {
       waProvider: "d360",
       waD360ApiKey: "",
       waD360BaseUrl: "https://waba-v2.360dialog.io",
+      waD360PartnerId: "",
+      waD360PartnerKey: "",
     });
     const put = await request(api).put("/api/settings").set("Cookie", platCookie).send({ voiceEngine: "gemini-native" });
     expect(put.status).toBe(200);
@@ -89,6 +91,8 @@ describe("settings & connections", () => {
       waProvider: "d360",
       waD360ApiKey: "",
       waD360BaseUrl: "https://waba-v2.360dialog.io",
+      waD360PartnerId: "",
+      waD360PartnerKey: "",
     });
     await request(api).put("/api/settings").set("Cookie", platCookie).send({ ocrMode: "vision", waPricePerCredit: 200 });
   });

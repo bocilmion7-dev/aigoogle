@@ -68,6 +68,9 @@ importers:
 
   apps/web:
     dependencies:
+      360dialog-connect-button:
+        specifier: ^1.0.2
+        version: 1.0.2(react@18.3.1)
       '@aigoogle/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -125,6 +128,12 @@ importers:
   packages/shared: {}
 
 packages:
+
+  360dialog-connect-button@1.0.2:
+    resolution: {integrity: sha512-lqYLAG1VEbEFoI273zLBte6l7gzSqsQi0P57+E5JCioA/0KLLBZH6AY5/zyaOM4ZRvmIefeFvp5UAZl04u0CRw==}
+    engines: {node: '>=10'}
+    peerDependencies:
+      react: '>=16'
 
   '@babel/code-frame@7.29.7':
     resolution: {integrity: sha512-Aup7aUOfpbAUg2ROOJN6Iw5f9DMBlzu0mIkm/malLQFN/YQgO48wCj0Kxa3sEHJvPVFg7siR+qRInwXd2qhQKw==}
@@ -1864,6 +1873,10 @@ packages:
     resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
 
 snapshots:
+
+  360dialog-connect-button@1.0.2(react@18.3.1):
+    dependencies:
+      react: 18.3.1
 
   '@babel/code-frame@7.29.7':
     dependencies:

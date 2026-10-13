@@ -161,9 +161,22 @@ export function friendlyWarning(code?: string): string | null {
 export interface WaStatusLite {
   balance: number;
   rupiahPerCredit: number;
+  waProvider: "meta" | "d360";
+  accountProvider: string | null;
+  waD360PartnerId: string;
   settings: { autoDueDate: boolean; dailyReport: boolean; ownerPhone: string };
   recent: Array<{ id: string; to: string; body: string; status: string; error: string; createdAt: string }>;
 }
+/** callback Connect Button 360dialog → generate & simpan API key channel perusahaan */
+export const waD360Onboard = (client: string, channels: string[]) =>
+  adminFetch<{ ok: boolean; channel: string }>("/api/wa/d360/onboard", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ client, channels }),
+  });
+/** platform: daftarkan redirect URL onboarding ke halaman WhatsApp */
+export const setD360Redirect = () =>
+  adminFetch<{ ok: boolean; redirect: string }>("/api/settings/d360-redirect", { method: "POST" });
 export const getWaStatus = () => adminFetch<WaStatusLite>("/api/wa/status");
 export const putWaSettings = (body: { autoDueDate?: boolean; dailyReport?: boolean; ownerPhone?: string }) =>
   adminFetch<unknown>("/api/wa/settings", {
