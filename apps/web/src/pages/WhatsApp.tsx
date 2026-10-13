@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { AppHeader } from "../ui";
-import { ConnectButton } from "360dialog-connect-button";
+// package.json paket menunjuk file yang tak ada — impor langsung bundel ESM aslinya
+import { ConnectButton } from "360dialog-connect-button/dist/dialog-connect-button.esm.js";
 import { getMe, getWaWebhookEvents, waD360Onboard, putWaSettings, putWaWebhookEvents } from "../api";
 
 interface WaStatus {
