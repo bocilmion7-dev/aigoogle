@@ -15,6 +15,7 @@ import {
   embeddedSignupUrl,
   getOrCreateBalance,
   getWaSettings,
+  getWaProviderGlobal,
   getWaWebhookSettings,
   setWaWebhookSettings,
   WA_WEBHOOK_EVENT_OPTIONS,
@@ -40,7 +41,9 @@ waRouter.get(
       select: { id: true, to: true, body: true, status: true, error: true, createdAt: true },
     });
     res.json({
-      connected: !!acct && acct.status === "connected" && !!acct.phoneNumberId,
+      connected: !!acct && acct.status === "connected" && (!!acct.phoneNumberId || acct.provider === "d360"),
+      waProvider: (await getWaProviderGlobal()).provider,
+      accountProvider: acct?.provider ?? null,
       account: acct
         ? {
             wabaId: acct.wabaId,
@@ -76,6 +79,32 @@ waRouter.put(
     await setWaSettings(req.user!.tenant.id, body.data);
     await writeAudit(req.user!.tenant.id, req.user!.id, "wa.settings", body.data);
     res.json(await getWaSettings(req.user!.tenant.id));
+  })
+);
+
+// Simpan API key 360dialog milik perusahaan (onboarding lewat Hub 360dialog, bukan Embedded Signup Meta)
+waRouter.put(
+  "/wa/d360",
+  requirePerm("app:users.manage"),
+  asyncHandler(async (req, res) => {
+    const body = z.object({ apiKey: z.string().min(10).max(200) }).safeParse(req.body);
+    if (!body.success) return res.status(400).json({ error: "bad_request" });
+    await prisma.waAccount.upsert({
+      where: { tenantId: req.user!.tenant.id },
+      create: {
+        tenantId: req.user!.tenant.id,
+        provider: "d360",
+        tokenEnc: encryptToken(body.data.apiKey.trim()),
+        status: "connected",
+      },
+      update: {
+        provider: "d360",
+        tokenEnc: encryptToken(body.data.apiKey.trim()),
+        status: "connected",
+      },
+    });
+    await writeAudit(req.user!.tenant.id, req.user!.id, "wa.d360.connect", {});
+    res.json({ ok: true });
   })
 );
 

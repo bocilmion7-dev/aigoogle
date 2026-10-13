@@ -14,12 +14,18 @@ const PutBody = z
     voiceEngine: z.enum(["gemini-native", "web-speech", "edge"]).optional(),
     ocrMode: z.enum(["vision", "text"]).optional(),
     waPricePerCredit: z.number().int().min(1).max(1_000_000).optional(),
+    /** penyedia WhatsApp utk embedded signup: meta | d360 (default d360) */
+    waProvider: z.enum(["meta", "d360"]).optional(),
+    waD360ApiKey: z.string().max(200).optional(),
+    waD360BaseUrl: z.string().url().max(200).optional(),
   })
   .refine((b) => Object.values(b).some((v) => v !== undefined), { message: "tidak ada field" });
 
+const D360_DEFAULT_BASE = "https://waba-v2.360dialog.io";
+
 async function settingsSnapshot() {
   const rows = await prisma.appSetting.findMany({
-    where: { key: { in: ["voiceEngine", "ocrMode", "waPricePerCredit"] } },
+    where: { key: { in: ["voiceEngine", "ocrMode", "waPricePerCredit", "waProvider", "waD360ApiKey", "waD360BaseUrl"] } },
   });
   const get = (k: string) => rows.find((r) => r.key === k)?.value;
   const price = Number(get("waPricePerCredit"));
@@ -27,6 +33,9 @@ async function settingsSnapshot() {
     voiceEngine: get("voiceEngine") ?? "web-speech",
     ocrMode: get("ocrMode") === "text" ? "text" : "vision",
     waPricePerCredit: Number.isFinite(price) && price >= 1 ? price : WA_TOPUP_RUPIAH_PER_CREDIT,
+    waProvider: get("waProvider") === "meta" ? "meta" : "d360",
+    waD360ApiKey: get("waD360ApiKey") ?? "",
+    waD360BaseUrl: get("waD360BaseUrl") ?? D360_DEFAULT_BASE,
   };
 }
 

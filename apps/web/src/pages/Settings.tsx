@@ -34,6 +34,9 @@ export function Settings() {
         voiceEngine: aset.voiceEngine,
         ocrMode: aset.ocrMode ?? "vision",
         ...(aset.waPricePerCredit !== undefined ? { waPricePerCredit: aset.waPricePerCredit } : {}),
+        waProvider: aset.waProvider ?? "d360",
+        ...(aset.waD360ApiKey !== undefined ? { waD360ApiKey: aset.waD360ApiKey } : {}),
+        ...(aset.waD360BaseUrl !== undefined ? { waD360BaseUrl: aset.waD360BaseUrl } : {}),
       });
       setMsg("Pengaturan disimpan.");
     } catch (e) {
@@ -133,6 +136,54 @@ export function Settings() {
               onChange={(e) => aset && setAset({ ...aset, waPricePerCredit: Number(e.target.value) })}
             />
           </label>
+        </section>
+
+        <section className="card">
+          <strong className="card__title">Penyedia WhatsApp (Embedded Signup)</strong>
+          <div className="stack" style={{ gap: 0 }}>
+            <label className="check">
+              <input
+                type="radio" name="waprov" checked={(aset?.waProvider ?? "d360") === "d360"}
+                onChange={() => aset && setAset({ ...aset, waProvider: "d360" })}
+              />
+              <span>360dialog (default) — perusahaan tempel API key dari Hub 360dialog</span>
+            </label>
+            <label className="check">
+              <input
+                type="radio" name="waprov" checked={aset?.waProvider === "meta"}
+                onChange={() => aset && setAset({ ...aset, waProvider: "meta" })}
+              />
+              <span>Meta Cloud API — Embedded Signup iframe (wajib verifikasi bisnis Meta)</span>
+            </label>
+          </div>
+          {(aset?.waProvider ?? "d360") === "d360" && (
+            <>
+              <label className="field" style={{ maxWidth: 420, marginTop: "var(--space-xs)" }}>
+                API Key 360dialog platform (sandbox/utama)
+                <input
+                  className="input"
+                  type="text"
+                  value={aset?.waD360ApiKey ?? ""}
+                  onChange={(e) => aset && setAset({ ...aset, waD360ApiKey: e.target.value })}
+                  placeholder="tempel API key dari 360dialog"
+                />
+              </label>
+              <label className="field" style={{ maxWidth: 420 }}>
+                Base URL API
+                <input
+                  className="input"
+                  type="text"
+                  value={aset?.waD360BaseUrl ?? ""}
+                  onChange={(e) => aset && setAset({ ...aset, waD360BaseUrl: e.target.value })}
+                  placeholder="https://waba-v2.360dialog.io (sandbox: https://waba-sandbox.360dialog.io)"
+                />
+              </label>
+              <p className="meta" style={{ margin: 0 }}>
+                Sandbox hanya bisa kirim ke nomor penerima tetap (maks 200 pesan). Untuk produksi, tiap perusahaan
+                mendaftar nomornya di Hub 360dialog lalu menempel API key-nya di menu WhatsApp.
+              </p>
+            </>
+          )}
         </section>
 
         <div className="btn-row">

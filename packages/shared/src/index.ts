@@ -18,4 +18,8 @@ export interface AppSettings {
   voiceEngine: "gemini-native" | "web-speech" | "edge";
   ocrMode?: "vision" | "text";
   waPricePerCredit?: number;
+  /** penyedia WhatsApp untuk embedded signup perusahaan: d360 (default) | meta */
+  waProvider?: "meta" | "d360";
+  waD360ApiKey?: string;
+  waD360BaseUrl?: string;
 }

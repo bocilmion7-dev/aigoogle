@@ -26,12 +26,104 @@ export function embeddedSignupUrl(redirectUri: string): string | null {
   return u.toString();
 }
 
+/** base URL 360dialog (produksi; sandbox dapat dioverride via appSetting) */
+export const D360_DEFAULT_BASE = "https://waba-v2.360dialog.io";
+
+/** kirim text via 360dialog — body kompatibel Meta Cloud API, auth header D360-API-KEY */
+async function sendD360Text(
+  apiKey: string,
+  baseUrl: string,
+  to: string,
+  body: string
+): Promise<{ ok: boolean; error?: string }> {
+  const res = await fetch(`${baseUrl.replace(/\/$/, "")}/v1/messages`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "D360-API-KEY": apiKey },
+    body: JSON.stringify({
+      messaging_product: "whatsapp",
+      recipient_type: "individual",
+      to,
+      type: "text",
+      text: { body },
+    }),
+  });
+  if (!res.ok) {
+    const err = await res.text().catch(() => "");
+    return { ok: false, error: `d360_${res.status}:${err.slice(0, 200)}` };
+  }
+  return { ok: true };
+}
+
+/** appSetting global utk provider WA */
+async function waProviderSettings(): Promise<{ provider: "meta" | "d360"; d360ApiKey: string; d360BaseUrl: string }> {
+  const rows = await prisma.appSetting.findMany({
+    where: { key: { in: ["waProvider", "waD360ApiKey", "waD360BaseUrl"] } },
+  });
+  const get = (k: string) => rows.find((r) => r.key === k)?.value;
+  return {
+    provider: get("waProvider") === "meta" ? "meta" : "d360",
+    d360ApiKey: get("waD360ApiKey") ?? "",
+    d360BaseUrl: get("waD360BaseUrl") ?? D360_DEFAULT_BASE,
+  };
+}
+
+/** provider global utk halaman status (meta | d360) */
+export async function getWaProviderGlobal(): Promise<{ provider: "meta" | "d360" }> {
+  const row = await prisma.appSetting.findUnique({ where: { key: "waProvider" } });
+  return { provider: row?.value === "meta" ? "meta" : "d360" };
+}
+
 export async function sendWaText(
   tenantId: string,
   to: string,
   body: string
 ): Promise<{ ok: boolean; error?: string }> {
   const acct = await prisma.waAccount.findUnique({ where: { tenantId } });
+  const prov = await waProviderSettings();
+
+  // jalur 360dialog: akun perusahaan (API key sendiri) ATAU fallback kunci global (sandbox platform)
+  const pakaiKunciGlobal = !acct || acct.provider !== "d360";
+  if ((acct && acct.provider === "d360" && acct.tokenEnc) || (pakaiKunciGlobal && prov.provider === "d360" && prov.d360ApiKey)) {
+    const apiKey = acct?.provider === "d360" ? decryptToken(acct.tokenEnc) : prov.d360ApiKey;
+    // kunci milik perusahaan → pakai kredit; kunci global platform (sandbox) → gratis
+    if (!pakaiKunciGlobal) {
+      const bal = await prisma.waBalance.upsert({
+        where: { tenantId },
+        create: { tenantId, amount: 0 },
+        update: {},
+      });
+      if (bal.amount < WA_COST_CREDITS_PER_MESSAGE) {
+        await prisma.waMessageLog.create({
+          data: { tenantId, to, body, status: "failed", error: "saldo_kurang", costCredits: 0 },
+        });
+        return { ok: false, error: "saldo_kurang" };
+      }
+    }
+    const r = await sendD360Text(apiKey, prov.d360BaseUrl, to, body);
+    if (!r.ok) {
+      await prisma.waMessageLog.create({
+        data: { tenantId, to, body, status: "failed", error: r.error ?? "d360_error", costCredits: 0 },
+      });
+      return r;
+    }
+    if (!pakaiKunciGlobal) {
+      await prisma.$transaction([
+        prisma.waBalance.update({
+          where: { tenantId },
+          data: { amount: { decrement: WA_COST_CREDITS_PER_MESSAGE } },
+        }),
+        prisma.waMessageLog.create({
+          data: { tenantId, to, body, status: "sent", costCredits: WA_COST_CREDITS_PER_MESSAGE },
+        }),
+      ]);
+    } else {
+      await prisma.waMessageLog.create({
+        data: { tenantId, to, body, status: "sent", costCredits: 0 },
+      });
+    }
+    return { ok: true };
+  }
+
   if (!acct || !acct.phoneNumberId || !acct.tokenEnc) {
     await prisma.waMessageLog.create({
       data: { tenantId, to, body, status: "failed", error: "belum_connect", costCredits: 0 },

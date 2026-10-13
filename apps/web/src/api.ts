@@ -201,6 +201,14 @@ export const putWaWebhookEvents = (body: { events?: string[]; rateMin?: number; 
     body: JSON.stringify(body),
   });
 
+/** simpan API key 360dialog milik perusahaan */
+export const putWaD360 = (apiKey: string) =>
+  adminFetch<{ ok: boolean }>("/api/wa/d360", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ apiKey }),
+  });
+
 export async function getCustomers(keywords = ""): Promise<CustomerRow[]> {
   const qs = keywords ? `?keywords=${encodeURIComponent(keywords)}` : "";
   const res = await fetch(`/api/customers${qs}`);

@@ -20,7 +20,9 @@ beforeAll(async () => {
   const psid = randomBytes(32).toString("hex");
   await prisma.platformSession.create({ data: { id: psid, platformUserId: pu.id, expiresAt: new Date(Date.now() + 86400_000) } });
   platCookie = `psid=${psid}`;
-  await prisma.appSetting.deleteMany({ where: { key: { in: ["voiceEngine", "ocrMode"] } } });
+  await prisma.appSetting.deleteMany({
+    where: { key: { in: ["voiceEngine", "ocrMode", "waProvider", "waD360ApiKey", "waD360BaseUrl"] } },
+  });
   const tenant = await prisma.tenant.create({
     data: { provider: "accurate", providerDbId: `s-${randomBytes(3).toString("hex")}`, name: "PT Set", alias: "SET" },
   });
@@ -62,7 +64,14 @@ describe("settings & connections", () => {
 
   it("GET default voiceEngine = web-speech; PUT mengubah; GET ulang konsisten", async () => {
     const g1 = await request(api).get("/api/settings").set("Cookie", cookie);
-    expect(g1.body).toEqual({ voiceEngine: "web-speech", ocrMode: "vision", waPricePerCredit: 200 });
+    expect(g1.body).toEqual({
+      voiceEngine: "web-speech",
+      ocrMode: "vision",
+      waPricePerCredit: 200,
+      waProvider: "d360",
+      waD360ApiKey: "",
+      waD360BaseUrl: "https://waba-v2.360dialog.io",
+    });
     const put = await request(api).put("/api/settings").set("Cookie", platCookie).send({ voiceEngine: "gemini-native" });
     expect(put.status).toBe(200);
     const g2 = await request(api).get("/api/settings").set("Cookie", cookie);
@@ -73,7 +82,14 @@ describe("settings & connections", () => {
     expect(putPrice.status).toBe(200);
     expect(putPrice.body.waPricePerCredit).toBe(350);
     const g3 = await request(api).get("/api/settings").set("Cookie", cookie);
-    expect(g3.body).toEqual({ voiceEngine: "gemini-native", ocrMode: "text", waPricePerCredit: 350 });
+    expect(g3.body).toEqual({
+      voiceEngine: "gemini-native",
+      ocrMode: "text",
+      waPricePerCredit: 350,
+      waProvider: "d360",
+      waD360ApiKey: "",
+      waD360BaseUrl: "https://waba-v2.360dialog.io",
+    });
     await request(api).put("/api/settings").set("Cookie", platCookie).send({ ocrMode: "vision", waPricePerCredit: 200 });
   });
 

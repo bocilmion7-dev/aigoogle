@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { AppHeader } from "../ui";
-import { getMe, getWaWebhookEvents, putWaSettings, putWaWebhookEvents } from "../api";
+import { getMe, getWaWebhookEvents, putWaD360, putWaSettings, putWaWebhookEvents } from "../api";
 
 interface WaStatus {
   connected: boolean;
+  waProvider: "meta" | "d360";
+  accountProvider: string | null;
   account: { wabaId: string; phoneNumberId: string; displayName: string; status: string } | null;
   balance: number;
   costPerMessage: number;
@@ -26,6 +28,8 @@ export function WhatsApp() {
   const [waPhone, setWaPhone] = useState("");
   const [waWh, setWaWh] = useState<{ events: string[]; rateMin: number; options: Array<{ key: string; label: string }> } | null>(null);
   const [admMsg, setAdmMsg] = useState<string | null>(null);
+  const [d360Key, setD360Key] = useState("");
+  const [d360Msg, setD360Msg] = useState<string | null>(null);
 
   const load = useCallback(() => {
     void fetch("/api/wa/status")
@@ -60,6 +64,17 @@ export function WhatsApp() {
       .then((s) => setWaWh({ events: s.events ?? [], rateMin: s.rateMin ?? 10, options: s.options ?? [] }))
       .catch(() => undefined);
   }, [isAdmin, st]);
+
+  async function saveD360() {
+    setD360Msg(null);
+    try {
+      await putWaD360(d360Key.trim());
+      setD360Msg("API key 360dialog tersimpan — akun WhatsApp perusahaan terhubung.");
+      load();
+    } catch {
+      setD360Msg("Gagal menyimpan API key.");
+    }
+  }
 
   async function saveAdmin() {
     setAdmMsg(null);
@@ -128,20 +143,54 @@ export function WhatsApp() {
           </p>
         </section>
 
-        <section className="card">
-          <strong className="card__title">Daftar sebagai agregator (Meta Embedded Signup)</strong>
-          <p className="meta">
-            Platform kami membayar Meta. Anda daftarkan nomor bisnis Anda lewat form Meta di bawah.
-            {!st.metaConfigured && " (Credential Meta App belum diset — menu aktif setelah konfigurasi.)"}
-          </p>
-          {st.embedUrl ? (
-            <iframe title="Meta WhatsApp Embedded Signup" src={st.embedUrl} className="embed" />
-          ) : (
-            <p className="meta" style={{ marginBottom: 0 }}>
-              Embed signup siap setelah META_APP_ID & META_EMBEDDED_CONFIG_ID diisi.
+        {st.waProvider === "d360" ? (
+          <section className="card">
+            <strong className="card__title">Hubungkan nomor WhatsApp via 360dialog</strong>
+            {st.connected && st.accountProvider === "d360" ? (
+              <p className="small" style={{ margin: 0 }}>
+                Terhubung via 360dialog — API key perusahaan aktif.
+              </p>
+            ) : (
+              <>
+                <p className="meta">
+                  Daftarkan nomor bisnis Anda di <b>Hub 360dialog</b> (hub.360dialog.com), lalu tempel API key yang
+                  diberikan ke kolom di bawah. Tidak perlu verifikasi bisnis Meta yang panjang.
+                </p>
+                <div className="row" style={{ alignItems: "flex-end" }}>
+                  <label className="field" style={{ flex: "1 1 260px" }}>
+                    API Key 360dialog
+                    <input
+                      className="input"
+                      type="text"
+                      value={d360Key}
+                      onChange={(e) => setD360Key(e.target.value)}
+                      placeholder="tempel API key dari Hub 360dialog"
+                    />
+                  </label>
+                  <button className="btn" disabled={d360Key.trim().length < 10} onClick={() => void saveD360()}>
+                    Hubungkan
+                  </button>
+                </div>
+                {d360Msg && <p className="banner banner--ok" role="status" style={{ marginBottom: 0 }}>{d360Msg}</p>}
+              </>
+            )}
+          </section>
+        ) : (
+          <section className="card">
+            <strong className="card__title">Daftar sebagai agregator (Meta Embedded Signup)</strong>
+            <p className="meta">
+              Platform kami membayar Meta. Anda daftarkan nomor bisnis Anda lewat form Meta di bawah.
+              {!st.metaConfigured && " (Credential Meta App belum diset — menu aktif setelah konfigurasi.)"}
             </p>
-          )}
-        </section>
+            {st.embedUrl ? (
+              <iframe title="Meta WhatsApp Embedded Signup" src={st.embedUrl} className="embed" />
+            ) : (
+              <p className="meta" style={{ marginBottom: 0 }}>
+                Embed signup siap setelah META_APP_ID & META_EMBEDDED_CONFIG_ID diisi.
+              </p>
+            )}
+          </section>
+        )}
 
         <section className="card">
           <strong className="card__title">Topup saldo</strong>
