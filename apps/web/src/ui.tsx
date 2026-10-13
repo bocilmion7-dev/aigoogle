@@ -35,6 +35,13 @@ export function AppHeader({ me }: { me?: Me | null }) {
     ...(canPlatform ? [{ href: "/settings", label: "Pengaturan" }] : []),
   ];
 
+  const isPlatform = data.tenant.provider === "platform";
+
+  async function logout() {
+    await fetch("/api/logout", { method: "POST" }).catch(() => undefined);
+    window.location.href = isPlatform ? "/platform" : "/login";
+  }
+
   return (
     <header className="app-header">
       <div className="app-header__bar">
@@ -44,6 +51,15 @@ export function AppHeader({ me }: { me?: Me | null }) {
         <span className="app-header__user">
           {data.name} · {data.roleKey}
         </span>
+        <button
+          type="button"
+          className="btn btn--ghost btn--sm"
+          style={{ marginLeft: "auto" }}
+          onClick={() => void logout()}
+          aria-label="Keluar dari akun"
+        >
+          Keluar
+        </button>
       </div>
       <nav className="app-header__nav" aria-label="Menu utama">
         {links.map((l) => (
