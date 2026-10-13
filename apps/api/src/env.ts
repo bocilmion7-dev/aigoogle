@@ -16,6 +16,10 @@ const Env = z.object({
   GEMINI_API_KEY: z.string().default(""),
   /** NVIDIA NIM (OpenAI-compatible) — opsional, utk failover provider kedua */
   NVIDIA_API_KEY: z.string().default(""),
+  /** Router OpenAI-compatible (mis. router.bangunweb.com) — provider tunggal chat bila diisi; menonaktifkan Gemini & NVIDIA */
+  ROUTER_API_KEY: z.string().default(""),
+  ROUTER_BASE_URL: z.string().default("https://router.bangunweb.com/v1"),
+  ROUTER_MODEL: z.string().default("deepseek-v4-flash"),
   GEMINI_MODEL: z.string().default("gemini-3.6-flash"),
   GEMINI_TTS_MODEL: z.string().default("gemini-3.8-flash-tts"),
   GEMINI_TRANSCRIBE_MODEL: z.string().default("gemini-3.5-transcribe"),

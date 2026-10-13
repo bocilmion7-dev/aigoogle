@@ -108,9 +108,9 @@ describe("runToolLoop (fake gemini)", () => {
     expect(fake.calls.length).toBeLessThanOrEqual(8);
   });
 
-  it("deadline 60 dtk terlampaui → pesan butuh waktu", async () => {
+  it("deadline 120 dtk terlampaui → pesan butuh waktu", async () => {
     const fake = new FakeGeminiClient([{ parts: [{ text: "ok" }] }]);
-    const { opts } = deps({ gemini: fake, now: (() => { let t = 0; return () => (t += 61_000); })() });
+    const { opts } = deps({ gemini: fake, now: (() => { let t = 0; return () => (t += 121_000); })() });
     const out = await runToolLoop(opts);
     expect(out.text).toContain("waktu");
   });

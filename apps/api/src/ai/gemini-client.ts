@@ -56,6 +56,10 @@ export class RealGeminiClient implements GeminiClient {
     return withModelFailover(
       opts.action ?? "generate",
       async (c: ModelCandidate) => {
+        if (c.provider === "router") {
+          const dt = new RealNvidiaClient(env.ROUTER_API_KEY, env.ROUTER_BASE_URL);
+          return dt.generate({ ...opts, model: c.model });
+        }
         if (c.provider === "nvidia") {
           const nv = new RealNvidiaClient(env.NVIDIA_API_KEY);
           return nv.generate({ ...opts, model: c.model });
@@ -63,19 +67,22 @@ export class RealGeminiClient implements GeminiClient {
         const res = await this.geminiPost(c.model, "generateContent", opts);
         return { parts: this.partsFrom(await res.json()) };
       },
-      opts.model ?? env.GEMINI_MODEL
+      opts.model ?? (env.ROUTER_MODEL.split(",")[0]?.trim() || env.GEMINI_MODEL)
     );
   }
 
   async *generateStream(opts: GenerateOpts): AsyncGenerator<GeminiPart> {
-    // failover menghasilkan generator per-provider: Gemini via SSE stream,
-    // NVIDIA via generate utuh lalu di-yield. Gemini tetap prioritas (rank lebih depan).
+    // failover menghasilkan generator per-provider: Router/NVIDIA via generate utuh lalu
+    // di-yield (keduanya OpenAI-compatible); Gemini via SSE stream.
     const gen = await withModelFailover(
       opts.action ?? "generate",
       async (c: ModelCandidate): Promise<AsyncGenerator<GeminiPart>> => {
-        if (c.provider === "nvidia") {
-          const nv = new RealNvidiaClient(env.NVIDIA_API_KEY);
-          const { parts } = await nv.generate({ ...opts, model: c.model });
+        if (c.provider === "router" || c.provider === "nvidia") {
+          const client =
+            c.provider === "router"
+              ? new RealNvidiaClient(env.ROUTER_API_KEY, env.ROUTER_BASE_URL)
+              : new RealNvidiaClient(env.NVIDIA_API_KEY);
+          const { parts } = await client.generate({ ...opts, model: c.model });
           return (async function* () {
             for (const p of parts) yield p;
           })();
@@ -83,7 +90,7 @@ export class RealGeminiClient implements GeminiClient {
         const res = await this.geminiPost(c.model, "streamGenerateContent?alt=sse", opts);
         return this.sseParts(res);
       },
-      opts.model ?? env.GEMINI_MODEL
+      opts.model ?? (env.ROUTER_MODEL.split(",")[0]?.trim() || env.GEMINI_MODEL)
     );
     yield* gen;
   }

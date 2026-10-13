@@ -4,6 +4,10 @@ import { env } from "../src/env.js";
 import { withModelFailover, refreshModelsLive, resetRefreshCooldown, MAX_FAILURES } from "../src/ai/model-pool.js";
 import { GeminiHttpError } from "../src/ai/gemini-error.js";
 
+// uji jalur Gemini+NVIDIA secara isolasi — .env memuat ROUTER_API_KEY (provider aktif
+// di produksi); matikan sbg sementara agar logika failover Gemini tetap teruji
+env.ROUTER_API_KEY = "";
+
 function listResp(names: string[]): Response {
   return new Response(
     JSON.stringify({

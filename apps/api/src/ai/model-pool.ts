@@ -15,7 +15,7 @@ import { RealNvidiaClient } from "./nvidia.js";
  *   reset hitungan) → coba satu siklus lagi; tetap gagal → lempar error terakhir.
  */
 export type ModelAction = "generate" | "tts" | "stt";
-export type ModelProvider = "gemini" | "nvidia";
+export type ModelProvider = "gemini" | "nvidia" | "router";
 
 /** Kandidat model: provider + nama model (NVIDIA hanya utk ember generate). */
 export interface ModelCandidate {
@@ -58,6 +58,27 @@ export async function refreshModelsLive(): Promise<number> {
   if (refreshP) return refreshP;
   if (Date.now() - lastRefreshAt < REFRESH_COOLDOWN_MS) return 0;
   refreshP = (async () => {
+    // Router aktif → provider TUNGGAL utk generate; tanpa fetch Gemini (hemat kuota,
+    // endpoint Router mungkin hanya terjangkau dari jaringan tertentu). TTS/STT tetap Gemini
+    // (di-seed terpisah saat Router mati).
+    if (env.ROUTER_API_KEY.length > 10) {
+      const routerModels = env.ROUTER_MODEL.split(",").map((s) => s.trim()).filter(Boolean);
+      const drows = routerModels.map((name, rank) => ({
+        id: `generate:router:${name}`,
+        action: "generate",
+        provider: "router",
+        name,
+        rank,
+      }));
+      if (drows.length) {
+        await prisma.$transaction([
+          prisma.geminiModel.deleteMany({ where: { action: "generate" } }),
+          prisma.geminiModel.createMany({ data: drows }),
+        ]);
+      }
+      lastRefreshAt = Date.now();
+      return drows.length;
+    }
     const key = process.env.GEMINI_API_KEY || "";
     if (key.length < 10) return 0;
     const buckets: Record<ModelAction, string[]> = { generate: [], tts: [], stt: [] };
@@ -98,6 +119,7 @@ export async function refreshModelsLive(): Promise<number> {
       list.forEach((name, rank) => rows.push({ id: `${action}:${name}`, action, provider: "gemini", name, rank }));
     }
     // provider kedua (NVIDIA NIM) — hanya utk ember generate, diurutkan setelah Gemini
+    // (Router sudah ditangani cabang awal refreshModelsLive — di sini hanya Gemini+NVIDIA)
     if (env.NVIDIA_API_KEY.length > 10) {
       try {
         const nv = new RealNvidiaClient(env.NVIDIA_API_KEY);
@@ -169,9 +191,17 @@ async function candidates(action: ModelAction, preferred?: string): Promise<Mode
     model: r.name,
   }));
   if (preferred && !all.some((c) => c.model === preferred)) {
-    const pref = await prisma.geminiModel.findUnique({ where: { id: `${action}:${preferred}` } });
-    if (pref && pref.failureCount < MAX_FAILURES) all.unshift({ provider: "gemini", model: preferred });
+    // cari baris preferred dgn id sesuai provider (gemini|nvidia|router)
+    for (const id of [`${action}:${preferred}`, `${action}:router:${preferred}`, `${action}:nvidia:${preferred}`]) {
+      const pref = await prisma.geminiModel.findUnique({ where: { id } });
+      if (pref && pref.failureCount < MAX_FAILURES) {
+        all.unshift({ provider: (pref.provider as ModelProvider) || "gemini", model: pref.name });
+        break;
+      }
+    }
   }
+  const router = all.filter((c) => c.provider === "router");
+  if (router.length) return router.slice(0, MAX_TRY); // Router = provider tunggal
   // jamin tiap provider dapat slot dlm MAX_TRY: Gemini (rank terdepan) dulu,
   // lalu selipkan minimal satu kandidan NVIDIA bila ada — agar kredit Gemini habis → NVIDIA kejatuhan.
   const gemini = all.filter((c) => c.provider === "gemini");
@@ -184,7 +214,9 @@ async function candidates(action: ModelAction, preferred?: string): Promise<Mode
 }
 
 function rowId(action: ModelAction, c: ModelCandidate): string {
-  return c.provider === "nvidia" ? `${action}:nvidia:${c.model}` : `${action}:${c.model}`;
+  if (c.provider === "nvidia") return `${action}:nvidia:${c.model}`;
+  if (c.provider === "router") return `${action}:router:${c.model}`;
+  return `${action}:${c.model}`;
 }
 
 async function markOk(action: ModelAction, c: ModelCandidate): Promise<void> {
