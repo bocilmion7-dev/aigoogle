@@ -1,5 +1,6 @@
 import { env } from "../env.js";
 import { GeminiHttpError } from "./gemini-error.js";
+import { sanitizeToolSchema } from "./schema-sanitize.js";
 import { withModelFailover } from "./model-pool.js";
 import type { GenerateOpts, GeminiPart } from "./gemini-types.js";
 
@@ -18,7 +19,18 @@ export class RealGeminiClient implements GeminiClient {
   private body(opts: GenerateOpts): string {
     return JSON.stringify({
       contents: opts.contents,
-      ...(opts.tools ? { tools: opts.tools } : {}),
+      // Gemini menolak `additionalProperties` & kawan — bersihkan di boundary
+      ...(opts.tools
+        ? {
+            tools: opts.tools.map((t) => ({
+              ...t,
+              functionDeclarations: t.functionDeclarations?.map((d) => ({
+                ...d,
+                ...(d.parameters ? { parameters: sanitizeToolSchema(d.parameters) } : {}),
+              })),
+            })),
+          }
+        : {}),
       ...(opts.system ? { systemInstruction: { parts: [{ text: opts.system }] } } : {}),
       ...(opts.responseModalities ? { generationConfig: { responseModalities: opts.responseModalities } } : {}),
     });

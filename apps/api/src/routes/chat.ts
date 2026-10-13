@@ -99,6 +99,7 @@ chatRouter.post(
       });
       send({ type: "done", messageId: aiMsg.id });
     } catch (e) {
+      console.error("[chat] stream error:", e);
       const msg =
         e instanceof Error && /503|GEMINI/i.test(e.message)
           ? "Layanan AI sedang tidak tersedia — coba lagi sebentar."
