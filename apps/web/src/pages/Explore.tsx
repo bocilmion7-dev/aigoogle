@@ -228,8 +228,7 @@ export function Explore() {
           <div className="card">
             <strong className="card__title">Google Drive belum terhubung</strong>
             <p className="small muted" style={{ marginBottom: 8 }}>
-              Hubungkan Google Drive untuk merapikan folder. Status engine:{" "}
-              <strong>{status.engine === "mock" ? "mock" : "Google Drive"}</strong>.
+              Hubungkan Google Drive untuk merapikan folder.
             </p>
             {status.engine === "google" && (
               <a className="btn" href="/api/oauth/google/start">

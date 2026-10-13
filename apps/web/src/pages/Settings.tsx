@@ -199,7 +199,7 @@ export function Settings() {
                 />
               </label>
               <label className="field" style={{ maxWidth: 420 }}>
-                Partner API Key (header X-API-Key)
+                Partner API Key
                 <input
                   className="input"
                   type="text"
@@ -213,7 +213,7 @@ export function Settings() {
                   className="btn btn--2"
                   onClick={() =>
                     void setD360Redirect()
-                      .then((r) => setD360Msg(`Redirect onboarding didaftarkan: ${r.redirect}`))
+                      .then((r) => setD360Msg("Redirect siap dipakai."))
                       .catch(() => setD360Msg("Gagal — pastikan Partner ID & Partner API Key tersimpan dulu."))
                   }
                 >

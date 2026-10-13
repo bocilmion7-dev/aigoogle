@@ -43,7 +43,7 @@ const CAPS = [
   },
   {
     title: "Bicara, bukan mengetik",
-    body: "Tanya dengan suara, jawaban dibacakan. Mesin suara neural gratis — tanpa langganan tambahan.",
+    body: "Tanya dengan suara, jawaban dibacakan — gratis tanpa langganan tambahan.",
   },
   {
     title: "Riwayat percakapan",

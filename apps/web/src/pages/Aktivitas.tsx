@@ -32,6 +32,7 @@ const EVENT_LABEL: Record<string, string> = {
   RECEIVE_ITEM: "Penerimaan Barang",
   FIXED_ASSET: "Aset Tetap",
   GOLIVE: "Go Live",
+  ACCESS_PRIVILEGE: "Hak Akses",  ACCOUNT: "Akun",  ACCOUNT_BUDGET_TARGET: "Target Anggaran Akun",  ATTACHMENT: "Lampiran",  AUTO_NUMBER: "Penomoran Otomatis",  BANK_STATEMENT: "Mutasi Rekening",  BANK_TRANSFER: "Transfer Bank",  BILL_OF_MATERIAL: "Daftar Kebutuhan Bahan",  BOM_PROCESS_CATEGORY: "Kategori Proses Produksi",  CUSTOMER_CATEGORY: "Kategori Pelanggan",  DATA_CLASSIFICATION: "Klasifikasi Data",  EXCHANGE_INVOICE: "Faktur Pertukaran",  EXPENSE: "Biaya",  FINISHED_GOOD_SLIP: "Slip Barang Jadi",  FOB: "FOB",  FREEONBOARD: "Free on Board",  ITEM_BRAND: "Merek Barang",  JOB_ORDER: "Job Order",  MANUFACTURE_ORDER: "Order Produksi",  MATERIAL_ADJUSTMENT: "Penyesuaian Material",  MATERIAL_EQUIPMENT: "Material & Peralatan",  MATERIAL_SLIP: "Slip Material",  ONLINE_ORDER: "Pesanan Online",  OTHER_DEPOSIT: "Setoran Lain",  OTHER_PAYMENT: "Pembayaran Lain",  PAYMENT_TERM: "Syarat Pembayaran",  PRELIMINARY_SURVEY: "Survei Awal",  PRICE_CATEGORY: "Kategori Harga",  PROCESS_STAGES: "Tahap Proses",  PROJECT_CONTRACTOR: "Kontraktor Proyek",  RECEIVE_ITEM_DONE: "Penerimaan Barang Selesai",  RECOGNITION: "Pengakuan",  ROLL_OVER: "Roll Over Tahun Buku",  SALES_CHECKIN: "Check-in Penjualan",  SALES_MAN_COMMISSION: "Komisi Salesman",  SELLINGPRICE_ADJUSTMENT: "Penyesuaian Harga Jual",  SHIPMENT: "Pengiriman",  STANDARD_PRODUCT_COST: "Biaya Standar Produk",  STOCK_MUTATION_HISTORY: "Riwayat Mutasi Stok",  STOCK_OPNAME_ORDER: "Order Stock Opname",  STOCK_OPNAME_RESULT: "Hasil Stock Opname",  VENDOR_CATEGORY: "Kategori Pemasok",  WEBHOOK: "Integrasi Data",  WORK_ORDER: "Work Order",  WO_PERSON_IN_CHARGE: "Penanggung Jawab Order Kerja",
 };
 
 /** label id-ID utk field payload yang umum */
@@ -69,6 +70,8 @@ const FIELD_LABEL: Record<string, string> = {
   warehouse: "Gudang",
   branchName: "Cabang",
   type: "Jenis",
+  note: "Catatan",
+  source: "Sumber",
 };
 
 const AMOUNT_KEYS = new Set(["totalAmount", "total", "amount", "paymentAmount", "remainingAmount", "price"]);
@@ -108,7 +111,6 @@ function detailFields(row: AccurateEventRow): Array<[string, string]> {
       if (typeof name === "string" && name) out.push([label, name]);
     }
   }
-  if (row.dbId) out.push(["Database", row.dbId]);
   return out;
 }
 
@@ -187,7 +189,7 @@ export function Aktivitas() {
       <main className="page">
         <h1>Aktivitas Accurate</h1>
         <p className="meta">
-          Riwayat perubahan data dari Accurate Online (webhook). Klik baris untuk melihat detail datanya.
+          Riwayat perubahan data dari Accurate Online. Klik baris untuk melihat detail datanya.
         </p>
         {err && <div className="card" style={{ borderColor: "var(--danger, #c0392b)" }}>{err}</div>}
         <div className="card" style={{ marginBottom: "var(--space-s)" }}>
@@ -213,7 +215,7 @@ export function Aktivitas() {
           <div className="card">
             <strong>Belum ada aktivitas.</strong>
             <p className="meta" style={{ marginTop: 6, marginBottom: 0 }}>
-              Perubahan data di Accurate Online akan tampil di sini secara otomatis begitu webhook pertama masuk.
+              Perubahan data di Accurate Online akan tampil di sini secara otomatis.
             </p>
           </div>
         ) : (
@@ -250,7 +252,7 @@ export function Aktivitas() {
                     >
                       <div>
                         <strong>
-                          {EVENT_LABEL[r.event] ?? r.event}{" "}
+                          {EVENT_LABEL[r.event] ?? humanize(r.event)}{" "}
                           <span className="meta" aria-hidden="true">
                             {isOpen ? "▾" : "▸"}
                           </span>

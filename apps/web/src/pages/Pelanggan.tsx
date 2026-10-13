@@ -49,7 +49,7 @@ export function Pelanggan() {
   }, []);
   const [form, setForm] = useState({ customerName: "", date: "", no: "", total: "", description: "" });
   const [target, setTarget] = useState<"" | "salesInvoice" | "salesReceipt">("");
-  const [readText, setReadText] = useState<{ fileName: string; text: string; engine: string } | null>(null);
+  const [readText, setReadText] = useState<{ fileName: string; text: string } | null>(null);
 
   useEffect(() => {
     void getMe().then(setMe);
@@ -110,7 +110,7 @@ export function Pelanggan() {
     setBusy(true);
     try {
       const res = await uploadRead(file);
-      setReadText({ fileName: res.fileName, text: res.text, engine: res.engine });
+      setReadText({ fileName: res.fileName, text: res.text });
     } catch (e) {
       setErr((e as Error).message);
     } finally {
@@ -415,7 +415,7 @@ export function Pelanggan() {
                 <strong className="card__title" style={{ marginBottom: "2px" }}>Baca file</strong>
                 <p className="meta" style={{ margin: 0 }}>
                   PDF, gambar (nota, bukti transfer, kwitansi, screenshot), PowerPoint, Word, Markdown,
-                  atau teks biasa. Mode Vision &amp; OCR menentukan apakah gambar/PDF bisa dibaca.
+                  atau teks biasa.
                 </p>
               </div>
             </div>
@@ -440,7 +440,7 @@ export function Pelanggan() {
             {readText && (
               <div style={{ marginTop: "var(--space-xs)" }}>
                 <p className="meta">
-                  {readText.fileName} · mesin: {readText.engine}
+                  {readText.fileName}
                 </p>
                 <pre className="block">{readText.text}</pre>
               </div>

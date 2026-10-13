@@ -80,13 +80,13 @@ export function WhatsApp() {
       window.history.replaceState({}, "", "/whatsapp");
       try {
         await waD360Onboard(client, channels);
-        setD360Msg("Nomor WhatsApp terhubung — API key perusahaan dibuat otomatis.");
+        setD360Msg("Nomor WhatsApp terhubung.");
         load();
       } catch (e) {
         setD360Msg(
           e instanceof Error && e.message.includes("d360_")
-            ? "360dialog belum menandai channel siap (onboarding Meta diproses). Coba tombol lagi beberapa saat."
-            : "Gagal menyelesaikan onboarding."
+            ? "Pendaftaran belum selesai diproses — coba lagi beberapa saat."
+            : "Gagal menghubungkan nomor."
         );
       } finally {
         setD360Busy(false);
@@ -149,25 +149,29 @@ export function WhatsApp() {
       <AppHeader />
       <main className="page page--narrow">
         <h1>WhatsApp</h1>
-        <p className="page__sub">Gateway pesan, saldo kredit, dan agregator Meta.</p>
+        <p className="page__sub">Kirim pesan dan notifikasi otomatis untuk bisnis Anda.</p>
 
         <section className="card">
           <strong className="card__title">Status</strong>
           <p className="small muted" style={{ margin: "0 0 4px" }}>
-            {st.connected ? `Terhubung (${st.account?.displayName || st.account?.phoneNumberId})` : "Belum terhubung"}
+            {st.connected
+              ? st.account?.displayName
+                ? `Terhubung (${st.account.displayName})`
+                : "Terhubung"
+              : "Belum terhubung"}
           </p>
           <p className="small" style={{ margin: 0 }}>
             Saldo: <strong className="num">{st.balance}</strong> kredit ·{" "}
-            <span className="num">{st.rupiahPerCredit}</span> Rp/kirim (diatur di menu Admin)
+            <span className="num">{st.rupiahPerCredit}</span> Rp/kirim
           </p>
         </section>
 
         {st.waProvider === "d360" ? (
           <section className="card">
-            <strong className="card__title">Hubungkan nomor WhatsApp via 360dialog</strong>
+            <strong className="card__title">Hubungkan nomor WhatsApp</strong>
             <p className="meta">
-              API dikelola platform — tidak perlu mengurus API key. Tekan tombol, masuk dengan akun Meta Business
-              Anda, pilih/daftarkan nomor — setelah selesai, nomor langsung terhubung ke sistem.
+              Tekan tombol, masuk dengan akun Meta Business Anda, lalu pilih atau daftarkan nomor —
+              setelah selesai, nomor langsung terhubung ke sistem.
             </p>
             <div className="wa-connect">
               <ConnectButton
@@ -176,38 +180,23 @@ export function WhatsApp() {
                 callback={(cb) => void onboardD360(cb.client, cb.channels)}
               />
             </div>
-            {!st.waD360PartnerId && (
-              <p className="meta" style={{ margin: "var(--space-xs) 0 0" }}>
-                Catatan: Partner ID platform belum diisi — popup akan membuka pendaftaran umum. Setelah Partner ID
-                diisi Admin Platform di Pengaturan, pendaftaran otomatis terhubung ke platform dan API key dibuat
-                otomatis.
-              </p>
-            )}
-            {d360Busy && <p className="meta">Memproses onboarding…</p>}
+            {d360Busy && <p className="meta">Memproses…</p>}
             {d360Msg && <p className="banner banner--ok" role="status" style={{ marginTop: "var(--space-xs)", marginBottom: 0 }}>{d360Msg}</p>}
             {st.connected ? (
               <p className="banner banner--ok" role="status" style={{ marginTop: "var(--space-xs)", marginBottom: 0 }}>
                 Nomor WhatsApp perusahaan terhubung — notifikasi & otomasi siap dikirim.
               </p>
-            ) : st.platformReady ? (
-              <p className="meta" style={{ margin: "var(--space-xs) 0 0" }}>
-                Jalur sandbox platform siap (kirim terbatas ke nomor verified platform). Hubungkan nomor perusahaan
-                Anda dengan tombol di atas agar notifikasi berjalan penuh.
-              </p>
             ) : null}
           </section>
         ) : (
           <section className="card">
-            <strong className="card__title">Daftar sebagai agregator (Meta Embedded Signup)</strong>
-            <p className="meta">
-              Platform kami membayar Meta. Anda daftarkan nomor bisnis Anda lewat form Meta di bawah.
-              {!st.metaConfigured && " (Credential Meta App belum diset — menu aktif setelah konfigurasi.)"}
-            </p>
+            <strong className="card__title">Hubungkan nomor WhatsApp</strong>
+            <p className="meta">Daftarkan nomor bisnis Anda lewat formulir di bawah.</p>
             {st.embedUrl ? (
               <iframe title="Meta WhatsApp Embedded Signup" src={st.embedUrl} className="embed" />
             ) : (
               <p className="meta" style={{ marginBottom: 0 }}>
-                Embed signup siap setelah META_APP_ID & META_EMBEDDED_CONFIG_ID diisi.
+                Formulir belum tersedia — hubungi pengurus sistem.
               </p>
             )}
           </section>
@@ -272,8 +261,8 @@ export function WhatsApp() {
               Notifikasi perubahan data Accurate
             </strong>
             <p className="small muted" style={{ margin: "0 0 var(--space-xs)" }}>
-              Kirim WhatsApp otomatis ke nomor pemilik setiap ada perubahan data yang dipilih (webhook Accurate),
-              dibatasi sekali per jeda per jenis data agar tidak spam.
+              Kirim WhatsApp otomatis ke nomor pemilik setiap ada perubahan data yang dipilih — dibatasi sekali
+              per jeda per jenis data agar tidak spam.
             </p>
             <div className="stack" style={{ gap: 0 }}>
               {(waWh?.options ?? []).map((o) => (
@@ -322,12 +311,20 @@ export function WhatsApp() {
             <ul className="file-list">
               {st.recent.map((m) => (
                 <li key={m.id} className="file-row">
-                  <span style={{ color: m.status === "sent" ? "var(--accent)" : "var(--danger)" }}>{m.status}</span>
+                  <span style={{ color: m.status === "sent" ? "var(--accent)" : "var(--danger)" }}>{m.status === "sent" ? "Terkirim" : m.status === "pending" ? "Tertunda" : "Gagal"}</span>
                   <span className="num">{m.to}</span>
                   <span className="muted" style={{ flex: 1, minWidth: 0 }}>
                     {m.body.slice(0, 60)}
                   </span>
-                  {m.error && <span style={{ color: "var(--danger)" }}>{m.error}</span>}
+                  {m.error && (
+                    <span style={{ color: "var(--danger)" }}>
+                      {m.error === "belum_connect"
+                        ? "Nomor belum terhubung"
+                        : m.error.includes("rate")
+                          ? "Batas kirim tercapai"
+                          : "Gagal dikirim"}
+                    </span>
+                  )}
                 </li>
               ))}
             </ul>
