@@ -633,6 +633,17 @@ input[type="radio"] {
   display: none;
 }
 
+/* tab selebar konten, bagi rata (dipakai halaman Scan) */
+.tabs--fill {
+  display: flex;
+  width: 100%;
+}
+
+.tabs--fill .tab {
+  flex: 1;
+  justify-content: center;
+}
+
 .tab {
   display: inline-flex;
   align-items: center;

@@ -197,9 +197,9 @@ export function Pelanggan() {
           {me.tenant.name} · {connected ? "Accurate terhubung" : "Accurate belum terhubung"}
         </p>
 
-        <div className="tabs" role="group" aria-label="Mode input">
+        <div className="tabs tabs--fill" role="group" aria-label="Mode input">
           <button className="tab" aria-pressed={tab === "scan"} onClick={() => setTab("scan")}>
-            <IconCamera size={16} /> Scan → Input Accurate
+            <IconCamera size={16} /> Scan
           </button>
           <button className="tab" aria-pressed={tab === "reader"} onClick={() => setTab("reader")}>
             <IconFileText size={16} /> Baca file
@@ -211,33 +211,6 @@ export function Pelanggan() {
 
         {tab === "scan" ? (
           <section className="card">
-            <div className="scan-head">
-              <span className="scan-head__icon" aria-hidden="true">
-                <IconCamera size={20} />
-              </span>
-              <div>
-                <strong className="card__title" style={{ marginBottom: "2px" }}>
-                  Foto dokumen — AI membaca &amp; menyimpulkan
-                </strong>
-                <p className="meta" style={{ margin: 0 }}>
-                  Nota, faktur, kwitansi, atau bukti transfer. AI membaca isinya dan menyimpulkan jenis
-                  dokumen — Anda tinggal periksa, lalu simpan ke Accurate.
-                </p>
-              </div>
-            </div>
-
-            <ol className="scan-steps" aria-label="Alur kerja scan">
-              <li className="scan-step">
-                <span className="scan-step__n">1</span> Arahkan
-              </li>
-              <li className="scan-step">
-                <span className="scan-step__n">2</span> Ambil foto
-              </li>
-              <li className="scan-step">
-                <span className="scan-step__n">3</span> AI baca — Anda simpan
-              </li>
-            </ol>
-
             {!camOn ? (
               <>
                 <div className="scan-tiles">
