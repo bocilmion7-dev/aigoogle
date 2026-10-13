@@ -776,6 +776,16 @@ pre.block {
   max-height: none;
 }
 
+/* mobile: tanpa strip riwayat di atas chat (riwayat via desktop sidebar) */
+@media (max-width: 899px) {
+  .app--chat .chat > aside {
+    display: none;
+  }
+  .app--chat .chat {
+    grid-template-rows: minmax(0, 1fr);
+  }
+}
+
 @media (min-width: 900px) {
   .chat {
     grid-template-columns: 240px 1fr;
