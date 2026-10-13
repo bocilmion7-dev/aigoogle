@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ConnectionInfo, Me } from "@aigoogle/shared";
 import {
   friendlyWarning,
@@ -19,6 +19,13 @@ const TARGET_LABEL: Record<string, string> = {
   salesReceipt: "Penerimaan kas (Accurate)",
 };
 
+const DOC_LABEL: Record<string, string> = {
+  faktur: "Faktur",
+  nota: "Nota",
+  kwitansi: "Kwitansi",
+  lainnya: "Dokumen lain / bukti transfer",
+};
+
 export function Pelanggan() {
   const [me, setMe] = useState<Awaited<ReturnType<typeof getMe>> | undefined>(undefined);
   const [conns, setConns] = useState<ConnectionInfo[]>([]);
@@ -29,6 +36,16 @@ export function Pelanggan() {
   const [okMsg, setOkMsg] = useState("");
 
   const [scan, setScan] = useState<ScanResponse | null>(null);
+  const [camOn, setCamOn] = useState(false);
+  const [camErr, setCamErr] = useState("");
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  // matikan kamera saat halaman ditutup (hook WAJIB sebelum early-return agar urutan stabil)
+  useEffect(() => {
+    return () => {
+      streamRef.current?.getTracks().forEach((t) => t.stop());
+    };
+  }, []);
   const [form, setForm] = useState({ customerName: "", date: "", no: "", total: "", description: "" });
   const [target, setTarget] = useState<"" | "salesInvoice" | "salesReceipt">("");
   const [readText, setReadText] = useState<{ fileName: string; text: string; engine: string } | null>(null);
@@ -125,6 +142,51 @@ export function Pelanggan() {
     }
   };
 
+  // ── Kamera langsung: foto → AI baca & simpulkan jenis dokumen ────────────
+  const stopCam = () => {
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    streamRef.current = null;
+    setCamOn(false);
+  };
+
+  async function startCam() {
+    setCamErr("");
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1440 } },
+        audio: false,
+      });
+      streamRef.current = stream;
+      setCamOn(true);
+      requestAnimationFrame(() => {
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          void videoRef.current.play();
+        }
+      });
+    } catch {
+      setCamErr("Kamera tidak dapat diakses — gunakan tombol ambil foto (alternatif) di bawah.");
+    }
+  }
+
+  function shootCam() {
+    const v = videoRef.current;
+    if (!v || !v.videoWidth) return;
+    const canvas = document.createElement("canvas");
+    canvas.width = v.videoWidth;
+    canvas.height = v.videoHeight;
+    canvas.getContext("2d")?.drawImage(v, 0, 0);
+    canvas.toBlob(
+      (blob) => {
+        stopCam();
+        if (!blob) return;
+        void onScanFile(new File([blob], `kamera-${Date.now()}.jpg`, { type: "image/jpeg" }));
+      },
+      "image/jpeg",
+      0.92
+    );
+  }
+
   return (
     <div className="app">
       <AppHeader me={me} />
@@ -148,19 +210,67 @@ export function Pelanggan() {
 
         {tab === "scan" ? (
           <section className="card">
-            <strong className="card__title">Scan nota / faktur / kwitansi</strong>
+            <strong className="card__title">Foto dokumen — AI membaca & menyimpulkan</strong>
             <p className="meta">
-              Foto atau unggah gambar/PDF (nota, bukti transfer, faktur, kwitansi, screenshot) atau file teks
-              (MD, TXT, DOCX, PPTX). Hasil baca ditampilkan untuk diperiksa dulu sebelum disimpan ke Accurate.
-              
+              Arahkan kamera ke nota / faktur / kwitansi / bukti transfer → ambil foto → AI membaca isinya
+              dan menyimpulkan jenis dokumennya. Periksa hasilnya, lalu simpan ke Accurate.
             </p>
-            <input
-              className="input-file"
-              type="file"
-              accept="image/*,.pdf,.docx,.pptx,.doc,.ppt,.md,.txt"
-              onChange={(e) => void onScanFile(e.target.files?.[0])}
-            />
-            {busy && <p className="meta">Membaca dokumen…</p>}
+
+            {!camOn ? (
+              <div className="btn-row">
+                <button className="btn" onClick={() => void startCam()}>📷 Buka Kamera</button>
+                <label className="btn btn--2" style={{ cursor: "pointer" }}>
+                  Ambil foto (alternatif)
+                  <input
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    style={{ display: "none" }}
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) void onScanFile(f);
+                      e.currentTarget.value = "";
+                    }}
+                  />
+                </label>
+              </div>
+            ) : (
+              <div>
+                <video
+                  ref={videoRef}
+                  playsInline
+                  muted
+                  style={{ width: "100%", maxWidth: 560, borderRadius: 8, background: "#000" }}
+                />
+                <div className="btn-row" style={{ marginTop: "var(--space-xs)" }}>
+                  <button className="btn" onClick={shootCam} disabled={busy}>📸 Ambil Foto & Baca dengan AI</button>
+                  <button className="btn btn--2" onClick={stopCam}>Tutup kamera</button>
+                </div>
+              </div>
+            )}
+            {camErr && <p className="meta" style={{ color: "var(--danger, #c0392b)" }}>{camErr}</p>}
+
+            <details style={{ marginTop: "var(--space-xs)" }}>
+              <summary style={{ cursor: "pointer", fontSize: "var(--step--1)", color: "var(--ink-2)" }}>
+                Atau unggah file (PDF, DOCX, teks)
+              </summary>
+              <input
+                className="input-file"
+                type="file"
+                accept="image/*,.pdf,.docx,.pptx,.doc,.ppt,.md,.txt"
+                onChange={(e) => void onScanFile(e.target.files?.[0])}
+                style={{ marginTop: "var(--space-xs)" }}
+              />
+            </details>
+            {busy && <p className="meta">AI sedang membaca dokumen…</p>}
+
+            {scan && (
+              <p className="banner banner--ok" role="status" style={{ marginTop: "var(--space-xs)" }}>
+                AI menyimpulkan: <b>{DOC_LABEL[scan.fields.docType] ?? scan.fields.docType}</b>
+                {scan.suggestedTarget ? <> — disarankan disimpan sebagai <b>{TARGET_LABEL[scan.suggestedTarget]}</b></> : null}.
+                Periksa & lengkapi kolom di bawah.
+              </p>
+            )}
 
             {scan && (
               <div style={{ marginTop: "var(--space-s)" }}>
