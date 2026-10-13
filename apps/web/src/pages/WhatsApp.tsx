@@ -69,24 +69,31 @@ export function WhatsApp() {
       .catch(() => undefined);
   }, [isAdmin, st]);
 
-  // callback Connect Button: klien selesai Embedded Signup → generate & simpan API key channel
-  async function onboardD360(client: string, channels: string[]) {
-    setD360Busy(true);
-    setD360Msg(null);
-    try {
-      await waD360Onboard(client, channels);
-      setD360Msg("Nomor WhatsApp terhubung — API key perusahaan dibuat otomatis.");
-      load();
-    } catch (e) {
-      setD360Msg(
-        e instanceof Error && e.message.includes("d360_")
-          ? "360dialog belum menandai channel siap (onboarding Meta diproses). Coba tombol lagi beberapa saat."
-          : "Gagal menyelesaikan onboarding."
-      );
-    } finally {
-      setD360Busy(false);
-    }
-  }
+  // callback Connect Button: klien selesai Embedded Signup → generate & simpan API key channel.
+  // useCallback WAJIB — component memanggil ulang callback di tiap render bila identity berubah,
+  // dan query ?client=&channels= dibersihkan agar onboarding tidak terpicu berulang.
+  const onboardD360 = useCallback(
+    async (client: string, channels: string[]) => {
+      if (d360Busy) return;
+      setD360Busy(true);
+      setD360Msg(null);
+      window.history.replaceState({}, "", "/whatsapp");
+      try {
+        await waD360Onboard(client, channels);
+        setD360Msg("Nomor WhatsApp terhubung — API key perusahaan dibuat otomatis.");
+        load();
+      } catch (e) {
+        setD360Msg(
+          e instanceof Error && e.message.includes("d360_")
+            ? "360dialog belum menandai channel siap (onboarding Meta diproses). Coba tombol lagi beberapa saat."
+            : "Gagal menyelesaikan onboarding."
+        );
+      } finally {
+        setD360Busy(false);
+      }
+    },
+    [d360Busy, load]
+  );
 
   async function saveAdmin() {
     setAdmMsg(null);
