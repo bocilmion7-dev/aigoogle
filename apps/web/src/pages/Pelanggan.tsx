@@ -10,6 +10,7 @@ import {
   type ScanResponse,
 } from "../api";
 import { AppHeader } from "../ui";
+import { IconCamera, IconCheck, IconFileText, IconUpload } from "../icons";
 
 const rp = (n: number | null | undefined) =>
   n === null || n === undefined ? "—" : `Rp ${Math.round(n).toLocaleString("id-ID")}`;
@@ -198,10 +199,10 @@ export function Pelanggan() {
 
         <div className="tabs" role="group" aria-label="Mode input">
           <button className="tab" aria-pressed={tab === "scan"} onClick={() => setTab("scan")}>
-            Scan → Input Accurate
+            <IconCamera size={16} /> Scan → Input Accurate
           </button>
           <button className="tab" aria-pressed={tab === "reader"} onClick={() => setTab("reader")}>
-            Baca file
+            <IconFileText size={16} /> Baca file
           </button>
         </div>
 
@@ -210,22 +211,72 @@ export function Pelanggan() {
 
         {tab === "scan" ? (
           <section className="card">
-            <strong className="card__title">Foto dokumen — AI membaca & menyimpulkan</strong>
-            <p className="meta">
-              Arahkan kamera ke nota / faktur / kwitansi / bukti transfer → ambil foto → AI membaca isinya
-              dan menyimpulkan jenis dokumennya. Periksa hasilnya, lalu simpan ke Accurate.
-            </p>
+            <div className="scan-head">
+              <span className="scan-head__icon" aria-hidden="true">
+                <IconCamera size={20} />
+              </span>
+              <div>
+                <strong className="card__title" style={{ marginBottom: "2px" }}>
+                  Foto dokumen — AI membaca &amp; menyimpulkan
+                </strong>
+                <p className="meta" style={{ margin: 0 }}>
+                  Nota, faktur, kwitansi, atau bukti transfer. AI membaca isinya dan menyimpulkan jenis
+                  dokumen — Anda tinggal periksa, lalu simpan ke Accurate.
+                </p>
+              </div>
+            </div>
+
+            <ol className="scan-steps" aria-label="Alur kerja scan">
+              <li className="scan-step">
+                <span className="scan-step__n">1</span> Arahkan
+              </li>
+              <li className="scan-step">
+                <span className="scan-step__n">2</span> Ambil foto
+              </li>
+              <li className="scan-step">
+                <span className="scan-step__n">3</span> AI baca — Anda simpan
+              </li>
+            </ol>
 
             {!camOn ? (
-              <div className="btn-row">
-                <button className="btn" onClick={() => void startCam()}>📷 Buka Kamera</button>
-                <label className="btn btn--2" style={{ cursor: "pointer" }}>
-                  Ambil foto (alternatif)
+              <>
+                <div className="scan-tiles">
+                  <button type="button" className="scan-tile scan-tile--primary" onClick={() => void startCam()}>
+                    <span className="scan-tile__icon" aria-hidden="true">
+                      <IconCamera size={20} />
+                    </span>
+                    <span className="scan-tile__title">Buka Kamera</span>
+                    <span className="scan-tile__desc">
+                      Arahkan ke dokumen, hasil langsung dibaca AI tanpa pindah aplikasi.
+                    </span>
+                  </button>
+                  <label className="scan-tile">
+                    <span className="scan-tile__icon" aria-hidden="true">
+                      <IconUpload size={20} />
+                    </span>
+                    <span className="scan-tile__title">Unggah foto / file</span>
+                    <span className="scan-tile__desc">
+                      Dari galeri atau penyimpanan — JPG, PNG, PDF, DOCX.
+                    </span>
+                    <input
+                      className="sr-only"
+                      type="file"
+                      accept="image/*,.pdf,.docx,.pptx,.doc,.ppt,.md,.txt"
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) void onScanFile(f);
+                        e.currentTarget.value = "";
+                      }}
+                    />
+                  </label>
+                </div>
+                <label className="btn btn--ghost btn--sm" style={{ marginTop: "var(--space-xs)", cursor: "pointer" }}>
+                  Ambil foto cepat dari kamera perangkat
                   <input
+                    className="sr-only"
                     type="file"
                     accept="image/*"
                     capture="environment"
-                    style={{ display: "none" }}
                     onChange={(e) => {
                       const f = e.target.files?.[0];
                       if (f) void onScanFile(f);
@@ -233,47 +284,46 @@ export function Pelanggan() {
                     }}
                   />
                 </label>
-              </div>
+              </>
             ) : (
               <div>
-                <video
-                  ref={videoRef}
-                  playsInline
-                  muted
-                  style={{ width: "100%", maxWidth: 560, borderRadius: 8, background: "#000" }}
-                />
+                <div className="scan-view">
+                  <video ref={videoRef} playsInline muted />
+                </div>
                 <div className="btn-row" style={{ marginTop: "var(--space-xs)" }}>
-                  <button className="btn" onClick={shootCam} disabled={busy}>📸 Ambil Foto & Baca dengan AI</button>
+                  <button className="btn" onClick={shootCam} disabled={busy}>
+                    <IconCamera size={16} /> Ambil Foto &amp; Baca dengan AI
+                  </button>
                   <button className="btn btn--2" onClick={stopCam}>Tutup kamera</button>
                 </div>
               </div>
             )}
-            {camErr && <p className="meta" style={{ color: "var(--danger, #c0392b)" }}>{camErr}</p>}
+            {camErr && (
+              <p className="banner banner--err" role="alert" style={{ marginTop: "var(--space-xs)", marginBottom: 0 }}>
+                {camErr}
+              </p>
+            )}
 
-            <details style={{ marginTop: "var(--space-xs)" }}>
-              <summary style={{ cursor: "pointer", fontSize: "var(--step--1)", color: "var(--ink-2)" }}>
-                Atau unggah file (PDF, DOCX, teks)
-              </summary>
-              <input
-                className="input-file"
-                type="file"
-                accept="image/*,.pdf,.docx,.pptx,.doc,.ppt,.md,.txt"
-                onChange={(e) => void onScanFile(e.target.files?.[0])}
-                style={{ marginTop: "var(--space-xs)" }}
-              />
-            </details>
-            {busy && <p className="meta">AI sedang membaca dokumen…</p>}
+            {busy && (
+              <p className="busy-line" role="status">
+                <span className="busy-dot" aria-hidden="true" /> AI sedang membaca dokumen…
+              </p>
+            )}
 
             {scan && (
-              <p className="banner banner--ok" role="status" style={{ marginTop: "var(--space-xs)" }}>
-                AI menyimpulkan: <b>{DOC_LABEL[scan.fields.docType] ?? scan.fields.docType}</b>
+              <p className="banner banner--ok banner--icon" role="status" style={{ marginTop: "var(--space-xs)" }}>
+                <IconCheck size={16} />
+                <span>
+                  AI menyimpulkan: <b>{DOC_LABEL[scan.fields.docType] ?? scan.fields.docType}</b>
                 {scan.suggestedTarget ? <> — disarankan disimpan sebagai <b>{TARGET_LABEL[scan.suggestedTarget]}</b></> : null}.
                 Periksa & lengkapi kolom di bawah.
+                </span>
               </p>
             )}
 
             {scan && (
               <div style={{ marginTop: "var(--space-s)" }}>
+                <strong className="scan-block-title">Periksa hasil &amp; lengkapi</strong>
                 <details style={{ fontSize: "var(--step--1)", color: "var(--ink-2)", marginBottom: "var(--space-xs)" }}>
                   <summary style={{ cursor: "pointer" }}>Teks terbaca: {scan.fileName}</summary>
                   <pre className="block">{scan.rawText || "(kosong)"}</pre>
@@ -357,18 +407,36 @@ export function Pelanggan() {
           </section>
         ) : (
           <section className="card">
-            <strong className="card__title">Baca file</strong>
-            <p className="meta">
-              Baca isi PDF, gambar (foto nota, bukti transfer, kwitansi, screenshot), PowerPoint (PPT/PPTX),
-              Word (DOC/DOCX), Markdown, atau teks biasa. Mode Vision &amp; OCR menentukan apakah gambar/PDF bisa dibaca.
-            </p>
-            <input
-              className="input-file"
-              type="file"
-              accept="image/*,.pdf,.docx,.pptx,.doc,.ppt,.md,.txt"
-              onChange={(e) => void onReadFile(e.target.files?.[0])}
-            />
-            {busy && <p className="meta">Membaca file…</p>}
+            <div className="scan-head">
+              <span className="scan-head__icon" aria-hidden="true">
+                <IconFileText size={20} />
+              </span>
+              <div>
+                <strong className="card__title" style={{ marginBottom: "2px" }}>Baca file</strong>
+                <p className="meta" style={{ margin: 0 }}>
+                  PDF, gambar (nota, bukti transfer, kwitansi, screenshot), PowerPoint, Word, Markdown,
+                  atau teks biasa. Mode Vision &amp; OCR menentukan apakah gambar/PDF bisa dibaca.
+                </p>
+              </div>
+            </div>
+            <label className="scan-drop">
+              <span className="scan-drop__icon" aria-hidden="true">
+                <IconUpload size={22} />
+              </span>
+              <span className="scan-drop__title">Pilih file untuk dibaca</span>
+              <span className="scan-drop__hint">PDF · gambar · PPT · DOCX · Markdown · teks</span>
+              <input
+                className="sr-only"
+                type="file"
+                accept="image/*,.pdf,.docx,.pptx,.doc,.ppt,.md,.txt"
+                onChange={(e) => void onReadFile(e.target.files?.[0])}
+              />
+            </label>
+            {busy && (
+              <p className="busy-line" role="status">
+                <span className="busy-dot" aria-hidden="true" /> Membaca file…
+              </p>
+            )}
             {readText && (
               <div style={{ marginTop: "var(--space-xs)" }}>
                 <p className="meta">

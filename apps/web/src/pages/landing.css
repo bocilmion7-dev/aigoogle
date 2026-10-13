@@ -1,5 +1,5 @@
-/* Landing — Warm Ledger Editorial
-   Semua nilai dari token block; satu radius (6px); satu aksen (ledger green). */
+/* Landing — Amber Transit Editorial
+   Semua nilai dari token block; SATU radius (4px); satu aksen (oranye). */
 
 .landing {
   --font-display: "Fraunces", Georgia, "Times New Roman", serif;
@@ -31,13 +31,14 @@
   --ink: #17150f;
   --ink-2: #55504a;
   --ink-3: #8b857c;
-  --line: #e5dfd3;
-  --accent: #2f5a44;
-  --accent-hover: #244835;
-  --accent-tint: #eaefeb;
+  --line: #e7e0d5;
+  --accent: #ea580c;        /* oranye utama — merek, ikon, garis fokus */
+  --accent-strong: #c2410c; /* teks & latar tombol (putih 5.2:1) */
+  --accent-hover: #9a3412;
+  --accent-tint: #fff1e6;
 
   /* form */
-  --radius: 6px;
+  --radius: 4px;
   --border: 1px solid var(--line);
   --shadow: 0 1px 2px rgb(23 21 15 / 0.04), 0 12px 32px rgb(23 21 15 / 0.07);
 
@@ -66,7 +67,7 @@
 }
 
 .landing a {
-  color: var(--accent);
+  color: var(--accent-strong);
 }
 
 .landing a.ld-btn-primary {
@@ -104,7 +105,7 @@
   width: 34px;
   height: 34px;
   border-radius: var(--radius);
-  background: var(--accent);
+  background: var(--accent-strong);
   color: #fff;
   font-family: var(--font-text);
   font-size: var(--step--1);
@@ -126,7 +127,7 @@
 
 .ld-nav-login:hover {
   background: var(--accent-tint);
-  border-color: var(--accent);
+  border-color: var(--accent-strong);
 }
 
 .ld-nav-login:focus-visible,
@@ -154,7 +155,7 @@
   font-weight: 600;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--accent);
+  color: var(--accent-strong);
   margin: 0 0 var(--space-m);
 }
 
@@ -206,7 +207,7 @@
 }
 
 .ld-btn-primary {
-  background: var(--accent);
+  background: var(--accent-strong);
   color: #fff;
 }
 
@@ -226,8 +227,8 @@
 }
 
 .ld-btn-secondary:hover {
-  border-color: var(--accent);
-  color: var(--accent);
+  border-color: var(--accent-strong);
+  color: var(--accent-strong);
 }
 
 .ld-btn-secondary:active {
@@ -315,7 +316,7 @@
 }
 
 .ld-rows li.is-total span:last-child {
-  color: var(--accent);
+  color: var(--accent-strong);
   font-family: var(--font-display);
   font-size: var(--step-0);
 }
@@ -325,7 +326,7 @@
   padding: 2px 8px;
   border-radius: var(--radius);
   background: var(--accent-tint);
-  color: var(--accent);
+  color: var(--accent-strong);
   font-size: var(--step--1);
   font-weight: 600;
 }
@@ -368,7 +369,7 @@
   font-variant-numeric: tabular-nums;
   font-size: var(--step--1);
   font-weight: 600;
-  color: var(--accent);
+  color: var(--accent-strong);
 }
 
 .ld-features .ld-feat-title {
@@ -439,7 +440,7 @@
 }
 
 .ld-footer .ld-link {
-  color: var(--accent);
+  color: var(--accent-strong);
   font-weight: 500;
   text-decoration: none;
   margin-left: var(--space-s);

@@ -3,6 +3,7 @@ import type { MessageInfo, SessionInfo } from "../chat-api";
 import { listMessages, listSessions, streamChat } from "../chat-api";
 import { getSettings } from "../api";
 import { MicButton, speakWeb, ttsEdge, ttsGemini } from "../voice";
+import { IconPlus } from "../icons";
 
 interface UiMsg {
   role: "user" | "ai";
@@ -80,14 +81,16 @@ export function Chat() {
   return (
     <div className="chat">
       <aside aria-label="Riwayat percakapan">
-        <button
-          className="btn"
-          style={{ width: "100%", marginBottom: "var(--space-xs)" }}
-          onClick={() => { setSessionId(null); setMsgs([]); }}
-        >
-          + Percakapan baru
-        </button>
         <div className="chat-sessions">
+          <button
+            className="session session--new"
+            aria-current={sessionId === null ? "true" : undefined}
+            aria-label="Percakapan baru"
+            title="Percakapan baru"
+            onClick={() => { setSessionId(null); setMsgs([]); }}
+          >
+            <IconPlus size={14} /> Baru
+          </button>
           {sessions.map((s) => (
             <button
               key={s.id}
