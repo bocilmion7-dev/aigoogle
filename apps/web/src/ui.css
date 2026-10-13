@@ -493,6 +493,62 @@ a {
   color: var(--ink-3);
 }
 
+/* tab User: mobile ringkas (no + nama), email & role di baris expandable */
+@media (max-width: 899px) {
+  .table--users .th-email,
+  .table--users .td-email,
+  .table--users .th-role,
+  .table--users .td-role {
+    display: none;
+  }
+  .table--users .user-row {
+    cursor: pointer;
+  }
+  .table--users .user-row__chev {
+    margin-left: 8px;
+    color: var(--ink-3);
+    font-size: 11px;
+  }
+  .table--users .user-detail {
+    display: none;
+  }
+  .table--users .user-detail.is-open {
+    display: table-row;
+  }
+  .table--users .user-detail td {
+    background: var(--surface-2);
+    padding: 0 var(--space-s) var(--space-s);
+  }
+}
+
+/* desktop: nomor & baris detail tak perlu — kolom Email/Role tampil langsung */
+@media (min-width: 900px) {
+  .table--users .th-no,
+  .table--users .td-no,
+  .table--users .user-detail,
+  .table--users .user-row__chev {
+    display: none;
+  }
+}
+
+.user-detail__list {
+  margin: 0;
+  display: grid;
+  grid-template-columns: 64px 1fr;
+  gap: 6px 12px;
+  align-items: center;
+}
+
+.user-detail__list dt {
+  color: var(--ink-2);
+  font-size: var(--step--1);
+  font-weight: 600;
+}
+
+.user-detail__list dd {
+  margin: 0;
+}
+
 /* input pencarian dengan ikon kaca di kiri */
 .search-wrap {
   position: relative;

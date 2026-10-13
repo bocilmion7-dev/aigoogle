@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import {
   getAdminTenants,
   getAdminUsers,
@@ -33,6 +33,7 @@ export function Admin() {
   const [conns, setConns] = useState<ConnectionInfo[]>([]);
   const [tenants, setTenants] = useState<Array<{ id: string; name: string; alias: string }>>([]);
   const [selTenant, setSelTenant] = useState<string>(""); // Admin Platform: perusahaan yang sedang dikelola
+  const [openUser, setOpenUser] = useState<string | null>(null); // baris detail mobile
   const [me, setMe] = useState<Awaited<ReturnType<typeof getMe>> | undefined>(undefined);
   const isAdmin = !!me?.permissions?.includes("app:users.manage");
   const canSettings = !!me?.permissions?.includes("app:settings.manage"); // Admin Platform saja
@@ -229,39 +230,77 @@ export function Admin() {
 
         {tab === "users" && (
           <div className="table-wrap">
-            <table className="table">
+            <table className="table table--users">
               <thead>
                 <tr>
+                  <th className="th-no" style={{ width: 40 }}>No</th>
                   <th>Nama</th>
-                  <th>Email</th>
-                  <th>Role</th>
+                  <th className="th-email">Email</th>
+                  <th className="th-role">Role</th>
                 </tr>
               </thead>
               <tbody>
-                {users.map((u) => (
-                  <tr key={u.id}>
-                    <td>{u.name}</td>
-                    <td className="muted">{u.email}</td>
-                    <td>
-                      <select
-                        className="select"
-                        style={{ maxWidth: 180 }}
-                        value={u.roleKey}
-                        onChange={(e) => void changeRole(u.id, e.target.value)}
-                        aria-label={`Role ${u.name}`}
-                      >
-                        {roles.map((r) => (
-                          <option key={r.key} value={r.key}>
-                            {r.name}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                  </tr>
+                {users.map((u, i) => (
+                  <Fragment key={u.id}>
+                    <tr
+                      className="user-row"
+                      aria-expanded={openUser === u.id}
+                      onClick={() => setOpenUser(openUser === u.id ? null : u.id)}
+                    >
+                      <td className="td-no">{i + 1}</td>
+                      <td>
+                        {u.name}
+                        <span className="user-row__chev" aria-hidden="true">
+                          {openUser === u.id ? "▾" : "▸"}
+                        </span>
+                      </td>
+                      <td className="td-email muted">{u.email}</td>
+                      <td className="td-role">
+                        <select
+                          className="select"
+                          style={{ maxWidth: 180 }}
+                          value={u.roleKey}
+                          onClick={(e) => e.stopPropagation()}
+                          onChange={(e) => void changeRole(u.id, e.target.value)}
+                          aria-label={`Role ${u.name}`}
+                        >
+                          {roles.map((r) => (
+                            <option key={r.key} value={r.key}>
+                              {r.name}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                    </tr>
+                    <tr className={`user-detail${openUser === u.id ? " is-open" : ""}`}>
+                      <td colSpan={4}>
+                        <dl className="user-detail__list">
+                          <dt>Email</dt>
+                          <dd>{u.email}</dd>
+                          <dt>Role</dt>
+                          <dd>
+                            <select
+                              className="select"
+                              value={u.roleKey}
+                              onClick={(e) => e.stopPropagation()}
+                              onChange={(e) => void changeRole(u.id, e.target.value)}
+                              aria-label={`Role ${u.name} (detail)`}
+                            >
+                              {roles.map((r) => (
+                                <option key={r.key} value={r.key}>
+                                  {r.name}
+                                </option>
+                              ))}
+                            </select>
+                          </dd>
+                        </dl>
+                      </td>
+                    </tr>
+                  </Fragment>
                 ))}
                 {users.length === 0 && (
                   <tr>
-                    <td colSpan={3} className="empty">Belum ada user.</td>
+                    <td colSpan={4} className="empty">Belum ada user.</td>
                   </tr>
                 )}
               </tbody>

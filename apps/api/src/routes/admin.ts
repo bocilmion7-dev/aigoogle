@@ -64,7 +64,8 @@ adminRouter.get(
   asyncHandler(async (req, res) => {
     const scope = await tenantScope(req);
     const roles = await prisma.role.findMany({
-      where: { tenantId: scope.tenantId },
+      // platform-admin bukan role perusahaan — Admin Platform memakai tabel PlatformUser terpisah
+      where: { tenantId: scope.tenantId, key: { not: "platform-admin" } },
       include: { permissions: { select: { permissionKey: true } } },
       orderBy: { key: "asc" },
     });
