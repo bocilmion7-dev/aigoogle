@@ -5,6 +5,7 @@ import { loadPlatformSession, loadSession } from "./middleware/session.js";
 import { meRouter } from "./routes/me.js";
 import { launchRouter } from "./routes/launch.js";
 import { settingsRouter } from "./routes/settings.js";
+import { aiProvidersRouter } from "./routes/ai-providers.js";
 import { googleRouter } from "./routes/google.js";
 import { chatRouter } from "./routes/chat.js";
 import { audioRouter } from "./routes/audio.js";
@@ -16,6 +17,7 @@ import { waRouter } from "./routes/wa.js";
 import { customersRouter } from "./routes/customers.js";
 import { webhookAccurateRouter, webhookRootRouter } from "./routes/webhook-accurate.js";
 import { winpayNotifyRouter } from "./routes/winpay.js";
+import { LlmHttpError } from "./ai/llm-error.js";
 
 export function createApp() {
   const app = express();
@@ -45,6 +47,7 @@ export function createApp() {
   app.use("/api", authRouter);
   app.use("/api", launchRouter);
   app.use("/api", settingsRouter);
+  app.use("/api", aiProvidersRouter);
   app.use("/api", googleRouter);
   app.use("/api", chatRouter);
   app.use("/api", audioRouter);
@@ -64,6 +67,9 @@ export function createApp() {
         error: "validasi",
         issues: err.issues.map((i) => ({ path: i.path.join("."), message: i.message })),
       });
+    }
+    if (err instanceof LlmHttpError) {
+      return res.status(err.status).json({ error: err.message });
     }
     console.error(err);
     const status = (err as { status?: number; statusCode?: number })?.status

@@ -38,3 +38,19 @@ export interface AppSettings {
 
 /** Client ID Winpay default (diisi Winpay saat onboarding merchant) */
 export const WINPAY_DEFAULT_CLIENT_ID = "3ae34b38-24c6-4fe4-8b26-9deb548020e7";
+
+export interface AiProviderModelRow {
+  name: string;
+  rank: number;
+  failureCount: number;
+  lastError: string;
+  lastOkAt: string | null;
+}
+export interface AiProviderRow {
+  id: string;
+  name: string;
+  baseUrl: string;
+  apiKeyMasked: string; // "••••" + 4 char terakhir
+  isActive: boolean;
+  models: AiProviderModelRow[];
+}
