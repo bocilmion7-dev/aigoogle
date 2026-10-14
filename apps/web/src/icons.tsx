@@ -132,3 +132,11 @@ export const IconLogout: ComponentType<IconProps> = ({ size }) => (
     <path d="M21 12H9" />
   </Base>
 );
+
+export const IconCpu: ComponentType<IconProps> = ({ size }) => (
+  <Base size={size}>
+    <rect x="7" y="7" width="10" height="10" rx="1.5" />
+    <rect x="4" y="4" width="16" height="16" rx="2.5" />
+    <path d="M9 1.5v2.5M15 1.5v2.5M9 20v2.5M15 20v2.5M1.5 9H4M1.5 15H4M20 9h2.5M20 15h2.5" />
+  </Base>
+);

@@ -9,10 +9,12 @@ import { WhatsApp } from "./pages/WhatsApp";
 import { Pelanggan } from "./pages/Pelanggan";
 import { Aktivitas } from "./pages/Aktivitas";
 import { PlatformLogin } from "./pages/PlatformLogin";
+import { AiProviders } from "./pages/AiProviders";
 
 export function App() {
   const path = window.location.pathname;
   if (path === "/settings") return <Settings />;
+  if (path === "/ai") return <AiProviders />;
   if (path === "/explore") return <Explore />;
   if (path === "/admin") return <Admin />;
   if (path === "/app") return <Shell />;

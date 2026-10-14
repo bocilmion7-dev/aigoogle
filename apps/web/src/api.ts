@@ -1,4 +1,4 @@
-import type { AppSettings, ConnectionInfo, Me } from "@aigoogle/shared";
+import type { AiProviderRow, AppSettings, ConnectionInfo, Me } from "@aigoogle/shared";
 
 export async function getMe(): Promise<Me | null> {
   const res = await fetch("/api/me");
@@ -242,3 +242,33 @@ export async function postEntry(body: EntryBody): Promise<{ ok: boolean; id: str
   if (!res.ok) throw await apiError(res);
   return res.json();
 }
+
+// ── Provider AI (halaman /ai, khusus Admin Platform) ─────────────────────────
+export const getAiProviders = () => adminFetch<AiProviderRow[]>("/api/ai/providers");
+export const createAiProvider = (body: { name: string; baseUrl: string; apiKey: string; models: string[] }) =>
+  adminFetch<{ id: string }>("/api/ai/providers", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+export const updateAiProvider = (
+  id: string,
+  body: { name?: string; baseUrl?: string; apiKey?: string; models?: string[] }
+) =>
+  adminFetch<{ ok: boolean }>(`/api/ai/providers/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+export const deleteAiProvider = (id: string) =>
+  adminFetch<{ ok: boolean }>(`/api/ai/providers/${id}`, { method: "DELETE" });
+export const activateAiProvider = (id: string) =>
+  adminFetch<{ ok: boolean }>(`/api/ai/providers/${id}/activate`, { method: "POST" });
+export const previewAiModels = (baseUrl: string, apiKey: string) =>
+  adminFetch<{ models: string[] }>("/api/ai/providers/preview-models", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ baseUrl, apiKey }),
+  });
+export const refreshAiModels = (id: string) =>
+  adminFetch<{ models: string[] }>(`/api/ai/providers/${id}/refresh-models`, { method: "POST" });
