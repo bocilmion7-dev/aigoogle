@@ -1,12 +1,12 @@
 import { prisma } from "../db.js";
-import { env } from "../env.js";
 import { LlmHttpError } from "./llm-error.js";
 import { RealNvidiaClient, type NvidiaClient } from "./nvidia.js";
 
 /**
  * Pool model AI berbasis DB (tabel AiProvider + AiProviderModel).
  *
- * - Tepat satu provider aktif (AiProvider.isActive) — diatur admin via radio.
+ * - Tepat satu provider aktif (AiProvider.isActive) — diatur admin via radio di /ai.
+ * - Konfigurasi 100% manual dari UI; TIDAK ada auto-seed dari env.
  * - Kandidat = model tercentang provider aktif (rank asc, failureCount < MAX_FAILURES).
  * - Kandidat membawa `client` siap pakai (RealNvidiaClient dari baseUrl+apiKey provider)
  *   sehingga pemanggil TIDAK perlu lagi ternary env.
@@ -34,42 +34,11 @@ const ABORT_STATUS = new Set([401, 403]);
 const isTransient = (s: number) => s === 0 || s === 404 || s === 429 || s >= 500;
 const errMsg = (e: unknown) => (e instanceof Error ? e.message : String(e)).slice(0, 500);
 
-/** Seed sekali dari env lama bila belum ada provider sama sekali. */
-export async function seedFromEnvIfNeeded(): Promise<void> {
-  const n = await prisma.aiProvider.count();
-  if (n > 0) return;
-  if (env.ROUTER_API_KEY.length > 10) {
-    const models = env.ROUTER_MODEL.split(",").map((s) => s.trim()).filter(Boolean);
-    await prisma.aiProvider.create({
-      data: {
-        name: "9Router",
-        baseUrl: env.ROUTER_BASE_URL,
-        apiKey: env.ROUTER_API_KEY,
-        isActive: true,
-        models: { createMany: { data: models.map((name, rank) => ({ name, rank })) } },
-      },
-    });
-  } else if (env.NVIDIA_API_KEY.length > 10) {
-    await prisma.aiProvider.create({
-      data: {
-        name: "NVIDIA NIM",
-        baseUrl: "https://integrate.api.nvidia.com/v1",
-        apiKey: env.NVIDIA_API_KEY,
-        isActive: true,
-        models: env.NVIDIA_MODEL
-          ? { createMany: { data: [{ name: env.NVIDIA_MODEL.trim(), rank: 0 }] } }
-          : undefined,
-      },
-    });
-  }
-}
-
 function toCandidate(p: { id: string; name: string; baseUrl: string; apiKey: string }, model: string): ModelCandidate {
   return { provider: p, model, client: new RealNvidiaClient(p.apiKey, p.baseUrl) };
 }
 
 async function candidates(preferred?: string): Promise<ModelCandidate[]> {
-  await seedFromEnvIfNeeded();
   const active = await prisma.aiProvider.findFirst({
     where: { isActive: true },
     include: { models: { where: { failureCount: { lt: MAX_FAILURES } }, orderBy: { rank: "asc" } } },
@@ -158,7 +127,6 @@ export async function withModelFailover<T>(
 
 /** Model rank-1 provider aktif (untuk preferred default di chat). */
 export async function getDefaultModel(): Promise<string> {
-  await seedFromEnvIfNeeded();
   const m = await prisma.aiProviderModel.findFirst({
     where: { provider: { isActive: true }, failureCount: { lt: MAX_FAILURES } },
     orderBy: { rank: "asc" },
