@@ -1,11 +1,11 @@
-import { GeminiHttpError } from "./gemini-error.js";
+import { LlmHttpError } from "./llm-error.js";
 import { sanitizeToolSchema } from "./schema-sanitize.js";
-import type { GenerateOpts, GeminiContent, GeminiPart, ToolDecl } from "./gemini-types.js";
+import type { GenerateOpts, LLMContent, LLMPart, ToolDecl } from "./llm-types.js";
 
 /**
  * Klien NVIDIA NIM (OpenAI-compatible /v1/chat/completions) sbg provider failover.
  *
- * Perbedaan format dgn Gemini yg harus dijembatani:
+ * Perbedaan format isi (contents) dgn endpoint OpenAI yg harus dijembatani:
  * - Nama function harus [A-Za-z0-9_] — titik tool kita (mis. salesInvoice.list)
  *   dipetakan ke underscore, lalu dipetakan balik saat membaca response.
  * - Konten system = pesan `system` pertama (bukan systemInstruction terpisah).
@@ -31,7 +31,7 @@ interface OpenAIMessage {
   tool_call_id?: string;
 }
 
-/** GenerateOpts (format Gemini) → pesan OpenAI. */
+/** GenerateOpts (format isi) → pesan OpenAI. */
 function toOpenAIMessages(opts: GenerateOpts): OpenAIMessage[] {
   const out: OpenAIMessage[] = [];
   if (opts.system) out.push({ role: "system", content: opts.system });
@@ -96,7 +96,7 @@ function toOpenAIMessages(opts: GenerateOpts): OpenAIMessage[] {
   return out;
 }
 
-/** ToolDecl (format Gemini) → tools OpenAI (nama disanitasi utk validasi NIM). */
+/** ToolDecl (format functionDeclarations) → tools OpenAI (nama disanitasi utk validasi NIM). */
 function toOpenAITools(tools: ToolDecl[] | undefined): Array<Record<string, unknown>> | undefined {
   if (!tools?.length) return undefined;
   const decls = tools.flatMap((t) => t.functionDeclarations ?? []);
@@ -111,13 +111,13 @@ function toOpenAITools(tools: ToolDecl[] | undefined): Array<Record<string, unkn
   }));
 }
 
-/** Response OpenAI → parts Gemini (nama tool dipetakan balik ke titik). */
+/** Response OpenAI → parts isi (nama tool dipetakan balik ke titik). */
 function partsFromOpenAI(json: {
   choices?: Array<{ message?: OpenAIMessage }>;
-}): GeminiPart[] {
+}): LLMPart[] {
   const msg = json.choices?.[0]?.message;
   if (!msg) return [];
-  const parts: GeminiPart[] = [];
+  const parts: LLMPart[] = [];
   if (msg.tool_calls?.length) {
     for (const tc of msg.tool_calls) {
       let args: Record<string, unknown> = {};
@@ -143,7 +143,7 @@ function partsFromOpenAI(json: {
 
 export interface NvidiaClient {
   listModels(): Promise<string[]>;
-  generate(opts: GenerateOpts): Promise<{ parts: GeminiPart[] }>;
+  generate(opts: GenerateOpts): Promise<{ parts: LLMPart[] }>;
 }
 
 /** Parse JSON respons OpenAI-compatible yg mungkin diakhiri trailing non-JSON (mis. "data: [DONE]" dari 9Router). */
@@ -159,7 +159,7 @@ function parseOpenAIJson(text: string): unknown {
         /* lanjut ke bawah */
       }
     }
-    throw new GeminiHttpError(502, "respons provider AI tidak valid");
+    throw new LlmHttpError(502, "respons provider AI tidak valid");
   }
 }
 
@@ -172,12 +172,12 @@ export class RealNvidiaClient implements NvidiaClient {
 
   async listModels(): Promise<string[]> {
     const res = await fetch(`${this.baseUrl}/models`, { headers: this.headers() });
-    if (!res.ok) throw new GeminiHttpError(res.status, await res.text().catch(() => ""));
+    if (!res.ok) throw new LlmHttpError(res.status, await res.text().catch(() => ""));
     const j = parseOpenAIJson(await res.text()) as { data?: Array<{ id?: string }> };
     return (j.data ?? []).map((m) => m.id).filter((x): x is string => !!x);
   }
 
-  async generate(opts: GenerateOpts): Promise<{ parts: GeminiPart[] }> {
+  async generate(opts: GenerateOpts): Promise<{ parts: LLMPart[] }> {
     const tools = toOpenAITools(opts.tools);
     const body: Record<string, unknown> = {
       model: opts.model,
@@ -192,7 +192,7 @@ export class RealNvidiaClient implements NvidiaClient {
       headers: this.headers(),
       body: JSON.stringify(body),
     });
-    if (!res.ok) throw new GeminiHttpError(res.status, await res.text().catch(() => ""));
+    if (!res.ok) throw new LlmHttpError(res.status, await res.text().catch(() => ""));
     const parts = partsFromOpenAI(parseOpenAIJson(await res.text()) as Parameters<typeof partsFromOpenAI>[0]);
     // petakan balik nama tool: "salesInvoice_list" → "salesInvoice.list" (cocok katalog)
     const known = (opts.tools ?? []).flatMap((t) => t.functionDeclarations ?? []).map((d) => d.name);

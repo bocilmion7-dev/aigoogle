@@ -30,6 +30,9 @@ export interface AccountingProvider {
   execute(tool: string, args: Record<string, unknown>, ctx: ProviderCtx): Promise<unknown>;
   createSalesInvoice(ctx: ProviderCtx, data: SalesInvoiceInput): Promise<{ id: string }>;
   createSalesReceipt(ctx: ProviderCtx, data: SalesReceiptInput): Promise<{ id: string }>;
+  createPurchaseInvoice(ctx: ProviderCtx, data: PurchaseInvoiceInput): Promise<{ id: string }>;
+  createExpense(ctx: ProviderCtx, data: ExpenseInput): Promise<{ id: string }>;
+  createBankTransfer(ctx: ProviderCtx, data: BankTransferInput): Promise<{ id: string }>;
   refreshToken(refreshToken: string): Promise<ProviderTokenSet>;
   privilegeCatalog(ctx: ProviderCtx): Promise<PrivilegeGroup[]>;
 }
@@ -45,6 +48,29 @@ export interface SalesReceiptInput {
   date?: string;
   no?: string;
   amount?: number;
+  description?: string;
+}
+export interface ScannedLineItem {
+  name: string;
+  qty?: number;
+  price?: number;
+}
+export interface PurchaseInvoiceInput {
+  vendorName: string;
+  date?: string;
+  no?: string;
+  total?: number;
+  description?: string;
+  items?: ScannedLineItem[];
+}
+export interface ExpenseInput {
+  date?: string;
+  total?: number;
+  description?: string;
+}
+export interface BankTransferInput {
+  date?: string;
+  total?: number;
   description?: string;
 }
 export interface ToolSpec {

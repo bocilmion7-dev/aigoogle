@@ -11,12 +11,15 @@ const DEFAULT_LIST_FIELDS: Record<string, string> = {
 
 import type {
   AccountingProvider,
+  BankTransferInput,
+  ExpenseInput,
   OpenDbResult,
   PrivilegeGroup,
   ProviderCtx,
   ProviderDb,
   ProviderTokenSet,
   ProviderUser,
+  PurchaseInvoiceInput,
   SalesInvoiceInput,
   SalesReceiptInput,
   ToolSpec,
@@ -32,6 +35,12 @@ interface Envelope<T> {
   session?: string;
   host?: string;
   admin?: boolean;
+}
+
+interface GlAccount {
+  no: string;
+  name: string;
+  accountType: string;
 }
 
 export class AccurateAdapter implements AccountingProvider {
@@ -212,7 +221,10 @@ export class AccurateAdapter implements AccountingProvider {
   private parseEnvelope(txt: string): Envelope<unknown> {
     const j = JSON.parse(txt) as Envelope<unknown>;
     // envelope standar {s,d}; sebagian save membalas {r:{...data dgn id}} tanpa field s
-    if (j.s === false) throw new Error(`provider gagal: ${JSON.stringify(j.d)}`);
+    if (j.s === false) {
+      const msg = Array.isArray(j.d) ? j.d.map(String).join("; ") : JSON.stringify(j.d);
+      throw new Error(`provider gagal: ${msg}`);
+    }
     return j;
   }
 
@@ -331,6 +343,168 @@ export class AccurateAdapter implements AccountingProvider {
       ctx
     );
     return { id: String(j.d ?? "") };
+  }
+
+  // ── Referensi akuntansi (cabang, buku besar) — cache 5 menit per sesi ──
+
+  private static refCache = new Map<string, { at: number; v: unknown }>();
+  private async cachedRef<T>(key: string, fn: () => Promise<T>): Promise<T> {
+    const hit = AccurateAdapter.refCache.get(key);
+    if (hit && Date.now() - hit.at < 5 * 60_000) return hit.v as T;
+    const v = await fn();
+    AccurateAdapter.refCache.set(key, { at: Date.now(), v });
+    return v;
+  }
+
+  /** Accurate mewajibkan transDate dd/MM/yyyy (ISO ditolak). */
+  private toAccurateDate(iso?: string): string {
+    const d = iso && /^\d{4}-\d{2}-\d{2}$/.test(iso) ? new Date(`${iso}T00:00:00`) : new Date();
+    const p = (n: number) => String(n).padStart(2, "0");
+    return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()}`;
+  }
+
+  /** Cabang aktif — DB multi-cabang menolak save tanpa branchName. */
+  private async resolveBranchName(ctx: ProviderCtx): Promise<string | undefined> {
+    return await this.cachedRef(`branch:${ctx.host}`, async () => {
+      try {
+        const j = await this.moduleGet("/accurate/api/branch/list.do?fields=name", ctx);
+        const arr = (j.d as Array<{ name?: string }>) ?? [];
+        return arr.map((b) => b.name ?? "").find(Boolean) || undefined;
+      } catch {
+        return undefined;
+      }
+    });
+  }
+
+  /** Semua akun buku besar (berhalaman) — dipakai utk pilih akun daun. */
+  private async allAccounts(ctx: ProviderCtx): Promise<GlAccount[]> {
+    return await this.cachedRef(`gl:${ctx.host}`, async () => {
+      const out: GlAccount[] = [];
+      for (let page = 1; page <= 5; page++) {
+        const j = await this.moduleGet(
+          `/accurate/api/glaccount/list.do?sp.pageSize=100&sp.page=${page}&fields=no,name,accountType`,
+          ctx
+        );
+        const arr = (j.d as GlAccount[]) ?? [];
+        out.push(...arr);
+        if (arr.length < 100) break;
+      }
+      return out;
+    });
+  }
+
+  /**
+   * Akun daun = nomor tidak berakhiran "-00" (nomor "-00" adalah grup/indak di
+   * bagan Accurate). Terverifikasi live: leaf 111.102-01, 511.000-01, 213.100-01;
+   * induk 111.000-00, 511.000-00, 213.000-00.
+   */
+  private isLeaf(a: GlAccount): boolean {
+    return !a.no.endsWith("-00");
+  }
+
+  /** Cari akun daun sesuai kata kunci dari deskripsi; fallback akun pertama sesuai tipe. */
+  private pickAccount(all: GlAccount[], types: RegExp, hint: string, requireLeaf = true): GlAccount | null {
+    const pool = all.filter((a) => types.test(a.accountType) && (!requireLeaf || this.isLeaf(a)));
+    const words = hint
+      .toLowerCase()
+      .split(/[^\p{L}\d]+/u)
+      .filter((w) => w.length >= 4);
+    const hit =
+      pool.find((a) => words.some((w) => a.name.toLowerCase().includes(w))) ??
+      pool.find((a) => words.some((w) => w.includes(a.name.toLowerCase().split(" ")[0] ?? "\0")));
+    return hit ?? pool[0] ?? null;
+  }
+
+  private async resolveByName(ctx: ProviderCtx, api: "vendor" | "item", name: string): Promise<string | null> {
+    const field = api === "vendor" ? "vendorNo" : "no";
+    const j = await this.moduleGet(
+      `/accurate/api/${api}/list.do?sp.pageSize=5&fields=${field},name&keywords=${encodeURIComponent(name)}`,
+      ctx
+    );
+    const arr = (j.d as Array<Record<string, string>>) ?? [];
+    const hit = arr.find((r) => String(r.name ?? "").toLowerCase() === name.toLowerCase()) ?? arr[0];
+    return hit ? String(hit[field] ?? "") || null : null;
+  }
+
+  async createPurchaseInvoice(ctx: ProviderCtx, data: PurchaseInvoiceInput): Promise<{ id: string }> {
+    const vendorNo = await this.resolveByName(ctx, "vendor", data.vendorName.trim());
+    if (!vendorNo) throw new Error(`vendor "${data.vendorName}" tidak ditemukan di Accurate`);
+    const detailItem: Array<Record<string, unknown>> = [];
+    const missing: string[] = [];
+    for (const it of (data.items ?? []).slice(0, 50)) {
+      const itemNo = await this.resolveByName(ctx, "item", it.name.trim());
+      if (itemNo) detailItem.push({ itemNo, quantity: it.qty ?? 1, unitPrice: it.price ?? 0 });
+      else missing.push(it.name);
+    }
+    if (missing.length) throw new Error(`item tidak ditemukan di Accurate: ${missing.join(", ")}`);
+    if (!detailItem.length) throw new Error("faktur pembelian butuh minimal 1 item — item tidak terbaca, isi rincian manual");
+    const branch = await this.resolveBranchName(ctx);
+    const j = await this.modulePost(
+      "/accurate/api/purchase-invoice/save.do",
+      {
+        vendorNo,
+        transDate: this.toAccurateDate(data.date),
+        ...(branch ? { branchName: branch } : {}),
+        billNumber: data.no || `SCAN-${Date.now().toString(36).toUpperCase()}`,
+        description: data.description ?? "",
+        taxable: false,
+        detailItem,
+      },
+      ctx
+    );
+    const r = (j.r ?? {}) as { id?: unknown; number?: unknown };
+    return { id: String(r.id ?? r.number ?? "") };
+  }
+
+  async createExpense(ctx: ProviderCtx, data: ExpenseInput): Promise<{ id: string }> {
+    const all = await this.allAccounts(ctx);
+    const hint = data.description ?? "";
+    const expense = this.pickAccount(all, /EXPENSE|COGS/i, hint);
+    if (!expense) throw new Error("akun beban tidak ditemukan di Accurate");
+    const payable = this.pickAccount(all, /^OTHER_CURRENT_LIABILITY$/i, "", true);
+    if (!payable) throw new Error("akun liabilitas jangka pendek tidak ditemukan di Accurate");
+    const branch = await this.resolveBranchName(ctx);
+    const j = await this.modulePost(
+      "/accurate/api/expense/save.do",
+      {
+        transDate: this.toAccurateDate(data.date),
+        ...(branch ? { branchName: branch } : {}),
+        description: hint,
+        expensePayableNo: payable.no,
+        detailAccount: [{ accountNo: expense.no, amount: data.total ?? 0 }],
+      },
+      ctx
+    );
+    const r = (j.r ?? {}) as { id?: unknown; number?: unknown };
+    return { id: String(r.id ?? r.number ?? "") };
+  }
+
+  async createBankTransfer(ctx: ProviderCtx, data: BankTransferInput): Promise<{ id: string }> {
+    const all = await this.allAccounts(ctx);
+    // transfer antar rekening sendiri: hanya RUPIAH — akun USD/SGD ditolak API ("mata uang asing")
+    const cash = all.filter(
+      (a) => a.accountType === "CASH_BANK" && this.isLeaf(a) && !/\b(USD|SGD|EUR|MYR|AUD|JPY)\b/i.test(a.name)
+    );
+    if (cash.length < 2) throw new Error("rekening kas/bank rupiah daun minimal 2 di Accurate");
+    const words = (data.description ?? "").toLowerCase().split(/[^\p{L}\d]+/u).filter((w) => w.length >= 3);
+    const match = (a: GlAccount) => words.some((w) => a.name.toLowerCase().includes(w));
+    const from = cash.find(match) ?? cash[0];
+    const to = cash.find((a) => a.no !== from.no && match(a)) ?? cash.find((a) => a.no !== from.no)!;
+    const branch = await this.resolveBranchName(ctx);
+    const j = await this.modulePost(
+      "/accurate/api/bank-transfer/save.do",
+      {
+        transDate: this.toAccurateDate(data.date),
+        ...(branch ? { branchName: branch } : {}),
+        fromBankNo: from.no,
+        toBankNo: to.no,
+        fromBankAmount: data.total ?? 0,
+        description: data.description ?? "",
+      },
+      ctx
+    );
+    const r = (j.r ?? {}) as { id?: unknown; number?: unknown };
+    return { id: String(r.id ?? r.number ?? "") };
   }
 
   async refreshToken(refreshToken: string): Promise<ProviderTokenSet> {

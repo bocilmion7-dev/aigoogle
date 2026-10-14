@@ -1,4 +1,4 @@
-/** API Gemini (v1beta function declarations) menolak field OpenAPI tambahan
+/** Endpoint OpenAI-compatible menolak field OpenAPI tambahan
  *  seperti `additionalProperties` — buang secara rekursif sebelum dikirim. */
 export function sanitizeToolSchema<T>(schema: T): T {
   if (Array.isArray(schema)) return schema.map((x) => sanitizeToolSchema(x)) as unknown as T;

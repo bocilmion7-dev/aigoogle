@@ -116,12 +116,17 @@ export interface ScanFields {
   description: string;
   items: Array<{ name: string; qty?: number | null; price?: number | null }>;
 }
+export type EntryTarget = "salesInvoice" | "salesReceipt" | "purchaseInvoice" | "expense" | "bankTransfer";
 export interface ScanResponse {
   fileName: string;
   kind: string;
   rawText: string;
   fields: ScanFields;
-  suggestedTarget: "salesInvoice" | "salesReceipt" | null;
+  suggestedTarget: EntryTarget | null;
+  /** modul yang disebut AI (bisa modul yang belum didukung atau "none") */
+  aiModule?: string | null;
+  aiReason?: string | null;
+  aiConfidence?: number | null;
   warning?: string;
 }
 
@@ -130,7 +135,6 @@ const MSG: Record<string, string> = {
     tidak_punya_hak: "Anda tidak punya hak mengakses data ini — hubungi Admin.",
     vision_ocr_nonaktif:
       "Vision & OCR nonaktif. Minta Admin mengaktifkannya di menu Admin → tab Pengaturan.",
-    gemini_unavailable: "Vision & OCR butuh API key Gemini — hubungi administrator.",
     unsupported_type: "Tipe file tidak didukung (gambar, PDF, DOCX, PPTX, DOC, PPT, MD, TXT).",
     file_too_large: "File terlalu besar (maks 15 MB).",
     empty_file: "File kosong.",
@@ -226,12 +230,13 @@ export async function uploadScan(file: File): Promise<ScanResponse> {
 }
 
 export interface EntryBody {
-  target: "salesInvoice" | "salesReceipt";
+  target: EntryTarget;
   customerName: string;
   date?: string;
   no?: string;
   total?: number;
   description?: string;
+  items?: Array<{ name: string; qty?: number | null; price?: number | null }>;
 }
 export async function postEntry(body: EntryBody): Promise<{ ok: boolean; id: string; target: string }> {
   const res = await fetch("/api/customers/entries", {

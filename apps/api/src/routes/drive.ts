@@ -1,13 +1,12 @@
 import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../db.js";
-import { env } from "../env.js";
 import { asyncHandler } from "../asyncHandler.js";
 import { requireUser } from "../middleware/session.js";
 import { driveClientFor, engineMode } from "../drive/registry.js";
 import { buildPlan, executePlan, executeUndo } from "../drive/tidy.js";
 import type { TidyPlanItem, TidyResultItem, UndoTarget } from "../drive/types.js";
-import { classifyWithGemini } from "../drive/classify.js";
+import { classifyFile } from "../drive/classify.js";
 import { writeAudit } from "../audit.js";
 
 export const driveRouter = Router();
@@ -61,26 +60,19 @@ driveRouter.post(
         : listing.folders.find((f) => f.id === body.data.folderId)?.name ?? "";
     const visionOk = /^(application\/pdf|image\/)/i;
     const items = await buildPlan(client, body.data.folderId, async (f) => {
-      if (env.GEMINI_API_KEY && visionOk.test(f.mimeType) && client.getBytes) {
+      if (visionOk.test(f.mimeType) && client.getBytes) {
         try {
           const bytes = await client.getBytes(f.id);
           if (bytes.byteLength > 0 && bytes.byteLength <= 6_000_000) {
-            return classifyWithGemini(
-              "",
-              f.mimeType,
-              env.GEMINI_API_KEY,
-              f.name,
-              Buffer.from(bytes).toString("base64")
-            );
+            return classifyFile("", f.mimeType, f.name, Buffer.from(bytes).toString("base64"));
           }
         } catch {
           /* jatuh ke jalur teks */
         }
       }
-      return classifyWithGemini(
+      return classifyFile(
         await client.getText(f.id).catch(() => ""),
         f.mimeType,
-        env.GEMINI_API_KEY,
         f.name
       );
     });

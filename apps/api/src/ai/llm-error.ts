@@ -1,6 +1,6 @@
-export class GeminiHttpError extends Error {
+export class LlmHttpError extends Error {
   constructor(readonly status: number, message: string) {
     super(message);
-    this.name = "GeminiHttpError";
+    this.name = "LlmHttpError";
   }
 }

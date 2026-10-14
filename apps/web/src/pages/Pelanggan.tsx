@@ -6,6 +6,7 @@ import {
   getMe,
   postEntry,
   uploadScan,
+  type EntryTarget,
   type ScanResponse,
 } from "../api";
 import { AppHeader, PageLoader } from "../ui";
@@ -17,6 +18,21 @@ const rp = (n: number | null | undefined) =>
 const TARGET_LABEL: Record<string, string> = {
   salesInvoice: "Faktur penjualan (Accurate)",
   salesReceipt: "Penerimaan kas (Accurate)",
+  purchaseInvoice: "Faktur pembelian (Accurate)",
+  expense: "Beban / pengeluaran (Accurate)",
+  bankTransfer: "Transfer bank (Accurate)",
+};
+
+/** modul yang disebut AI tapi belum bisa disimpan dari sini */
+const UNSUPPORTED_LABEL: Record<string, string> = {
+  salesOrder: "Pesanan penjualan",
+  salesReturn: "Retur penjualan",
+  purchasePayment: "Pembayaran pemasok",
+  receiveItem: "Penerimaan barang",
+  purchaseReturn: "Retur pembelian",
+  otherDeposit: "Pendapatan lain",
+  otherPayment: "Pengeluaran lain",
+  itemAdjustment: "Penyesuaian barang",
 };
 
 const DOC_LABEL: Record<string, string> = {
@@ -46,7 +62,7 @@ export function Pelanggan() {
     };
   }, []);
   const [form, setForm] = useState({ customerName: "", date: "", no: "", total: "", description: "" });
-  const [target, setTarget] = useState<"" | "salesInvoice" | "salesReceipt">("");
+  const [target, setTarget] = useState<"" | EntryTarget>("");
 
   useEffect(() => {
     void getMe().then(setMe);
@@ -69,8 +85,16 @@ export function Pelanggan() {
 
   const accurate = conns.find((c) => c.provider === "accurate");
   const connected = accurate?.status === "connected";
-  const canInvoice = !!me.permissions?.includes("accurate:sales-invoice.view");
-  const canReceipt = !!me.permissions?.includes("accurate:sales-receipt.view");
+  const perms = me.permissions ?? [];
+  const TARGET_PERM: Record<EntryTarget, string> = {
+    salesInvoice: "accurate:sales-invoice.view",
+    salesReceipt: "accurate:sales-receipt.view",
+    purchaseInvoice: "accurate:purchase-invoice.view",
+    expense: "accurate:expense.view",
+    bankTransfer: "accurate:bank-transfer.view",
+  };
+  const hasPerm = (t: EntryTarget) => perms.includes(TARGET_PERM[t]);
+  const needsName = (t: EntryTarget) => t === "salesInvoice" || t === "salesReceipt" || t === "purchaseInvoice";
 
   // Admin Platform tidak memakai halaman Scan — arahkan ke kelola User & Peran
   if (me.permissions?.includes("app:settings.manage")) {
@@ -102,10 +126,14 @@ export function Pelanggan() {
   };
 
   const saveEntry = async () => {
-    if (!target) return setErr("Pilih tujuan penyimpanan (faktur penjualan atau penerimaan kas).");
-    if (target === "salesInvoice" && !canInvoice) return setErr("Anda tidak punya hak membuat faktur penjualan.");
-    if (target === "salesReceipt" && !canReceipt) return setErr("Anda tidak punya hak membuat penerimaan kas.");
-    if (!form.customerName.trim()) return setErr("Nama pelanggan wajib diisi.");
+    if (!target) return setErr("Pilih tujuan penyimpanan.");
+    if (!hasPerm(target)) return setErr(`Anda tidak punya hak menyimpan ke ${TARGET_LABEL[target]}.`);
+    if (needsName(target) && !form.customerName.trim()) {
+      return setErr(target === "purchaseInvoice" ? "Nama pemasok/vendor wajib diisi." : "Nama pelanggan wajib diisi.");
+    }
+    if (target === "purchaseInvoice" && !(scan?.fields.items.length)) {
+      return setErr("Faktur pembelian butuh rincian item — item tidak terbaca, lengkapi manual nanti atau pilih modul lain.");
+    }
     setErr(""); setBusy(true);
     try {
       const totalNum = form.total.replace(/[^\d.]/g, "");
@@ -116,6 +144,9 @@ export function Pelanggan() {
         ...(form.no ? { no: form.no } : {}),
         ...(totalNum ? { total: Number(totalNum) } : {}),
         ...(form.description ? { description: form.description } : {}),
+        ...(target === "purchaseInvoice" && scan?.fields.items.length
+          ? { items: scan.fields.items.map((i) => ({ name: i.name, qty: i.qty ?? undefined, price: i.price ?? undefined })) }
+          : {}),
       });
       setOkMsg(`Tersimpan ke ${TARGET_LABEL[target]} — no. referensi ${res.id}`);
       setScan(null);
@@ -262,7 +293,14 @@ export function Pelanggan() {
                 <span>
                   AI menyimpulkan: <b>{DOC_LABEL[scan.fields.docType] ?? scan.fields.docType}</b>
                 {scan.suggestedTarget ? <> — disarankan disimpan sebagai <b>{TARGET_LABEL[scan.suggestedTarget]}</b></> : null}.
-                Periksa & lengkapi kolom di bawah.
+                {scan.aiReason ? <> <span style={{ opacity: 0.85 }}>“{scan.aiReason}”</span></> : null}
+                {!scan.suggestedTarget && scan.aiModule && scan.aiModule !== "none"
+                  ? <> Modul saran AI (<b>{UNSUPPORTED_LABEL[scan.aiModule] ?? scan.aiModule}</b>) belum didukung penyimpanan otomatis — pilih modul lain yang sesuai.</>
+                  : null}
+                {!scan.suggestedTarget && scan.aiModule === "none"
+                  ? <> AI menilai dokumen ini cukup sebagai arsip — tidak perlu dicatat.</>
+                  : null}
+                {" "}Periksa & lengkapi kolom di bawah.
                 </span>
               </p>
             )}
@@ -284,19 +322,24 @@ export function Pelanggan() {
                       onChange={(e) => setTarget(e.target.value as typeof target)}
                     >
                       <option value="">— pilih —</option>
-                      <option value="salesInvoice" disabled={!canInvoice}>Faktur penjualan{canInvoice ? "" : " — tanpa hak"}</option>
-                      <option value="salesReceipt" disabled={!canReceipt}>Penerimaan kas{canReceipt ? "" : " — tanpa hak"}</option>
+                      <option value="salesInvoice" disabled={!hasPerm("salesInvoice")}>Faktur penjualan{hasPerm("salesInvoice") ? "" : " — tanpa hak"}</option>
+                      <option value="salesReceipt" disabled={!hasPerm("salesReceipt")}>Penerimaan kas{hasPerm("salesReceipt") ? "" : " — tanpa hak"}</option>
+                      <option value="purchaseInvoice" disabled={!hasPerm("purchaseInvoice")}>Faktur pembelian{hasPerm("purchaseInvoice") ? "" : " — tanpa hak"}</option>
+                      <option value="expense" disabled={!hasPerm("expense")}>Beban / pengeluaran{hasPerm("expense") ? "" : " — tanpa hak"}</option>
+                      <option value="bankTransfer" disabled={!hasPerm("bankTransfer")}>Transfer bank{hasPerm("bankTransfer") ? "" : " — tanpa hak"}</option>
                     </select>
                   </label>
-                  <label className="field">
-                    Nama pelanggan
-                    <input
-                      className="input"
-                      value={form.customerName}
-                      onChange={(e) => setForm({ ...form, customerName: e.target.value })}
-                      placeholder="cth. Budi Santoso"
-                    />
-                  </label>
+                  {target !== "expense" && target !== "bankTransfer" ? (
+                    <label className="field">
+                      {target === "purchaseInvoice" ? "Nama pemasok / vendor" : "Nama pelanggan"}
+                      <input
+                        className="input"
+                        value={form.customerName}
+                        onChange={(e) => setForm({ ...form, customerName: e.target.value })}
+                        placeholder={target === "purchaseInvoice" ? "cth. PT Sumber Elektronik" : "cth. Budi Santoso"}
+                      />
+                    </label>
+                  ) : null}
                   <label className="field">
                     Tanggal (YYYY-MM-DD)
                     <input

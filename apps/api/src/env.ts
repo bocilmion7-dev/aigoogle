@@ -13,14 +13,14 @@ const Env = z.object({
   PLATFORM_ADMIN_EMAILS: z.string().default(""),
   GOOGLE_OAUTH_CLIENT_ID: z.string().default(""),
   GOOGLE_OAUTH_CLIENT_SECRET: z.string().default(""),
-  GEMINI_API_KEY: z.string().default(""),
-  /** NVIDIA NIM (OpenAI-compatible) — opsional, utk failover provider kedua */
+  /** NVIDIA NIM (OpenAI-compatible) — opsional, sbg provider tunggal bila Router tak di-set */
   NVIDIA_API_KEY: z.string().default(""),
-  /** Router OpenAI-compatible (mis. router.bangunweb.com) — provider tunggal chat bila diisi; menonaktifkan Gemini & NVIDIA */
+  /** Model NIM utama (urutan pertama preferredNv) */
+  NVIDIA_MODEL: z.string().default(""),
+  /** 9Router/ocfree (OpenAI-compatible, localhost) — provider tunggal AI */
   ROUTER_API_KEY: z.string().default(""),
   ROUTER_BASE_URL: z.string().default("http://localhost:20128/v1"),
   ROUTER_MODEL: z.string().default("ocfree/mimo-v2.6-flash-free,ocfree/space-bunny-free,ocfree/big-pickle,ocfree/fledge-alpha-free,ocfree/ling-3.1-flash-free,ocfree/longcat-2.5-preview-free,ocfree/muse-spark-1.2-contributor-free,ocfree/muse-spark-1.3-contributor-free,ocfree/nemotron-3-ultra-free,ocfree/nemotron-3.5-lightning-free,ocfree/step-5-preview-free"),
-  GEMINI_MODEL: z.string().default("gemini-3.6-flash"),
   BILLING_ENABLED: z.string().default("0"),
   MIDTRANS_SERVER_KEY: z.string().default(""),
   MIDTRANS_CLIENT_KEY: z.string().default(""),

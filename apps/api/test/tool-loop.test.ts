@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { runToolLoop } from "../src/ai/tool-loop.js";
-import { FakeGeminiClient } from "../src/ai/fake-gemini.js";
+import { FakeLLMClient } from "../src/ai/fake-llm.js";
 import type { ToolSpec } from "../src/providers/accounting/types.js";
 
 const TOOLS: ToolSpec[] = [
@@ -13,7 +13,7 @@ function deps(overrides: Partial<Parameters<typeof runToolLoop>[0]> = {}) {
   return {
     events,
     opts: {
-      gemini: new FakeGeminiClient([]),
+      client: new FakeLLMClient([]),
       providerExecute: async (tool: string) => ({ data: `isi-${tool}` }),
       permissions: new Set<string>(["accurate:customer.view", "accurate:sales-invoice.view"]),
       tools: TOOLS,
@@ -24,17 +24,17 @@ function deps(overrides: Partial<Parameters<typeof runToolLoop>[0]> = {}) {
   };
 }
 
-describe("runToolLoop (fake gemini)", () => {
+describe("runToolLoop (fake LLM)", () => {
   it("teks polos tanpa tool → jawaban + satu text_delta", async () => {
-    const fake = new FakeGeminiClient([{ parts: [{ text: "Halo!" }] }]);
-    const { opts, events } = deps({ gemini: fake });
+    const fake = new FakeLLMClient([{ parts: [{ text: "Halo!" }] }]);
+    const { opts, events } = deps({ client: fake });
     const out = await runToolLoop(opts);
     expect(out.text).toBe("Halo!");
     expect(events.filter((e) => e.type === "text_delta")).toHaveLength(1);
   });
 
   it("bagian thought (model thinking) tidak ditampilkan & tidak ikut tersimpan", async () => {
-    const fake = new FakeGeminiClient([
+    const fake = new FakeLLMClient([
       {
         parts: [
           { text: "Pengguna bertanya soal penjualan… (penalaran internal)", thought: true },
@@ -48,24 +48,24 @@ describe("runToolLoop (fake gemini)", () => {
         ],
       },
     ]);
-    const { opts, events } = deps({ gemini: fake });
+    const { opts, events } = deps({ client: fake });
     const out = await runToolLoop(opts);
     expect(out.text).toBe("Jawaban akhir: ada 2 pelanggan.");
     const deltas = events.filter((e) => e.type === "text_delta").map((e) => e.delta).join("");
     expect(deltas).not.toContain("penalaran internal");
     expect(deltas).not.toContain("Saya cek datanya");
-    // riwayat percakapan ke Gemini juga bersih dari thought
+    // riwayat percakapan ke model juga bersih dari thought
     expect(JSON.stringify(fake.calls[1].contents)).not.toContain("penalaran internal");
   });
 
   it("tool dipanggil → event badge + providerExecute + functionResponse lanjut teks", async () => {
-    const fake = new FakeGeminiClient([
+    const fake = new FakeLLMClient([
       { parts: [{ functionCall: { name: "customer.list", args: {}, id: "c1" } }] },
       { parts: [{ text: "Ada 2 pelanggan." }] },
     ]);
     const calls: string[] = [];
     const { opts, events } = deps({
-      gemini: fake,
+      client: fake,
       providerExecute: async (tool: string) => {
         calls.push(tool);
         return { items: ["Budi", "Siti"] };
@@ -81,12 +81,12 @@ describe("runToolLoop (fake gemini)", () => {
   });
 
   it("permission ditolak → tidak panggil provider; AI diminta menjawab tidak punya akses", async () => {
-    const fake = new FakeGeminiClient([
+    const fake = new FakeLLMClient([
       { parts: [{ functionCall: { name: "salesInvoice.list", args: {}, id: "c1" } }] },
       { parts: [{ text: "Anda tidak punya akses modul penjualan." }] },
     ]);
     const { opts } = deps({
-      gemini: fake,
+      client: fake,
       permissions: new Set(["accurate:customer.view"]),
       providerExecute: async () => {
         throw new Error("tidak boleh dipanggil");
@@ -101,16 +101,16 @@ describe("runToolLoop (fake gemini)", () => {
     const turns = Array.from({ length: 9 }, () => ({
       parts: [{ functionCall: { name: "customer.list", args: {}, id: "x" } }],
     }));
-    const fake = new FakeGeminiClient(turns);
-    const { opts } = deps({ gemini: fake });
+    const fake = new FakeLLMClient(turns);
+    const { opts } = deps({ client: fake });
     const out = await runToolLoop(opts);
     expect(out.text).toContain("persempit");
     expect(fake.calls.length).toBeLessThanOrEqual(8);
   });
 
   it("deadline 120 dtk terlampaui → pesan butuh waktu", async () => {
-    const fake = new FakeGeminiClient([{ parts: [{ text: "ok" }] }]);
-    const { opts } = deps({ gemini: fake, now: (() => { let t = 0; return () => (t += 121_000); })() });
+    const fake = new FakeLLMClient([{ parts: [{ text: "ok" }] }]);
+    const { opts } = deps({ client: fake, now: (() => { let t = 0; return () => (t += 121_000); })() });
     const out = await runToolLoop(opts);
     expect(out.text).toContain("waktu");
   });

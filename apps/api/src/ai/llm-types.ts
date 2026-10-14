@@ -1,13 +1,13 @@
-export interface GeminiFunctionCall {
+export interface LLMFunctionCall {
   name: string;
   args: Record<string, unknown>;
   id?: string;
 }
-export interface GeminiPart {
+export interface LLMPart {
   text?: string;
-  /** model thinking (2.5): penalaran internal — JANGAN ditampilkan ke pengguna */
+  /** model thinking: penalaran internal — JANGAN ditampilkan ke pengguna */
   thought?: boolean;
-  functionCall?: GeminiFunctionCall;
+  functionCall?: LLMFunctionCall;
   functionResponse?: { name: string; response: unknown; id?: string };
   inlineData?: { mimeType: string; data: string };
 }
@@ -18,13 +18,13 @@ export interface ToolDecl {
     parameters: Record<string, unknown>;
   }>;
 }
-export interface GeminiContent {
+export interface LLMContent {
   role?: "user" | "model";
-  parts: GeminiPart[];
+  parts: LLMPart[];
 }
 export type ModelAction = "generate";
 export interface GenerateOpts {
-  contents: GeminiContent[];
+  contents: LLMContent[];
   tools?: ToolDecl[];
   system?: string;
   model?: string;

@@ -15,7 +15,7 @@ export interface ConnectionInfo {
   expiresAt?: string;
 }
 export interface AppSettings {
-  voiceEngine: "gemini-native" | "web-speech" | "edge";
+  voiceEngine: "web-speech" | "edge";
   ocrMode?: "vision" | "text";
   waPricePerCredit?: number;
   /** penyedia WhatsApp untuk embedded signup perusahaan: d360 (default) | meta */

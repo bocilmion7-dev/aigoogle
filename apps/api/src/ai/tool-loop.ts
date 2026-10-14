@@ -1,5 +1,5 @@
-import type { GeminiClient } from "./gemini-client.js";
-import type { GeminiContent, GeminiPart } from "./gemini-types.js";
+import type { LLMClient } from "./llm-client.js";
+import type { LLMContent, LLMPart } from "./llm-types.js";
 import { SYSTEM_PROMPT } from "./system-prompt.js";
 import type { ToolSpec } from "../providers/accounting/types.js";
 
@@ -14,12 +14,12 @@ export interface ToolLoopEvent {
 }
 
 export interface ToolLoopOpts {
-  gemini: GeminiClient;
+  client: LLMClient;
   providerExecute: (tool: string, args: Record<string, unknown>) => Promise<unknown>;
   permissions: Set<string>;
   tools: ToolSpec[];
   userMessage: string;
-  history?: GeminiContent[];
+  history?: LLMContent[];
   onEvent: (e: ToolLoopEvent) => void;
   system?: string;
   model?: string;
@@ -34,7 +34,7 @@ export async function runToolLoop(
   const now = opts.now ?? Date.now;
   const deadline = now() + 120_000;
   const trace: Array<Record<string, unknown>> = [];
-  const contents: GeminiContent[] = [
+  const contents: LLMContent[] = [
     ...(opts.history ?? []),
     { role: "user", parts: [{ text: opts.userMessage }] },
   ];
@@ -51,7 +51,7 @@ export async function runToolLoop(
       opts.onEvent({ type: "text_delta", delta: msg });
       return { text: msg, trace };
     }
-    const res = await opts.gemini.generate({
+    const res = await opts.client.generate({
       contents,
       tools: [
         {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { runToolLoop } from "../src/ai/tool-loop.js";
-import { FakeGeminiClient } from "../src/ai/fake-gemini.js";
+import { FakeLLMClient } from "../src/ai/fake-llm.js";
 import { classifyText, classifyFileName } from "../src/drive/classify.js";
 import type { ToolSpec } from "../src/providers/accounting/types.js";
 
@@ -12,7 +12,7 @@ const TOOLS: ToolSpec[] = [
   { name: "vendor.list", description: "Daftar vendor", jsonSchema: { type: "object", properties: {} }, requiredPermission: "accurate:vendor.view", label: "Mengambil data vendor…" },
 ];
 
-describe("golden set: tool-loop (Gemini stub)", () => {
+describe("golden set: tool-loop (LLM stub)", () => {
   const cases: Array<{ prompt: string; tool: string; permissions: string[] }> = [
     { prompt: "tampilkan daftar pelanggan", tool: "customer.list", permissions: ["accurate:customer.view", "accurate:sales-invoice.view"] },
     { prompt: "siapa saja pelanggan saya?", tool: "customer.list", permissions: ["accurate:customer.view", "accurate:sales-invoice.view"] },
@@ -25,13 +25,13 @@ describe("golden set: tool-loop (Gemini stub)", () => {
   ];
   for (const c of cases) {
     it(`"${c.prompt}" → ${c.tool}`, async () => {
-      const fake = new FakeGeminiClient([
+      const fake = new FakeLLMClient([
         { parts: [{ functionCall: { name: c.tool, args: {}, id: "g1" } }] },
         { parts: [{ text: "Berikut datanya." }] },
       ]);
       const calls: string[] = [];
       const out = await runToolLoop({
-        gemini: fake,
+        client: fake,
         providerExecute: async (tool: string) => {
           calls.push(tool);
           return { items: [] };
@@ -47,12 +47,12 @@ describe("golden set: tool-loop (Gemini stub)", () => {
   }
 
   it("permission kurang → tool ditolak tanpa menyentuh provider", async () => {
-    const fake = new FakeGeminiClient([
+    const fake = new FakeLLMClient([
       { parts: [{ functionCall: { name: "salesInvoice.list", args: {}, id: "g1" } }] },
       { parts: [{ text: "Anda tidak punya akses." }] },
     ]);
     const out = await runToolLoop({
-      gemini: fake,
+      client: fake,
       providerExecute: async () => {
         throw new Error("tidak boleh");
       },

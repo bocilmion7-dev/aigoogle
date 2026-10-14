@@ -53,8 +53,8 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  const { setGeminiForTest } = await import("../src/ai/gemini-client.js");
-  setGeminiForTest(null);
+  const { setLLMForTest } = await import("../src/ai/llm-client.js");
+  setLLMForTest(null);
   mockSrv.closeAllConnections();
   await new Promise((r) => mockSrv.close(r));
   await prisma.$disconnect();
@@ -72,10 +72,10 @@ describe("chat stream", () => {
     expect((await request(api).post("/api/chat/stream").send({ message: "hi" })).status).toBe(401);
   });
 
-  it("teks polos (fake gemini) → NDJSON start + text_delta + done; pesan tersimpan", async () => {
-    const { FakeGeminiClient } = await import("../src/ai/fake-gemini.js");
-    const { setGeminiForTest } = await import("../src/ai/gemini-client.js");
-    setGeminiForTest(() => new FakeGeminiClient([{ parts: [{ text: "Halo!" }] }]));
+  it("teks polos (fake LLM) → NDJSON start + text_delta + done; pesan tersimpan", async () => {
+    const { FakeLLMClient } = await import("../src/ai/fake-llm.js");
+    const { setLLMForTest } = await import("../src/ai/llm-client.js");
+    setLLMForTest(() => new FakeLLMClient([{ parts: [{ text: "Halo!" }] }]));
     const res = await request(api).post("/api/chat/stream").set("Cookie", cookie).send({ message: "halo" }).buffer(true).parse((r, cb) => {
       let d = "";
       r.on("data", (c) => (d += c));
@@ -92,11 +92,11 @@ describe("chat stream", () => {
   });
 
   it("tool call (fake) → event tool_call + baris audit + toolTrace tersimpan", async () => {
-    const { FakeGeminiClient } = await import("../src/ai/fake-gemini.js");
-    const { setGeminiForTest } = await import("../src/ai/gemini-client.js");
-    setGeminiForTest(
+    const { FakeLLMClient } = await import("../src/ai/fake-llm.js");
+    const { setLLMForTest } = await import("../src/ai/llm-client.js");
+    setLLMForTest(
       () =>
-        new FakeGeminiClient([
+        new FakeLLMClient([
           { parts: [{ functionCall: { name: "customer.list", args: {}, id: "c1" } }] },
           { parts: [{ text: "Ada pelanggan Budi." }] },
         ])
