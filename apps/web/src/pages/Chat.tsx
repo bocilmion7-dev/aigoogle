@@ -1,8 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { MessageInfo, SessionInfo } from "../chat-api";
 import { listMessages, listSessions, streamChat } from "../chat-api";
-import { getSettings } from "../api";
-import { speakWeb, ttsEdge } from "../voice";
 import { VoiceMode } from "../voice-mode";
 
 interface UiMsg {
@@ -73,10 +71,8 @@ export function Chat() {
     setError(null);
     setMsgs((m) => [...m, { role: "user", content: text, badges: [] }, { role: "ai", content: "", badges: [] }]);
     setInput("");
-    let aiText = "";
     try {
       await streamChat(text, sessionId, (e) => {
-        if (e.type === "text_delta") aiText += e.delta;
         setMsgs((m) => {
           const copy = [...m];
           const last = { ...copy[copy.length - 1] };
@@ -92,11 +88,6 @@ export function Chat() {
           void listSessions().then(setSessions);
         }
       });
-      if (aiText) {
-        const settings = await getSettings();
-        if (settings.voiceEngine === "edge") void ttsEdge(aiText).catch(() => {});
-        else speakWeb(aiText);
-      }
     } catch {
       setError("Koneksi terputus — coba lagi.");
     } finally {
