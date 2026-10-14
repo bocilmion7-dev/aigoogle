@@ -2,7 +2,7 @@
 DROP INDEX "WaBalance_tenantId_key";
 
 -- CreateTable
-CREATE TABLE "GeminiModel" (
+CREATE TABLE "ModelPool" (
     "id" TEXT NOT NULL,
     "action" TEXT NOT NULL,
     "name" TEXT NOT NULL,
@@ -13,8 +13,8 @@ CREATE TABLE "GeminiModel" (
     "lastFailAt" TIMESTAMP(3),
     "syncedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT "GeminiModel_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "ModelPool_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateIndex
-CREATE INDEX "GeminiModel_action_rank_idx" ON "GeminiModel"("action", "rank");
+CREATE INDEX "ModelPool_action_rank_idx" ON "ModelPool"("action", "rank");

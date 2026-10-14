@@ -258,19 +258,31 @@ model WaMessageLog {
   @@index([tenantId])
 }
 
-// Pool model Gemini — daftar model "live" dari API (di-refresh saat SEMUA model gagal)
-model GeminiModel {
-  id           String    @id // "generate:gemini-x-flash" | "generate:nvidia:llama-.."
-  action       String // generate | tts | stt
-  provider     String    @default("gemini") // gemini | nvidia
+// Provider AI (OpenAI-compatible) — dikelola admin platform via halaman /ai
+model AiProvider {
+  id        String            @id @default(cuid())
+  name      String
+  baseUrl   String
+  apiKey    String // plaintext, konsisten dgn AppSetting
+  isActive  Boolean           @default(false)
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+  models    AiProviderModel[]
+}
+
+// Model tercentang milik satu provider — "tercentang" = baris ada
+model AiProviderModel {
+  id           String     @id @default(cuid())
+  providerId   String
+  provider     AiProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
   name         String
-  rank         Int       @default(0) // urutan percobaan (0 = utama)
-  failureCount Int       @default(0) // gagal berutun → menunggu refresh live
-  lastError    String    @default("")
+  rank         Int        @default(0) // urutan percobaan (0 = utama)
+  failureCount Int        @default(0)
+  lastError    String     @default("")
   lastOkAt     DateTime?
   lastFailAt   DateTime?
-  syncedAt     DateTime  @default(now())
-  @@index([action, rank])
+  @@unique([providerId, name])
+  @@index([providerId, rank])
 }
 
 // Webhook masuk dari Accurate Online (73 jenis event sesuai docs-modules; payload disimpan mentah)

@@ -1,2 +1,2 @@
 -- AlterTable
-ALTER TABLE "GeminiModel" ADD COLUMN     "provider" TEXT NOT NULL DEFAULT 'gemini';
+ALTER TABLE "ModelPool" ADD COLUMN     "provider" TEXT NOT NULL DEFAULT 'router';
