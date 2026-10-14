@@ -1,4 +1,4 @@
-import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import request from "supertest";
 import type { Server } from "node:http";
 import { randomBytes } from "node:crypto";
@@ -14,7 +14,7 @@ let platCookie = "";
 let bareCookie = "";
 
 const realFetch = globalThis.fetch.bind(globalThis);
-let geminiReply: Record<string, unknown> = {
+let llmReply: Record<string, unknown> = {
   text: "Nota penjualan 2 rim kertas A4",
   docType: "nota",
   customerName: "Toko Maju",
@@ -24,7 +24,7 @@ let geminiReply: Record<string, unknown> = {
   description: "Penjualan kertas",
   items: [{ name: "Kertas A4", qty: 2, price: 75000 }],
 };
-const geminiCalls: Array<{ url: string; body: string }> = [];
+const llmCalls: Array<{ url: string; body: string }> = [];
 
 beforeAll(async () => {
   mockSrv = createMockApp().listen(0);
@@ -95,17 +95,10 @@ beforeAll(async () => {
     "fetch",
     vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
-      if (url.includes("generativelanguage.googleapis.com")) {
-        geminiCalls.push({ url, body: String(init?.body ?? "") });
-        const text = url.includes(":generateContent")
-          ? JSON.stringify(geminiReply)
-          : String((geminiReply as { text?: string }).text ?? "");
-        return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text }] } }] }), { status: 200 });
-      }
-      // jalur 9Router/ocfree (OpenAI-compatible) — kini jalur utama OCR
+      // jalur 9Router/ocfree (OpenAI-compatible) — satu-satunya jalur AI OCR
       if (url.includes("/chat/completions")) {
-        geminiCalls.push({ url, body: String(init?.body ?? "") });
-        const content = url.includes("chat/completions") ? JSON.stringify(geminiReply) : "";
+        llmCalls.push({ url, body: String(init?.body ?? "") });
+        const content = JSON.stringify(llmReply);
         return new Response(
           JSON.stringify({ choices: [{ message: { role: "assistant", content } }] }),
           { status: 200 }
@@ -116,8 +109,22 @@ beforeAll(async () => {
   );
 });
 
+beforeEach(async () => {
+  await prisma.aiProviderModel.deleteMany({});
+  await prisma.aiProvider.deleteMany({});
+  await prisma.aiProvider.create({
+    data: {
+      name: "uji",
+      baseUrl: "http://localhost:9/v1",
+      apiKey: "kunci-uji-panjang-sekali",
+      isActive: true,
+      models: { createMany: { data: [{ name: "model-uji", rank: 0 }] } },
+    },
+  });
+});
+
 afterEach(() => {
-  geminiCalls.length = 0;
+  llmCalls.length = 0;
 });
 
 afterAll(async () => {
@@ -202,13 +209,13 @@ describe("POST /api/customers/scan", () => {
     expect(res.status).toBe(200);
     expect(res.body.fields).toMatchObject({ docType: "nota", customerName: "Toko Maju", total: 150000 });
     expect(res.body.suggestedTarget).toBe("salesReceipt");
-    expect(geminiCalls.length).toBeGreaterThan(0);
-    expect(geminiCalls[0].body).toContain("image_url");
-    expect(geminiCalls[0].body).toContain("image/jpeg");
+    expect(llmCalls.length).toBeGreaterThan(0);
+    expect(llmCalls[0].body).toContain("image_url");
+    expect(llmCalls[0].body).toContain("image/jpeg");
   });
 
   it("dokumen teks (.md) → ekstraksi lokal + field dari model", async () => {
-    geminiReply = { ...geminiReply, docType: "faktur" };
+    llmReply = { ...llmReply, docType: "faktur" };
     const res = await request(api)
       .post("/api/customers/scan")
       .set("Cookie", cookie)
