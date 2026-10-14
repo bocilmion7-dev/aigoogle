@@ -8,6 +8,9 @@ export const googleRouter = Router();
 
 const SCOPES = ["https://www.googleapis.com/auth/drive"];
 
+/** redirect_uri Google OAuth — derive dari APP_ORIGIN (harus terdaftar di Google Cloud Console). */
+const redirectUri = () => `${env.APP_ORIGIN.replace(/\/$/, "")}/api/oauth/google/callback`;
+
 googleRouter.get("/oauth/google/start", (req, res) => {
   if (!env.GOOGLE_OAUTH_CLIENT_ID || !env.GOOGLE_OAUTH_CLIENT_SECRET) {
     return res.status(501).json({
@@ -18,7 +21,7 @@ googleRouter.get("/oauth/google/start", (req, res) => {
   const state = req.user ? req.user.tenant.id : "";
   const u = new URL("https://accounts.google.com/o/oauth2/v2/auth");
   u.searchParams.set("client_id", env.GOOGLE_OAUTH_CLIENT_ID);
-  u.searchParams.set("redirect_uri", "http://localhost:3001/api/oauth/google/callback");
+  u.searchParams.set("redirect_uri", redirectUri());
   u.searchParams.set("response_type", "code");
   u.searchParams.set("scope", SCOPES.join(" "));
   u.searchParams.set("access_type", "offline");
@@ -38,7 +41,7 @@ googleRouter.get("/oauth/google/callback", async (req, res, next) => {
         code,
         client_id: env.GOOGLE_OAUTH_CLIENT_ID,
         client_secret: env.GOOGLE_OAUTH_CLIENT_SECRET,
-        redirect_uri: "http://localhost:3001/api/oauth/google/callback",
+        redirect_uri: redirectUri(),
         grant_type: "authorization_code",
       }),
     });

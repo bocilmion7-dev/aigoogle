@@ -19,7 +19,7 @@ const manifest = JSON.parse(
   webhookEvents: string[];
 };
 
-const PUBLIC = "https://103.253.244.13";
+const PUBLIC = process.env.APP_ORIGIN || "http://localhost:3001";
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 const ACTION_ROUTES = new Set(

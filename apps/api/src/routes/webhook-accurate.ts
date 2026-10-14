@@ -193,7 +193,7 @@ export async function webhookAccurateHandler(
 webhookAccurateRouter.post("/integrations/accurate/webhook", asyncHandler(webhookAccurateHandler));
 
 // POST /webhook — alias utk target URL yang terdaftar di Area Developer Accurate
-// (https://103.253.244.13/webhook). Di-mount di app.ts tanpa prefix /api.
+// (APP_ORIGIN/webhook — https://ai-asisten.my.id/webhook). Di-mount di app.ts tanpa prefix /api.
 export const webhookRootRouter = Router();
 webhookRootRouter.post("/webhook", asyncHandler(webhookAccurateHandler));
 

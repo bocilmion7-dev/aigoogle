@@ -8,6 +8,8 @@ const Env = z.object({
   ACCURATE_CLIENT_SECRET: z.string().min(1),
   ACCURATE_API_BASE: z.string().default("https://account.accurate.id"),
   MOCK_ACCURATE_URL: z.string().default(""),
+  /** Origin publik aplikasi (contoh: https://ai-asisten.my.id) — sumber kebenaran
+   *  tunggal utk semua redirect OAuth/callback; jangan hardcode URL di file lain. */
   APP_ORIGIN: z.string().default("http://localhost:5173"),
   /** email (pisahkan koma) yang berhak jadi Admin Platform — bukan sekadar admin Accurate */
   PLATFORM_ADMIN_EMAILS: z.string().default(""),

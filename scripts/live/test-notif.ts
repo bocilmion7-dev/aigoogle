@@ -7,7 +7,7 @@ async function main() {
   await prisma.appSetting.deleteMany({ where: { key: { startsWith: `wa:webhook_last_sent:${tid}` } } });
   const before = await prisma.waMessageLog.count({ where: { tenantId: tid } });
   const K = process.env.ACCURATE_WEBHOOK_APP_KEY ?? "";
-  const r = await fetch("https://103.253.244.13/webhook", {
+  const r = await fetch(`${process.env.APP_ORIGIN || "http://localhost:3001"}/webhook`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-app-key": K },
     body: JSON.stringify({ event: "CUSTOMER", data: { id: 999, name: "Notif Uji 3" } }),

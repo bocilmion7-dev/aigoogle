@@ -10,10 +10,13 @@ export function accurateProvider(): AccountingProvider {
   });
 }
 
-export const OAUTH_REDIRECT_URI = "http://localhost:3001/api/oauth/accurate/callback";
+/** Origin publik aplikasi — SATU sumber kebenaran (APP_ORIGIN di .env). */
+const origin = env.APP_ORIGIN.replace(/\/$/, "");
 
-/** redirect_uri CTA OAuth (terdaftar di aplikasi Accurate). */
-export const ACCURATE_REDIRECT_URI = "https://103.253.244.13/api/callback/accurate";
+export const OAUTH_REDIRECT_URI = `${origin}/api/oauth/accurate/callback`;
+
+/** redirect_uri CTA OAuth (harus terdaftar di Area Developer Accurate — derive dari APP_ORIGIN). */
+export const ACCURATE_REDIRECT_URI = `${origin}/api/callback/accurate`;
 
 /** Provider ke Accurate ASLI (memakai ACCURATE_API_BASE, abaikan mock) — untuk callback CTA. */
 export function realAccurateProvider(): AccountingProvider {
