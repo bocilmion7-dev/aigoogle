@@ -1,5 +1,5 @@
 export type ChatEvent =
-  | { type: "start" }
+  | { type: "start"; sessionId?: string }
   | { type: "tool_call"; tool: string; label?: string }
   | { type: "tool_result"; tool: string; ok: boolean }
   | { type: "text_delta"; delta: string }
@@ -32,12 +32,17 @@ export async function streamChat(
   message: string,
   sessionId: string | null,
   onEvent: (e: ChatEvent) => void,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  voice?: boolean
 ): Promise<void> {
   const res = await fetch("/api/chat/stream", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ message, ...(sessionId ? { sessionId } : {}) }),
+    body: JSON.stringify({
+      message,
+      ...(sessionId ? { sessionId } : {}),
+      ...(voice ? { voice: true } : {}),
+    }),
     signal,
   });
   if (!res.ok || !res.body) {

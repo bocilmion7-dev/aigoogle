@@ -18,11 +18,9 @@ const Env = z.object({
   NVIDIA_API_KEY: z.string().default(""),
   /** Router OpenAI-compatible (mis. router.bangunweb.com) — provider tunggal chat bila diisi; menonaktifkan Gemini & NVIDIA */
   ROUTER_API_KEY: z.string().default(""),
-  ROUTER_BASE_URL: z.string().default("https://router.bangunweb.com/v1"),
-  ROUTER_MODEL: z.string().default("glm-5.2"),
+  ROUTER_BASE_URL: z.string().default("http://localhost:20128/v1"),
+  ROUTER_MODEL: z.string().default("ocfree/mimo-v2.6-flash-free,ocfree/space-bunny-free,ocfree/big-pickle,ocfree/fledge-alpha-free,ocfree/ling-3.1-flash-free,ocfree/longcat-2.5-preview-free,ocfree/muse-spark-1.2-contributor-free,ocfree/muse-spark-1.3-contributor-free,ocfree/nemotron-3-ultra-free,ocfree/nemotron-3.5-lightning-free,ocfree/step-5-preview-free"),
   GEMINI_MODEL: z.string().default("gemini-3.6-flash"),
-  GEMINI_TTS_MODEL: z.string().default("gemini-3.8-flash-tts"),
-  GEMINI_TRANSCRIBE_MODEL: z.string().default("gemini-3.5-transcribe"),
   BILLING_ENABLED: z.string().default("0"),
   MIDTRANS_SERVER_KEY: z.string().default(""),
   MIDTRANS_CLIENT_KEY: z.string().default(""),

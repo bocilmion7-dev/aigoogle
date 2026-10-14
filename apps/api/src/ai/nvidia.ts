@@ -26,7 +26,7 @@ interface OpenAIToolCall {
 }
 interface OpenAIMessage {
   role: "system" | "user" | "assistant" | "tool";
-  content?: string | null;
+  content?: string | null | Array<Record<string, unknown>>;
   tool_calls?: OpenAIToolCall[];
   tool_call_id?: string;
 }
@@ -60,22 +60,35 @@ function toOpenAIMessages(opts: GenerateOpts): OpenAIMessage[] {
       if (toolCalls.length) out.push({ role: "assistant", content: text, tool_calls: toolCalls });
       else if (text) out.push({ role: "assistant", content: text });
     } else {
-      // peran user: teks biasa ATAU functionResponse (→ pesan tool)
-      for (const p of c.parts) {
-        if (p.functionResponse) {
-          const raw = p.functionResponse.response;
-          let resp: string;
-          if (typeof raw === "string") resp = raw;
-          else {
-            try {
-              resp = JSON.stringify(raw) ?? "";
-            } catch {
-              resp = "";
-            }
+      // peran user: teks biasa, gambar (inlineData → image_url multimodal), ATAU functionResponse (→ pesan tool)
+      if (c.parts.some((p) => p.inlineData)) {
+        // pesan multimodal: semua gambar + teks dalam SATU pesan user
+        const content: Array<Record<string, unknown>> = [];
+        for (const p of c.parts) {
+          if (p.inlineData) {
+            content.push({ type: "image_url", image_url: { url: `data:${p.inlineData.mimeType};base64,${p.inlineData.data}` } });
+          } else if (p.text) {
+            content.push({ type: "text", text: p.text });
           }
-          out.push({ role: "tool", content: resp, tool_call_id: p.functionResponse.id ?? toNvidiaToolName(p.functionResponse.name) });
-        } else if (p.text) {
-          out.push({ role: "user", content: p.text });
+        }
+        out.push({ role: "user", content });
+      } else {
+        for (const p of c.parts) {
+          if (p.functionResponse) {
+            const raw = p.functionResponse.response;
+            let resp: string;
+            if (typeof raw === "string") resp = raw;
+            else {
+              try {
+                resp = JSON.stringify(raw) ?? "";
+              } catch {
+                resp = "";
+              }
+            }
+            out.push({ role: "tool", content: resp, tool_call_id: p.functionResponse.id ?? toNvidiaToolName(p.functionResponse.name) });
+          } else if (p.text) {
+            out.push({ role: "user", content: p.text });
+          }
         }
       }
     }
@@ -124,13 +137,30 @@ function partsFromOpenAI(json: {
       });
     }
   }
-  if (msg.content) parts.push({ text: msg.content });
+  if (typeof msg.content === "string" && msg.content) parts.push({ text: msg.content });
   return parts;
 }
 
 export interface NvidiaClient {
   listModels(): Promise<string[]>;
   generate(opts: GenerateOpts): Promise<{ parts: GeminiPart[] }>;
+}
+
+/** Parse JSON respons OpenAI-compatible yg mungkin diakhiri trailing non-JSON (mis. "data: [DONE]" dari 9Router). */
+function parseOpenAIJson(text: string): unknown {
+  try {
+    return JSON.parse(text);
+  } catch {
+    const end = text.lastIndexOf("}");
+    if (end !== -1) {
+      try {
+        return JSON.parse(text.slice(0, end + 1));
+      } catch {
+        /* lanjut ke bawah */
+      }
+    }
+    throw new GeminiHttpError(502, "respons provider AI tidak valid");
+  }
 }
 
 export class RealNvidiaClient implements NvidiaClient {
@@ -143,7 +173,7 @@ export class RealNvidiaClient implements NvidiaClient {
   async listModels(): Promise<string[]> {
     const res = await fetch(`${this.baseUrl}/models`, { headers: this.headers() });
     if (!res.ok) throw new GeminiHttpError(res.status, await res.text().catch(() => ""));
-    const j = (await res.json()) as { data?: Array<{ id?: string }> };
+    const j = parseOpenAIJson(await res.text()) as { data?: Array<{ id?: string }> };
     return (j.data ?? []).map((m) => m.id).filter((x): x is string => !!x);
   }
 
@@ -163,7 +193,7 @@ export class RealNvidiaClient implements NvidiaClient {
       body: JSON.stringify(body),
     });
     if (!res.ok) throw new GeminiHttpError(res.status, await res.text().catch(() => ""));
-    const parts = partsFromOpenAI(await res.json());
+    const parts = partsFromOpenAI(parseOpenAIJson(await res.text()) as Parameters<typeof partsFromOpenAI>[0]);
     // petakan balik nama tool: "salesInvoice_list" → "salesInvoice.list" (cocok katalog)
     const known = (opts.tools ?? []).flatMap((t) => t.functionDeclarations ?? []).map((d) => d.name);
     for (const p of parts) {

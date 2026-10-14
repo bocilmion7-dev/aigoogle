@@ -87,10 +87,10 @@ describe("settings & connections", () => {
       winpayPrivateKey: "",
       winpayPublicKey: "",
     });
-    const put = await request(api).put("/api/settings").set("Cookie", platCookie).send({ voiceEngine: "gemini-native" });
+    const put = await request(api).put("/api/settings").set("Cookie", platCookie).send({ voiceEngine: "edge" });
     expect(put.status).toBe(200);
     const g2 = await request(api).get("/api/settings").set("Cookie", cookie);
-    expect(g2.body.voiceEngine).toBe("gemini-native");
+    expect(g2.body.voiceEngine).toBe("edge");
     const putOcr = await request(api).put("/api/settings").set("Cookie", platCookie).send({ ocrMode: "text" });
     expect(putOcr.status).toBe(200);
     const putPrice = await request(api).put("/api/settings").set("Cookie", platCookie).send({ waPricePerCredit: 350 });
@@ -98,7 +98,7 @@ describe("settings & connections", () => {
     expect(putPrice.body.waPricePerCredit).toBe(350);
     const g3 = await request(api).get("/api/settings").set("Cookie", cookie);
     expect(g3.body).toEqual({
-      voiceEngine: "gemini-native",
+      voiceEngine: "edge",
       ocrMode: "text",
       waPricePerCredit: 350,
       waProvider: "d360",

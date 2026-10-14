@@ -39,7 +39,7 @@ afterAll(async () => {
 });
 
 describe("pool model Gemini (failover)", () => {
-  it("tabel kosong → load daftar model live & simpan per ember (generate/tts/stt)", async () => {
+  it("tabel kosong → load daftar model live & simpan (ember generate)", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async (url: string) => {
@@ -54,14 +54,10 @@ describe("pool model Gemini (failover)", () => {
 
     const rows = await prisma.geminiModel.findMany({ orderBy: { rank: "asc" } });
     const gen = rows.filter((r) => r.action === "generate").map((r) => r.name);
-    const tts = rows.filter((r) => r.action === "tts").map((r) => r.name);
-    const stt = rows.filter((r) => r.action === "stt").map((r) => r.name);
     expect(gen[0]).toBe(env.GEMINI_MODEL); // pilihan env selalu di depan
     expect(gen).toContain("gemini-uji-flash");
-    expect(tts).toContain("gemini-uji-flash-tts");
-    expect(tts).toContain(env.GEMINI_TTS_MODEL);
-    expect(stt).toContain("gemini-uji-transcribe");
-    expect(stt).toContain(env.GEMINI_TRANSCRIBE_MODEL);
+    expect(gen).toContain("gemini-uji-flash-tts");
+    expect(gen).toContain("gemini-uji-transcribe");
   });
 
   it("model gagal → rotasi ke model berikutnya; sukses → hitungan direset", async () => {

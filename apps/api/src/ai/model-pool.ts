@@ -7,14 +7,14 @@ import { RealNvidiaClient } from "./nvidia.js";
  * Pool model Gemini dengan failover.
  *
  * - Saat dipakai pertama kali (atau setelah "gagal semua"), daftar model dimuat
- *   LIVE dari API Gemini dan disimpan di tabel GeminiModel per ember (generate|tts|stt).
+ *   dan disimpan di tabel GeminiModel per ember (generate).
  * - Setiap pemanggilan mencoba model berurutan sesuai rank; gagal → rotasi ke
  *   model berikutnya. Kegagalan sementara (429/5xx/404/network) menaikkan
  *   failureCount model di tabel (demoted setelah MAX_FAILURES).
  * - Bila SEMUA model pada ember gagal → refresh daftar live (ganti isi tabel,
  *   reset hitungan) → coba satu siklus lagi; tetap gagal → lempar error terakhir.
  */
-export type ModelAction = "generate" | "tts" | "stt";
+export type ModelAction = "generate";
 export type ModelProvider = "gemini" | "nvidia" | "router";
 
 /** Kandidat model: provider + nama model (NVIDIA hanya utk ember generate). */
@@ -31,9 +31,7 @@ export const MAX_FAILURES = 3;
 /** Batas model yang dicoba per siklus agar latensi tetap terkendali. */
 const MAX_TRY = 3;
 
-function envModel(action: ModelAction): string {
-  if (action === "tts") return env.GEMINI_TTS_MODEL;
-  if (action === "stt") return env.GEMINI_TRANSCRIBE_MODEL;
+function envModel(): string {
   return env.GEMINI_MODEL;
 }
 
@@ -59,8 +57,7 @@ export async function refreshModelsLive(): Promise<number> {
   if (Date.now() - lastRefreshAt < REFRESH_COOLDOWN_MS) return 0;
   refreshP = (async () => {
     // Router aktif → provider TUNGGAL utk generate; tanpa fetch Gemini (hemat kuota,
-    // endpoint Router mungkin hanya terjangkau dari jaringan tertentu). TTS/STT tetap Gemini
-    // (di-seed terpisah saat Router mati).
+    // endpoint Router mungkin hanya terjangkau dari jaringan tertentu).
     if (env.ROUTER_API_KEY.length > 10) {
       const routerModels = env.ROUTER_MODEL.split(",").map((s) => s.trim()).filter(Boolean);
       const drows = routerModels.map((name, rank) => ({
@@ -81,7 +78,7 @@ export async function refreshModelsLive(): Promise<number> {
     }
     const key = process.env.GEMINI_API_KEY || "";
     if (key.length < 10) return 0;
-    const buckets: Record<ModelAction, string[]> = { generate: [], tts: [], stt: [] };
+    const buckets: Record<ModelAction, string[]> = { generate: [] };
     let pageToken = "";
     for (;;) {
       const url = `${API}/models?pageSize=1000${pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : ""}`;
@@ -94,19 +91,17 @@ export async function refreshModelsLive(): Promise<number> {
       for (const m of j.models ?? []) {
         const methods = m.supportedGenerationMethods ?? [];
         if (!methods.includes("generateContent")) continue;
-        const label = `${m.name} ${m.displayName ?? ""}`.toLowerCase();
-        const action: ModelAction = label.includes("tts") ? "tts" : label.includes("transcribe") ? "stt" : "generate";
         const name = m.name.replace(/^models\//, "");
-        if (!buckets[action].includes(name)) buckets[action].push(name);
+        if (!buckets.generate.includes(name)) buckets.generate.push(name);
       }
       pageToken = j.nextPageToken ?? "";
       if (!pageToken) break;
     }
     // model pilihan env selalu di urutan pertama tiap ember
     const rows: Array<{ id: string; action: string; provider: string; name: string; rank: number; failureCount?: number; lastError?: string }> = [];
-    for (const action of ["generate", "tts", "stt"] as ModelAction[]) {
+    for (const action of ["generate"] as ModelAction[]) {
       const list = buckets[action];
-      const pref = envModel(action);
+      const pref = envModel();
       if (pref) {
         const i = list.indexOf(pref);
         if (i > 0) {
@@ -294,7 +289,7 @@ export async function withModelFailover<T>(
   }
 
   if (!lastErr) {
-    const fb = envModel(action);
+    const fb = envModel();
     if (fb) {
       out = await cycle([{ provider: "gemini", model: fb }]);
       if (out.ok) return out.value;

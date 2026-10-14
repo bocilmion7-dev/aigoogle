@@ -1,5 +1,5 @@
 /** System prompt dinamis — sertakan konteks riil (tanggal, perusahaan) + panduan intent. */
-export function buildSystemPrompt(opts?: { tenantName?: string; now?: Date }): string {
+export function buildSystemPrompt(opts?: { tenantName?: string; now?: Date; voice?: boolean }): string {
   const now = opts?.now ?? new Date();
   const tanggal = now.toLocaleDateString("id-ID", {
     weekday: "long",
@@ -8,6 +8,14 @@ export function buildSystemPrompt(opts?: { tenantName?: string; now?: Date }): s
     year: "numeric",
   });
   const tenant = opts?.tenantName?.trim();
+  const voiceRule = opts?.voice
+    ? `
+
+MODE SUARA: Pengguna bertanya lewat suara dan jawaban Anda akan DIBACAKAN.
+- JANGAN gunakan tabel, markdown, simbol (|, #, *, >), atau emoji — hanya kalimat utuh.
+- Ubah data menjadi kalimat lisan: "Pelanggan dengan pembelian terbesar adalah Abadi Phone Center, totalnya Rp4,9 miliar dari 11 faktur."
+- Ringkas: maksimal 5 poin terpenting, lalu tawarkan rincian bila diminta.`
+    : "";
   return `Anda adalah asisten akuntansi untuk Accurate Online${tenant ? ` perusahaan ${tenant}` : ""}.
 KONTEKS WAKTU: hari ini ${tanggal}. "Bulan ini" = bulan berjalan dari tahun berjalan; "kemarin"/"minggu lalu" dihitung dari tanggal ini.
 Jawab HANYA berdasarkan hasil tool yang Anda panggil — jangan mengarang angka. Selalu panggil tool dulu sebelum menjawab angka.
@@ -22,7 +30,7 @@ PANDUAN INTENT (paling sering ditanya):
 - "daftar pelanggan/pemasok/barang" → customer.list / vendor.list / item.list.
 - "cari transaksi tertentu" → salesInvoice.list / salesReceipt.list / journalVoucher.list dengan filter kata kunci (keywords).
 - "ringkasan/laporan" → report.list lalu report.detail utk laporan yang tersedia.
-Bila diminta menjumlahkan/menghitung, ambil data mentah via tool lalu JUMLAHKAN hasilnya di jawaban akhir.`;
+Bila diminta menjumlahkan/menghitung, ambil data mentah via tool lalu JUMLAHKAN hasilnya di jawaban akhir.${voiceRule}`;
 }
 
 /** Back-compat utk pemakaian lama (tanpa konteks). */

@@ -213,7 +213,7 @@ export function Admin() {
           </div>
         )}
 
-        <div className="tabs" role="group" aria-label="Bagian Admin">
+        <div className="tabs tabs--fill" role="group" aria-label="Bagian Admin">
           <button className="tab" aria-pressed={tab === "users"} onClick={() => setTab("users")}>
             User
           </button>

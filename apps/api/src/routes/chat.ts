@@ -6,6 +6,7 @@ import { asyncHandler } from "../asyncHandler.js";
 import { requireUser } from "../middleware/session.js";
 import { geminiClient } from "../ai/gemini-client.js";
 import { runToolLoop } from "../ai/tool-loop.js";
+import type { GeminiContent } from "../ai/gemini-types.js";
 import { buildSystemPrompt } from "../ai/system-prompt.js";
 import { loadPermissionSet } from "../permissions.js";
 import { writeAudit } from "../audit.js";
@@ -50,7 +51,12 @@ chatRouter.post(
   requireUser,
   asyncHandler(async (req, res) => {
     const body = z
-      .object({ message: z.string().min(1).max(4000), sessionId: z.string().optional() })
+      .object({
+        message: z.string().min(1).max(4000),
+        sessionId: z.string().optional(),
+        /** mode suara: jawaban dibacakan → model diarahkan gaya lisan tanpa tabel/markdown */
+        voice: z.boolean().optional(),
+      })
       .safeParse(req.body);
     if (!body.success) return res.status(400).json({ error: "bad_request" });
     const user = req.user!;
@@ -69,7 +75,24 @@ chatRouter.post(
         data: { tenantId: user.tenant.id, userId: user.id, title: body.data.message.slice(0, 60) },
       });
     }
-    await prisma.chatMessage.create({ data: { sessionId: session.id, role: "user", content: body.data.message } });
+    const userMsg = await prisma.chatMessage.create({
+      data: { sessionId: session.id, role: "user", content: body.data.message },
+    });
+
+    // short memory: muat 10 pesan terakhir sesi (kecuali pesan user baru) agar model paham konteks percakapan sebelumnya
+    const recent = await prisma.chatMessage.findMany({
+      where: { sessionId: session.id, id: { not: userMsg.id } },
+      orderBy: { createdAt: "desc" },
+      take: 10,
+      select: { role: true, content: true },
+    });
+    const history: GeminiContent[] = recent
+      .reverse()
+      .filter((m) => m.content.trim())
+      .map((m) => ({
+        role: m.role === "ai" ? ("model" as const) : ("user" as const),
+        parts: [{ text: m.content.slice(0, 2000) }],
+      }));
 
     const dbUser = await prisma.user.findUniqueOrThrow({ where: { id: user.id } });
     const [permissions, ctx] = await Promise.all([
@@ -94,10 +117,15 @@ chatRouter.post(
           });
         },
         permissions,
-        system: buildSystemPrompt({ tenantName: user.tenant.name }),
+        system: buildSystemPrompt({ tenantName: user.tenant.name, voice: body.data.voice === true }),
         tools,
         userMessage: body.data.message,
-        onEvent: (e) => send(e as Record<string, unknown>),
+        history,
+        onEvent: (e) => {
+          const ev = e as Record<string, unknown>;
+          // start membawa sessionId supaya frontend (mode voice) bisa lanjut di sesi yg sama
+          send(e.type === "start" ? { ...ev, sessionId: session.id } : ev);
+        },
         model: env.GEMINI_MODEL,
       });
       for (const t of out.trace) {

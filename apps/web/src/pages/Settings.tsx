@@ -131,13 +131,6 @@ export function Settings() {
               />
               <span>Edge — STT di browser, TTS neural (gratis)</span>
             </label>
-            <label className="check">
-              <input
-                type="radio" name="voice" checked={aset?.voiceEngine === "gemini-native"}
-                onChange={() => aset && setAset({ ...aset, voiceEngine: "gemini-native" })}
-              />
-              <span>Gemini native audio — kualitas terbaik</span>
-            </label>
           </div>
 
           <strong className="card__title" style={{ marginTop: "var(--space-s)" }}>Biaya WhatsApp</strong>

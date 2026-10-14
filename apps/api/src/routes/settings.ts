@@ -13,7 +13,7 @@ export const settingsRouter = Router();
 
 const PutBody = z
   .object({
-    voiceEngine: z.enum(["gemini-native", "web-speech", "edge"]).optional(),
+    voiceEngine: z.enum(["web-speech", "edge"]).optional(),
     ocrMode: z.enum(["vision", "text"]).optional(),
     waPricePerCredit: z.number().int().min(1).max(1_000_000).optional(),
     /** penyedia WhatsApp utk embedded signup: meta | d360 (default d360) */

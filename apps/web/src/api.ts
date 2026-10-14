@@ -124,12 +124,6 @@ export interface ScanResponse {
   suggestedTarget: "salesInvoice" | "salesReceipt" | null;
   warning?: string;
 }
-export interface ReadResponse {
-  fileName: string;
-  kind: string;
-  text: string;
-  engine: string;
-}
 
 const MSG: Record<string, string> = {
     belum_connect: "Accurate belum terhubung — hubungkan dulu di Pengaturan.",
@@ -144,9 +138,9 @@ const MSG: Record<string, string> = {
     ocr_gagal:
       "Vision & OCR gagal membaca gambar/PDF — layanan AI tidak tersedia atau kuota habis. Coba lagi nanti atau isi/manual salin teksnya.",
     vision_ocr_gagal:
-      "AI gagal membaca isi dokumen (kuota layanan habis) — periksa dan isi datanya secara manual, lalu simpan.",
+      "AI gagal membaca isi dokumen — pastikan gambar/PDF jelas dan tidak buram, atau isi datanya secara manual, lalu simpan.",
   field_ocr_gagal:
-    "Ekstraksi otomatis gagal (kuota layanan habis) — isi datanya secara manual, lalu simpan.",
+    "Ekstraksi otomatis gagal — isi datanya secara manual, lalu simpan.",
 };
 
 async function apiError(res: Response): Promise<Error> {
@@ -223,16 +217,6 @@ export async function getCustomers(keywords = ""): Promise<CustomerRow[]> {
 
 export async function uploadScan(file: File): Promise<ScanResponse> {
   const res = await fetch("/api/customers/scan", {
-    method: "POST",
-    headers: { "x-file-name": file.name, "Content-Type": file.type || "application/octet-stream" },
-    body: file,
-  });
-  if (!res.ok) throw await apiError(res);
-  return res.json();
-}
-
-export async function uploadRead(file: File): Promise<ReadResponse> {
-  const res = await fetch("/api/reader", {
     method: "POST",
     headers: { "x-file-name": file.name, "Content-Type": file.type || "application/octet-stream" },
     body: file,

@@ -1,4 +1,5 @@
 import JSZip from "jszip";
+import { PDFParse } from "pdf-parse";
 
 export type DocKind =
   | "image"
@@ -75,12 +76,68 @@ function legacyBinaryText(buffer: Buffer): string {
   return out.join("\n").slice(0, 20_000);
 }
 
-/** Ekstrak teks lokal (tanpa AI) untuk dokumen berbasis teks. Gambar/PDF → "" (butuh vision). */
+/** Ekstrak teks dari PDF berbasis teks (pdf.js). PDF hasil scan → "" (lanjut ke OCR gambar). */
+async function pdfText(buffer: Buffer): Promise<string> {
+  try {
+    const parser = new PDFParse({ data: new Uint8Array(buffer) });
+    try {
+      const r = await parser.getText();
+      return (r.text ?? "").trim();
+    } finally {
+      await parser.destroy().catch(() => {});
+    }
+  } catch {
+    return "";
+  }
+}
+
+/**
+ * Ekstrak gambar JPEG yang tertanam di PDF (PDF hasil scan menyimpan halaman
+ * sebagai gambar DCTDecode) — tanpa dependensi ekstra: cari pasangan SOI/EOI.
+ * Ambil maks 3 gambar terbesar (ukuran ≥ 8KB) untuk dikirim ke model vision.
+ */
+export function extractPdfImages(buffer: Buffer, max = 3): Buffer[] {
+  const found: Buffer[] = [];
+  let i = 0;
+  while (i < buffer.length - 3 && found.length < 12) {
+    if (buffer[i] === 0xff && buffer[i + 1] === 0xd8 && buffer[i + 2] === 0xff) {
+      // cari EOI
+      let end = -1;
+      for (let j = i + 3; j < buffer.length - 1; j++) {
+        if (buffer[j] === 0xff && buffer[j + 1] === 0xd9) {
+          end = j + 2;
+          break;
+        }
+      }
+      if (end > i) {
+        const img = buffer.subarray(i, end);
+        if (img.length >= 8 * 1024) found.push(Buffer.from(img));
+        i = end;
+        continue;
+      }
+    }
+    i++;
+  }
+  // ambil yang terbesar dulu lalu urutkan kembali sesuai posisi di dokumen
+  return found
+    .sort((a, b) => b.length - a.length)
+    .slice(0, max)
+    .sort((a, b) => buffer.indexOf(a) - buffer.indexOf(b));
+}
+
+/** PDF dianggap punya teks nyata bila cukup banyak karakter alfanumerik. */
+function hasRealText(text: string): boolean {
+  return (text.match(/[A-Za-z0-9]/g) ?? []).length >= 40;
+}
+
+/** Ekstrak teks lokal (tanpa AI). PDF berbasis teks → teksnya; PDF scan/gambar → "" (butuh vision). */
 export async function extractText(buffer: Buffer, kind: DocKind): Promise<string> {
   switch (kind) {
     case "markdown":
     case "text":
       return buffer.toString("utf8");
+    case "pdf":
+      return hasRealText(await pdfText(buffer)) ? await pdfText(buffer) : "";
     case "docx":
       return zipXmlText(buffer, (n) => n === "word/document.xml");
     case "pptx":
@@ -89,7 +146,6 @@ export async function extractText(buffer: Buffer, kind: DocKind): Promise<string
     case "ppt":
       return legacyBinaryText(buffer);
     case "image":
-    case "pdf":
     case "unknown":
       return "";
   }

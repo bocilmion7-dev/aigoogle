@@ -5,12 +5,11 @@ import {
   getConnections,
   getMe,
   postEntry,
-  uploadRead,
   uploadScan,
   type ScanResponse,
 } from "../api";
 import { AppHeader, PageLoader } from "../ui";
-import { IconCamera, IconCheck, IconFileText, IconUpload } from "../icons";
+import { IconCamera, IconCheck, IconUpload } from "../icons";
 
 const rp = (n: number | null | undefined) =>
   n === null || n === undefined ? "—" : `Rp ${Math.round(n).toLocaleString("id-ID")}`;
@@ -31,7 +30,6 @@ export function Pelanggan() {
   const [me, setMe] = useState<Awaited<ReturnType<typeof getMe>> | undefined>(undefined);
   const [conns, setConns] = useState<ConnectionInfo[]>([]);
   const [q, setQ] = useState("");
-  const [tab, setTab] = useState<"scan" | "reader">("scan");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [okMsg, setOkMsg] = useState("");
@@ -49,7 +47,6 @@ export function Pelanggan() {
   }, []);
   const [form, setForm] = useState({ customerName: "", date: "", no: "", total: "", description: "" });
   const [target, setTarget] = useState<"" | "salesInvoice" | "salesReceipt">("");
-  const [readText, setReadText] = useState<{ fileName: string; text: string } | null>(null);
 
   useEffect(() => {
     void getMe().then(setMe);
@@ -82,7 +79,7 @@ export function Pelanggan() {
   }
   const onScanFile = async (file: File | undefined) => {
     if (!file) return;
-    setErr(""); setOkMsg(""); setScan(null); setReadText(null);
+    setErr(""); setOkMsg(""); setScan(null);
     setBusy(true);
     try {
       const res = await uploadScan(file);
@@ -97,20 +94,6 @@ export function Pelanggan() {
       setTarget(res.suggestedTarget ?? "");
       const warn = friendlyWarning(res.warning);
       if (warn) setErr(warn);
-    } catch (e) {
-      setErr((e as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const onReadFile = async (file: File | undefined) => {
-    if (!file) return;
-    setErr(""); setOkMsg(""); setReadText(null); setScan(null);
-    setBusy(true);
-    try {
-      const res = await uploadRead(file);
-      setReadText({ fileName: res.fileName, text: res.text });
     } catch (e) {
       setErr((e as Error).message);
     } finally {
@@ -197,20 +180,10 @@ export function Pelanggan() {
           {me.tenant.name} · {connected ? "Accurate terhubung" : "Accurate belum terhubung"}
         </p>
 
-        <div className="tabs tabs--fill" role="group" aria-label="Mode input">
-          <button className="tab" aria-pressed={tab === "scan"} onClick={() => setTab("scan")}>
-            <IconCamera size={16} /> Scan
-          </button>
-          <button className="tab" aria-pressed={tab === "reader"} onClick={() => setTab("reader")}>
-            <IconFileText size={16} /> Baca file
-          </button>
-        </div>
-
         {err && <p className="banner banner--err" role="alert">{err}</p>}
         {okMsg && <p className="banner banner--ok" role="status">{okMsg}</p>}
 
-        {tab === "scan" ? (
-          <section className="card">
+        <section className="card">
             {!camOn ? (
               <>
                 <div className="scan-tiles">
@@ -378,48 +351,6 @@ export function Pelanggan() {
               </div>
             )}
           </section>
-        ) : (
-          <section className="card">
-            <div className="scan-head">
-              <span className="scan-head__icon" aria-hidden="true">
-                <IconFileText size={20} />
-              </span>
-              <div>
-                <strong className="card__title" style={{ marginBottom: "2px" }}>Baca file</strong>
-                <p className="meta" style={{ margin: 0 }}>
-                  PDF, gambar (nota, bukti transfer, kwitansi, screenshot), PowerPoint, Word, Markdown,
-                  atau teks biasa.
-                </p>
-              </div>
-            </div>
-            <label className="scan-drop">
-              <span className="scan-drop__icon" aria-hidden="true">
-                <IconUpload size={22} />
-              </span>
-              <span className="scan-drop__title">Pilih file untuk dibaca</span>
-              <span className="scan-drop__hint">PDF · gambar · PPT · DOCX · Markdown · teks</span>
-              <input
-                className="sr-only"
-                type="file"
-                accept="image/*,.pdf,.docx,.pptx,.doc,.ppt,.md,.txt"
-                onChange={(e) => void onReadFile(e.target.files?.[0])}
-              />
-            </label>
-            {busy && (
-              <p className="busy-line" role="status">
-                <span className="busy-dot" aria-hidden="true" /> Membaca file…
-              </p>
-            )}
-            {readText && (
-              <div style={{ marginTop: "var(--space-xs)" }}>
-                <p className="meta">
-                  {readText.fileName}
-                </p>
-                <pre className="block">{readText.text}</pre>
-              </div>
-            )}
-          </section>
-        )}
 
         <a className="btn btn--ghost btn--sm" href="/app">
           ← Kembali

@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import type { MessageInfo, SessionInfo } from "../chat-api";
 import { listMessages, listSessions, streamChat } from "../chat-api";
 import { getSettings } from "../api";
-import { MicButton, speakWeb, ttsEdge, ttsGemini } from "../voice";
+import { speakWeb, ttsEdge } from "../voice";
+import { VoiceMode } from "../voice-mode";
 
 interface UiMsg {
   role: "user" | "ai";
@@ -32,6 +33,7 @@ export function Chat() {
   const [busy, setBusy] = useState(false);
   const [composerFocused, setComposerFocused] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [voiceMode, setVoiceMode] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -92,8 +94,7 @@ export function Chat() {
       });
       if (aiText) {
         const settings = await getSettings();
-        if (settings.voiceEngine === "gemini-native") void ttsGemini(aiText).catch(() => {});
-        else if (settings.voiceEngine === "edge") void ttsEdge(aiText).catch(() => {});
+        if (settings.voiceEngine === "edge") void ttsEdge(aiText).catch(() => {});
         else speakWeb(aiText);
       }
     } catch {
@@ -105,6 +106,16 @@ export function Chat() {
 
   return (
     <div className="chat">
+      {voiceMode && (
+        <VoiceMode
+          sessionId={sessionId}
+          setSessionId={setSessionId}
+          onExit={() => {
+            setVoiceMode(false);
+            void listSessions().then(setSessions);
+          }}
+        />
+      )}
       <aside aria-label="Riwayat percakapan">
         <div className="chat-sessions">
           {sessions.map((s) => (
@@ -185,7 +196,19 @@ export function Chat() {
             placeholder="Tanya sesuatu…"
           />
           <span className="composer__mic">
-            <MicButton onText={(t) => void send(t)} disabled={busy} />
+            <button
+              className="btn btn--2"
+              onClick={() => setVoiceMode(true)}
+              disabled={busy}
+              aria-label="Buka mode suara"
+              title="Buka mode suara"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z" />
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                <line x1="12" y1="19" x2="12" y2="22" />
+              </svg>
+            </button>
           </span>
           <button className="btn" onClick={() => void send(input)} disabled={busy}>
             {busy ? "…" : "Kirim"}

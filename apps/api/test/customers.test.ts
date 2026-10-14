@@ -102,6 +102,15 @@ beforeAll(async () => {
           : String((geminiReply as { text?: string }).text ?? "");
         return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text }] } }] }), { status: 200 });
       }
+      // jalur 9Router/ocfree (OpenAI-compatible) — kini jalur utama OCR
+      if (url.includes("/chat/completions")) {
+        geminiCalls.push({ url, body: String(init?.body ?? "") });
+        const content = url.includes("chat/completions") ? JSON.stringify(geminiReply) : "";
+        return new Response(
+          JSON.stringify({ choices: [{ message: { role: "assistant", content } }] }),
+          { status: 200 }
+        );
+      }
       return realFetch(input, init);
     })
   );
@@ -183,7 +192,7 @@ describe("POST /api/customers/scan", () => {
     expect(zip.status).toBe(415);
   });
 
-  it("gambar (vision aktif) → kirim inlineData, balas field + target", async () => {
+  it("gambar (vision aktif) → kirim gambar via router, balas field + target", async () => {
     const res = await request(api)
       .post("/api/customers/scan")
       .set("Cookie", cookie)
@@ -194,7 +203,7 @@ describe("POST /api/customers/scan", () => {
     expect(res.body.fields).toMatchObject({ docType: "nota", customerName: "Toko Maju", total: 150000 });
     expect(res.body.suggestedTarget).toBe("salesReceipt");
     expect(geminiCalls.length).toBeGreaterThan(0);
-    expect(geminiCalls[0].body).toContain("inlineData");
+    expect(geminiCalls[0].body).toContain("image_url");
     expect(geminiCalls[0].body).toContain("image/jpeg");
   });
 
@@ -223,45 +232,6 @@ describe("POST /api/customers/scan", () => {
     expect(res.status).toBe(409);
     expect(res.body.error).toBe("vision_ocr_nonaktif");
     await request(api).put("/api/settings").set("Cookie", platCookie).send({ ocrMode: "vision" });
-  });
-});
-
-describe("POST /api/reader", () => {
-  it("markdown → teks lokal, engine local", async () => {
-    const res = await request(api)
-      .post("/api/reader")
-      .set("Cookie", cookie)
-      .set("x-file-name", "catatan.md")
-      .set("Content-Type", "text/markdown")
-      .send(Buffer.from("# Catatan rapat\nBaharudin hadir"));
-    expect(res.status).toBe(200);
-    expect(res.body.engine).toBe("local");
-    expect(res.body.text).toContain("Baharudin");
-  });
-
-  it("gambar → OCR vision, engine gemini-vision", async () => {
-    geminiReply = { text: "Teks nota: Rp150.000" };
-    const res = await request(api)
-      .post("/api/reader")
-      .set("Cookie", cookie)
-      .set("x-file-name", "bukti.jpg")
-      .set("Content-Type", "image/jpeg")
-      .send(Buffer.from("JPEGDATA"));
-    expect(res.status).toBe(200);
-    expect(res.body.engine).toBe("gemini-vision");
-    expect(res.body.text).toContain("150.000");
-    const last = geminiCalls[geminiCalls.length - 1];
-    expect(last.body).toContain("inlineData");
-  });
-
-  it("file kosong → 400", async () => {
-    const res = await request(api)
-      .post("/api/reader")
-      .set("Cookie", cookie)
-      .set("x-file-name", "kosong.txt")
-      .set("Content-Type", "text/plain")
-      .send(Buffer.from(""));
-    expect(res.status).toBe(400);
   });
 });
 

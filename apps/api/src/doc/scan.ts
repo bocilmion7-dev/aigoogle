@@ -1,7 +1,10 @@
 import { withModelFailover } from "../ai/model-pool.js";
 import { GeminiHttpError } from "../ai/gemini-error.js";
+import { RealNvidiaClient } from "../ai/nvidia.js";
+import { env } from "../env.js";
+import type { GeminiContent, GeminiPart } from "../ai/gemini-types.js";
 import type { DocKind } from "./extract.js";
-import { VISION_KINDS } from "./extract.js";
+import { extractPdfImages, VISION_KINDS } from "./extract.js";
 
 export type DocType = "faktur" | "nota" | "kwitansi" | "lainnya";
 export type ScanTarget = "salesInvoice" | "salesReceipt";
@@ -108,28 +111,52 @@ function parseJsonLoose(text: string): Record<string, unknown> | null {
   return null;
 }
 
+/**
+ * Satu panggilan model dengan failover utk part multimodal (gambar/PDF/teks + prompt).
+ * Urutan: 9Router/ocfree (mimo rank-0 mendukung vision) → NVIDIA → Gemini langsung.
+ * Model non-vision yg membalas tanpa JSON dianggap gagal → rotasi ke kandidat berikutnya.
+ */
+async function generateText(parts: GeminiPart[], prompt: string, needJson: boolean): Promise<string> {
+  const contents: GeminiContent[] = [{ role: "user", parts: [...parts, { text: prompt }] }];
+  return await withModelFailover("generate", async (c) => {
+    if (c.provider === "router" || c.provider === "nvidia") {
+      const client =
+        c.provider === "router"
+          ? new RealNvidiaClient(env.ROUTER_API_KEY, env.ROUTER_BASE_URL)
+          : new RealNvidiaClient(env.NVIDIA_API_KEY);
+      const { parts: out } = await client.generate({ contents, model: c.model });
+      const text = out.find((p) => p.text)?.text ?? "";
+      if (needJson && !text.includes("{")) {
+        // balasan "saya tidak bisa melihat gambar" dsb → coba model berikutnya
+        throw new GeminiHttpError(502, "model tidak mengembalikan JSON (kemungkinan tanpa visi)");
+      }
+      return text;
+    }
+    // Gemini langsung (fallback terakhir)
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${c.model}:generateContent`,
+      {
+        method: "POST",
+        headers: {
+          "x-goog-api-key": process.env.GEMINI_API_KEY || "",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ contents, generationConfig: { temperature: 0 } }),
+      }
+    );
+    if (!res.ok) throw new GeminiHttpError(res.status, await res.text().catch(() => ""));
+    const j = (await res.json()) as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
+    return j.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+  });
+}
+
 async function geminiFields(opts: {
-  apiKey: string;
-  parts: Array<Record<string, unknown>>;
+  apiKey?: string;
+  parts: GeminiPart[];
 }): Promise<{ rawText: string; fields: ScanFields } | null> {
   let text = "";
   try {
-    const j = await withModelFailover("generate", async (model) => {
-      const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-        {
-          method: "POST",
-          headers: { "x-goog-api-key": opts.apiKey, "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [{ role: "user", parts: [...opts.parts, { text: FIELD_PROMPT }] }],
-            generationConfig: { temperature: 0 },
-          }),
-        }
-      );
-      if (!res.ok) throw new GeminiHttpError(res.status, await res.text().catch(() => ""));
-      return (await res.json()) as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
-    });
-    text = j.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+    text = await generateText(opts.parts, FIELD_PROMPT, true);
   } catch {
     return null; // semua model gagal → fallback ekstraksi lokal
   }
@@ -143,68 +170,37 @@ export async function scanDocument(opts: {
   kind: DocKind;
   mime: string;
   fileName: string;
-  apiKey: string;
+  apiKey?: string;
   localText: string;
 }): Promise<ScanResult> {
-  const { buffer, kind, mime, fileName, apiKey, localText } = opts;
-  const parts: Array<Record<string, unknown>> = [];
-  if (VISION_KINDS.has(kind)) {
-    parts.push({ inlineData: { mimeType: kind === "pdf" ? "application/pdf" : mime, data: buffer.toString("base64") } });
+  const { buffer, kind, mime, fileName, localText } = opts;
+  const parts: GeminiPart[] = [];
+  let useLocalText = false;
+  if (kind === "pdf") {
+    if (localText.trim()) {
+      // PDF berbasis teks → cukup kirim teksnya (tanpa vision)
+      parts.push({ text: `Dokumen: ${fileName}\n\nIsi:\n${localText.slice(0, 12_000)}` });
+      useLocalText = true;
+    } else {
+      // PDF hasil scan → kirim halaman sebagai gambar JPEG tertanam
+      const images = extractPdfImages(buffer);
+      if (!images.length) return { rawText: localText, fields: emptyFields(), target: null, geminiOk: false };
+      for (const img of images) {
+        parts.push({ inlineData: { mimeType: "image/jpeg", data: img.toString("base64") } });
+      }
+      parts.push({ text: `Dokumen: ${fileName}` });
+    }
+  } else if (VISION_KINDS.has(kind)) {
+    parts.push({ inlineData: { mimeType: mime, data: buffer.toString("base64") } });
     parts.push({ text: `Dokumen: ${fileName}` });
   } else {
     parts.push({ text: `Dokumen: ${fileName}\n\nIsi:\n${localText.slice(0, 12_000)}` });
+    useLocalText = true;
   }
-  const out = apiKey ? await geminiFields({ apiKey, parts }) : null;
+  const out = await geminiFields({ parts });
   if (out) {
-    if (!VISION_KINDS.has(kind) && localText.trim()) out.rawText = localText;
+    if (useLocalText && localText.trim()) out.rawText = localText;
     return { ...out, target: suggestedTarget(out.fields.docType), geminiOk: true };
   }
   return { rawText: localText, fields: emptyFields(), target: null, geminiOk: false };
-}
-
-/** OCR murni (untuk menu "Baca File"): teks dari gambar/PDF, atau teks lokal untuk dokumen. */
-export async function ocrDocument(opts: {
-  buffer: Buffer;
-  kind: DocKind;
-  mime: string;
-  fileName: string;
-  apiKey?: string;
-  localText: string;
-}): Promise<string> {
-  const { buffer, kind, mime, fileName, apiKey, localText } = opts;
-  if (!VISION_KINDS.has(kind)) return localText;
-  if (!apiKey) return "";
-  try {
-    const j = await withModelFailover("generate", async (model) => {
-      const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-        {
-          method: "POST",
-          headers: { "x-goog-api-key": apiKey, "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [
-              {
-                role: "user",
-                parts: [
-                  {
-                    inlineData: {
-                      mimeType: kind === "pdf" ? "application/pdf" : mime,
-                      data: buffer.toString("base64"),
-                    },
-                  },
-                  { text: `Dokumen: ${fileName}. Ekstrak SEMUA teks yang terlihat (OCR), pertahankan angka dan susunan. Balas teks saja.` },
-                ],
-              },
-            ],
-            generationConfig: { temperature: 0 },
-          }),
-        }
-      );
-      if (!res.ok) throw new GeminiHttpError(res.status, await res.text().catch(() => ""));
-      return (await res.json()) as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
-    });
-    return (j.candidates?.[0]?.content?.parts?.[0]?.text ?? "").trim();
-  } catch {
-    return ""; // semua model gagal
-  }
 }

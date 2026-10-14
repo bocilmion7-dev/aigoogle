@@ -54,7 +54,7 @@ export class RealGeminiClient implements GeminiClient {
 
   async generate(opts: GenerateOpts): Promise<{ parts: GeminiPart[] }> {
     return withModelFailover(
-      opts.action ?? "generate",
+      "generate",
       async (c: ModelCandidate) => {
         if (c.provider === "router") {
           const dt = new RealNvidiaClient(env.ROUTER_API_KEY, env.ROUTER_BASE_URL);
@@ -75,7 +75,7 @@ export class RealGeminiClient implements GeminiClient {
     // failover menghasilkan generator per-provider: Router/NVIDIA via generate utuh lalu
     // di-yield (keduanya OpenAI-compatible); Gemini via SSE stream.
     const gen = await withModelFailover(
-      opts.action ?? "generate",
+      "generate",
       async (c: ModelCandidate): Promise<AsyncGenerator<GeminiPart>> => {
         if (c.provider === "router" || c.provider === "nvidia") {
           const client =

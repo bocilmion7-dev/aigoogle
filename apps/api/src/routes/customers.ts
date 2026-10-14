@@ -10,7 +10,7 @@ import { accurateProvider } from "../providers/accounting/index.js";
 import { cache, CACHE_TTL, invalidateTenantCache } from "../cache.js";
 import { writeAudit } from "../audit.js";
 import { detectKind, extractText, VISION_KINDS } from "../doc/extract.js";
-import { ocrDocument, scanDocument, suggestedTarget } from "../doc/scan.js";
+import { scanDocument, suggestedTarget } from "../doc/scan.js";
 
 export const customersRouter = Router();
 
@@ -92,8 +92,6 @@ customersRouter.post(
     const mode = await ocrMode();
     const vision = VISION_KINDS.has(kind);
     if (vision && mode !== "vision") return res.status(409).json({ error: "vision_ocr_nonaktif" });
-    if (!env.GEMINI_API_KEY && vision)
-      return res.status(503).json({ error: "gemini_unavailable" });
 
     const localText = await extractText(buffer, kind);
     if (!vision && !localText.trim()) return res.status(422).json({ error: "empty_text" });
@@ -171,33 +169,5 @@ customersRouter.post(
     invalidateTenantCache(req.user!.tenant.id, "accurate:customer");
     invalidateTenantCache(req.user!.tenant.id, "accurate:sales-invoice");
     res.json({ ok: true, id: saved.id, target: b.target });
-  })
-);
-
-customersRouter.post(
-  "/reader",
-  requireUser,
-  asyncHandler(async (req, res) => {
-    const buffer = await readRaw(req);
-    if (!buffer) return res.status(413).json({ error: "file_too_large" });
-    if (!buffer.length) return res.status(400).json({ error: "empty_file" });
-    const fileName = String(req.header("x-file-name") ?? "dokumen").slice(0, 200);
-    const mime = String(req.header("content-type") ?? "application/octet-stream").split(";")[0].trim();
-    const kind = detectKind(fileName, mime);
-    if (kind === "unknown") return res.status(415).json({ error: "unsupported_type" });
-
-    const vision = VISION_KINDS.has(kind);
-    if (vision && (await ocrMode()) !== "vision")
-      return res.status(409).json({ error: "vision_ocr_nonaktif" });
-    if (vision && !env.GEMINI_API_KEY) return res.status(503).json({ error: "gemini_unavailable" });
-
-    const localText = await extractText(buffer, kind);
-    const text = await ocrDocument({
-      buffer, kind, mime, fileName,
-      apiKey: env.GEMINI_API_KEY,
-      localText,
-    });
-    if (!text.trim()) return res.status(422).json({ error: vision ? "ocr_gagal" : "empty_text" });
-    res.json({ fileName, kind, text: text.slice(0, 50_000), engine: vision ? "gemini-vision" : "local" });
   })
 );
