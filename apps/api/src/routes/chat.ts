@@ -138,8 +138,8 @@ chatRouter.post(
     } catch (e) {
       console.error("[chat] stream error:", e);
       const msg =
-        e instanceof Error && /503|tidak ada model|tidak tersedia/i.test(e.message)
-          ? "Layanan AI sedang tidak tersedia — coba lagi sebentar."
+        e instanceof Error && /503|tidak ada model|tidak ada provider|tidak tersedia/i.test(e.message)
+          ? "Layanan AI sedang tidak tersedia — atur provider di menu AI atau coba lagi sebentar."
           : "Terjadi gangguan — coba lagi.";
       send({ type: "error", message: msg });
     }
