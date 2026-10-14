@@ -1,13 +1,16 @@
 import { withModelFailover } from "../ai/model-pool.js";
-import { GeminiHttpError } from "../ai/gemini-error.js";
-import { RealNvidiaClient } from "../ai/nvidia.js";
-import { env } from "../env.js";
-import type { GeminiContent, GeminiPart } from "../ai/gemini-types.js";
+import { LlmHttpError } from "../ai/llm-error.js";
+import type { LLMContent, LLMPart } from "../ai/llm-types.js";
 import type { DocKind } from "./extract.js";
 import { extractPdfImages, VISION_KINDS } from "./extract.js";
 
 export type DocType = "faktur" | "nota" | "kwitansi" | "lainnya";
-export type ScanTarget = "salesInvoice" | "salesReceipt";
+export type ScanTarget =
+  | "salesInvoice"
+  | "salesReceipt"
+  | "purchaseInvoice"
+  | "expense"
+  | "bankTransfer";
 
 export interface ScanItem {
   name: string;
@@ -27,22 +30,73 @@ export interface ScanResult {
   rawText: string;
   fields: ScanFields;
   target: ScanTarget | null;
-  /** true kalau ekstraksi AI (Gemini) berhasil; false = fallback manual */
-  geminiOk: boolean;
+  /** saran mentah AI (bisa modul yang belum didukung atau "none") */
+  aiModule?: string | null;
+  /** alasan AI memilih target + tingkat yakin (bila ada) */
+  targetReason?: string;
+  confidence?: number;
+  /** true kalau ekstraksi AI berhasil; false = fallback manual */
+  aiOk: boolean;
 }
 
-const FIELD_PROMPT = `Kamu membaca dokumen akuntansi Indonesia. Ekstrak data berikut dan balas HANYA dengan JSON valid tanpa markdown:
+/** Modul saran dari AI → target penyimpanan yang didukung endpoint entries. */
+const KNOWN_TARGETS = new Set([
+  "salesInvoice",
+  "salesReceipt",
+  "purchaseInvoice",
+  "expense",
+  "bankTransfer",
+]);
+/** Modul yang dikenali AI tapi belum didukung penyimpanan → ditampilkan sbg info. */
+export const UNSUPPORTED_TARGETS = new Set([
+  "salesOrder",
+  "salesReturn",
+  "purchasePayment",
+  "receiveItem",
+  "purchaseReturn",
+  "otherDeposit",
+  "otherPayment",
+  "itemAdjustment",
+]);
+
+const FIELD_PROMPT = `Kamu membaca dokumen akuntansi yang DITERIMA karyawan perusahaan (bisa dari pelanggan, pemasok, bank, atau internal).
+Klasifikasikan dokumen dan tentukan modul Accurate Online yang tepat untuk mencatatnya.
+
+Balas HANYA JSON valid tanpa markdown:
 {
   "text": "transkripsi isi dokumen (singkat, pertahankan angka & nomor)",
   "docType": "faktur" | "nota" | "kwitansi" | "lainnya",
-  "customerName": "nama pelanggan/pembeli bila ada, kosongkan jika tidak",
+  "customerName": "nama pelanggan ATAU pemasok/pembeli yang tertera, kosongkan jika tidak",
   "date": "YYYY-MM-DD bila ada, kosongkan jika tidak",
   "no": "nomor dokumen bila ada, kosongkan jika tidak",
   "total": angka total tanpa titik/koma atau null,
   "description": "ringkasan satu kalimat",
-  "items": [{"name": "...", "qty": 1, "price": 1000}]
+  "items": [{"name": "...", "qty": 1, "price": 1000}],
+  "suggestedModule": "modul dari daftar di bawah",
+  "confidence": 0.0 s.d. 1.0,
+  "targetReason": "satu kalimat alasan pemilihan modul"
 }
-Klasifikasi: faktur = invoice penjualan; nota = nota/tunai penjualan; kwitansi = bukti pembayaran/kwitansi/bukti transfer.`;
+
+DAFTAR MODUL (pilih satu, atau "none" bila dokumen tidak perlu dicatat):
+- "salesInvoice"    — penjualan KITA ke pelanggan yang ada rincian barangnya (faktur penjualan, nota jual beritem, tunai maupun tempo)
+- "salesReceipt"    — uang MASUK dari pelanggan: kwitansi pelunasan, bukti transfer dari pelanggan, DP/uang muka, nota tanpa rincian barang
+- "salesOrder"      — PO/pesanan tertulis dari pelanggan (belum jadi penjualan)
+- "salesReturn"     — surat retur/pengembalian barang dari pelanggan
+- "purchaseInvoice" — faktur/nota BELI dari pemasok yang ada rincian barangnya (kita pembeli)
+- "purchasePayment" — bukti transfer/kwitansi KITA bayar ke pemasok
+- "expense"         — struk/kwitansi biaya operasional: bensin, ATK, listrik, taxi, makan, klaim karyawan
+- "otherDeposit"    — uang masuk bukan dari penjualan (setoran modal, bunga, refund)
+- "bankTransfer"    — mutasi antar rekening MILIK SENDIRI (nama pengirim & penerima sama-sama perusahaan)
+- "itemAdjustment"  — berita acara barang rusak/hilang/salah hitung
+- "none"            — dokumen hanya arsip (kwitansi dari pemasok utk pembayaran yg sudah tercatat, salinan dokumen sendiri, surat jalan tanpa transaksi)
+
+ATURAN PENENTU:
+1. Posisi perusahaan menentukan arah: yang MENERBITKAN faktur berarti LAWAN transaksi. Faktur diterbitkan pemasok → purchaseInvoice; diterbitkan atas nama kita → salesInvoice.
+2. Dokumen berisi BARANG → masuk modul invoice (bukan penerimaan kas) agar stok tercatat.
+3. Dokumen hanya UANG (kwitansi/transfer) → modul receipt/payment/deposit/transfer sesuai arah & pihak.
+4. Transfer antar rekening sendiri → bankTransfer. Transfer dari pihak lain → sesuai konteks (pelanggan=salesReceipt, pemasok=purchasePayment).
+5. Ragu antara 2 modul → pilih yang paling mungkin, turunkan confidence (mis. 0.4-0.5), jelaskan di targetReason.
+6. Dokumen jelas hanya arsip → "none".`;
 
 export function suggestedTarget(docType: DocType): ScanTarget | null {
   if (docType === "faktur") return "salesInvoice";
@@ -54,7 +108,14 @@ function emptyFields(): ScanFields {
   return { docType: "lainnya", customerName: "", date: "", no: "", total: null, description: "", items: [] };
 }
 
-function coerce(raw: Record<string, unknown>): { rawText: string; fields: ScanFields } {
+function coerce(raw: Record<string, unknown>): {
+  rawText: string;
+  fields: ScanFields;
+  /** modul yang dikenali (didukung maupun belum); null kalau tak dikenal */
+  suggestedModule: string | null;
+  confidence?: number;
+  targetReason?: string;
+} {
   const docType: DocType = ["faktur", "nota", "kwitansi"].includes(String(raw.docType))
     ? (raw.docType as DocType)
     : "lainnya";
@@ -87,6 +148,11 @@ function coerce(raw: Record<string, unknown>): { rawText: string; fields: ScanFi
       description: String(raw.description ?? "").slice(0, 500),
       items: items.filter((i) => i.name),
     },
+    suggestedModule: KNOWN_TARGETS.has(String(raw.suggestedModule)) || UNSUPPORTED_TARGETS.has(String(raw.suggestedModule))
+      ? String(raw.suggestedModule)
+      : null,
+    confidence: typeof raw.confidence === "number" && raw.confidence >= 0 && raw.confidence <= 1 ? raw.confidence : undefined,
+    targetReason: String(raw.targetReason ?? "").slice(0, 300) || undefined,
   };
 }
 
@@ -113,47 +179,25 @@ function parseJsonLoose(text: string): Record<string, unknown> | null {
 
 /**
  * Satu panggilan model dengan failover utk part multimodal (gambar/PDF/teks + prompt).
- * Urutan: 9Router/ocfree (mimo rank-0 mendukung vision) → NVIDIA → Gemini langsung.
+ * Urutan: 9Router/ocfree (mimo rank-0 mendukung vision) → NVIDIA.
  * Model non-vision yg membalas tanpa JSON dianggap gagal → rotasi ke kandidat berikutnya.
  */
-async function generateText(parts: GeminiPart[], prompt: string, needJson: boolean): Promise<string> {
-  const contents: GeminiContent[] = [{ role: "user", parts: [...parts, { text: prompt }] }];
+async function generateText(parts: LLMPart[], prompt: string, needJson: boolean): Promise<string> {
+  const contents: LLMContent[] = [{ role: "user", parts: [...parts, { text: prompt }] }];
   return await withModelFailover("generate", async (c) => {
-    if (c.provider === "router" || c.provider === "nvidia") {
-      const client =
-        c.provider === "router"
-          ? new RealNvidiaClient(env.ROUTER_API_KEY, env.ROUTER_BASE_URL)
-          : new RealNvidiaClient(env.NVIDIA_API_KEY);
-      const { parts: out } = await client.generate({ contents, model: c.model });
-      const text = out.find((p) => p.text)?.text ?? "";
-      if (needJson && !text.includes("{")) {
-        // balasan "saya tidak bisa melihat gambar" dsb → coba model berikutnya
-        throw new GeminiHttpError(502, "model tidak mengembalikan JSON (kemungkinan tanpa visi)");
-      }
-      return text;
+    const { parts: out } = await c.client.generate({ contents, model: c.model });
+    const text = out.find((p) => p.text)?.text ?? "";
+    if (needJson && !text.includes("{")) {
+      // balasan "saya tidak bisa melihat gambar" dsb → coba model berikutnya
+      throw new LlmHttpError(502, "model tidak mengembalikan JSON (kemungkinan tanpa visi)");
     }
-    // Gemini langsung (fallback terakhir)
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${c.model}:generateContent`,
-      {
-        method: "POST",
-        headers: {
-          "x-goog-api-key": process.env.GEMINI_API_KEY || "",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ contents, generationConfig: { temperature: 0 } }),
-      }
-    );
-    if (!res.ok) throw new GeminiHttpError(res.status, await res.text().catch(() => ""));
-    const j = (await res.json()) as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
-    return j.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+    return text;
   });
 }
 
-async function geminiFields(opts: {
-  apiKey?: string;
-  parts: GeminiPart[];
-}): Promise<{ rawText: string; fields: ScanFields } | null> {
+async function aiFields(opts: {
+  parts: LLMPart[];
+}): Promise<Awaited<ReturnType<typeof coerce>> | null> {
   let text = "";
   try {
     text = await generateText(opts.parts, FIELD_PROMPT, true);
@@ -170,11 +214,10 @@ export async function scanDocument(opts: {
   kind: DocKind;
   mime: string;
   fileName: string;
-  apiKey?: string;
   localText: string;
 }): Promise<ScanResult> {
   const { buffer, kind, mime, fileName, localText } = opts;
-  const parts: GeminiPart[] = [];
+  const parts: LLMPart[] = [];
   let useLocalText = false;
   if (kind === "pdf") {
     if (localText.trim()) {
@@ -184,7 +227,7 @@ export async function scanDocument(opts: {
     } else {
       // PDF hasil scan → kirim halaman sebagai gambar JPEG tertanam
       const images = extractPdfImages(buffer);
-      if (!images.length) return { rawText: localText, fields: emptyFields(), target: null, geminiOk: false };
+      if (!images.length) return { rawText: localText, fields: emptyFields(), target: null, aiOk: false };
       for (const img of images) {
         parts.push({ inlineData: { mimeType: "image/jpeg", data: img.toString("base64") } });
       }
@@ -197,10 +240,25 @@ export async function scanDocument(opts: {
     parts.push({ text: `Dokumen: ${fileName}\n\nIsi:\n${localText.slice(0, 12_000)}` });
     useLocalText = true;
   }
-  const out = await geminiFields({ parts });
+  const out = await aiFields({ parts });
   if (out) {
     if (useLocalText && localText.trim()) out.rawText = localText;
-    return { ...out, target: suggestedTarget(out.fields.docType), geminiOk: true };
+    const modul = out.suggestedModule;
+    const target: ScanTarget | null =
+      modul && KNOWN_TARGETS.has(modul)
+        ? (modul as ScanTarget)
+        : modul
+          ? null // "none" / modul belum didukung → jangan pilih target lain diam-diam
+          : suggestedTarget(out.fields.docType);
+    return {
+      rawText: out.rawText,
+      fields: out.fields,
+      target,
+      aiModule: modul,
+      targetReason: out.targetReason,
+      confidence: out.confidence,
+      aiOk: true,
+    };
   }
-  return { rawText: localText, fields: emptyFields(), target: null, geminiOk: false };
+  return { rawText: localText, fields: emptyFields(), target: null, aiOk: false };
 }

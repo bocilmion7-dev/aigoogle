@@ -1,5 +1,5 @@
 import { withModelFailover } from "../ai/model-pool.js";
-import { GeminiHttpError } from "../ai/gemini-error.js";
+import { LlmHttpError } from "../ai/llm-error.js";
 
 export const CATEGORIES = ["Faktur", "Kuitansi", "Nota", "Surat Jalan", "Lainnya"] as const;
 export type Category = (typeof CATEGORIES)[number];
@@ -26,37 +26,31 @@ export function classifyFileName(name: string): Category {
 
 const VISION_OK = /^(application\/pdf|image\/)/i;
 
-export async function classifyWithGemini(
+/** Klasifikasi dokumen via model AI (9Router/ocfree → NVIDIA); gagal → aturan lokal. */
+export async function classifyFile(
   text: string,
   mimeType: string,
-  apiKey: string,
   fileName = "",
   mediaBase64?: string
 ): Promise<Category> {
   const fallback = () => (fileName ? classifyFileName(fileName) : classifyText(text));
-  if (!apiKey || !VISION_OK.test(mimeType)) return fallback();
+  if (!VISION_OK.test(mimeType)) return fallback();
   try {
     const prompt =
       `Klasifikasi dokumen ini ke salah satu: ${CATEGORIES.join(", ")}. Balas HANYA kata kategorinya.` +
       (fileName ? ` Nama file: ${fileName}` : "");
-    const parts: Array<Record<string, unknown>> = mediaBase64
+    const parts: Array<{ text?: string; inlineData?: { mimeType: string; data: string } }> = mediaBase64
       ? [{ inlineData: { mimeType, data: mediaBase64 } }, { text: prompt }]
       : [{ text: `${prompt}\n\n${text.slice(0, 1500)}` }];
-    const j = await withModelFailover("generate", async (model) => {
-      const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-        {
-          method: "POST",
-          headers: { "x-goog-api-key": apiKey, "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [{ role: "user", parts }],
-          }),
-        }
-      );
-      if (!res.ok) throw new GeminiHttpError(res.status, await res.text().catch(() => ""));
-      return (await res.json()) as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
+    const raw = await withModelFailover("generate", async (c) => {
+      const { parts: out } = await c.client.generate({
+        contents: [{ role: "user", parts }],
+        model: c.model,
+      });
+      const t = out.find((p) => p.text)?.text ?? "";
+      if (!t.trim()) throw new LlmHttpError(502, "model tidak mengembalikan teks");
+      return t.trim();
     });
-    const raw = (j.candidates?.[0]?.content?.parts?.[0]?.text ?? "").trim();
     const hit = CATEGORIES.find((c) => c.toLowerCase() === raw.toLowerCase());
     return hit ?? fallback();
   } catch {

@@ -1,12 +1,12 @@
 import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../db.js";
-import { env } from "../env.js";
 import { asyncHandler } from "../asyncHandler.js";
 import { requireUser } from "../middleware/session.js";
-import { geminiClient } from "../ai/gemini-client.js";
+import { llmClient } from "../ai/llm-client.js";
+import { getDefaultModel } from "../ai/model-pool.js";
 import { runToolLoop } from "../ai/tool-loop.js";
-import type { GeminiContent } from "../ai/gemini-types.js";
+import type { LLMContent } from "../ai/llm-types.js";
 import { buildSystemPrompt } from "../ai/system-prompt.js";
 import { loadPermissionSet } from "../permissions.js";
 import { writeAudit } from "../audit.js";
@@ -86,7 +86,7 @@ chatRouter.post(
       take: 10,
       select: { role: true, content: true },
     });
-    const history: GeminiContent[] = recent
+    const history: LLMContent[] = recent
       .reverse()
       .filter((m) => m.content.trim())
       .map((m) => ({
@@ -104,7 +104,7 @@ chatRouter.post(
 
     try {
       const out = await runToolLoop({
-        gemini: geminiClient(),
+        client: llmClient(),
         providerExecute: (tool, args) => {
           if (!ctx) return Promise.reject(new Error("koneksi Accurate belum aktif — hubungkan ulang di Pengaturan"));
           return provider.execute(tool, args, ctx).catch((e: unknown) => {
@@ -126,7 +126,7 @@ chatRouter.post(
           // start membawa sessionId supaya frontend (mode voice) bisa lanjut di sesi yg sama
           send(e.type === "start" ? { ...ev, sessionId: session.id } : ev);
         },
-        model: env.GEMINI_MODEL,
+        model: await getDefaultModel(),
       });
       for (const t of out.trace) {
         if (t.tool) void writeAudit(user.tenant.id, user.id, "tool.call", t);
@@ -138,7 +138,7 @@ chatRouter.post(
     } catch (e) {
       console.error("[chat] stream error:", e);
       const msg =
-        e instanceof Error && /503|GEMINI/i.test(e.message)
+        e instanceof Error && /503|tidak ada model|tidak tersedia/i.test(e.message)
           ? "Layanan AI sedang tidak tersedia — coba lagi sebentar."
           : "Terjadi gangguan — coba lagi.";
       send({ type: "error", message: msg });
