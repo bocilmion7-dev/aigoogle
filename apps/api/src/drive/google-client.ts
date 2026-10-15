@@ -73,8 +73,22 @@ export class GoogleDriveClient implements DriveClient {
     if (!res.ok) throw new Error(`move gagal (${res.status})`);
   }
 
+  private rootIdCache: string | null = null;
+
+  /** "root" hanya alias utk query (`'root' in parents`); field parents berisi ID asli My Drive root. */
+  private async realRootId(): Promise<string> {
+    if (this.rootIdCache) return this.rootIdCache;
+    const res = await fetch(`${API}/files/root?fields=id`, { headers: this.headers() });
+    if (!res.ok) return "root";
+    const j = (await res.json()) as { id?: string };
+    if (j.id) this.rootIdCache = j.id;
+    return j.id ?? "root";
+  }
+
   async isDescendant(folderId: string, ancestorId: string): Promise<boolean> {
     if (folderId === ancestorId) return true;
+    const ancestor = ancestorId === "root" ? await this.realRootId() : ancestorId;
+    if (folderId === ancestor) return true;
     let cur: string | undefined = folderId;
     let hops = 0;
     while (cur && hops++ < 50) {
@@ -82,7 +96,7 @@ export class GoogleDriveClient implements DriveClient {
       if (!res.ok) return false;
       const j = (await res.json()) as { parents?: string[] };
       cur = j.parents?.[0];
-      if (cur === ancestorId) return true;
+      if (cur === ancestor) return true;
     }
     return false;
   }

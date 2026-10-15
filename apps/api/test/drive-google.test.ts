@@ -89,4 +89,24 @@ describe("GoogleDriveClient", () => {
     const c = new GoogleDriveClient("tok");
     expect(await c.getText("g1")).toContain("isi doc");
   });
+
+  it("isDescendant: alias root diresolusi ke ID asli My Drive root", async () => {
+    calls.length = 0;
+    stub((url) => {
+      if (url.includes("/files/root?")) return new Response(JSON.stringify({ id: "REAL-ROOT" }), { status: 200 });
+      const id = /\/files\/([^?]+)/.exec(url)?.[1] ?? "";
+      const parents: Record<string, string[]> = {
+        f1: ["F2"],
+        F2: ["REAL-ROOT"],
+        luar: ["ID-LUAR-DRIVE"],
+      };
+      return new Response(JSON.stringify({ parents: parents[id] ?? [] }), { status: 200 });
+    });
+    const c = new GoogleDriveClient("tok");
+    expect(await c.isDescendant("F2", "root")).toBe(true);
+    expect(await c.isDescendant("f1", "root")).toBe(true);
+    expect(await c.isDescendant("luar", "root")).toBe(false);
+    // root id di-cache: resolusi alias cukup sekali
+    expect(calls.filter((x) => x.url.includes("/files/root?")).length).toBe(1);
+  });
 });
