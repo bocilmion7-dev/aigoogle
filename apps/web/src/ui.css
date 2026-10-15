@@ -1276,6 +1276,150 @@ pre.block {
   font-size: var(--step--2);
 }
 
+/* ---------- daftar provider AI (/ai) ---------- */
+
+.prov-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.prov {
+  border: var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: var(--space-s);
+  transition: border-color var(--dur-fast), box-shadow var(--dur-fast);
+}
+
+.prov:hover {
+  box-shadow: var(--shadow-1);
+}
+
+.prov--active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent-tint);
+}
+
+.prov__head {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-xs);
+  flex-wrap: wrap;
+}
+
+.prov__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--step--2);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 3px 8px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--ink-3);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.prov--active .prov__status {
+  background: var(--accent-tint);
+  border-color: rgb(234 88 12 / 0.3);
+  color: var(--accent-strong);
+}
+
+.prov__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ink-3);
+  flex-shrink: 0;
+}
+
+.prov--active .prov__dot {
+  background: var(--accent);
+}
+
+.prov__name {
+  font-weight: 600;
+  font-size: var(--step-0);
+  color: var(--ink);
+  min-width: 0;
+  flex: 1;
+}
+
+.prov__actions {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.prov__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2xs) var(--space-s);
+  margin-top: var(--space-2xs);
+  font-size: var(--step--1);
+  color: var(--ink-3);
+}
+
+.prov__meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.prov__meta-label {
+  color: var(--ink-3);
+  font-weight: 400;
+}
+
+.prov__meta-value {
+  color: var(--ink-2);
+  font-weight: 500;
+  word-break: break-all;
+}
+
+.prov__models {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: var(--space-2xs);
+}
+
+.prov__model {
+  display: inline-block;
+  padding: 2px 8px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  font-size: var(--step--2);
+  color: var(--ink-2);
+  font-weight: 500;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.prov--active .prov__model {
+  border-color: rgb(234 88 12 / 0.2);
+  background: var(--accent-tint);
+  color: var(--accent-strong);
+}
+
+.prov__none {
+  font-size: var(--step--2);
+  color: var(--ink-3);
+  font-style: italic;
+  margin-top: var(--space-2xs);
+}
+
 /* indikator "sedang berpikir" — tiga titik memantul, muncul selagi AI bekerja */
 .thinking {
   display: inline-flex;

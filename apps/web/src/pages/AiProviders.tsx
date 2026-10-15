@@ -220,33 +220,61 @@ export function AiProviders() {
               Belum ada provider — tambah provider pertama.
             </p>
           ) : (
-            <div className="stack" style={{ gap: "var(--space-xs)" }}>
+            <div className="prov-list">
               {list.map((p) => (
-                <div className="row" key={p.id} style={{ gap: "var(--space-s)" }}>
-                  <label className="check" style={{ padding: 0, marginRight: "auto" }}>
-                    <input
-                      type="radio"
-                      name="aktif"
-                      checked={p.isActive}
-                      disabled={busy || p.isActive}
-                      onChange={() => void aktifkan(p.id)}
-                    />
-                    <span>Aktif</span>
-                  </label>
-                  <span style={{ fontWeight: 600 }}>{p.name}</span>
-                  <span className="meta" style={{ wordBreak: "break-all" }}>
-                    {p.baseUrl}
-                  </span>
-                  <span className="meta">{p.models.length} model</span>
-                  <span className="meta">{p.apiKeyMasked}</span>
-                  <div className="btn-row">
-                    <button className="btn btn--2 btn--sm" disabled={busy} onClick={() => mulaiEdit(p)}>
-                      Edit
-                    </button>
-                    <button className="btn btn--danger btn--sm" disabled={busy} onClick={() => void hapus(p)}>
-                      Hapus
-                    </button>
+                <div key={p.id} className={`prov${p.isActive ? " prov--active" : ""}`}>
+                  <div className="prov__head">
+                    <span className="prov__status">
+                      <span className="prov__dot" aria-hidden="true" />
+                      {p.isActive ? "Aktif" : "Nonaktif"}
+                    </span>
+                    <span className="prov__name">{p.name}</span>
+                    <div className="prov__actions">
+                      {!p.isActive && (
+                        <button
+                          className="btn btn--ghost btn--sm"
+                          disabled={busy}
+                          onClick={() => void aktifkan(p.id)}
+                        >
+                          Jadikan aktif
+                        </button>
+                      )}
+                      <button className="btn btn--2 btn--sm" disabled={busy} onClick={() => mulaiEdit(p)}>
+                        Edit
+                      </button>
+                      <button className="btn btn--danger btn--sm" disabled={busy} onClick={() => void hapus(p)}>
+                        Hapus
+                      </button>
+                    </div>
                   </div>
+
+                  <div className="prov__meta">
+                    <span className="prov__meta-item">
+                      <span className="prov__meta-label">URL</span>
+                      <span className="prov__meta-value">{p.baseUrl}</span>
+                    </span>
+                    <span className="prov__meta-item">
+                      <span className="prov__meta-label">Key</span>
+                      <span className="prov__meta-value">{p.apiKeyMasked || "—"}</span>
+                    </span>
+                    <span className="prov__meta-item">
+                      <span className="prov__meta-label">Model</span>
+                      <span className="prov__meta-value">{p.models.length}</span>
+                    </span>
+                  </div>
+
+                  {p.models.length > 0 ? (
+                    <div className="prov__models">
+                      {p.models.map((m) => (
+                        <span key={m.name} className="prov__model" title={m.name}>
+                          {m.name}
+                          {m.rank === 0 ? " ★" : ""}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="prov__none">Belum ada model tercentang.</p>
+                  )}
                 </div>
               ))}
             </div>
@@ -316,19 +344,33 @@ export function AiProviders() {
                     Tidak ada model yang dikembalikan provider.
                   </p>
                 ) : (
-                  <div className="stack" style={{ gap: 0, maxHeight: 260, overflowY: "auto" }}>
-                    {availModels.map((m) => (
-                      <label className="check check--sm" key={m}>
-                        <input
-                          type="checkbox"
-                          checked={checked.includes(m)}
-                          onChange={() =>
+                  <div className="prov__models" style={{ marginTop: 0 }}>
+                    {availModels.map((m) => {
+                      const on = checked.includes(m);
+                      return (
+                        <button
+                          key={m}
+                          type="button"
+                          className="prov__model"
+                          style={{
+                            cursor: "pointer",
+                            ...(on
+                              ? {
+                                  background: "var(--accent-tint)",
+                                  borderColor: "rgb(234 88 12 / 0.3)",
+                                  color: "var(--accent-strong)",
+                                }
+                              : {}),
+                          }}
+                          onClick={() =>
                             setChecked((prev) => (prev.includes(m) ? prev.filter((x) => x !== m) : [...prev, m]))
                           }
-                        />
-                        <span>{m}</span>
-                      </label>
-                    ))}
+                        >
+                          {on ? "✓ " : ""}
+                          {m}
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
               </>
