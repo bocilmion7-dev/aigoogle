@@ -15,7 +15,7 @@ beforeAll(async () => {
   mockBase = `http://127.0.0.1:${(mockSrv.address() as { port: number }).port}`;
   process.env.MOCK_ACCURATE_URL = mockBase;
   api = createApp();
-  // DB lokal persisten antar-run: reset password fixture dbId=1001 agar test "user baru"
+  // DB test persisten antar-run: reset password fixture dbId=1001 agar test "user baru"
   // (→ /set-password) selalu diulang dengan kondisi awal
   const fixture = await prisma.tenant.findFirst({ where: { providerDbId: "1001" }, select: { id: true } });
   if (fixture) await prisma.user.updateMany({ where: { tenantId: fixture.id }, data: { passwordHash: "" } });
@@ -78,10 +78,11 @@ describe("launch & callback", () => {
     const conn = await prisma.connection.findFirst({ where: { tenantId: tenant!.id } });
     expect(conn!.host).toBe(mockBase);
     expect(conn!.session).toMatch(/^sess-/);
-    const role = await prisma.role.findFirstOrThrow({ where: { tenantId: tenant!.id, key: "admin" } });
+    // launch.ts membuat role accurate-admin (db.admin=true utk user admin di mock)
+    const role = await prisma.role.findFirstOrThrow({ where: { tenantId: tenant!.id, key: "accurate-admin" } });
     const perms = await prisma.rolePermission.findMany({ where: { roleId: role.id } });
     expect(perms.map((p) => p.permissionKey)).toEqual(
-      expect.arrayContaining(["accurate:customer.view", "accurate:sales-invoice.view", "app:settings.manage"])
+      expect.arrayContaining(["accurate:customer.view", "accurate:sales-invoice.view", "app:users.manage"]),
     );
     expect(await prisma.connection.count({ where: { tenantId: tenant!.id, provider: "accurate" } })).toBe(1);
     // set password → OAuth ulang redirect ke /app
