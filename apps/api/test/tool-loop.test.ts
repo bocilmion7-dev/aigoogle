@@ -25,12 +25,14 @@ function deps(overrides: Partial<Parameters<typeof runToolLoop>[0]> = {}) {
 }
 
 describe("runToolLoop (fake LLM)", () => {
-  it("teks polos tanpa tool → jawaban + satu text_delta", async () => {
+  it("teks polos tanpa tool → jawaban; teks di-stream bertahap (throttle) lalu menyatu utuh", async () => {
     const fake = new FakeLLMClient([{ parts: [{ text: "Halo!" }] }]);
     const { opts, events } = deps({ client: fake });
     const out = await runToolLoop(opts);
     expect(out.text).toBe("Halo!");
-    expect(events.filter((e) => e.type === "text_delta")).toHaveLength(1);
+    const deltas = events.filter((e) => e.type === "text_delta").map((e) => e.delta as string);
+    expect(deltas.join("")).toBe("Halo!");
+    expect(deltas.length).toBeGreaterThan(1);
   });
 
   it("bagian thought (model thinking) tidak ditampilkan & tidak ikut tersimpan", async () => {

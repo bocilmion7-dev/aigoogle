@@ -83,7 +83,10 @@ describe("chat stream", () => {
     });
     const events = parseNdjson(res.body as string);
     expect(events[0].type).toBe("start");
-    expect(events.some((e) => e.type === "text_delta" && e.delta === "Halo!")).toBe(true);
+    // teks di-stream bertahap (throttle) — gabungan semua delta harus utuh
+    const deltas = events.filter((e) => e.type === "text_delta").map((e) => String(e.delta));
+    expect(deltas.join("")).toBe("Halo!");
+    expect(deltas.length).toBeGreaterThan(1);
     expect(events.at(-1)!.type).toBe("done");
     const sess = await prisma.chatSession.findFirst({ where: { tenantId }, orderBy: { createdAt: "desc" } });
     expect(sess).toBeTruthy();

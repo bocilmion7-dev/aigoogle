@@ -6,7 +6,8 @@ import { VoiceMode } from "../voice-mode";
 interface UiMsg {
   role: "user" | "ai";
   content: string;
-  badges: string[];
+  /** nama proses berjalan (bukan nama tool) — tampil selagi AI bekerja */
+  process?: string;
 }
 
 // daftar contoh — dibalas sistem saat pengguna mengetik /contoh (tanpa AI)
@@ -45,7 +46,7 @@ export function Chat() {
     setSessionId(id);
     setError(null);
     const history = await listMessages(id);
-    setMsgs(history.map((m) => ({ role: m.role as "user" | "ai", content: m.content, badges: [] })));
+    setMsgs(history.map((m) => ({ role: m.role as "user" | "ai", content: m.content })));
   }
 
   async function send(text: string) {
@@ -55,10 +56,9 @@ export function Chat() {
       setInput("");
       setMsgs((m) => [
         ...m,
-        { role: "user", content: "/contoh", badges: [] },
+        { role: "user", content: "/contoh" },
         {
           role: "ai",
-          badges: [],
           content:
             "Contoh pertanyaan yang bisa Anda tanyakan:\n" +
             CONTOH_TANYAAN.map((q, i) => `${i + 1}. ${q}`).join("\n") +
@@ -69,15 +69,18 @@ export function Chat() {
     }
     setBusy(true);
     setError(null);
-    setMsgs((m) => [...m, { role: "user", content: text, badges: [] }, { role: "ai", content: "", badges: [] }]);
+    setMsgs((m) => [...m, { role: "user", content: text }, { role: "ai", content: "" }]);
     setInput("");
     try {
       await streamChat(text, sessionId, (e) => {
         setMsgs((m) => {
           const copy = [...m];
           const last = { ...copy[copy.length - 1] };
-          if (e.type === "tool_call") last.badges = [...last.badges, e.label ?? e.tool];
-          if (e.type === "tool_result" && !e.ok) last.badges = [...last.badges, "Ditolak/gagal"];
+          // nama proses (bukan nama tool) — tampil sbg status "thinking"
+          if (e.type === "tool_call") last.process = e.label || "Memproses data…";
+          if (e.type === "tool_result" && !e.ok) last.process = "Mencoba cara lain…";
+          // teks mulai mengalir → proses disembunyikan, ganti cursor streaming
+          if (e.type === "text_delta" || e.type === "done") last.process = undefined;
           if (e.type === "text_delta") last.content += e.delta;
           if (e.type === "error") setError(e.message);
           copy[copy.length - 1] = last;
@@ -140,22 +143,26 @@ export function Chat() {
           {msgs.map((m, i) => (
             <div key={i} className={`msg ${m.role === "ai" ? "msg--ai" : ""}`}>
               <strong className="msg__who">{m.role === "user" ? "Anda" : "AI"}</strong>
-              {m.badges.map((b, bi) => (
-                <span key={bi} className="badge" style={{ marginLeft: 8 }}>
-                  {b}
-                </span>
-              ))}
               <div className="msg__body">
                 {m.content}
                 {busy && i === msgs.length - 1 && !m.content && (
-                  <span className="thinking" role="status" aria-label="AI sedang berpikir">
-                    <span className="thinking__dot" />
-                    <span className="thinking__dot" />
-                    <span className="thinking__dot" />
+                  <span className="thinking" role="status" aria-label={m.process ?? "AI sedang berpikir"}>
+                    <span className="thinking__dot" aria-hidden="true" />
+                    <span className="thinking__dot" aria-hidden="true" />
+                    <span className="thinking__dot" aria-hidden="true" />
+                    <span className="thinking__label">{m.process ?? "Berpikir…"}</span>
                   </span>
                 )}
-                {busy && i === msgs.length - 1 && m.content && (
+                {busy && i === msgs.length - 1 && m.content && !m.process && (
                   <span className="cursor" aria-hidden="true" />
+                )}
+                {busy && i === msgs.length - 1 && m.content && m.process && (
+                  <span className="thinking thinking--line" role="status" aria-label={m.process}>
+                    <span className="thinking__dot" aria-hidden="true" />
+                    <span className="thinking__dot" aria-hidden="true" />
+                    <span className="thinking__dot" aria-hidden="true" />
+                    <span className="thinking__label">{m.process}</span>
+                  </span>
                 )}
               </div>
             </div>

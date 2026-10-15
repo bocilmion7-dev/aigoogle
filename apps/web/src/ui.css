@@ -1279,17 +1279,6 @@ pre.block {
   to { opacity: 0; }
 }
 
-.badge {
-  display: inline-block;
-  margin: 4px 6px 0 0;
-  padding: 2px 8px;
-  background: var(--accent-tint);
-  color: var(--accent-strong);
-  border: 1px solid rgb(234 88 12 / 0.28);
-  border-radius: var(--radius);
-  font-size: var(--step--2);
-}
-
 /* ---------- daftar provider AI (/ai) ---------- */
 
 .prov-list {
@@ -1441,6 +1430,21 @@ pre.block {
   gap: 4px;
   margin: 2px 0 0 2px;
   padding: 3px 0;
+}
+
+/* nama proses berjalan (bukan nama tool) di samping titik thinking */
+.thinking__label {
+  margin-left: 4px;
+  font-size: var(--step--1);
+  font-style: italic;
+  color: var(--ink-2);
+}
+
+/* proses muncul di baris terpisah setelah sebagian teks jawaban mengalir */
+.thinking--line {
+  display: flex;
+  width: fit-content;
+  margin-top: 6px;
 }
 
 .thinking__dot {
