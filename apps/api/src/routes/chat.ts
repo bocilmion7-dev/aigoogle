@@ -5,6 +5,7 @@ import { asyncHandler } from "../asyncHandler.js";
 import { requireUser } from "../middleware/session.js";
 import { llmClient } from "../ai/llm-client.js";
 import { getDefaultModel } from "../ai/model-pool.js";
+import { friendlyChatErrorMessage } from "../ai/chat-error-message.js";
 import { getModuleModel } from "../ai/module-model.js";
 import { runToolLoop } from "../ai/tool-loop.js";
 import { selectTools, toolStats } from "../ai/tool-selector.js";
@@ -154,11 +155,7 @@ chatRouter.post(
       send({ type: "done", messageId: aiMsg.id });
     } catch (e) {
       console.error("[chat] stream error:", e);
-      const msg =
-        e instanceof Error && /503|tidak ada model|tidak ada provider|tidak tersedia/i.test(e.message)
-          ? "Layanan AI sedang tidak tersedia — atur provider di menu AI atau coba lagi sebentar."
-          : "Terjadi gangguan — coba lagi.";
-      send({ type: "error", message: msg });
+      send({ type: "error", message: friendlyChatErrorMessage(e) });
     }
     res.end();
   })

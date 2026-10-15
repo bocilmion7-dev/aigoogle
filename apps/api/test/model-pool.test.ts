@@ -83,6 +83,24 @@ describe("pool model AI (failover DB)", () => {
     // setelah sukses, model terakhir yang dipakai di-reset markOk-nya
   });
 
+  it("429 TPD (kuota harian) → gagal cepat: tanpa retry, tanpa siklus 2, failureCount tak naik", async () => {
+    await seedProvider(["a", "b"]);
+    const tpd =
+      "Rate limit reached for model `openai/gpt-oss-20b` on tokens per day (TPD): Limit 200000, Used 200000. Please try again in 13m57s.";
+    let calls = 0;
+    await expect(
+      withModelFailover("generate", async () => {
+        calls++;
+        throw new LlmHttpError(429, tpd);
+      })
+    ).rejects.toThrow(/tokens per day/);
+    // langsung berhenti: b tidak dicoba, tidak ada backoff retry, tidak ada siklus kedua
+    expect(calls).toBe(1);
+    const a = await prisma.aiProviderModel.findFirst({ where: { name: "a" } });
+    expect(a?.failureCount).toBe(0); // TPD bukan kesehatan model — jangan demote
+    expect(a?.lastError).toContain("tokens per day"); // tetap terlihat di halaman admin
+  });
+
   it("401 → abort: tanpa rotasi ke model berikut", async () => {
     await seedProvider(["x", "y"]);
     const tried: string[] = [];

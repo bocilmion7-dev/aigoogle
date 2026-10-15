@@ -110,6 +110,16 @@ export async function withModelFailover<T>(
             await markFail(c, 400, "tool_calling_unsupported");
             break;
           }
+          // kuota harian (TPD) bersifat org-wide & reset butuh belasan menit →
+          // jangan retry/backoff (sia-sia) dan jangan naikkan failureCount
+          // (bukan kesehatan model); langsung gagal cepat dgn info utk admin.
+          if (st === 429 && /tokens per day|\(TPD\)|per day/i.test(errMsg(e))) {
+            await prisma.aiProviderModel.updateMany({
+              where: { providerId: c.provider.id, name: c.model },
+              data: { lastError: errMsg(e), lastFailAt: new Date() },
+            });
+            throw e;
+          }
           // rate limit (rolling window) → backoff & retry model yg sama
           // quota habis → JANGAN retry, langsung pindah model
           const isRateLimit = st === 429 && /rate.?limit|itpm|tokens per minute|per minute/i.test(errMsg(e));
