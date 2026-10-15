@@ -6,7 +6,7 @@ const listProps = {
   keywords: { type: "string", description: "Kata kunci pencarian" },
   page: { type: "number", description: "Nomor halaman (default 1)" },
   pageSize: { type: "number", description: "Ukuran halaman (default 20)" },
-  sort: { type: "string", description: 'Urutan "field|asc;field2|desc"' },
+  sort: { type: "string", description: 'Urutan data — hanya "id|asc" atau "id|desc" yang didukung (id lebih besar = lebih baru)' },
   filter: {
     type: "object",
     description: 'Filter per field: { "<field>": { "op": "EQUAL|CONTAIN|…", "value": … } }',

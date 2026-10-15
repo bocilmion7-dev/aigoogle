@@ -25,6 +25,77 @@ export interface ToolLoopOpts {
   model?: string;
   maxSteps?: number;
   now?: () => number;
+  /** kecepatan streaming teks: ms antar chunk (0 = tanpa throttle, langsung semua) */
+  streamIntervalMs?: number;
+  /** jumlah karakter per chunk saat streaming */
+  streamChunkSize?: number;
+}
+
+/**
+ * Throttled text emitter — buffer teks lalu keluarkan bertahap
+ * supaya kemunculan huruf terasa seperti mengetik (bukan tiba-tiba semua).
+ */
+class ThrottledEmitter {
+  private buffer = "";
+  private timer: ReturnType<typeof setInterval> | null = null;
+  private readonly interval: number;
+  private readonly chunkSize: number;
+  private ended = false;
+  constructor(
+    private emit: (delta: string) => void,
+    intervalMs: number,
+    chunkSize: number
+  ) {
+    this.interval = intervalMs;
+    this.chunkSize = chunkSize;
+  }
+  push(text: string): void {
+    this.buffer += text;
+    if (!this.timer) {
+      this.flushChunk();
+      this.timer = setInterval(() => this.flushChunk(), this.interval);
+    }
+  }
+  private flushChunk(): void {
+    if (!this.buffer) {
+      // buffer kosong
+      if (this.ended) {
+        // stream selesai & buffer habis → hentikan timer
+        if (this.timer) { clearInterval(this.timer); this.timer = null; }
+      }
+      // jika belum ended, biarkan timer jalan (siap terima teks berikutnya)
+      return;
+    }
+    const chunk = this.buffer.slice(0, this.chunkSize);
+    this.buffer = this.buffer.slice(this.chunkSize);
+    this.emit(chunk);
+  }
+  /**
+   * Tandai stream selesai — buffer akan terus dikosongkan oleh timer
+   * sampai habis (JANGAN dump sekaligus). Return Promise yang resolve
+   * saat buffer kosong & timer berhenti.
+   */
+  end(): Promise<void> {
+    this.ended = true;
+    if (!this.buffer && !this.timer) return Promise.resolve();
+    // jika timer belum jalan (tak ada teks sama sekali), selesai
+    if (!this.timer) {
+      // buffer ada tapi timer mati → nyalakan
+      if (this.buffer) {
+        this.timer = setInterval(() => this.flushChunk(), this.interval);
+      } else {
+        return Promise.resolve();
+      }
+    }
+    return new Promise((resolve) => {
+      const check = setInterval(() => {
+        if (!this.buffer && !this.timer) {
+          clearInterval(check);
+          resolve();
+        }
+      }, 20);
+    });
+  }
 }
 
 export async function runToolLoop(
@@ -41,9 +112,18 @@ export async function runToolLoop(
   opts.onEvent({ type: "start" });
   let text = "";
   // hitung gagal per tool — bila1 tool gagal berulang (mis. koneksi mati),
-  // berhenti & jelaskan alih-alih loop "Daftar…" yang sama berkali-kali
+  // berhenti & jelaskan alih-alih loop "Daftar…" yg sama berkali-kali
   const failCount = new Map<string, number>();
   const FAIL_CAP = 2;
+
+  // throttled emitter: buffer teks lalu keluarkan bertahap supaya terasa mengetik
+  const streamInterval = opts.streamIntervalMs ?? 60;
+  const streamChunk = opts.streamChunkSize ?? 2;
+  const emitter = new ThrottledEmitter(
+    (delta) => opts.onEvent({ type: "text_delta", delta }),
+    streamInterval,
+    streamChunk
+  );
 
   for (let step = 0; step < maxSteps; step++) {
     if (now() > deadline) {
@@ -51,7 +131,9 @@ export async function runToolLoop(
       opts.onEvent({ type: "text_delta", delta: msg });
       return { text: msg, trace };
     }
-    const res = await opts.client.generate({
+    // streaming: buffer teks via throttled emitter; kumpulkan parts utk tool call
+    const parts: LLMPart[] = [];
+    for await (const part of opts.client.generateStream({
       contents,
       tools: [
         {
@@ -64,15 +146,18 @@ export async function runToolLoop(
       ],
       system: opts.system ?? SYSTEM_PROMPT,
       model: opts.model,
-    });
-    const calls = res.parts.filter((p) => p.functionCall);
-    // bagian `thought` = penalaran internal model thinking — jangan tampilkan/simpan
-    const visible = res.parts.filter((p) => !p.thought);
-    const texts = visible.filter((p) => p.text).map((p) => p.text!);
-    for (const t of texts) {
-      text += t;
-      opts.onEvent({ type: "text_delta", delta: t });
+    })) {
+      if (part.text && !part.thought) {
+        text += part.text;
+        emitter.push(part.text);
+      }
+      parts.push(part);
     }
+    // stream selesai → tunggu buffer kosong (jangan dump sekaligus)
+    await emitter.end();
+    const calls = parts.filter((p) => p.functionCall && p.functionCall.name);
+    // bagian `thought` = penalaran internal model thinking — jangan tampilkan/simpan
+    const visible = parts.filter((p) => !p.thought);
     if (calls.length === 0) return { text, trace };
 
     contents.push({ role: "model", parts: visible });
@@ -89,6 +174,22 @@ export async function runToolLoop(
         continue;
       }
       opts.onEvent({ type: "tool_call", tool: spec.name, label: spec.label });
+      // validasi argumen wajib sebelum eksekusi (model kadang lupa isi required args)
+      const schema = spec.jsonSchema as { required?: string[]; properties?: Record<string, unknown> };
+      const required = schema.required ?? [];
+      const args = call.functionCall!.args ?? {};
+      const missing = required.filter((k) => args[k] === undefined || args[k] === null || args[k] === "");
+      if (missing.length > 0) {
+        const errMsg = `args wajib belum diisi: ${missing.join(", ")}`;
+        console.error(`[tool-loop] ${spec.name} invalid:`, errMsg);
+        trace.push({ tool: spec.name, args, ok: false, reason: "missing_args" });
+        opts.onEvent({ type: "tool_result", tool: spec.name, ok: false });
+        contents.push({
+          role: "user",
+          parts: [{ functionResponse: { name: spec.name, response: { error: errMsg }, id: call.functionCall!.id } }],
+        });
+        continue;
+      }
       if (!opts.permissions.has(spec.requiredPermission)) {
         trace.push({ tool: spec.name, args: call.functionCall!.args, ok: false, reason: "no_permission" });
         opts.onEvent({ type: "tool_result", tool: spec.name, ok: false });
@@ -129,8 +230,8 @@ export async function runToolLoop(
             },
           ],
         });
-        // error koneksi (Accurate terputus) → langsung jelaskan, jangan serahkan ke model (bisa salah tebak)
-        if (/koneksi|hubungi|terputus|belum aktif|fetch failed|ECONNREFUSED|ENOTFOUND/i.test(errMsg)) {
+        // error koneksi (Accurate terputus/sibuk) → langsung jelaskan, jangan serahkan ke model (bisa salah tebak)
+        if (/koneksi|hubungi|terputus|belum aktif|fetch failed|ECONNREFUSED|ENOTFOUND|sibuk|timeout/i.test(errMsg)) {
           const msg = `Saya tidak dapat mengambil data karena ${errMsg.replace(/^tidak dapat menghubungi /, "")}. Silakan periksa koneksi Anda lalu coba lagi.`;
           opts.onEvent({ type: "text_delta", delta: msg });
           return { text: msg, trace };

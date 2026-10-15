@@ -94,17 +94,35 @@ export async function withModelFailover<T>(
 
   const cycle = async (cands: ModelCandidate[]): Promise<Cycle<T>> => {
     for (const c of cands) {
-      try {
-        const value = await run(c);
-        await markOk(c);
-        return { ok: true, value };
-      } catch (e) {
-        const st = errStatus(e);
-        if (ABORT_STATUS.has(st)) throw e;
-        lastErr = e;
-        if (isTransient(st)) {
-          sawTransient = true;
-          await markFail(c, st, errMsg(e));
+      // retry 429 (rate limit) maks 2x dgn backoff — jangan langsung pindah model
+      const maxRetry429 = 2;
+      for (let attempt = 0; ; attempt++) {
+        try {
+          const value = await run(c);
+          await markOk(c);
+          return { ok: true, value };
+        } catch (e) {
+          const st = errStatus(e);
+          if (ABORT_STATUS.has(st)) throw e;
+          lastErr = e;
+          // model tidak support tool calling → skip permanen (guard/safeguard models)
+          if (/tool calling.*not supported|does not support tools/i.test(errMsg(e))) {
+            await markFail(c, 400, "tool_calling_unsupported");
+            break;
+          }
+          // rate limit (rolling window) → backoff & retry model yg sama
+          // quota habis → JANGAN retry, langsung pindah model
+          const isRateLimit = st === 429 && /rate.?limit|itpm|tokens per minute|per minute/i.test(errMsg(e));
+          if (isRateLimit && attempt < maxRetry429) {
+            const delay = 1500 * (attempt + 1); // 1.5s, 3s
+            await new Promise((r) => setTimeout(r, delay));
+            continue;
+          }
+          if (isTransient(st)) {
+            sawTransient = true;
+            await markFail(c, st, errMsg(e));
+          }
+          break; // pindah ke kandidat berikutnya
         }
       }
     }

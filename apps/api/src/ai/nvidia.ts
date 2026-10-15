@@ -16,7 +16,7 @@ const NVIDIA_BASE = "https://integrate.api.nvidia.com/v1";
 
 /** "salesInvoice.list" → "salesInvoice_list"; kunci balik utk mengembalikan nama asli. */
 export function toNvidiaToolName(name: string): string {
-  return name.replace(/[^A-Za-z0-9_]/g, "_");
+  return (name ?? "").replace(/[^A-Za-z0-9_]/g, "_");
 }
 
 interface OpenAIToolCall {
@@ -42,6 +42,8 @@ function toOpenAIMessages(opts: GenerateOpts): OpenAIMessage[] {
       const toolCalls: OpenAIToolCall[] = [];
       for (const p of c.parts) {
         if (p.functionCall) {
+          // skip functionCall tanpa nama (model kadang balas kosong)
+          if (!p.functionCall.name) continue;
           let args = "{}";
           try {
             args = JSON.stringify(p.functionCall.args ?? {});
@@ -120,6 +122,8 @@ function partsFromOpenAI(json: {
   const parts: LLMPart[] = [];
   if (msg.tool_calls?.length) {
     for (const tc of msg.tool_calls) {
+      // skip tool_call tanpa nama (model kadang balas functionCall kosong)
+      if (!tc.function?.name) continue;
       let args: Record<string, unknown> = {};
       try {
         const parsed: unknown = JSON.parse(tc.function.arguments || "{}");
@@ -129,7 +133,6 @@ function partsFromOpenAI(json: {
       }
       parts.push({
         functionCall: {
-          // kembalikan titik: "salesInvoice_list" → "salesInvoice.list" bila cocok dgn katalog
           name: tc.function.name,
           args,
           id: tc.id,
@@ -144,6 +147,7 @@ function partsFromOpenAI(json: {
 export interface NvidiaClient {
   listModels(): Promise<string[]>;
   generate(opts: GenerateOpts): Promise<{ parts: LLMPart[] }>;
+  generateStream(opts: GenerateOpts): AsyncGenerator<LLMPart>;
 }
 
 /** Parse JSON respons OpenAI-compatible yg mungkin diakhiri trailing non-JSON (mis. "data: [DONE]" dari 9Router). */
@@ -200,6 +204,116 @@ export class RealNvidiaClient implements NvidiaClient {
       if (p.functionCall) p.functionCall.name = mapBackToolName(p.functionCall.name, known);
     }
     return { parts };
+  }
+
+  /** Streaming SSE — yield text delta segera; tool call diyield setelah lengkap. */
+  async *generateStream(opts: GenerateOpts): AsyncGenerator<LLMPart> {
+    const tools = toOpenAITools(opts.tools);
+    const body: Record<string, unknown> = {
+      model: opts.model,
+      messages: toOpenAIMessages(opts),
+      stream: true,
+    };
+    if (tools?.length) {
+      body.tools = tools;
+      body.tool_choice = "auto";
+    }
+    const res = await fetch(`${this.baseUrl}/chat/completions`, {
+      method: "POST",
+      headers: this.headers(),
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new LlmHttpError(res.status, await res.text().catch(() => ""));
+    if (!res.body) throw new LlmHttpError(502, "stream kosong");
+
+    const known = (opts.tools ?? []).flatMap((t) => t.functionDeclarations ?? []).map((d) => d.name);
+    const decoder = new TextDecoder();
+    const toolAcc = new Map<number, { id: string; name: string; args: string }>();
+    let buffer = "";
+    let textEmitted = false;
+
+    const reader = res.body.getReader();
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        // proses baris "data: ..." per baris
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? ""; // simpan sisa buffer
+        for (const rawLine of lines) {
+          const line = rawLine.trim();
+          if (!line.startsWith("data:")) continue;
+          const payload = line.slice(5).trim();
+          if (payload === "[DONE]") continue;
+
+          let chunk: {
+            choices?: Array<{
+              delta?: {
+                content?: string;
+                tool_calls?: Array<{
+                  index?: number;
+                  id?: string;
+                  function?: { name?: string; arguments?: string };
+                }>;
+              };
+            }>;
+          };
+          try {
+            chunk = JSON.parse(payload);
+          } catch {
+            continue;
+          }
+
+          const delta = chunk.choices?.[0]?.delta;
+          if (!delta) continue;
+
+          // teks → yield langsung (streaming ke user)
+          if (delta.content) {
+            textEmitted = true;
+            yield { text: delta.content };
+          }
+
+          // tool calls → akumulasi (perlu JSON args lengkap)
+          if (delta.tool_calls) {
+            for (const tc of delta.tool_calls) {
+              const idx = tc.index ?? 0;
+              const acc = toolAcc.get(idx) ?? { id: "", name: "", args: "" };
+              if (tc.id) acc.id = tc.id;
+              if (tc.function?.name) acc.name = tc.function.name;
+              if (tc.function?.arguments) acc.args += tc.function.arguments;
+              toolAcc.set(idx, acc);
+            }
+          }
+        }
+      }
+    } finally {
+      reader.releaseLock();
+    }
+
+    // yield tool calls setelah stream selesai (args sudah lengkap)
+    for (const [, acc] of [...toolAcc.entries()].sort((a, b) => a[0] - b[0])) {
+      if (!acc.name) continue;
+      let args: Record<string, unknown> = {};
+      try {
+        const parsed: unknown = JSON.parse(acc.args || "{}");
+        if (parsed && typeof parsed === "object") args = parsed as Record<string, unknown>;
+      } catch {
+        args = {};
+      }
+      yield {
+        functionCall: {
+          name: mapBackToolName(acc.name, known),
+          args,
+          id: acc.id || undefined,
+        },
+      };
+    }
+    // jika tak ada teks & tak ada tool call, yield text kosong agar loop tahu selesai
+    if (!textEmitted && toolAcc.size === 0) {
+      // nothing — caller akan lihat generator selesai tanpa parts
+    }
   }
 }
 

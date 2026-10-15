@@ -7,12 +7,13 @@ import { llmClient } from "../ai/llm-client.js";
 import { getDefaultModel } from "../ai/model-pool.js";
 import { getModuleModel } from "../ai/module-model.js";
 import { runToolLoop } from "../ai/tool-loop.js";
+import { selectTools, toolStats } from "../ai/tool-selector.js";
 import type { LLMContent } from "../ai/llm-types.js";
 import { buildSystemPrompt } from "../ai/system-prompt.js";
 import { loadPermissionSet } from "../permissions.js";
 import { writeAudit } from "../audit.js";
 import { accurateProvider } from "../providers/accounting/index.js";
-import { accurateCtxFor } from "../providers/accounting/connection.js";
+import { accurateCtxFor, refreshAccurateSession } from "../providers/accounting/connection.js";
 
 export const chatRouter = Router();
 
@@ -102,21 +103,35 @@ chatRouter.post(
       getModuleModel(body.data.voice === true ? "voice" : "chat"),
     ]);
     const provider = accurateProvider();
-    const tools = provider.capabilityCatalog();
+    // dynamic tool selection — hanya kirim tool relevan dgn pertanyaan (hemat ~90% input token)
+    const tools = selectTools(body.data.message, provider.capabilityCatalog());
+    const stats = toolStats(tools);
+    console.log(`[chat] tools: ${stats.count}/${provider.capabilityCatalog().length} (~${stats.approxTokens} tok) | msg: ${body.data.message.slice(0, 80)}`);
+    // ctx bisa berubah setelah refresh session "Upsss..."
+    let liveCtx = ctx;
 
     try {
       const out = await runToolLoop({
         client: llmClient(),
-        providerExecute: (tool, args) => {
-          if (!ctx) return Promise.reject(new Error("koneksi Accurate belum aktif — hubungkan ulang di Pengaturan"));
-          return provider.execute(tool, args, ctx).catch((e: unknown) => {
-            // pesan jelas agar model langsung menjelaskan ke pengguna, bukan mencoba ulang tool yg sama
+        providerExecute: async (tool, args) => {
+          if (!liveCtx) return Promise.reject(new Error("koneksi Accurate belum aktif — hubungkan ulang di Pengaturan"));
+          // "Upsss..." = session expired ATAU rate-limit transient → retry sekali dgn jeda 2 dtk
+          try {
+            return await provider.execute(tool, args, liveCtx);
+          } catch (e: unknown) {
             const m = e instanceof Error ? e.message : String(e);
+            if (/upsss/i.test(m)) {
+              await new Promise((r) => setTimeout(r, 2000));
+              // refresh session sekali — session expired juga memicu "Upsss..."
+              const fresh = await refreshAccurateSession(user.tenant.id).catch(() => null);
+              if (fresh) liveCtx = fresh;
+              return await provider.execute(tool, args, liveCtx);
+            }
             if (/fetch failed|ECONNREFUSED|ENOTFOUND|socket|network/i.test(m)) {
               throw new Error("tidak dapat menghubungi Accurate — koneksi ke server akuntansi terputus");
             }
             throw e;
-          });
+          }
         },
         permissions,
         system: buildSystemPrompt({ tenantName: user.tenant.name, voice: body.data.voice === true }),

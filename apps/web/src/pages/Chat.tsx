@@ -154,7 +154,9 @@ export function Chat() {
                     <span className="thinking__dot" />
                   </span>
                 )}
-                {busy && i === msgs.length - 1 && m.content ? " ▌" : ""}
+                {busy && i === msgs.length - 1 && m.content && (
+                  <span className="cursor" aria-hidden="true" />
+                )}
               </div>
             </div>
           ))}

@@ -1265,6 +1265,20 @@ pre.block {
   margin-top: 2px;
 }
 
+/* cursor streaming — garis tipis, bukan blok tebal */
+.cursor {
+  display: inline-block;
+  width: 1.5px;
+  height: 1em;
+  background: var(--ink);
+  margin-left: 1px;
+  vertical-align: text-bottom;
+  animation: cursor-blink 0.9s steps(2, start) infinite;
+}
+@keyframes cursor-blink {
+  to { opacity: 0; }
+}
+
 .badge {
   display: inline-block;
   margin: 4px 6px 0 0;

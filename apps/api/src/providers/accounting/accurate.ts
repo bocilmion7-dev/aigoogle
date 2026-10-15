@@ -245,7 +245,24 @@ export class AccurateAdapter implements AccountingProvider {
     if (typeof args.keywords === "string" && args.keywords) qs.set("keywords", args.keywords);
     if (typeof args.page === "number") qs.set("sp.page", String(args.page));
     if (typeof args.pageSize === "number") qs.set("sp.pageSize", String(args.pageSize));
-    if (typeof args.sort === "string" && args.sort) qs.set("sp.sort", args.sort);
+    if (typeof args.sort === "string" && args.sort) {
+      // Accurate hanya menerima sort by "id" — field lain (date, no, …) balas "Upsss..."
+      // Map tanggal ke id (auto-increment ≈ urut waktu) supaya "terakhir" tetap benar
+      const sanitized = args.sort
+        .split(";")
+        .map((part) => part.trim())
+        .filter(Boolean)
+        .map((part) => {
+          const [field, dir] = part.split("|").map((s) => s.trim());
+          const allowed = /^(id)$/i.test(field);
+          const f = allowed ? "id" : /^(date|transactionDate|transDate|createdDate|no)$/i.test(field) ? "id" : null;
+          if (!f) return null;
+          const d = /^(desc|asc)$/i.test(dir ?? "") ? dir.toLowerCase() : "desc";
+          return `${f}|${d}`;
+        })
+        .filter(Boolean);
+      if (sanitized.length > 0) qs.set("sp.sort", sanitized.join(";"));
+    }
     const filter = args.filter;
     if (filter && typeof filter === "object") {
       for (const [field, cond] of Object.entries(filter as Record<string, unknown>)) {

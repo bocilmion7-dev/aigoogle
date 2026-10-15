@@ -22,14 +22,11 @@ export class RealLLMClient implements LLMClient {
   }
 
   async *generateStream(opts: GenerateOpts): AsyncGenerator<LLMPart> {
-    // Router & NVIDIA sama-sama OpenAI-compatible → generate utuh lalu di-yield
+    // streaming sungguhan — yield text delta segera, tool call setelah lengkap
     const gen = await withModelFailover(
       "generate",
       async (c: ModelCandidate): Promise<AsyncGenerator<LLMPart>> => {
-        const { parts } = await c.client.generate({ ...opts, model: c.model });
-        return (async function* () {
-          for (const p of parts) yield p;
-        })();
+        return c.client.generateStream({ ...opts, model: c.model });
       },
       opts.model || (await getDefaultModel())
     );
