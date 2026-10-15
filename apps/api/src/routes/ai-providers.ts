@@ -6,6 +6,13 @@ import { asyncHandler } from "../asyncHandler.js";
 import { writeAudit } from "../audit.js";
 import { RealNvidiaClient } from "../ai/nvidia.js";
 import { LlmHttpError } from "../ai/llm-error.js";
+import {
+  AI_MODULES,
+  AI_MODULE_HINTS,
+  AI_MODULE_LABELS,
+  getAllModuleModels,
+  setModuleModels,
+} from "../ai/module-model.js";
 
 export const aiProvidersRouter = Router();
 
@@ -168,5 +175,51 @@ aiProvidersRouter.post(
     if (!p) return res.status(404).json({ error: "tidak_ditemukan" });
     const models = await fetchModelList(p.baseUrl, p.apiKey);
     res.json({ models });
+  })
+);
+
+/* ---------- model per modul AI (global) ---------- */
+
+aiProvidersRouter.get(
+  "/ai/module-models",
+  requirePlatform,
+  asyncHandler(async (_req, res) => {
+    const active = await prisma.aiProvider.findFirst({
+      where: { isActive: true },
+      include: { models: { orderBy: { rank: "asc" } } },
+    });
+    const modules = await getAllModuleModels();
+    res.json({
+      providerName: active?.name ?? "",
+      available: (active?.models ?? []).map((m) => ({ name: m.name, rank: m.rank })),
+      modules: AI_MODULES.map((m) => ({
+        key: m,
+        label: AI_MODULE_LABELS[m],
+        hint: AI_MODULE_HINTS[m],
+        value: modules[m],
+      })),
+    });
+  })
+);
+
+const ModuleModelsBody = z
+  .object({
+    chat: z.string().max(200).optional(),
+    voice: z.string().max(200).optional(),
+    drive: z.string().max(200).optional(),
+    uploadImage: z.string().max(200).optional(),
+    uploadDocument: z.string().max(200).optional(),
+  })
+  .refine((b) => Object.values(b).some((v) => v !== undefined), { message: "tidak ada field" });
+
+aiProvidersRouter.put(
+  "/ai/module-models",
+  requirePlatform,
+  asyncHandler(async (req, res) => {
+    const body = ModuleModelsBody.safeParse(req.body);
+    if (!body.success) return res.status(400).json({ error: "bad_request" });
+    await setModuleModels(body.data);
+    await writeAudit("platform", req.platform!.id, "ai_module_models.update", body.data);
+    res.json({ ok: true });
   })
 );

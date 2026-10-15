@@ -44,12 +44,13 @@ function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
   });
 }
 
-/** Klasifikasi dokumen via model AI (9Router/ocfree → NVIDIA); gagal → aturan lokal. */
+/** Klasifikasi dokumen via model AI; preferredModel = setting modul "drive". Gagal → aturan lokal. */
 export async function classifyFile(
   text: string,
   mimeType: string,
   fileName = "",
-  mediaBase64?: string
+  mediaBase64?: string,
+  preferredModel?: string
 ): Promise<Category> {
   const fallback = () => (fileName ? classifyFileName(fileName) : classifyText(text));
   if (!VISION_OK.test(mimeType)) return fallback();
@@ -61,15 +62,19 @@ export async function classifyFile(
       ? [{ inlineData: { mimeType, data: mediaBase64 } }, { text: prompt }]
       : [{ text: `${prompt}\n\n${text.slice(0, 1500)}` }];
     const raw = await withTimeout(
-      withModelFailover("generate", async (c) => {
-        const { parts: out } = await c.client.generate({
-          contents: [{ role: "user", parts }],
-          model: c.model,
-        });
-        const t = out.find((p) => p.text)?.text ?? "";
-        if (!t.trim()) throw new LlmHttpError(502, "model tidak mengembalikan teks");
-        return t.trim();
-      }),
+      withModelFailover(
+        "generate",
+        async (c) => {
+          const { parts: out } = await c.client.generate({
+            contents: [{ role: "user", parts }],
+            model: c.model,
+          });
+          const t = out.find((p) => p.text)?.text ?? "";
+          if (!t.trim()) throw new LlmHttpError(502, "model tidak mengembalikan teks");
+          return t.trim();
+        },
+        preferredModel || undefined
+      ),
       AI_TIMEOUT_MS
     );
     const hit = CATEGORIES.find((c) => c.toLowerCase() === raw.toLowerCase());

@@ -1,4 +1,11 @@
-import type { AiProviderRow, AppSettings, ConnectionInfo, Me } from "@aigoogle/shared";
+import type {
+  AiModuleKey,
+  AiModuleModelsResponse,
+  AiProviderRow,
+  AppSettings,
+  ConnectionInfo,
+  Me,
+} from "@aigoogle/shared";
 
 /**
  * Muat identitas user. Timeout 15 dtk + selalu resolve (null bila gagal) —
@@ -286,3 +293,12 @@ export const previewAiModels = (baseUrl: string, apiKey: string) =>
   });
 export const refreshAiModels = (id: string) =>
   adminFetch<{ models: string[] }>(`/api/ai/providers/${id}/refresh-models`, { method: "POST" });
+
+// ── Model per modul AI (halaman /ai-models, khusus Admin Platform) ──────────
+export const getAiModuleModels = () => adminFetch<AiModuleModelsResponse>("/api/ai/module-models");
+export const putAiModuleModels = (body: Partial<Record<AiModuleKey, string>>) =>
+  adminFetch<{ ok: boolean }>("/api/ai/module-models", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });

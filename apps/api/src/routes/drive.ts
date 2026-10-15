@@ -7,6 +7,8 @@ import { driveClientFor, engineMode } from "../drive/registry.js";
 import { buildPlan, executePlan, executeUndo } from "../drive/tidy.js";
 import type { TidyPlanItem, TidyResultItem, UndoTarget } from "../drive/types.js";
 import { classifyFile } from "../drive/classify.js";
+import { extractText, extractPdfImages } from "../doc/extract.js";
+import { getModuleModel } from "../ai/module-model.js";
 import { writeAudit } from "../audit.js";
 
 export const driveRouter = Router();
@@ -66,16 +68,34 @@ driveRouter.post(
       send = (e) => res.write(JSON.stringify(e) + "\n");
       send({ type: "start", total: totalPdfs, folderName });
     }
-    const visionOk = /^(application\/pdf|image\/)/i;
+    const driveModel = await getModuleModel("drive");
+    const preferred = driveModel || undefined;
     const items = await buildPlan(
       client,
       body.data.folderId,
       async (f) => {
-        if (visionOk.test(f.mimeType) && client.getBytes) {
+        // PDF: coba teks dulu; kosong → ekstrak JPEG tertanam (vision)
+        if (f.mimeType === "application/pdf" && client.getBytes) {
+          try {
+            const bytes = Buffer.from(await client.getBytes(f.id));
+            if (bytes.byteLength > 0 && bytes.byteLength <= 6_000_000) {
+              const text = await extractText(bytes, "pdf").catch(() => "");
+              if (text.trim()) return classifyFile(text, f.mimeType, f.name, undefined, preferred);
+              const images = extractPdfImages(bytes, 1);
+              if (images.length) {
+                return classifyFile("", "image/jpeg", f.name, images[0].toString("base64"), preferred);
+              }
+            }
+          } catch {
+            /* jatuh ke jalur teks */
+          }
+        }
+        // Gambar: kirim langsung sebagai vision
+        if (/^image\//i.test(f.mimeType) && client.getBytes) {
           try {
             const bytes = await client.getBytes(f.id);
             if (bytes.byteLength > 0 && bytes.byteLength <= 6_000_000) {
-              return classifyFile("", f.mimeType, f.name, Buffer.from(bytes).toString("base64"));
+              return classifyFile("", f.mimeType, f.name, Buffer.from(bytes).toString("base64"), preferred);
             }
           } catch {
             /* jatuh ke jalur teks */
@@ -84,7 +104,9 @@ driveRouter.post(
         return classifyFile(
           await client.getText(f.id).catch(() => ""),
           f.mimeType,
-          f.name
+          f.name,
+          undefined,
+          preferred
         );
       },
       (done, total, fileName, category) => {

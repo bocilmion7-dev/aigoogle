@@ -11,6 +11,7 @@ import {
   IconLogout,
   IconScan,
   IconSettings,
+  IconSliders,
   IconUsers,
 } from "./icons";
 
@@ -57,6 +58,7 @@ export function AppHeader({ me }: { me?: Me | null }) {
     ...(sisiAccurate ? [{ href: "/pelanggan", label: "Scan", short: "Scan", Icon: IconScan }] : []),
     ...(canPlatform ? [{ href: "/settings", label: "Pengaturan", short: "Setelan", Icon: IconSettings }] : []),
     ...(canPlatform ? [{ href: "/ai", label: "AI Provider", short: "AI", Icon: IconCpu }] : []),
+    ...(canPlatform ? [{ href: "/ai-models", label: "Model per Modul", short: "Model", Icon: IconSliders }] : []),
   ];
 
   const isPlatform = data.tenant.provider === "platform";

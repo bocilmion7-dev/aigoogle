@@ -54,3 +54,18 @@ export interface AiProviderRow {
   isActive: boolean;
   models: AiProviderModelRow[];
 }
+
+export type AiModuleKey = "chat" | "voice" | "drive" | "uploadImage" | "uploadDocument";
+
+export interface AiModuleModelRow {
+  key: AiModuleKey;
+  label: string;
+  hint: string;
+  value: string; // "" = otomatis (rank-1 provider aktif + failover)
+}
+
+export interface AiModuleModelsResponse {
+  providerName: string;
+  available: Array<{ name: string; rank: number }>;
+  modules: AiModuleModelRow[];
+}

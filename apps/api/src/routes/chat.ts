@@ -5,6 +5,7 @@ import { asyncHandler } from "../asyncHandler.js";
 import { requireUser } from "../middleware/session.js";
 import { llmClient } from "../ai/llm-client.js";
 import { getDefaultModel } from "../ai/model-pool.js";
+import { getModuleModel } from "../ai/module-model.js";
 import { runToolLoop } from "../ai/tool-loop.js";
 import type { LLMContent } from "../ai/llm-types.js";
 import { buildSystemPrompt } from "../ai/system-prompt.js";
@@ -95,9 +96,10 @@ chatRouter.post(
       }));
 
     const dbUser = await prisma.user.findUniqueOrThrow({ where: { id: user.id } });
-    const [permissions, ctx] = await Promise.all([
+    const [permissions, ctx, preferredModel] = await Promise.all([
       loadPermissionSet(dbUser.roleId),
       accurateCtxFor(user.tenant.id),
+      getModuleModel(body.data.voice === true ? "voice" : "chat"),
     ]);
     const provider = accurateProvider();
     const tools = provider.capabilityCatalog();
@@ -126,7 +128,7 @@ chatRouter.post(
           // start membawa sessionId supaya frontend (mode voice) bisa lanjut di sesi yg sama
           send(e.type === "start" ? { ...ev, sessionId: session.id } : ev);
         },
-        model: await getDefaultModel(),
+        model: preferredModel || (await getDefaultModel()),
       });
       for (const t of out.trace) {
         if (t.tool) void writeAudit(user.tenant.id, user.id, "tool.call", t);

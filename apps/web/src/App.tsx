@@ -10,11 +10,13 @@ import { Pelanggan } from "./pages/Pelanggan";
 import { Aktivitas } from "./pages/Aktivitas";
 import { PlatformLogin } from "./pages/PlatformLogin";
 import { AiProviders } from "./pages/AiProviders";
+import { AiModels } from "./pages/AiModels";
 
 export function App() {
   const path = window.location.pathname;
   if (path === "/settings") return <Settings />;
   if (path === "/ai") return <AiProviders />;
+  if (path === "/ai-models") return <AiModels />;
   if (path === "/explore") return <Explore />;
   if (path === "/admin") return <Admin />;
   if (path === "/app") return <Shell />;

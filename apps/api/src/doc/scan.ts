@@ -1,4 +1,5 @@
 import { withModelFailover } from "../ai/model-pool.js";
+import { getModuleModel } from "../ai/module-model.js";
 import { LlmHttpError } from "../ai/llm-error.js";
 import type { LLMContent, LLMPart } from "../ai/llm-types.js";
 import type { DocKind } from "./extract.js";
@@ -179,28 +180,40 @@ function parseJsonLoose(text: string): Record<string, unknown> | null {
 
 /**
  * Satu panggilan model dengan failover utk part multimodal (gambar/PDF/teks + prompt).
- * Urutan: 9Router/ocfree (mimo rank-0 mendukung vision) → NVIDIA.
+ * preferredModel = model hasil setting modul (uploadImage / uploadDocument).
  * Model non-vision yg membalas tanpa JSON dianggap gagal → rotasi ke kandidat berikutnya.
  */
-async function generateText(parts: LLMPart[], prompt: string, needJson: boolean): Promise<string> {
+async function generateText(
+  parts: LLMPart[],
+  prompt: string,
+  needJson: boolean,
+  preferredModel?: string
+): Promise<string> {
   const contents: LLMContent[] = [{ role: "user", parts: [...parts, { text: prompt }] }];
-  return await withModelFailover("generate", async (c) => {
-    const { parts: out } = await c.client.generate({ contents, model: c.model });
-    const text = out.find((p) => p.text)?.text ?? "";
-    if (needJson && !text.includes("{")) {
-      // balasan "saya tidak bisa melihat gambar" dsb → coba model berikutnya
-      throw new LlmHttpError(502, "model tidak mengembalikan JSON (kemungkinan tanpa visi)");
-    }
-    return text;
-  });
+  return await withModelFailover(
+    "generate",
+    async (c) => {
+      const { parts: out } = await c.client.generate({ contents, model: c.model });
+      const text = out.find((p) => p.text)?.text ?? "";
+      if (needJson && !text.includes("{")) {
+        // balasan "saya tidak bisa melihat gambar" dsb → coba model berikutnya
+        throw new LlmHttpError(502, "model tidak mengembalikan JSON (kemungkinan tanpa visi)");
+      }
+      return text;
+    },
+    preferredModel || undefined
+  );
 }
 
 async function aiFields(opts: {
   parts: LLMPart[];
+  /** modul penentu model: gambar → vision, dokumen → teks/vision sesuai jenis */
+  module: "uploadImage" | "uploadDocument";
 }): Promise<Awaited<ReturnType<typeof coerce>> | null> {
   let text = "";
   try {
-    text = await generateText(opts.parts, FIELD_PROMPT, true);
+    const preferred = await getModuleModel(opts.module);
+    text = await generateText(opts.parts, FIELD_PROMPT, true, preferred);
   } catch {
     return null; // semua model gagal → fallback ekstraksi lokal
   }
@@ -240,7 +253,10 @@ export async function scanDocument(opts: {
     parts.push({ text: `Dokumen: ${fileName}\n\nIsi:\n${localText.slice(0, 12_000)}` });
     useLocalText = true;
   }
-  const out = await aiFields({ parts });
+  const out = await aiFields({
+    parts,
+    module: kind === "image" ? "uploadImage" : "uploadDocument",
+  });
   if (out) {
     if (useLocalText && localText.trim()) out.rawText = localText;
     const modul = out.suggestedModule;
