@@ -39,6 +39,7 @@
 
   /* form */
   --radius: 4px;
+  --radius-round: 50%; /* khusus potret bundar — bentuk, bukan radius kartu */
   --border: 1px solid var(--line);
   --shadow: 0 1px 2px rgb(23 21 15 / 0.04), 0 12px 32px rgb(23 21 15 / 0.07);
 
@@ -340,7 +341,8 @@
 }
 
 .ld-features h2,
-.ld-caps h2 {
+.ld-caps h2,
+.ld-testi h2 {
   font-family: var(--font-display);
   font-size: var(--step-3);
   font-weight: 600;
@@ -425,6 +427,88 @@
   margin: 0;
 }
 
+/* ---------- testimoni (editorial) ---------- */
+.ld-testi {
+  max-width: 1120px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 var(--space-l) var(--space-3xl);
+}
+
+.ld-testi-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: var(--space-2xl);
+  row-gap: var(--space-l);
+}
+
+/* stagger asimetris — kolom genap turun setengah langkah, gaya majalah */
+.ld-testi-grid > :nth-child(even) {
+  margin-top: var(--space-xl);
+}
+
+.ld-tcard {
+  margin: 0;
+  padding: var(--space-m) 0 0;
+  border-top: var(--border);
+  transition: transform var(--dur) var(--ease);
+}
+
+.ld-tcard-quote {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 500;
+  font-size: var(--step-1);
+  line-height: 1.5;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  margin: 0 0 var(--space-m);
+  text-wrap: pretty;
+}
+
+.ld-tcard-by {
+  display: flex;
+  align-items: center;
+  gap: var(--space-s);
+}
+
+.ld-tcard-photo {
+  flex: none;
+  width: 52px;
+  height: 52px;
+  border-radius: var(--radius-round);
+  object-fit: cover;
+  /* cincin oranye tipis dengan jarak putih — sentuhan merek */
+  box-shadow: 0 0 0 2px var(--surface), 0 0 0 3.5px var(--accent);
+  transition: transform var(--dur) var(--ease);
+}
+
+.ld-tcard-who {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.ld-tcard-name {
+  font-family: var(--font-display);
+  font-size: var(--step-0);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.ld-tcard-role {
+  font-size: var(--step--1);
+  color: var(--ink-3);
+}
+
+.ld-tcard:hover {
+  transform: translateY(-2px);
+}
+
+.ld-tcard:hover .ld-tcard-photo {
+  transform: scale(1.06);
+}
+
 /* ---------- footer ---------- */
 .ld-footer {
   border-top: var(--border);
@@ -471,11 +555,62 @@
 .ld-rise-3 { animation-delay: 220ms; }
 .ld-rise-4 { animation-delay: 320ms; }
 
+/* reveal on scroll — elemen di bawah lipatan muncul saat didekati */
+.ld-reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity var(--dur-slow) var(--ease-out), transform var(--dur-slow) var(--ease-out);
+}
+
+.ld-reveal.is-in {
+  opacity: 1;
+  transform: none;
+}
+
+/* kartu hero: masuk, lalu melayang pelan — memberi "napas" pada halaman */
+@keyframes ld-float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-9px);
+  }
+}
+
+.ld-card.ld-rise {
+  animation:
+    ld-rise var(--dur-slow) var(--ease-out) 320ms both,
+    ld-float 7s ease-in-out 1.4s infinite;
+}
+
+/* badge AI: denyut sangat halus */
+@keyframes ld-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgb(234 88 12 / 0.35);
+  }
+  60% {
+    box-shadow: 0 0 0 7px rgb(234 88 12 / 0);
+  }
+}
+
+.ld-badge {
+  animation: ld-pulse 2.8s var(--ease) infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .ld-rise {
+  .ld-rise,
+  .ld-card.ld-rise,
+  .ld-badge {
     animation: none;
   }
-  .ld-btn {
+  .ld-reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+  .ld-btn,
+  .ld-tcard,
+  .ld-tcard-photo {
     transition: none;
   }
 }
@@ -506,6 +641,23 @@
 
   .ld-caps-grid {
     grid-template-columns: 1fr;
+  }
+
+  .ld-testi {
+    padding: 0 var(--space-m) var(--space-2xl);
+  }
+
+  .ld-testi-grid {
+    grid-template-columns: 1fr;
+    row-gap: var(--space-m);
+  }
+
+  .ld-testi-grid > :nth-child(even) {
+    margin-top: 0;
+  }
+
+  .ld-tcard-quote {
+    font-size: var(--step-0);
   }
 
   .ld-features li {
