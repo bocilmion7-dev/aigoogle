@@ -2,9 +2,15 @@ import type { DriveClient, TidyPlanItem, TidyResultItem, UndoResultItem, UndoTar
 import { categoryFolderName, type Category } from "./classify.js";
 
 export type Classifier = (file: { id: string; name: string; mimeType: string }) => Promise<Category> | Category;
+export type PlanProgress = (done: number, total: number, fileName: string, category: Category) => void | Promise<void>;
 
 // Susun rencana: buat folder kategori (pakai ulang bila ada), lalu pindah + rename tiap PDF.
-export async function buildPlan(client: DriveClient, folderId: string, classify: Classifier): Promise<TidyPlanItem[]> {
+export async function buildPlan(
+  client: DriveClient,
+  folderId: string,
+  classify: Classifier,
+  onProgress?: PlanProgress
+): Promise<TidyPlanItem[]> {
   const { folders, files } = await client.list(folderId);
   const pdfs = files.filter((f) => f.mimeType === "application/pdf");
   const folderByCat = new Map<string, string>();
@@ -12,8 +18,11 @@ export async function buildPlan(client: DriveClient, folderId: string, classify:
 
   const plan: TidyPlanItem[] = [];
   const catFolder = new Map<Category, string>();
+  let done = 0;
   for (const pdf of pdfs) {
     const cat = await classify(pdf);
+    done += 1;
+    await onProgress?.(done, pdfs.length, pdf.name, cat);
     const label = categoryFolderName(cat);
     let parentId = folderByCat.get(label);
     if (!parentId) {

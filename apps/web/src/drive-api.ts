@@ -34,14 +34,42 @@ export async function driveList(folderId: string): Promise<{ folders: DriveFolde
   return r.json();
 }
 
-export async function drivePlan(folderId: string): Promise<{ jobId: string; items: PlanItem[] }> {
-  const r = await fetch("/api/drive/plan", {
+export type PlanEvent =
+  | { type: "start"; total: number; folderName: string }
+  | { type: "classify"; done: number; total: number; fileName: string; category: string }
+  | { type: "done"; jobId: string; items: PlanItem[] };
+
+export async function drivePlan(
+  folderId: string,
+  onEvent?: (e: PlanEvent) => void
+): Promise<{ jobId: string; items: PlanItem[] }> {
+  const r = await fetch(`/api/drive/plan${onEvent ? "?stream=1" : ""}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ folderId }),
   });
   if (!r.ok) throw new Error(((await r.json()) as { error?: string }).error ?? "gagal_membuat_rencana");
-  return r.json();
+  if (!onEvent) return r.json();
+  if (!r.body) throw new Error("gagal_membuat_rencana");
+  const reader = r.body.getReader();
+  const dec = new TextDecoder();
+  let buf = "";
+  let out: { jobId: string; items: PlanItem[] } | null = null;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += dec.decode(value, { stream: true });
+    const lines = buf.split("\n");
+    buf = lines.pop() ?? "";
+    for (const line of lines) {
+      if (!line.trim()) continue;
+      const e = JSON.parse(line) as PlanEvent;
+      if (e.type === "done") out = { jobId: e.jobId, items: e.items };
+      onEvent(e);
+    }
+  }
+  if (!out) throw new Error("gagal_membuat_rencana");
+  return out;
 }
 
 export type RunEvent =

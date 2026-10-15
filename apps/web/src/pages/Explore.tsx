@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { getMe } from "../api";
 import { AppHeader, PageLoader } from "../ui";
+import { IconChevron, IconFolder, fileIconFor } from "../icons";
 import {
   driveCancel,
   driveList,
@@ -32,15 +33,30 @@ interface ResultItem {
   undoError?: string;
 }
 
+interface TreeNode {
+  folders: DriveFolder[];
+  files: DriveFile[];
+  loaded: boolean;
+  loading: boolean;
+  expanded: boolean;
+}
+
 type Phase = "idle" | "planning" | "preview" | "running" | "done";
+
+const emptyNode = (expanded = false): TreeNode => ({
+  folders: [],
+  files: [],
+  loaded: false,
+  loading: false,
+  expanded,
+});
 
 export function Explore() {
   const [status, setStatus] = useState<DriveStatus | null>(null);
   const [canTidy, setCanTidy] = useState<boolean | null>(null);
-  const [folderId, setFolderId] = useState("root");
-  const [folders, setFolders] = useState<DriveFolder[]>([]);
-  const [files, setFiles] = useState<DriveFile[]>([]);
-  const [trail, setTrail] = useState<Array<{ id: string; name: string }>>([{ id: "root", name: "Drive" }]);
+  const [nodes, setNodes] = useState<Record<string, TreeNode>>({ root: emptyNode(true) });
+  const [selected, setSelected] = useState("root");
+  const [names, setNames] = useState<Record<string, string>>({ root: "Drive" });
   const [phase, setPhase] = useState<Phase>("idle");
   const [plan, setPlan] = useState<PlanItem[] | null>(null);
   const [jobId, setJobId] = useState<string | null>(null);
@@ -53,6 +69,8 @@ export function Explore() {
   const [undoProgress, setUndoProgress] = useState<Progress | null>(null);
   const [undoError, setUndoError] = useState<string | null>(null);
   const [undoBusy, setUndoBusy] = useState(false);
+  const [modalLog, setModalLog] = useState<string[]>([]);
+  const [cancelling, setCancelling] = useState(false);
   const cancelRef = useRef(false);
 
   const errText = (code?: string) =>
@@ -64,17 +82,29 @@ export function Explore() {
           ? "Folder di luar cakupan."
           : "Terjadi gangguan — coba lagi.";
 
-  const load = useCallback(async (id: string) => {
-    setError(null);
+  const nodesRef = useRef(nodes);
+  nodesRef.current = nodes;
+
+  const load = useCallback(async (id: string, force = false) => {
+    const cur = nodesRef.current[id];
+    if (!force && (cur?.loaded || cur?.loading)) return;
+    setNodes((prev) => ({ ...prev, [id]: { ...(prev[id] ?? emptyNode()), loading: true } }));
     try {
       const l = await driveList(id);
-      setFolders(l.folders);
-      setFiles(l.files);
+      setNodes((prev) => ({
+        ...prev,
+        [id]: { folders: l.folders, files: l.files, loaded: true, loading: false, expanded: true },
+      }));
+      setNames((prev) => {
+        const next = { ...prev };
+        for (const f of l.folders) next[f.id] = f.name;
+        return next;
+      });
     } catch (e) {
       setError(errText(e instanceof Error ? e.message : undefined));
-      setFolders([]);
-      setFiles([]);
+      setNodes((prev) => ({ ...prev, [id]: { ...(prev[id] ?? emptyNode()), loading: false } }));
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -85,30 +115,42 @@ export function Explore() {
   }, []);
 
   useEffect(() => {
-    if (status?.connected) void load(folderId);
-  }, [status, folderId, load]);
+    if (status?.connected) void load("root");
+  }, [status, load]);
 
-  function enter(folder: DriveFolder) {
-    setFolderId(folder.id);
-    setTrail((t) => [...t, { id: folder.id, name: folder.name }]);
+  function toggle(id: string) {
+    setNodes((prev) => {
+      const n = prev[id] ?? emptyNode();
+      return { ...prev, [id]: { ...n, expanded: !n.expanded } };
+    });
+    void load(id);
+  }
+
+  function select(id: string) {
+    setSelected(id);
+    setError(null);
     setPhase("idle");
     setPlan(null);
     setResult(null);
+    void load(id);
   }
 
-  function goto(i: number) {
-    setFolderId(trail[i].id);
-    setTrail(trail.slice(0, i + 1));
-    setPhase("idle");
-    setPlan(null);
-    setResult(null);
-  }
+  const selectedNode = nodes[selected];
+  const pdfCount = selectedNode?.files.filter((f) => f.mimeType === "application/pdf").length ?? 0;
 
   async function makePlan() {
     setPhase("planning");
     setError(null);
+    setProgress(null);
+    setModalLog([]);
     try {
-      const p = await drivePlan(folderId);
+      const p = await drivePlan(selected, (e) => {
+        if (e.type === "start") setProgress({ done: 0, total: e.total });
+        if (e.type === "classify") {
+          setProgress({ done: e.done, total: e.total });
+          setModalLog((l) => [...l, `${e.done}/${e.total} · ${e.fileName} → ${e.category}`]);
+        }
+      });
       setJobId(p.jobId);
       setPlan(p.items);
       setPhase("preview");
@@ -124,11 +166,17 @@ export function Explore() {
     setProgress(null);
     setResult(null);
     setCancelled(false);
+    setCancelling(false);
+    setModalLog([]);
     cancelRef.current = false;
     try {
       await driveRun(jobId, (e: RunEvent) => {
         if (e.type === "start") setProgress({ done: 0, total: e.total });
-        if (e.type === "progress") setProgress({ done: e.done, total: e.total });
+        if (e.type === "progress") {
+          setProgress({ done: e.done, total: e.total });
+          const mark = e.status === "ok" ? "OK" : e.status === "failed" ? "Gagal" : "Dilewati";
+          setModalLog((l) => [...l, `${e.done}/${e.total} · ${e.fileName} — ${mark}`]);
+        }
         if (e.type === "done") {
           const items = e.items as unknown as ResultItem[];
           setResult(items);
@@ -149,13 +197,14 @@ export function Explore() {
       setError("Koneksi terputus — coba lagi.");
       setPhase("idle");
     } finally {
-      void load(folderId);
+      void load(selected, true);
     }
   }
 
   async function cancel() {
     if (!jobId) return;
     cancelRef.current = true;
+    setCancelling(true);
     await driveCancel(jobId);
   }
 
@@ -191,7 +240,7 @@ export function Explore() {
           setJobStatus(e.status);
         }
       });
-      void load(folderId);
+      void load(selected, true);
     } catch (err) {
       const code = err instanceof Error ? err.message : undefined;
       setUndoError(
@@ -206,6 +255,70 @@ export function Explore() {
     } finally {
       setUndoBusy(false);
     }
+  }
+
+  function renderTree(id: string, depth: number): ReactNode {
+    const node = nodes[id] ?? emptyNode();
+    const name = names[id] ?? id;
+    const isOpen = node.expanded;
+    const isSelected = selected === id;
+    return (
+      <li key={id} role="treeitem" aria-expanded={isOpen} aria-selected={isSelected}>
+        <div className="tree__row-wrap" style={{ paddingLeft: depth * 16 }}>
+          <button
+            type="button"
+            className={`tree__row${isSelected ? " is-selected" : ""}`}
+            onClick={() => {
+              select(id);
+              toggle(id);
+            }}
+            aria-label={name}
+          >
+            <span
+              className={`tree__chev${isOpen && (node.folders.length > 0 || !node.loaded || node.files.length > 0) ? " is-open" : ""}`}
+              aria-hidden="true"
+            >
+              <IconChevron size={14} />
+            </span>
+            <span className="tree__icon" aria-hidden="true">
+              <IconFolder size={16} />
+            </span>
+            <span className="tree__name">{name}</span>
+            {node.loaded && node.files.length > 0 && <span className="tree__count">{node.files.length}</span>}
+          </button>
+        </div>
+        {isOpen && (
+          <ul role="group">
+            {node.loading && (
+              <li className="tree__hint tree__hint--loading" style={{ paddingLeft: (depth + 1) * 16 + 40 }}>
+                <span className="tree__spin" aria-hidden="true" />
+                Memuat…
+              </li>
+            )}
+            {node.loaded && node.folders.length === 0 && node.files.length === 0 && (
+              <li className="tree__hint" style={{ paddingLeft: (depth + 1) * 16 + 40 }}>
+                Kosong
+              </li>
+            )}
+            {node.folders.map((f) => renderTree(f.id, depth + 1))}
+            {node.files.map((f) => {
+              const FileIcon = fileIconFor(f.mimeType);
+              return (
+                <li key={f.id} role="treeitem" aria-selected={false} style={{ paddingLeft: (depth + 1) * 16 + 20 }}>
+                  <span className="tree__row tree__row--file">
+                    <span className="tree__icon tree__icon--file" aria-hidden="true">
+                      <FileIcon size={15} />
+                    </span>
+                    <span className="tree__name">{f.name}</span>
+                    {f.mimeType === "application/pdf" && <span className="tree__badge">PDF</span>}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </li>
+    );
   }
 
   if (!status) {
@@ -241,8 +354,6 @@ export function Explore() {
     );
   }
 
-  const pdfCount = files.filter((f) => f.mimeType === "application/pdf").length;
-
   return (
     <div className="app">
       <AppHeader />
@@ -252,16 +363,8 @@ export function Explore() {
 
         <div className="explore">
           <section>
-            <nav aria-label="Breadcrumb" className="crumb">
-              {trail.map((t, i) => (
-                <span key={t.id}>
-                  {i > 0 && " / "}
-                  <button onClick={() => goto(i)}>{t.name}</button>
-                </span>
-              ))}
-            </nav>
             <div className="btn-row" style={{ marginBottom: "var(--space-xs)" }}>
-              <button className="btn btn--2 btn--sm" onClick={() => void load(folderId)}>
+              <button className="btn btn--2 btn--sm" onClick={() => void load(selected, true)}>
                 Refresh
               </button>
               {canTidy !== false && (
@@ -269,9 +372,9 @@ export function Explore() {
                   className="btn btn--sm"
                   onClick={() => void makePlan()}
                   disabled={phase === "planning" || phase === "running"}
-                  aria-label="Rapikan folder ini"
+                  aria-label="Rapikan folder terpilih"
                 >
-                  Rapikan Folder Ini
+                  Rapikan “{names[selected] ?? selected}”
                 </button>
               )}
               <span className="meta" style={{ marginLeft: "auto" }}>
@@ -280,37 +383,13 @@ export function Explore() {
             </div>
             {error && <p className="banner banner--err" role="alert">{error}</p>}
             <div className="panel">
-              {folders.length === 0 && files.length === 0 && (
-                <p className="empty" style={{ padding: "var(--space-m) 0" }}>
-                  Tidak ada file untuk dirapikan.
-                </p>
-              )}
-              <ul className="file-list">
-                {folders.map((f) => (
-                  <li key={f.id} className="file-row">
-                    <button
-                      className="btn btn--2 btn--sm"
-                      style={{ flex: 1, justifyContent: "flex-start", textAlign: "left" }}
-                      onClick={() => enter(f)}
-                    >
-                      <span aria-hidden="true">▸</span> {f.name}
-                    </button>
-                  </li>
-                ))}
-                {files.map((f) => (
-                  <li key={f.id} className="file-row">
-                    <span aria-hidden="true">{f.mimeType === "application/pdf" ? "PDF" : "file"}</span>
-                    <span className="muted" style={{ flex: 1, minWidth: 0 }}>{f.name}</span>
-                  </li>
-                ))}
+              <ul className="tree" role="tree" aria-label="Struktur Google Drive">
+                {renderTree("root", 0)}
               </ul>
             </div>
           </section>
 
           <aside className="stack">
-            {phase === "planning" && (
-              <div className="panel progress-line">Menganalisa isi PDF…</div>
-            )}
             {phase === "preview" && plan && (
               <div className="panel">
                 <strong className="card__title">Preview rencana</strong>
@@ -339,18 +418,6 @@ export function Explore() {
                   </button>
                   <button className="btn btn--2" onClick={() => setPhase("idle")}>
                     Batal
-                  </button>
-                </div>
-              </div>
-            )}
-            {phase === "running" && (
-              <div className="panel">
-                <strong className="card__title" style={{ color: "var(--accent)" }}>
-                  {progress ? `${progress.done}/${progress.total} dianalisa` : "Berjalan…"}
-                </strong>
-                <div className="btn-row">
-                  <button className="btn btn--danger" onClick={() => void cancel()} disabled={cancelRef.current}>
-                    Batalkan
                   </button>
                 </div>
               </div>
@@ -418,6 +485,41 @@ export function Explore() {
           </aside>
         </div>
       </main>
+      {(phase === "planning" || phase === "running") && (
+        <div className="modal-overlay" role="dialog" aria-modal="true" aria-label={phase === "planning" ? "Menganalisa isi PDF" : "Menjalankan rapikan"}>
+          <div className="modal">
+            <div className="modal__head">
+              <span className="modal__spin" aria-hidden="true" />
+              <strong className="card__title" style={{ marginBottom: 0 }}>
+                {phase === "planning" ? "Menganalisa isi PDF…" : "Menjalankan rapikan…"}
+              </strong>
+            </div>
+            <p className="meta modal__counter" aria-live="polite">
+              {progress ? `${progress.done}/${progress.total} ${phase === "planning" ? "dianalisa" : "diproses"}` : "Menyiapkan…"}
+            </p>
+            <div className="modal__bar" aria-hidden="true">
+              <span
+                className={progress && progress.total > 0 ? undefined : "is-indeterminate"}
+                style={progress && progress.total > 0 ? { width: `${Math.min(100, Math.round((progress.done / progress.total) * 100))}%` } : undefined}
+              />
+            </div>
+            <ul className="modal__log" aria-live="polite">
+              {modalLog.length === 0 ? (
+                <li className="modal__log-empty">Menunggu berkas pertama…</li>
+              ) : (
+                modalLog.map((line, i) => <li key={i}>{line}</li>)
+              )}
+            </ul>
+            {phase === "running" && (
+              <div className="btn-row" style={{ marginTop: 0 }}>
+                <button className="btn btn--danger" onClick={() => void cancel()} disabled={cancelling}>
+                  Batalkan
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

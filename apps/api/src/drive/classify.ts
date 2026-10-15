@@ -26,6 +26,24 @@ export function classifyFileName(name: string): Category {
 
 const VISION_OK = /^(application\/pdf|image\/)/i;
 
+/** Batasi waktu tunggu AI — provider yang lambat/mati tidak boleh menggantung proses rapikan. */
+const AI_TIMEOUT_MS = 12_000;
+function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const t = setTimeout(() => reject(new LlmHttpError(504, "model AI timeout")), ms);
+    p.then(
+      (v) => {
+        clearTimeout(t);
+        resolve(v);
+      },
+      (e) => {
+        clearTimeout(t);
+        reject(e);
+      }
+    );
+  });
+}
+
 /** Klasifikasi dokumen via model AI (9Router/ocfree → NVIDIA); gagal → aturan lokal. */
 export async function classifyFile(
   text: string,
@@ -42,15 +60,18 @@ export async function classifyFile(
     const parts: Array<{ text?: string; inlineData?: { mimeType: string; data: string } }> = mediaBase64
       ? [{ inlineData: { mimeType, data: mediaBase64 } }, { text: prompt }]
       : [{ text: `${prompt}\n\n${text.slice(0, 1500)}` }];
-    const raw = await withModelFailover("generate", async (c) => {
-      const { parts: out } = await c.client.generate({
-        contents: [{ role: "user", parts }],
-        model: c.model,
-      });
-      const t = out.find((p) => p.text)?.text ?? "";
-      if (!t.trim()) throw new LlmHttpError(502, "model tidak mengembalikan teks");
-      return t.trim();
-    });
+    const raw = await withTimeout(
+      withModelFailover("generate", async (c) => {
+        const { parts: out } = await c.client.generate({
+          contents: [{ role: "user", parts }],
+          model: c.model,
+        });
+        const t = out.find((p) => p.text)?.text ?? "";
+        if (!t.trim()) throw new LlmHttpError(502, "model tidak mengembalikan teks");
+        return t.trim();
+      }),
+      AI_TIMEOUT_MS
+    );
     const hit = CATEGORIES.find((c) => c.toLowerCase() === raw.toLowerCase());
     return hit ?? fallback();
   } catch {

@@ -835,6 +835,246 @@ pre.block {
   }
 }
 
+/* ---------- pohon folder (Explore Manager) ---------- */
+
+.tree,
+.tree ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.tree__row-wrap {
+  display: flex;
+}
+
+.tree__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  flex: 1;
+  min-width: 0;
+  min-height: 36px;
+  padding: 2px var(--space-2xs);
+  border: none;
+  border-radius: var(--radius);
+  background: none;
+  font: inherit;
+  font-size: var(--step--1);
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+
+.tree__row:hover {
+  background: var(--surface-2);
+}
+
+.tree__row.is-selected {
+  background: var(--accent-tint);
+  color: var(--accent-strong);
+  font-weight: 600;
+}
+
+.tree__row--file {
+  cursor: default;
+}
+
+.tree__row--file:hover {
+  background: none;
+}
+
+.tree__chev {
+  display: inline-flex;
+  flex: none;
+  color: var(--ink-3);
+  transition: transform var(--dur-fast) var(--ease);
+}
+
+.tree__chev.is-open {
+  transform: rotate(90deg);
+}
+
+.tree__row--file .tree__chev {
+  visibility: hidden;
+}
+
+.tree__icon {
+  display: inline-flex;
+  flex: none;
+  color: var(--accent);
+}
+
+.tree__icon--file {
+  color: var(--ink-3);
+}
+
+.tree__name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tree__count {
+  flex: none;
+  font-size: var(--step--2);
+  font-weight: 400;
+  color: var(--ink-3);
+}
+
+.tree__badge {
+  flex: none;
+  font-size: var(--step--2);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--danger);
+}
+
+.tree__hint {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  padding: var(--space-3xs) var(--space-2xs);
+  font-size: var(--step--1);
+  color: var(--ink-3);
+}
+
+.tree__spin {
+  flex: none;
+  width: 11px;
+  height: 11px;
+  border: 2px solid var(--line);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tree__spin,
+  .modal__spin {
+    animation-duration: 2s;
+  }
+  .modal__bar span {
+    transition: none;
+  }
+}
+
+.tree ul {
+  margin-left: 10px;
+  border-left: 1px solid var(--line);
+}
+
+/* ---------- modal proses rapikan ---------- */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-s);
+  background: rgb(23 21 15 / 0.45);
+}
+
+.modal {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+  width: min(420px, 100%);
+  max-height: min(70vh, 520px);
+  padding: var(--space-m);
+  background: var(--surface);
+  border: var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-2);
+}
+
+.modal__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2xs);
+}
+
+.modal__spin {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--line);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+.modal__counter {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.modal__bar {
+  height: 6px;
+  overflow: hidden;
+  background: var(--surface-2);
+  border-radius: var(--radius);
+}
+
+.modal__bar span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  border-radius: var(--radius);
+  transition: width var(--dur) var(--ease);
+}
+
+.modal__bar span.is-indeterminate {
+  width: 40%;
+  animation: modal-slide 1.2s ease-in-out infinite;
+}
+
+@keyframes modal-slide {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(250%);
+  }
+}
+
+.modal__log {
+  flex: 1;
+  min-height: 72px;
+  max-height: 280px;
+  margin: 0;
+  padding: var(--space-2xs);
+  overflow-y: auto;
+  list-style: none;
+  font-size: var(--step--1);
+  line-height: 1.7;
+  color: var(--ink-2);
+  background: var(--base);
+  border: var(--border);
+  border-radius: var(--radius);
+  font-variant-numeric: tabular-nums;
+}
+
+.modal__log li {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.modal__log-empty {
+  color: var(--ink-3);
+}
+
 /* ---------- chat ---------- */
 
 .chat {

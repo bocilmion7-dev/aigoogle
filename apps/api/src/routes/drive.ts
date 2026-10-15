@@ -58,24 +58,39 @@ driveRouter.post(
       body.data.folderId === "root"
         ? "Drive"
         : listing.folders.find((f) => f.id === body.data.folderId)?.name ?? "";
+    const totalPdfs = listing.files.filter((f) => f.mimeType === "application/pdf").length;
+    const streaming = req.query.stream === "1";
+    let send: (e: Record<string, unknown>) => void = () => {};
+    if (streaming) {
+      res.setHeader("Content-Type", "application/x-ndjson; charset=utf-8");
+      send = (e) => res.write(JSON.stringify(e) + "\n");
+      send({ type: "start", total: totalPdfs, folderName });
+    }
     const visionOk = /^(application\/pdf|image\/)/i;
-    const items = await buildPlan(client, body.data.folderId, async (f) => {
-      if (visionOk.test(f.mimeType) && client.getBytes) {
-        try {
-          const bytes = await client.getBytes(f.id);
-          if (bytes.byteLength > 0 && bytes.byteLength <= 6_000_000) {
-            return classifyFile("", f.mimeType, f.name, Buffer.from(bytes).toString("base64"));
+    const items = await buildPlan(
+      client,
+      body.data.folderId,
+      async (f) => {
+        if (visionOk.test(f.mimeType) && client.getBytes) {
+          try {
+            const bytes = await client.getBytes(f.id);
+            if (bytes.byteLength > 0 && bytes.byteLength <= 6_000_000) {
+              return classifyFile("", f.mimeType, f.name, Buffer.from(bytes).toString("base64"));
+            }
+          } catch {
+            /* jatuh ke jalur teks */
           }
-        } catch {
-          /* jatuh ke jalur teks */
         }
+        return classifyFile(
+          await client.getText(f.id).catch(() => ""),
+          f.mimeType,
+          f.name
+        );
+      },
+      (done, total, fileName, category) => {
+        send({ type: "classify", done, total, fileName, category });
       }
-      return classifyFile(
-        await client.getText(f.id).catch(() => ""),
-        f.mimeType,
-        f.name
-      );
-    });
+    );
     const job = await prisma.driveJob.create({
       data: {
         tenantId: user.tenant.id,
@@ -91,6 +106,11 @@ driveRouter.post(
       folderId: body.data.folderId,
       count: items.length,
     });
+    if (streaming) {
+      send({ type: "done", jobId: job.id, items });
+      res.end();
+      return;
+    }
     res.json({ jobId: job.id, items });
   })
 );
