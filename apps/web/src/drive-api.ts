@@ -24,12 +24,18 @@ export interface DriveStatus {
 }
 
 export async function driveStatus(): Promise<DriveStatus> {
-  const r = await fetch("/api/drive/status");
-  return r.ok ? r.json() : { connected: false, engine: "google" };
+  try {
+    const r = await fetch("/api/drive/status", { signal: AbortSignal.timeout(15_000) });
+    return r.ok ? await r.json() : { connected: false, engine: "google" };
+  } catch {
+    return { connected: false, engine: "google" };
+  }
 }
 
 export async function driveList(folderId: string): Promise<{ folders: DriveFolder[]; files: DriveFile[] }> {
-  const r = await fetch(`/api/drive/list?folderId=${encodeURIComponent(folderId)}`);
+  const r = await fetch(`/api/drive/list?folderId=${encodeURIComponent(folderId)}`, {
+    signal: AbortSignal.timeout(30_000),
+  });
   if (!r.ok) throw new Error(((await r.json()) as { error?: string }).error ?? "gagal");
   return r.json();
 }

@@ -28,6 +28,9 @@ export function setMockDriveSeed(seed: MockSeed) {
 /** Access token Google hanya berlaku ~1 jam; tukar pakai refresh token bila hampir habis. */
 const EXPIRY_MARGIN_MS = 5 * 60 * 1000;
 
+/** Timeout tukar token — endpoint Google bisa menggantung; jangan blok request /drive. */
+const REFRESH_TIMEOUT_MS = 10_000;
+
 async function refreshGoogleAccessToken(
   tenantId: string,
   refreshTokenEnc: string
@@ -43,8 +46,9 @@ async function refreshGoogleAccessToken(
       refresh_token: refreshToken,
       grant_type: "refresh_token",
     }),
-  });
-  if (!res.ok) return null;
+    signal: AbortSignal.timeout(REFRESH_TIMEOUT_MS),
+  }).catch(() => null);
+  if (!res || !res.ok) return null;
   const tok = (await res.json()) as { access_token: string; expires_in?: number };
   if (!tok.access_token) return null;
   await prisma.connection.update({

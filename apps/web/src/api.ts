@@ -1,9 +1,18 @@
 import type { AiProviderRow, AppSettings, ConnectionInfo, Me } from "@aigoogle/shared";
 
+/**
+ * Muat identitas user. Timeout 15 dtk + selalu resolve (null bila gagal) —
+ * setelah idle panjang, koneksi half-open bisa menggantung; tanpa ini
+ * PageLoader muter selamanya.
+ */
 export async function getMe(): Promise<Me | null> {
-  const res = await fetch("/api/me");
-  if (!res.ok) return null;
-  return res.json();
+  try {
+    const res = await fetch("/api/me", { signal: AbortSignal.timeout(15_000) });
+    if (!res.ok) return null;
+    return (await res.json()) as Me;
+  } catch {
+    return null;
+  }
 }
 
 /** login khusus operator platform (tabel akun terpisah) */
