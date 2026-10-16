@@ -42,6 +42,12 @@ const Env = z.object({
   META_APP_SECRET: z.string().default(""),
   META_WABA_ID: z.string().default(""),
   META_EMBEDDED_CONFIG_ID: z.string().default(""),
+  /** Gateway WhatsApp multi-tenant (Baileys) — bila WASERVER_URL+API_KEY terisi,
+   *  provider "waserver" dapat dipilih di Pengaturan Platform. */
+  WASERVER_URL: z.string().default(""),
+  WASERVER_API_KEY: z.string().default(""),
+  /** Kunci bersama utk verifikasi event balikan dari waserver (header X-Events-Key) */
+  WASERVER_EVENTS_KEY: z.string().default(""),
 });
 function parseEnv() {
   const parsed = Env.safeParse(process.env);

@@ -16,8 +16,8 @@ const PutBody = z
     voiceEngine: z.enum(["web-speech", "edge"]).optional(),
     ocrMode: z.enum(["vision", "text"]).optional(),
     waPricePerCredit: z.number().int().min(1).max(1_000_000).optional(),
-    /** penyedia WhatsApp utk embedded signup: meta | d360 (default d360) */
-    waProvider: z.enum(["meta", "d360"]).optional(),
+    /** penyedia WhatsApp utk embedded signup: meta | d360 | waserver (default d360) */
+    waProvider: z.enum(["meta", "d360", "waserver"]).optional(),
     waD360ApiKey: z.string().max(200).optional(),
     waD360BaseUrl: z.string().url().max(200).optional(),
     /** kredensial PARTNER 360dialog — utk Connect Button + generate API key klien */
@@ -48,11 +48,14 @@ async function settingsSnapshot(includeSecrets: boolean) {
   });
   const get = (k: string) => rows.find((r) => r.key === k)?.value;
   const price = Number(get("waPricePerCredit"));
+  const rawProvider = get("waProvider");
   const base = {
     voiceEngine: get("voiceEngine") ?? "web-speech",
     ocrMode: get("ocrMode") === "text" ? "text" : "vision",
     waPricePerCredit: Number.isFinite(price) && price >= 1 ? price : WA_TOPUP_RUPIAH_PER_CREDIT,
-    waProvider: get("waProvider") === "meta" ? "meta" : "d360",
+    waProvider: rawProvider === "meta" || rawProvider === "waserver" ? rawProvider : "d360",
+    // gateway waserver dikonfigurasi lewat env (infra), bukan DB
+    waserverReady: env.WASERVER_URL !== "" && env.WASERVER_API_KEY !== "",
     paymentProvider: get("paymentProvider") === "midtrans" ? "midtrans" : "winpay",
     winpayEnv: get("winpayEnv") === "sandbox" ? "sandbox" : "production",
   };

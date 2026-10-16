@@ -25,6 +25,13 @@ import {
   setWaSettings,
   waPricePerCredit,
   finalizeWaTopup,
+  ensureWaserverSession,
+  getWaserverSession,
+  handleWaserverEvent,
+  reconnectWaserverSession,
+  removeWaserverSession,
+  syncWaserverAccount,
+  waserverReady,
 } from "../wa/service.js";
 
 export const waRouter = Router();
@@ -50,13 +57,14 @@ waRouter.get(
       connected:
         !!acct &&
         acct.status === "connected" &&
-        !!acct.tokenEnc &&
-        !!acct.phoneNumberId,
+        // waserver: koneksi dipegang gateway Baileys — tak butuh tokenEnc/phoneNumberId Meta
+        (acct.provider === "waserver" || (!!acct.tokenEnc && !!acct.phoneNumberId)),
       // jalur global platform (sandbox) siap — kirim terbatas ke nomor verified platform
       platformReady:
         (await getWaProviderGlobal()).provider === "d360" &&
         !!(await prisma.appSetting.findUnique({ where: { key: "waD360ApiKey" } }))?.value,
       waProvider: (await getWaProviderGlobal()).provider,
+      waserverReady: waserverReady(),
       accountProvider: acct?.provider ?? null,
       waD360PartnerId:
         (await prisma.appSetting.findUnique({ where: { key: "waD360PartnerId" } }))?.value ?? "",
@@ -390,6 +398,75 @@ waRouter.post(
       wabaId: body.data.wabaId,
       phoneNumberId: body.data.phoneNumberId,
     });
+    res.json({ ok: true });
+  })
+);
+
+// ── Aktivasi Waserver (gateway WhatsApp multi-tenant berbasis Baileys) ──
+// Dipakai perusahaan utk men-scan QR dari HP, tanpa perlu akses ke panel gateway.
+
+waRouter.get(
+  "/wa/waserver/session",
+  requireUser,
+  asyncHandler(async (req, res) => {
+    if (!waserverReady()) return res.status(503).json({ error: "waserver_belum_dikonfigurasi" });
+    const tenantId = req.user!.tenant.id;
+    const session = await ensureWaserverSession(tenantId, req.user!.tenant.alias ?? "");
+    if (!session) return res.status(502).json({ error: "waserver_tidak_terjangkau" });
+    await syncWaserverAccount(tenantId, session);
+    res.json({
+      ready: true,
+      state: session.state,
+      phone: session.phone,
+      qr: session.qr,
+      connected: session.state === "connected",
+    });
+  })
+);
+
+waRouter.post(
+  "/wa/waserver/reconnect",
+  requireUser,
+  asyncHandler(async (req, res) => {
+    if (!waserverReady()) return res.status(503).json({ error: "waserver_belum_dikonfigurasi" });
+    const tenantId = req.user!.tenant.id;
+    const ok = await reconnectWaserverSession(tenantId);
+    if (!ok) return res.status(502).json({ error: "waserver_tidak_terjangkau" });
+    await writeAudit(tenantId, req.user!.id, "wa.waserver_reconnect", {});
+    res.json({ ok: true });
+  })
+);
+
+waRouter.delete(
+  "/wa/waserver/session",
+  requireUser,
+  asyncHandler(async (req, res) => {
+    if (!waserverReady()) return res.status(503).json({ error: "waserver_belum_dikonfigurasi" });
+    const tenantId = req.user!.tenant.id;
+    const ok = await removeWaserverSession(tenantId);
+    if (ok) {
+      await prisma.waAccount.updateMany({
+        where: { tenantId, provider: "waserver" },
+        data: { status: "pending" },
+      });
+      await writeAudit(tenantId, req.user!.id, "wa.waserver_disconnected", {});
+    }
+    res.json({ ok });
+  })
+);
+
+// Event balikan dari gateway (pesan masuk, status kirim, status sesi).
+// Tanpa sesi login — diverifikasi lewat kunci bersama X-Events-Key; fail-closed
+// bila WASERVER_EVENTS_KEY belum diisi agar endpoint tak jadi terbuka.
+waRouter.post(
+  "/wa/waserver/events",
+  asyncHandler(async (req, res) => {
+    const key = req.header("x-events-key") ?? "";
+    if (!env.WASERVER_EVENTS_KEY || key !== env.WASERVER_EVENTS_KEY) {
+      return res.status(401).json({ error: "unauthorized" });
+    }
+    const r = await handleWaserverEvent(req.body);
+    if (!r.ok) return res.status(400).json({ error: r.error });
     res.json({ ok: true });
   })
 );

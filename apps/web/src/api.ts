@@ -175,7 +175,8 @@ export function friendlyWarning(code?: string): string | null {
 export interface WaStatusLite {
   balance: number;
   rupiahPerCredit: number;
-  waProvider: "meta" | "d360";
+  waProvider: "meta" | "d360" | "waserver";
+  waserverReady?: boolean;
   accountProvider: string | null;
   waD360PartnerId: string;
   settings: { autoDueDate: boolean; dailyReport: boolean; ownerPhone: string };
@@ -198,6 +199,24 @@ export const putWaSettings = (body: { autoDueDate?: boolean; dailyReport?: boole
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
+
+// ── Waserver: aktivasi sesi WhatsApp (gateway Baileys) ──────────────────────
+export interface WaWaserverSession {
+  ready: boolean;
+  state: "pending" | "connecting" | "connected" | "logged_out" | "banned";
+  phone: string | null;
+  /** data URL PNG QR — null bila sudah terhubung atau QR belum siap */
+  qr: string | null;
+  connected: boolean;
+}
+/** Ambil/buat sesi waserver utk perusahaan ini + QR untuk di-scan */
+export const getWaWaserverSession = () => adminFetch<WaWaserverSession>("/api/wa/waserver/session");
+/** Putuskan lalu sambungkan ulang sesi (memunculkan QR baru) */
+export const reconnectWaWaserver = () =>
+  adminFetch<{ ok: boolean }>("/api/wa/waserver/reconnect", { method: "POST" });
+/** Hapus sesi — credential WhatsApp di gateway ikut terbuang, perlu scan ulang */
+export const disconnectWaWaserver = () =>
+  adminFetch<{ ok: boolean }>("/api/wa/waserver/session", { method: "DELETE" });
 
 // ── Webhook Accurate: activity feed + config notifikasi WhatsApp ─────────────
 export interface AccurateEventRow {

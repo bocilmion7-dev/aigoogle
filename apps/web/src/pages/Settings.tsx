@@ -239,7 +239,21 @@ export function Settings() {
               />
               <span>Meta Cloud API — Embedded Signup iframe (wajib verifikasi bisnis Meta)</span>
             </label>
+            <label className="check">
+              <input
+                type="radio" name="waprov" checked={aset?.waProvider === "waserver"}
+                onChange={() => aset && setAset({ ...aset, waProvider: "waserver" })}
+              />
+              <span>Waserver — gateway WhatsApp milik platform (scan QR dari halaman WhatsApp)</span>
+            </label>
           </div>
+          {(aset?.waProvider ?? "d360") === "waserver" && (
+            <p className="meta" style={{ margin: "var(--space-xs) 0 0" }}>
+              {aset?.waserverReady
+                ? "Gateway aktif. Setiap perusahaan menghubungkan nomornya sendiri lewat halaman WhatsApp (scan QR)."
+                : "Gateway belum dikonfigurasi di server — isi WASERVER_URL dan WASERVER_API_KEY pada environment API lalu muat ulang."}
+            </p>
+          )}
           {(aset?.waProvider ?? "d360") === "d360" && (
             <>
               <label className="field" style={{ maxWidth: 420, marginTop: "var(--space-xs)" }}>

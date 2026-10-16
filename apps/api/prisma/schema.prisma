@@ -249,13 +249,18 @@ model WaMessageLog {
   id          String   @id @default(cuid())
   tenant      Tenant   @relation(fields: [tenantId], references: [id])
   tenantId    String
+  /// lawan bicara: nomor tujuan bila keluar, nomor pengirim bila masuk
   to          String
   body        String
-  status      String   // sent|failed
+  status      String   // sent|failed|received|queued
+  direction   String   @default("out") // out|in
   error       String   @default("")
   costCredits Int      @default(1)
+  /// tautan ke outbox waserver — dipakai utk menyinkronkan status kirim
+  waserverOutboxId Int?
   createdAt   DateTime @default(now())
   @@index([tenantId])
+  @@index([waserverOutboxId])
 }
 
 // Provider AI (OpenAI-compatible) — dikelola admin platform via halaman /ai

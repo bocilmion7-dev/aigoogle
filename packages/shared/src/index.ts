@@ -18,8 +18,10 @@ export interface AppSettings {
   voiceEngine: "web-speech" | "edge";
   ocrMode?: "vision" | "text";
   waPricePerCredit?: number;
-  /** penyedia WhatsApp untuk embedded signup perusahaan: d360 (default) | meta */
-  waProvider?: "meta" | "d360";
+  /** penyedia WhatsApp perusahaan: d360 (default) | meta | waserver */
+  waProvider?: "meta" | "d360" | "waserver";
+  /** gateway waserver siap dipakai (diisi lewat env WASERVER_URL + WASERVER_API_KEY) */
+  waserverReady?: boolean;
   waD360ApiKey?: string;
   waD360BaseUrl?: string;
   waD360PartnerId?: string;

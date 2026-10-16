@@ -1,14 +1,15 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { AppHeader, PageLoader } from "../ui";
 import { IconCheck } from "../icons";
 // package.json paket menunjuk file yang tak ada — impor langsung bundel ESM aslinya
 import { ConnectButton } from "360dialog-connect-button/dist/dialog-connect-button.esm.js";
-import { getMe, getWaWebhookEvents, waD360Onboard, putWaSettings, putWaWebhookEvents } from "../api";
+import { getMe, getWaWebhookEvents, waD360Onboard, putWaSettings, putWaWebhookEvents, getWaWaserverSession, reconnectWaWaserver, disconnectWaWaserver, type WaWaserverSession } from "../api";
 
 interface WaStatus {
   connected: boolean;
   platformReady: boolean;
-  waProvider: "meta" | "d360";
+  waProvider: "meta" | "d360" | "waserver";
+  waserverReady?: boolean;
   accountProvider: string | null;
   waD360PartnerId: string;
   account: { wabaId: string; phoneNumberId: string; displayName: string; status: string } | null;
@@ -19,7 +20,7 @@ interface WaStatus {
   metaConfigured: boolean;
   embedUrl: string | null;
   billingEnabled: boolean;
-  recent: Array<{ id: string; to: string; body: string; status: string; error: string; createdAt: string }>;
+  recent: Array<{ id: string; to: string; body: string; status: string; error: string; createdAt: string; direction?: string }>;
 
 }
 
@@ -51,6 +52,11 @@ export function WhatsApp() {
   >(null);
   const [topupMsg, setTopupMsg] = useState<string | null>(null);
   const [openMsg, setOpenMsg] = useState<string | null>(null);
+  const [was, setWas] = useState<WaWaserverSession | null>(null);
+  const [wasOpen, setWasOpen] = useState(false);
+  const [wasBusy, setWasBusy] = useState<"load" | "reconnect" | "disconnect" | null>(null);
+  const [wasMsg, setWasMsg] = useState<string | null>(null);
+  const wasDialogRef = useRef<HTMLDivElement | null>(null);
 
   const load = useCallback(() => {
     void fetch("/api/wa/status")
@@ -71,6 +77,93 @@ export function WhatsApp() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // ── Waserver ───────────────────────────────────────────────────────────
+  // Sesi + QR HANYA diminta saat tombol "Hubungkan" ditekan. Membuka halaman
+  // tidak menyentuh gateway Baileys sama sekali — QR jadi tidak dipanggil
+  // berulang-ulang dari server WhatsApp tiap kali halaman dimuat.
+  const loadWas = useCallback(() => {
+    setWasBusy("load");
+    getWaWaserverSession()
+      .then((j) => {
+        setWas(j);
+        setWasMsg(null);
+        if (j.connected) {
+          setWasOpen(false);
+          load(); // begitu terhubung, muat ulang status agar saldo & riwayat ikut segar
+        }
+      })
+      .catch((e: unknown) => {
+        const msg = e instanceof Error ? e.message : "";
+        setWasMsg(
+          msg === "waserver_tidak_terjangkau"
+            ? "Gateway waserver tidak terjangkau — hubungi pengurus sistem."
+            : msg === "waserver_belum_dikonfigurasi"
+              ? "Gateway waserver belum dikonfigurasi di server."
+              : "Gagal menghubungi gateway waserver."
+        );
+        setWasOpen(false);
+      })
+      .finally(() => setWasBusy(null));
+  }, [load]);
+
+  function wasOpenModal() {
+    setWasMsg(null);
+    setWas(null);
+    setWasOpen(true);
+    loadWas();
+  }
+
+  function wasCloseModal() {
+    setWasOpen(false);
+  }
+
+  // QR baru terbentuk beberapa saat setelah sesi dibuat — poll HANYA selama popup terbuka
+  const wasPending = wasOpen && !!was && !was.connected;
+  useEffect(() => {
+    if (!wasPending) return;
+    const t = window.setInterval(() => loadWas(), 4000);
+    return () => window.clearInterval(t);
+  }, [wasPending, loadWas]);
+
+  // Esc menutup popup; fokus dikembalikan ke tombol pemicu
+  useEffect(() => {
+    if (!wasOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setWasOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    wasDialogRef.current?.querySelector<HTMLElement>("button")?.focus();
+    return () => window.removeEventListener("keydown", onKey);
+  }, [wasOpen]);
+
+  async function wasReconnect() {
+    setWasBusy("reconnect");
+    setWasMsg(null);
+    setWas(null);
+    try {
+      await reconnectWaWaserver();
+      wasOpenModal();
+    } catch {
+      setWasMsg("Gagal menyambungkan ulang sesi.");
+      setWasBusy(null);
+    }
+  }
+
+  async function wasDisconnect() {
+    if (!window.confirm("Putuskan WhatsApp? Nomor harus di-scan QR ulang untuk terhubung kembali.")) return;
+    setWasBusy("disconnect");
+    setWasMsg(null);
+    try {
+      await disconnectWaWaserver();
+      setWas(null);
+      load();
+    } catch {
+      setWasMsg("Gagal memutus sesi.");
+    } finally {
+      setWasBusy(null);
+    }
+  }
 
   useEffect(() => {
     void getMe().then(setMe);
@@ -252,7 +345,69 @@ export function WhatsApp() {
           </p>
         </section>
 
-        {st.waProvider === "d360" ? (
+        {st.waProvider === "waserver" ? (
+          <section className="card">
+            <strong className="card__title">WhatsApp (gateway waserver)</strong>
+            <p className="meta">
+              Sesi WhatsApp dijalankan oleh <strong>gateway waserver</strong> milik platform.
+              QR hanya diminta saat Anda menekan tombol — bukan otomatis saat halaman dibuka.
+            </p>
+            <div style={{ marginTop: "var(--space-s)" }}>
+              {st.connected ? (
+                <p className="banner banner--ok" role="status" style={{ margin: 0 }}>
+                  Terhubung{st.account?.displayName ? ` — nomor ${st.account.displayName}` : ""}. Notifikasi & otomasi siap dikirim.
+                </p>
+              ) : (
+                <p className="meta" style={{ margin: 0 }}>
+                  Belum terhubung. Tekan tombol di bawah untuk memunculkan QR.
+                </p>
+              )}
+            </div>
+            {wasMsg && (
+              <p className="banner banner--err" role="alert" style={{ marginTop: "var(--space-xs)", marginBottom: 0 }}>
+                {wasMsg}
+              </p>
+            )}
+            <div style={{ display: "flex", gap: "var(--space-xs)", marginTop: "var(--space-m)", flexWrap: "wrap" }}>
+              {!st.connected && (
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={wasOpenModal}
+                  disabled={!!wasBusy}
+                  aria-busy={!!wasBusy}
+                >
+                  {wasBusy === "load" && <span className="spinner" aria-hidden="true" />}
+                  Hubungkan WhatsApp
+                </button>
+              )}
+              {/* hanya relevan bila sesi sudah pernah terhubung — berguna memperbaiki
+                  sesi yang nyangkut. Sebelum terhubung cukup satu tombol Hubungkan. */}
+              {st.connected && (
+                <button
+                  type="button"
+                  className="btn btn--2"
+                  onClick={() => void wasReconnect()}
+                  disabled={!!wasBusy}
+                  aria-busy={!!wasBusy}
+                >
+                  {wasBusy === "reconnect" && <span className="spinner" aria-hidden="true" />}
+                  Sambungkan ulang
+                </button>
+              )}
+              {st.connected && (
+                <button
+                  type="button"
+                  className="btn btn--2"
+                  onClick={() => void wasDisconnect()}
+                  disabled={!!wasBusy}
+                >
+                  Putuskan
+                </button>
+              )}
+            </div>
+          </section>
+        ) : st.waProvider === "d360" ? (
           <section className="card">
             <strong className="card__title">Hubungkan WhatsApp Business (resmi Meta)</strong>
             <p className="meta">
@@ -487,15 +642,27 @@ export function WhatsApp() {
             <ul className="file-list msg-list">
               {st.recent.map((m, i) => {
                 const open = openMsg === m.id;
-                const label = m.status === "sent" ? "Terkirim" : m.status === "pending" ? "Tertunda" : "Gagal";
+                const isIn = m.direction === "in";
+                const label = isIn
+                  ? "Masuk"
+                  : m.status === "sent"
+                    ? "Terkirim"
+                    : m.status === "queued"
+                      ? "Antre"
+                      : m.status === "pending"
+                        ? "Tertunda"
+                        : "Gagal";
+                const tone = isIn || m.status === "sent" ? "sent" : m.status === "queued" || m.status === "pending" ? "pending" : "failed";
                 const errText =
                   m.error === "belum_connect"
                     ? "Nomor belum terhubung"
-                    : m.error.includes("rate")
-                      ? "Batas kirim tercapai"
-                      : m.error
-                        ? "Gagal dikirim"
-                        : "";
+                    : m.error.startsWith("waserver_")
+                      ? "Gateway waserver menolak"
+                      : m.error.includes("rate")
+                        ? "Batas kirim tercapai"
+                        : m.error
+                          ? "Gagal dikirim"
+                          : "";
                 return (
                   <li key={m.id} className="file-row msg-row">
                     <button
@@ -507,7 +674,7 @@ export function WhatsApp() {
                       <span className="msg-row__no num">{i + 1}</span>
                       <span className="msg-row__time num">{fmtStamp(m.createdAt)}</span>
                       <span className="msg-row__to num">{m.to}</span>
-                      <span className={`msg-row__status is-${m.status === "sent" ? "sent" : m.status === "pending" ? "pending" : "failed"}`}>
+                      <span className={`msg-row__status is-${tone}`}>
                         {label}
                       </span>
                       <span className="msg-row__snippet muted">{m.body.slice(0, 60)}</span>
@@ -523,6 +690,80 @@ export function WhatsApp() {
           )}
         </section>
       </main>
+
+      {wasOpen && (
+        <div className="modal-overlay" onClick={wasCloseModal}>
+          <div
+            className="modal modal--qr"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="was-qr-title"
+            ref={wasDialogRef}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal__head">
+              {wasBusy === "load" && <span className="modal__spin" aria-hidden="true" />}
+              <strong className="card__title" id="was-qr-title">
+                Hubungkan WhatsApp
+              </strong>
+              <button
+                type="button"
+                className="btn btn--2 btn--sm"
+                onClick={wasCloseModal}
+                aria-label="Tutup"
+              >
+                Tutup
+              </button>
+            </div>
+
+            {was?.qr ? (
+              <>
+                <div className="qr-card">
+                  <img src={was.qr} alt="QR login WhatsApp" width={220} height={220} />
+                  <p className="qr-card__status" role="status" aria-live="polite">
+                    {was.connected ? "Terhubung." : "Menunggu pemindaian…"}
+                  </p>
+                </div>
+                <p className="qr-card__hint">
+                  Buka HP tuan rumah: WhatsApp → <kbd>Perangkat tertaut</kbd> → <kbd>Tautkan perangkat</kbd>,
+                  lalu arahkan kamera ke QR. QR kedaluwarsa otomatis dan diganti —
+                  tekan <strong>Muat ulang QR</strong> bila perlu.
+                </p>
+                <div className="modal__foot">
+                  <button
+                    type="button"
+                    className="btn btn--2"
+                    onClick={() => loadWas()}
+                    disabled={!!wasBusy}
+                    aria-busy={!!wasBusy}
+                  >
+                    {wasBusy === "load" && <span className="spinner" aria-hidden="true" />}
+                    Muat ulang QR
+                  </button>
+                  <button type="button" className="btn" onClick={wasCloseModal}>
+                    Selesai
+                  </button>
+                </div>
+              </>
+            ) : wasMsg ? (
+              <>
+                <p className="banner banner--err" role="alert" style={{ margin: 0 }}>
+                  {wasMsg}
+                </p>
+                <div className="modal__foot">
+                  <button type="button" className="btn" onClick={wasCloseModal}>
+                    Tutup
+                  </button>
+                </div>
+              </>
+            ) : (
+              <p className="modal__empty" role="status">
+                <span className="spinner" aria-hidden="true" /> Menyiapkan sesi WhatsApp…
+              </p>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

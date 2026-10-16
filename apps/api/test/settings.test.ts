@@ -3,6 +3,7 @@ import request from "supertest";
 import { randomBytes } from "node:crypto";
 import { createApp } from "../src/app.js";
 import { prisma } from "../src/db.js";
+import { env } from "../src/env.js";
 
 let api: ReturnType<typeof createApp>;
 let cookie = "";
@@ -16,7 +17,14 @@ const SETTING_KEYS = [
 ] as const;
 let settingBackup: { key: string; value: string }[] = [];
 
+// `env` di-snapshot saat import. Bila mesin developer mengisi WASERVER_* di .env,
+// hasil GET ikut berubah dan assertion hardcode "false" jadi gagal. Pin dulu ke
+// "belum dikonfigurasi" supaya suite deterministik di mesin mana pun.
+const waserverBackup = { url: env.WASERVER_URL, key: env.WASERVER_API_KEY };
+
 beforeAll(async () => {
+  env.WASERVER_URL = "";
+  env.WASERVER_API_KEY = "";
   api = createApp();
   // sesi platform (PUT /settings khusus platform — tabel PlatformUser terpisah)
   const pu = await prisma.platformUser.upsert({
@@ -60,6 +68,8 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  env.WASERVER_URL = waserverBackup.url;
+  env.WASERVER_API_KEY = waserverBackup.key;
   await prisma.appSetting.deleteMany({ where: { key: { in: [...SETTING_KEYS] } } });
   if (settingBackup.length) await prisma.appSetting.createMany({ data: settingBackup });
   await prisma.$disconnect();
@@ -77,6 +87,7 @@ describe("settings & connections", () => {
       ocrMode: "vision",
       waPricePerCredit: 200,
       waProvider: "d360",
+      waserverReady: false,
       waD360ApiKey: "",
       waD360BaseUrl: "https://waba-v2.360dialog.io",
       waD360PartnerId: "",
@@ -102,6 +113,7 @@ describe("settings & connections", () => {
       ocrMode: "text",
       waPricePerCredit: 350,
       waProvider: "d360",
+      waserverReady: false,
       waD360ApiKey: "",
       waD360BaseUrl: "https://waba-v2.360dialog.io",
       waD360PartnerId: "",

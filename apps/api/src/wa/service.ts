@@ -30,6 +30,109 @@ export function embeddedSignupUrl(redirectUri: string): string | null {
 /** base URL 360dialog (produksi; sandbox dapat dioverride via appSetting) */
 export const D360_DEFAULT_BASE = "https://waba-v2.360dialog.io";
 
+export type WaProvider = "meta" | "d360" | "waserver";
+
+/** nilai provider dari AppSetting — nilai tak dikenal jatuh ke d360 (perilaku lama) */
+function parseWaProvider(v: string | undefined): WaProvider {
+  return v === "meta" || v === "waserver" ? v : "d360";
+}
+
+export function waserverReady(): boolean {
+  return env.WASERVER_URL !== "" && env.WASERVER_API_KEY !== "";
+}
+
+/** HTTP ke gateway waserver — semua request memakai X-API-Key */
+async function waserverFetch(path: string, init: RequestInit = {}): Promise<Response> {
+  return fetch(`${env.WASERVER_URL.replace(/\/$/, "")}${path}`, {
+    ...init,
+    headers: {
+      "X-API-Key": env.WASERVER_API_KEY,
+      ...(init.body ? { "Content-Type": "application/json" } : {}),
+      ...(init.headers ?? {}),
+    },
+  });
+}
+
+export interface WaserverSession {
+  sessionId: string;
+  tenantId: string;
+  state: "pending" | "connecting" | "connected" | "logged_out" | "banned";
+  phone: string | null;
+  label: string;
+  /** data URL PNG — hanya ada bila state pending/connecting dan QR sudah dihasilkan */
+  qr: string | null;
+}
+
+/** Ambil sesi waserver milik tenant; bila belum ada, dibuat lalu socket-nya dinyalakan.
+ *  Idempoten — memanggil berulang aman. QR muncul beberapa saat setelah pemanggilan pertama. */
+export async function ensureWaserverSession(tenantId: string, label: string): Promise<WaserverSession | null> {
+  if (!waserverReady()) return null;
+  const r = await waserverFetch("/v1/sessions", {
+    method: "POST",
+    body: JSON.stringify({ tenantId, label }),
+  });
+  if (!r.ok) return null;
+  return (await r.json()) as WaserverSession;
+}
+
+/** Ambil sesi tanpa memastikan socket aktif — dipakai utk cek status berkala. */
+export async function getWaserverSession(tenantId: string): Promise<WaserverSession | null> {
+  if (!waserverReady()) return null;
+  const r = await waserverFetch("/v1/sessions");
+  if (!r.ok) return null;
+  const all = (await r.json()) as WaserverSession[];
+  return all.find((s) => s.tenantId === tenantId) ?? null;
+}
+
+export async function reconnectWaserverSession(tenantId: string): Promise<boolean> {
+  const s = await ensureWaserverSession(tenantId, "");
+  if (!s) return false;
+  const r = await waserverFetch(`/v1/sessions/${s.sessionId}/reconnect`, { method: "POST" });
+  return r.ok;
+}
+
+/** Putus & hapus sesi — credential WhatsApp di gateway ikut terbuang. */
+export async function removeWaserverSession(tenantId: string): Promise<boolean> {
+  const s = await getWaserverSession(tenantId);
+  if (!s) return false;
+  const r = await waserverFetch(`/v1/sessions/${s.sessionId}`, { method: "DELETE" });
+  return r.ok;
+}
+
+/** Sinkronkan baris WaAccount agar sendWaText memilih jalur waserver. */
+export async function syncWaserverAccount(tenantId: string, session: WaserverSession | null): Promise<void> {
+  const connected = session?.state === "connected";
+  const data = {
+    provider: "waserver",
+    status: connected ? "connected" : "pending",
+    displayName: session?.phone ?? "",
+    phoneNumberId: session?.phone ?? "",
+  };
+  await prisma.waAccount.upsert({
+    where: { tenantId },
+    create: { tenantId, ...data },
+    update: data,
+  });
+}
+
+/** kirim text via gateway waserver — antrean durable di sisi waserver */
+async function sendViaWaserver(
+  tenantId: string,
+  to: string,
+  body: string
+): Promise<{ ok: boolean; error?: string; outboxId?: number }> {
+  const r = await waserverFetch("/v1/send", {
+    method: "POST",
+    body: JSON.stringify({ tenantId, to, text: body }),
+  });
+  if (!r.ok) {
+    const t = await r.text().catch(() => "");
+    return { ok: false, error: `waserver_${r.status}:${t.slice(0, 200)}` };
+  }
+  const j = (await r.json()) as { outboxId?: number; status?: string };
+  return { ok: true, outboxId: j.outboxId };
+}
+
 /** kirim text via 360dialog — body kompatibel Meta Cloud API, auth header D360-API-KEY */
 async function sendD360Text(
   apiKey: string,
@@ -56,31 +159,81 @@ async function sendD360Text(
 }
 
 /** appSetting global utk provider WA */
-async function waProviderSettings(): Promise<{ provider: "meta" | "d360"; d360ApiKey: string; d360BaseUrl: string }> {
+async function waProviderSettings(): Promise<{
+  provider: WaProvider;
+  d360ApiKey: string;
+  d360BaseUrl: string;
+}> {
   const rows = await prisma.appSetting.findMany({
     where: { key: { in: ["waProvider", "waD360ApiKey", "waD360BaseUrl"] } },
   });
   const get = (k: string) => rows.find((r) => r.key === k)?.value;
   return {
-    provider: get("waProvider") === "meta" ? "meta" : "d360",
+    provider: parseWaProvider(get("waProvider")),
     d360ApiKey: get("waD360ApiKey") ?? "",
     d360BaseUrl: get("waD360BaseUrl") ?? D360_DEFAULT_BASE,
   };
 }
 
-/** provider global utk halaman status (meta | d360) */
-export async function getWaProviderGlobal(): Promise<{ provider: "meta" | "d360" }> {
+/** provider global utk halaman status (meta | d360 | waserver) */
+export async function getWaProviderGlobal(): Promise<{ provider: WaProvider }> {
   const row = await prisma.appSetting.findUnique({ where: { key: "waProvider" } });
-  return { provider: row?.value === "meta" ? "meta" : "d360" };
+  return { provider: parseWaProvider(row?.value) };
 }
 
 export async function sendWaText(
   tenantId: string,
   to: string,
   body: string
-): Promise<{ ok: boolean; error?: string }> {
+): Promise<{ ok: boolean; error?: string; outboxId?: number }> {
   const acct = await prisma.waAccount.findUnique({ where: { tenantId } });
   const prov = await waProviderSettings();
+
+  // ── CABANG WASERVER (gateway Baileys multi-tenant) ──
+  // Harus berada SEBELUM cabang d360: tanpa ini, akun ber-provider "waserver"
+  // lolos ke jalur kunci-global d360 (pakaiKunciGlobal = true) dan bocor gratis.
+  // Dipilih bila perusahaan mengaktifkan waserver sendiri, ATAU provider global
+  // waserver dan perusahaan belum punya akun lain.
+  const pakaiWaserver =
+    waserverReady() &&
+    (acct?.provider === "waserver" || (prov.provider === "waserver" && !acct));
+  if (pakaiWaserver) {
+    const bal = await prisma.waBalance.upsert({
+      where: { tenantId },
+      create: { tenantId, amount: 0 },
+      update: {},
+    });
+    if (bal.amount < WA_COST_CREDITS_PER_MESSAGE) {
+      await prisma.waMessageLog.create({
+        data: { tenantId, to, body, status: "failed", error: "saldo_kurang", costCredits: 0 },
+      });
+      return { ok: false, error: "saldo_kurang" };
+    }
+    const r = await sendViaWaserver(tenantId, to, body);
+    if (!r.ok) {
+      await prisma.waMessageLog.create({
+        data: { tenantId, to, body, status: "failed", error: r.error ?? "waserver_error", costCredits: 0 },
+      });
+      return r;
+    }
+    await prisma.$transaction([
+      prisma.waBalance.update({
+        where: { tenantId },
+        data: { amount: { decrement: WA_COST_CREDITS_PER_MESSAGE } },
+      }),
+      prisma.waMessageLog.create({
+        data: {
+          tenantId,
+          to,
+          body,
+          status: "queued",
+          costCredits: WA_COST_CREDITS_PER_MESSAGE,
+          waserverOutboxId: r.outboxId ?? null,
+        },
+      }),
+    ]);
+    return { ok: true, outboxId: r.outboxId };
+  }
 
   // jalur 360dialog: akun perusahaan (API key sendiri) ATAU fallback kunci global (sandbox platform)
   const pakaiKunciGlobal = !acct || acct.provider !== "d360";
@@ -178,6 +331,66 @@ export async function sendWaText(
       },
     }),
   ]);
+  return { ok: true };
+}
+
+/** Terima event balikan dari gateway waserver (pesan masuk + status kirim).
+ *  Dipanggil route POST /api/wa/waserver/events; idempoten untuk message.status. */
+export async function handleWaserverEvent(
+  ev: unknown
+): Promise<{ ok: boolean; error?: string }> {
+  const e = ev as {
+    type?: string;
+    tenantId?: string;
+    from?: string;
+    text?: string;
+    outboxId?: number;
+    status?: string;
+    error?: string;
+    state?: string;
+  };
+  if (!e || typeof e.tenantId !== "string" || e.tenantId === "") {
+    return { ok: false, error: "bad_event" };
+  }
+
+  if (e.type === "message.inbound") {
+    // waserver mengirim JID (628xxxx@s.whatsapp.net) — simpan sebagai nomor saja
+    const peer = String(e.from ?? "").split("@")[0] ?? "";
+    await prisma.waMessageLog.create({
+      data: {
+        tenantId: e.tenantId,
+        to: peer,
+        body: String(e.text ?? ""),
+        status: "received",
+        direction: "in",
+        costCredits: 0,
+      },
+    });
+    return { ok: true };
+  }
+
+  if (e.type === "message.status") {
+    const outboxId = Number(e.outboxId);
+    if (!Number.isFinite(outboxId)) return { ok: true };
+    // pesan kirim-manual dari panel waserver tak punya baris di aigoogle — update no-op
+    await prisma.waMessageLog.updateMany({
+      where: { tenantId: e.tenantId, waserverOutboxId: outboxId },
+      data: { status: e.status === "sent" ? "sent" : "failed", error: String(e.error ?? "") },
+    });
+    return { ok: true };
+  }
+
+  if (e.type === "session.state") {
+    const acct = await prisma.waAccount.findUnique({ where: { tenantId: e.tenantId } });
+    if (acct?.provider === "waserver") {
+      await prisma.waAccount.update({
+        where: { tenantId: e.tenantId },
+        data: { status: e.state === "connected" ? "connected" : "pending" },
+      });
+    }
+    return { ok: true };
+  }
+
   return { ok: true };
 }
 

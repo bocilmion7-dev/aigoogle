@@ -1075,6 +1075,97 @@ pre.block {
   color: var(--ink-3);
 }
 
+/* ── Popup QR waserver ──────────────────────────────────────────────────
+   Beda dari .modal biasa: isi kartu QR memenuhi lebar popup, teks petunjuk
+   di tengah, dan baris aksi ("Muat ulang QR") dipisah garis di dasar popup
+   supaya tidak terlihat terlepas dari latar. */
+.modal--qr {
+  gap: var(--space-s);
+  width: min(400px, 100%);
+  max-height: min(88vh, 620px);
+  overflow-y: auto;
+}
+
+.modal--qr .modal__head {
+  gap: var(--space-xs);
+  padding-bottom: var(--space-s);
+  border-bottom: var(--border);
+}
+
+.modal--qr .modal__head .card__title {
+  flex: 1;
+  min-width: 0;
+}
+
+/* kartu putih penuh — QR tidak "melayang" di atas area kosong */
+.qr-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-s);
+  width: 100%;
+  padding: var(--space-m) var(--space-s);
+  background: #fff;
+  border: var(--border);
+  border-radius: var(--radius);
+}
+
+.qr-card img {
+  display: block;
+  width: 220px;
+  height: 220px;
+  object-fit: contain;
+  background: #fff;
+}
+
+.qr-card__status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.qr-card__hint {
+  max-width: 34ch;
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.55;
+  text-align: center;
+  color: var(--ink-2);
+}
+
+.qr-card__hint kbd {
+  padding: 1px 5px;
+  background: var(--surface-2);
+  border: var(--border);
+  border-radius: 3px;
+  font-family: inherit;
+  font-size: 0.8rem;
+}
+
+/* baris aksi di dasar popup — terpisah jelas dari kartu QR */
+.modal__foot {
+  display: flex;
+  gap: var(--space-xs);
+  margin-top: auto;
+  padding-top: var(--space-s);
+  border-top: var(--border);
+}
+
+.modal__foot .btn {
+  flex: 1;
+}
+
+.modal__empty {
+  margin: 0;
+  padding: var(--space-m) 0;
+  text-align: center;
+  color: var(--ink-2);
+}
+
 /* ---------- chat ---------- */
 
 .chat {
