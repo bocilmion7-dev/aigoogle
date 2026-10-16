@@ -3,7 +3,7 @@ import { AppHeader, PageLoader } from "../ui";
 import { IconCheck } from "../icons";
 // package.json paket menunjuk file yang tak ada — impor langsung bundel ESM aslinya
 import { ConnectButton } from "360dialog-connect-button/dist/dialog-connect-button.esm.js";
-import { getMe, getWaWebhookEvents, waD360Onboard, putWaSettings, putWaWebhookEvents, getWaWaserverSession, reconnectWaWaserver, disconnectWaWaserver, type WaWaserverSession } from "../api";
+import { getMe, getWaWebhookEvents, waD360Onboard, putWaSettings, putWaWebhookEvents, getWaWaserverSession, reconnectWaWaserver, disconnectWaWaserver, type WaWaserverSession, waSubscribe, getWaSubscribeStatus } from "../api";
 
 interface WaStatus {
   connected: boolean;
@@ -42,7 +42,9 @@ export function WhatsApp() {
     | {
         orderId: string;
         credits: number;
-        amount: number;
+        amount: number;      // total yang dibayar (termasuk biaya admin)
+        feeAmount: number;   // biaya admin 0.2%
+        baseAmount: number;  // jumlah pokok tanpa biaya admin
         qrUrl: string;
         qrContent: string;
         expiredAt: string;
@@ -57,6 +59,12 @@ export function WhatsApp() {
   const [wasBusy, setWasBusy] = useState<"load" | "reconnect" | "disconnect" | null>(null);
   const [wasMsg, setWasMsg] = useState<string | null>(null);
   const wasDialogRef = useRef<HTMLDivElement | null>(null);
+
+  // ── Tab + langganan waserver ─────────────────────────────────────────────
+  const [tab, setTab] = useState<"gateway" | "meta">("gateway");
+  const [subOrder, setSubOrder] = useState<string | null>(null);
+  const [subMsg, setSubMsg] = useState<string | null>(null);
+  const [subBusy, setSubBusy] = useState(false);
 
   const load = useCallback(() => {
     void fetch("/api/wa/status")
@@ -264,7 +272,7 @@ export function WhatsApp() {
   async function topup(provider: "winpay" | "midtrans" = "winpay") {
     setError(null);
     setTopupMsg(null);
-    setQris(null); // panel QR lama (provider lain) tidak boleh tertinggal saat request baru
+    setQris(null);
     setBusy(provider);
     try {
       const res = await fetch("/api/wa/topup", {
@@ -277,7 +285,9 @@ export function WhatsApp() {
         orderId?: string;
         credits?: number;
         min?: number;
-        amount?: number;
+        amount?: number;      // total (termasuk fee)
+        feeAmount?: number;   // biaya admin 0.2%
+        baseAmount?: number;  // jumlah pokok
         provider?: "winpay" | "midtrans";
         qris?: { qrUrl: string; qrContent: string; contractId?: string; referenceNo?: string; expiredAt: string };
       };
@@ -287,13 +297,14 @@ export function WhatsApp() {
           orderId: j.orderId,
           credits: j.credits ?? 0,
           amount: j.amount ?? amount,
+          feeAmount: j.feeAmount ?? 0,
+          baseAmount: j.baseAmount ?? amount,
           provider: j.provider ?? provider,
           ...j.qris,
         });
         return;
       }
       if (res.status === 503 && j.orderId) {
-        // billing dormant → mock settle untuk dev
         const s = await fetch(`/api/wa/topup/${j.orderId}/mock-settle`, { method: "POST" });
         if (s.ok) {
           load();
@@ -315,245 +326,404 @@ export function WhatsApp() {
     }
   }
 
+  async function subscribe(plan: "1bulan" | "2bulan" | "3bulan") {
+    setError(null);
+    setSubMsg(null);
+    setSubOrder(null);
+    setSubBusy(true);
+    try {
+      const j = await waSubscribe(plan);
+      setSubOrder(j.orderId);
+    } catch {
+      setSubMsg("Gagal membuat pesanan langganan — coba lagi.");
+    } finally {
+      setSubBusy(false);
+    }
+  }
+
+  // polling status langganan waserver selama QR tampil
+  useEffect(() => {
+    if (!subOrder) return;
+    const t = window.setInterval(() => {
+      void getWaSubscribeStatus(subOrder)
+        .then((j) => {
+          if (j.settled) {
+            setSubOrder(null);
+            setSubMsg("Langganan WhatsApp Gateway aktif.");
+            load();
+          } else if (j.status === "cancel" || j.status === "expire") {
+            setSubOrder(null);
+            setSubMsg(null);
+            setError("Langganan dibatalkan atau kedaluwarsa.");
+          }
+        })
+        .catch(() => undefined);
+    }, 4000);
+    return () => window.clearInterval(t);
+  }, [subOrder, load]);
+
   return (
     <div className="app">
       <AppHeader />
       <main className="page page--narrow">
-        <h1>WhatsApp</h1>
+        <h1>WhatsApp Gateway Platform</h1>
         <p className="page__sub">
-          Kirim pesan & notifikasi otomatis lewat <strong>WhatsApp Business resmi Meta</strong> — saluran
-          resmi WhatsApp Business Platform (Cloud API), aman dan sesuai kebijakan WhatsApp.
+          Kirim & terima pesan WhatsApp lewat dua saluran: <strong>Gateway WhatsApp</strong> (self-hosted via
+          Baileys, langganan bulanan) dan <strong>WhatsApp META</strong> (Business Platform resmi, pembelian kredit).
+          Pilih tab di bawah untuk mengelola masing-masing saluran.
         </p>
 
-        <section className="card">
-          <strong className="card__title">Status</strong>
-          <p className="small muted" style={{ margin: "0 0 4px" }}>
-            {st.connected ? (
-              <>
-                Terhubung{st.account?.displayName ? ` (${st.account.displayName})` : ""}
-                <span className="trust-tag">
-                  <IconCheck size={14} /> WhatsApp Business resmi Meta
-                </span>
-              </>
-            ) : (
-              "Belum terhubung"
-            )}
-          </p>
-          <p className="small" style={{ margin: 0 }}>
-            Saldo: <strong className="num">{st.balance}</strong> kredit ·{" "}
-            <span className="num">{st.rupiahPerCredit}</span> Rp/kirim
-          </p>
-        </section>
+        <div className="tabs">
+          <button
+            type="button"
+            className={`tabs__btn ${tab === "gateway" ? "tabs__btn--active" : ""}`}
+            onClick={() => setTab("gateway")}
+            aria-pressed={tab === "gateway"}
+          >
+            WhatsApp Gateway
+          </button>
+          <button
+            type="button"
+            className={`tabs__btn ${tab === "meta" ? "tabs__btn--active" : ""}`}
+            onClick={() => setTab("meta")}
+            aria-pressed={tab === "meta"}
+          >
+            WhatsApp META
+          </button>
+        </div>
 
-        {st.waProvider === "waserver" ? (
-          <section className="card">
-            <strong className="card__title">WhatsApp (gateway waserver)</strong>
-            <p className="meta">
-              Sesi WhatsApp dijalankan oleh <strong>gateway waserver</strong> milik platform.
-              QR hanya diminta saat Anda menekan tombol — bukan otomatis saat halaman dibuka.
-            </p>
-            <div style={{ marginTop: "var(--space-s)" }}>
-              {st.connected ? (
-                <p className="banner banner--ok" role="status" style={{ margin: 0 }}>
-                  Terhubung{st.account?.displayName ? ` — nomor ${st.account.displayName}` : ""}. Notifikasi & otomasi siap dikirim.
-                </p>
+        {/* ── Tab 1: WhatsApp Gateway (waserver) ── */}
+        {tab === "gateway" && (
+          <>
+            <section className="card">
+              <strong className="card__title">Status WhatsApp Gateway</strong>
+              {st.waProvider === "waserver" && st.connected ? (
+                <>
+                  <p className="small muted" style={{ margin: "0 0 4px" }}>
+                    Terhubung{st.account?.displayName ? ` — nomor ${st.account.displayName}` : ""}
+                    <span className="trust-tag">
+                      <IconCheck size={14} /> Gateway Baileys
+                    </span>
+                  </p>
+                  <p className="small" style={{ margin: 0 }}>
+                    Saldo: <strong className="num">{st.balance}</strong> kredit ·{" "}
+                    <span className="num">{st.rupiahPerCredit}</span> Rp/kirim
+                  </p>
+                </>
               ) : (
-                <p className="meta" style={{ margin: 0 }}>
-                  Belum terhubung. Tekan tombol di bawah untuk memunculkan QR.
+                <>
+                  <p className="small muted" style={{ margin: "0 0 4px" }}>
+                    Belum terhubung
+                  </p>
+                  <p className="small" style={{ margin: 0 }}>
+                    Silakan scan QR di bawah untuk menghubungkan nomor WhatsApp ke gateway waserver.
+                  </p>
+                </>
+              )}
+              {wasMsg && (
+                <p className="banner banner--err" role="alert" style={{ marginTop: "var(--space-xs)", marginBottom: 0 }}>
+                  {wasMsg}
                 </p>
               )}
-            </div>
-            {wasMsg && (
-              <p className="banner banner--err" role="alert" style={{ marginTop: "var(--space-xs)", marginBottom: 0 }}>
-                {wasMsg}
-              </p>
-            )}
-            <div style={{ display: "flex", gap: "var(--space-xs)", marginTop: "var(--space-m)", flexWrap: "wrap" }}>
-              {!st.connected && (
-                <button
-                  type="button"
-                  className="btn"
-                  onClick={wasOpenModal}
-                  disabled={!!wasBusy}
-                  aria-busy={!!wasBusy}
-                >
-                  {wasBusy === "load" && <span className="spinner" aria-hidden="true" />}
-                  Hubungkan WhatsApp
-                </button>
-              )}
-              {/* hanya relevan bila sesi sudah pernah terhubung — berguna memperbaiki
-                  sesi yang nyangkut. Sebelum terhubung cukup satu tombol Hubungkan. */}
-              {st.connected && (
-                <button
-                  type="button"
-                  className="btn btn--2"
-                  onClick={() => void wasReconnect()}
-                  disabled={!!wasBusy}
-                  aria-busy={!!wasBusy}
-                >
-                  {wasBusy === "reconnect" && <span className="spinner" aria-hidden="true" />}
-                  Sambungkan ulang
-                </button>
-              )}
-              {st.connected && (
-                <button
-                  type="button"
-                  className="btn btn--2"
-                  onClick={() => void wasDisconnect()}
-                  disabled={!!wasBusy}
-                >
-                  Putuskan
-                </button>
-              )}
-            </div>
-          </section>
-        ) : st.waProvider === "d360" ? (
-          <section className="card">
-            <strong className="card__title">Hubungkan WhatsApp Business (resmi Meta)</strong>
-            <p className="meta">
-              Tekan tombol, masuk dengan akun Meta Business Anda, lalu pilih atau daftarkan nomor —
-              memakai Embedded Signup resmi Meta, cara sah menghubungkan WhatsApp Business Platform
-              (Cloud API) ke bisnis Anda. Setelah selesai, nomor langsung terhubung ke sistem.
-            </p>
-            <p className="trust-line">
-              <IconCheck size={15} /> Pesan terkirim lewat saluran resmi Meta — bukan WhatsApp pribadi.
-              Nomor & riwayat chat dikelola aman, terpisah dari akun pribadi Anda.
-            </p>
-            <div className="wa-connect">
-              <ConnectButton
-                partnerId={st.waD360PartnerId}
-                label="Hubungkan WhatsApp Bisnis"
-                callback={(cb) => void onboardD360(cb.client, cb.channels)}
-              />
-            </div>
-            {d360Busy && (
-              <p className="meta" style={{ margin: "var(--space-xs) 0 0" }}>
-                <span className="spinner" aria-hidden="true" /> Memproses…
-              </p>
-            )}
-            {d360Msg && <p className="banner banner--ok" role="status" style={{ marginTop: "var(--space-xs)", marginBottom: 0 }}>{d360Msg}</p>}
-            {st.connected ? (
-              <p className="banner banner--ok" role="status" style={{ marginTop: "var(--space-xs)", marginBottom: 0 }}>
-                Nomor WhatsApp Business perusahaan terhubung — notifikasi & otomasi siap dikirim lewat saluran resmi Meta.
-              </p>
-            ) : null}
-          </section>
-        ) : (
-          <section className="card">
-            <strong className="card__title">Hubungkan WhatsApp Business (resmi Meta)</strong>
-            <p className="meta">
-              Daftarkan nomor bisnis Anda lewat formulir Embedded Signup resmi Meta di bawah —
-              setelah disetujui Meta, nomor aktif sebagai WhatsApp Business Platform resmi.
-            </p>
-            <p className="trust-line">
-              <IconCheck size={15} /> Saluran resmi Meta Cloud API — aman & sesuai kebijakan WhatsApp.
-            </p>
-            {st.embedUrl ? (
-              <iframe title="Meta WhatsApp Embedded Signup" src={st.embedUrl} className="embed" />
-            ) : (
-              <p className="meta" style={{ marginBottom: 0 }}>
-                Formulir belum tersedia — hubungi pengurus sistem.
-              </p>
-            )}
-          </section>
-        )}
+              <div style={{ display: "flex", gap: "var(--space-xs)", marginTop: "var(--space-m)", flexWrap: "wrap" }}>
+                {!st.connected && (
+                  <button
+                    type="button"
+                    className="btn"
+                    onClick={wasOpenModal}
+                    disabled={!!wasBusy}
+                    aria-busy={!!wasBusy}
+                  >
+                    {wasBusy === "load" && <span className="spinner" aria-hidden="true" />}
+                    Hubungkan WhatsApp
+                  </button>
+                )}
+                {st.connected && (
+                  <button
+                    type="button"
+                    className="btn btn--2"
+                    onClick={() => void wasReconnect()}
+                    disabled={!!wasBusy}
+                    aria-busy={!!wasBusy}
+                  >
+                    {wasBusy === "reconnect" && <span className="spinner" aria-hidden="true" />}
+                    Sambungkan ulang
+                  </button>
+                )}
+                {st.connected && (
+                  <button
+                    type="button"
+                    className="btn btn--2"
+                    onClick={() => void wasDisconnect()}
+                    disabled={!!wasBusy}
+                  >
+                    Putuskan
+                  </button>
+                )}
+              </div>
+            </section>
 
-        <section className="card">
-          <strong className="card__title">Topup saldo</strong>
-          <p className="meta">
-            1 kredit = <span className="num">{st.rupiahPerCredit}</span> rupiah (biaya kirim 1 pesan).
-          </p>
-          <label className="field" style={{ display: "block" }}>
-            Jumlah rupiah
-            <input
-              className="input num"
-              type="number"
-              inputMode="numeric"
-              min={2000}
-              step={1000}
-              value={amount}
-              onChange={(e) => setAmount(Number(e.target.value))}
-            />
-          </label>
-          <button
-            className="btn btn--block"
-            style={{ marginTop: "var(--space-xs)" }}
-            onClick={() => void topup()}
-            disabled={busy !== null}
-            aria-busy={busy === "winpay"}
-            aria-label="Topup saldo WhatsApp"
-          >
-            {busy === "winpay" && <span className="spinner" aria-hidden="true" />}
-            {busy === "winpay"
-              ? "Memproses…"
-              : `Topup ${amount.toLocaleString("id-ID")} Rp (${Math.floor(amount / st.rupiahPerCredit)} kredit)`}
-          </button>
-          <button
-            className="btn btn--2 btn--block"
-            style={{ marginTop: "var(--space-xs)" }}
-            onClick={() => void topup("midtrans")}
-            disabled={busy !== null}
-            aria-busy={busy === "midtrans"}
-            aria-label="Topup saldo via Midtrans QRIS"
-          >
-            {busy === "midtrans" && <span className="spinner" aria-hidden="true" />}
-            {busy === "midtrans" ? "Memproses…" : `Topup via Midtrans ${amount.toLocaleString("id-ID")} Rp`}
-          </button>
-          {topupMsg && (
-            <p className="banner banner--ok" role="status" style={{ marginTop: "var(--space-xs)", marginBottom: 0 }}>
-              {topupMsg}
-            </p>
-          )}
-          {error && (
-            <p className="banner banner--err" role="alert" style={{ marginTop: "var(--space-xs)", marginBottom: 0 }}>
-              {error}
-            </p>
-          )}
-          {qris && (
-            <div className="qris-panel" role="status">
-              <p
-                className="meta"
-                style={{
-                  margin: "0 0 var(--space-xs)",
-                  fontWeight: 600,
-                  color: qris.provider === "midtrans" ? "var(--accent-strong)" : "var(--ink)",
-                }}
-              >
-                {qris.provider === "midtrans" ? "Pembayaran via QRIS Midtrans" : "Pembayaran via QRIS Winpay"}
-                <span className="meta" style={{ fontWeight: 400 }}>
-                  {" "}
-                  · order {qris.orderId}
-                </span>
+            <section className="card">
+              <strong className="card__title">Langganan WhatsApp Gateway (Midtrans)</strong>
+              <p className="meta">
+                Aktifkan akses gateway waserver lewat langganan bulanan dibayar via Midtrans QRIS.
               </p>
-              <img src={qris.qrUrl} alt="Kode QRIS pembayaran" width={200} height={200} />
-              <div className="qris-info">
-                <strong>
-                  {qris.amount.toLocaleString("id-ID")} Rp · {qris.credits} kredit
-                </strong>
-                <p className="meta" style={{ margin: "4px 0 0" }}>
-                  Scan dengan aplikasi pembayaran apa pun (m-Banking, GoPay, OVO, DANA). Berlaku sampai{" "}
-                  {qris.expiredAt
-                    ? new Date(qris.expiredAt).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })
-                    : "15 menit lagi"}
-                  .
-                </p>
-                <p className="meta" style={{ margin: "4px 0 0" }}>
-                  <span className="busy-dot" aria-hidden="true" /> Menunggu pembayaran…
-                </p>
+              <div className="grid-2" style={{ marginTop: "var(--space-xs)" }}>
                 <button
-                  className="btn btn--2 btn--block"
-                  style={{ marginTop: "var(--space-xs)" }}
-                  onClick={() => {
-                    setQris(null);
-                    setTopupMsg(null);
-                  }}
+                  type="button"
+                  className="btn btn--block"
+                  onClick={() => void subscribe("1bulan")}
+                  disabled={subBusy || subOrder !== null}
+                  aria-busy={subBusy}
                 >
-                  Tutup
+                  {subBusy && <span className="spinner" aria-hidden="true" />}
+                  1 Bulan · 30.000 Rp
+                </button>
+                <button
+                  type="button"
+                  className="btn btn--block"
+                  onClick={() => void subscribe("2bulan")}
+                  disabled={subBusy || subOrder !== null}
+                  aria-busy={subBusy}
+                >
+                  {subBusy && <span className="spinner" aria-hidden="true" />}
+                  2 Bulan · 50.000 Rp
+                </button>
+                <button
+                  type="button"
+                  className="btn btn--block"
+                  onClick={() => void subscribe("3bulan")}
+                  disabled={subBusy || subOrder !== null}
+                  aria-busy={subBusy}
+                >
+                  {subBusy && <span className="spinner" aria-hidden="true" />}
+                  3 Bulan · 75.000 Rp
                 </button>
               </div>
-            </div>
-          )}
-        </section>
+              {subMsg && (
+                <p className="banner banner--ok" role="status" style={{ marginTop: "var(--space-xs)", marginBottom: 0 }}>
+                  {subMsg}
+                </p>
+              )}
+              {error && (
+                <p className="banner banner--err" role="alert" style={{ marginTop: "var(--space-xs)", marginBottom: 0 }}>
+                  {error}
+                </p>
+              )}
+              {subOrder && (
+                <div className="qris-panel" role="status">
+                  <p className="meta" style={{ margin: "0 0 var(--space-xs)", fontWeight: 600 }}>
+                    Pembayaran langganan via QRIS Midtrans · order {subOrder}
+                  </p>
+                  <p className="meta" style={{ margin: "0 0 var(--space-xs)" }}>
+                    <span className="busy-dot" aria-hidden="true" /> Menunggu pembayaran…
+                  </p>
+                  <button
+                    className="btn btn--2 btn--block"
+                    style={{ marginTop: "var(--space-xs)" }}
+                    onClick={() => setSubOrder(null)}
+                  >
+                    Tutup
+                  </button>
+                </div>
+              )}
+            </section>
+          </>
+        )}
+
+        {/* ── Tab 2: WhatsApp META ── */}
+        {tab === "meta" && (
+          <>
+            <section className="card">
+              <strong className="card__title">Status WhatsApp META</strong>
+              {(st.waProvider === "d360" || st.waProvider === "meta") && st.connected ? (
+                <>
+                  <p className="small muted" style={{ margin: "0 0 4px" }}>
+                    Terhubung{st.account?.displayName ? ` (${st.account.displayName})` : ""}
+                    <span className="trust-tag">
+                      <IconCheck size={14} /> WhatsApp Business resmi Meta
+                    </span>
+                  </p>
+                  <p className="small" style={{ margin: 0 }}>
+                    Saldo: <strong className="num">{st.balance}</strong> kredit ·{" "}
+                    <span className="num">{st.rupiahPerCredit}</span> Rp/kirim
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="small muted" style={{ margin: "0 0 4px" }}>
+                    Belum terhubung
+                  </p>
+                  <p className="small" style={{ margin: 0 }}>
+                    Daftarkan nomor bisnis lewat Meta Embedded Signup atau Connect Button di bawah.
+                  </p>
+                </>
+              )}
+              {d360Msg && <p className="banner banner--ok" role="status" style={{ marginTop: "var(--space-xs)", marginBottom: 0 }}>{d360Msg}</p>}
+              <div style={{ marginTop: "var(--space-m)" }}>
+                {st.waProvider === "d360" && (
+                  <>
+                    <div className="wa-connect">
+                      <ConnectButton
+                        partnerId={st.waD360PartnerId}
+                        label="Hubungkan WhatsApp Bisnis"
+                        callback={(cb) => void onboardD360(cb.client, cb.channels)}
+                      />
+                    </div>
+                    {d360Busy && (
+                      <p className="meta" style={{ margin: "var(--space-xs) 0 0" }}>
+                        <span className="spinner" aria-hidden="true" /> Memproses…
+                      </p>
+                    )}
+                    {st.connected ? (
+                      <p className="banner banner--ok" role="status" style={{ marginTop: "var(--space-xs)", marginBottom: 0 }}>
+                        Nomor WhatsApp Business perusahaan terhubung — notifikasi & otomasi siap dikirim lewat saluran resmi Meta.
+                      </p>
+                    ) : null}
+                  </>
+                )}
+                {st.waProvider === "meta" && (
+                  <>
+                    <p className="meta">
+                      Daftarkan nomor bisnis Anda lewat formulir Embedded Signup resmi Meta di bawah —
+                      setelah disetujui Meta, nomor aktif sebagai WhatsApp Business Platform resmi.
+                    </p>
+                    <p className="trust-line">
+                      <IconCheck size={15} /> Saluran resmi Meta Cloud API — aman & sesuai kebijakan WhatsApp.
+                    </p>
+                    {st.embedUrl ? (
+                      <iframe title="Meta WhatsApp Embedded Signup" src={st.embedUrl} className="embed" />
+                    ) : (
+                      <p className="meta" style={{ marginBottom: 0 }}>
+                        Formulir belum tersedia — hubungi pengurus sistem.
+                      </p>
+                    )}
+                  </>
+                )}
+                {(st.waProvider !== "d360" && st.waProvider !== "meta") && (
+                  <p className="meta">
+                    Provider WhatsApp saat ini adalah{" "}
+                    <strong>{st.waProvider === "waserver" ? "Waserver Gateway" : st.waProvider}</strong>. Untuk pakai
+                    WhatsApp META, ubah penyedia di menu Pengaturan (Admin Platform).
+                  </p>
+                )}
+              </div>
+            </section>
+
+            <section className="card">
+              <strong className="card__title">Topup Saldo WhatsApp META</strong>
+              <p className="meta">
+                1 kredit = <span className="num">{st.rupiahPerCredit}</span> rupiah (biaya kirim 1 pesan).{" "}
+                <span style={{ color: "var(--muted)" }}>Ditambah biaya admin service charges 0,2%.</span>
+              </p>
+              <label className="field" style={{ display: "block" }}>
+                Jumlah rupiah (pokok)
+                <input
+                  className="input num"
+                  type="number"
+                  inputMode="numeric"
+                  min={2000}
+                  step={1000}
+                  value={amount}
+                  onChange={(e) => setAmount(Number(e.target.value))}
+                />
+              </label>
+              <p className="meta" style={{ margin: "4px 0 0" }}>
+                Total dibayar:{" "}
+                {(amount + Math.floor(amount * 0.002)).toLocaleString("id-ID")} Rp
+                (termasuk biaya admin 0,2% ·{" "}
+                <span className="num">
+                  {Math.floor(amount / st.rupiahPerCredit)} kredit
+                </span>
+                )
+              </p>
+              <button
+                className="btn btn--block"
+                style={{ marginTop: "var(--space-xs)" }}
+                onClick={() => void topup()}
+                disabled={busy !== null}
+                aria-busy={busy === "winpay"}
+                aria-label="Topup saldo WhatsApp META"
+              >
+                {busy === "winpay" && <span className="spinner" aria-hidden="true" />}
+                {busy === "winpay"
+                  ? "Memproses…"
+                  : `Topup ${amount.toLocaleString("id-ID")} Rp (+0,2% admin)`}
+              </button>
+              <button
+                className="btn btn--2 btn--block"
+                style={{ marginTop: "var(--space-xs)" }}
+                onClick={() => void topup("midtrans")}
+                disabled={busy !== null}
+                aria-busy={busy === "midtrans"}
+                aria-label="Topup saldo META via Midtrans QRIS"
+              >
+                {busy === "midtrans" && <span className="spinner" aria-hidden="true" />}
+                {busy === "midtrans"
+                  ? "Memproses…"
+                  : `Topup via Midtrans ${amount.toLocaleString("id-ID")} Rp (+0,2% admin)`}
+              </button>
+              {topupMsg && (
+                <p className="banner banner--ok" role="status" style={{ marginTop: "var(--space-xs)", marginBottom: 0 }}>
+                  {topupMsg}
+                </p>
+              )}
+              {error && (
+                <p className="banner banner--err" role="alert" style={{ marginTop: "var(--space-xs)", marginBottom: 0 }}>
+                  {error}
+                </p>
+              )}
+              {qris && (
+                <div className="qris-panel" role="status">
+                  <p
+                    className="meta"
+                    style={{
+                      margin: "0 0 var(--space-xs)",
+                      fontWeight: 600,
+                      color: qris.provider === "midtrans" ? "var(--accent-strong)" : "var(--ink)",
+                    }}
+                  >
+                    {qris.provider === "midtrans" ? "Pembayaran via QRIS Midtrans" : "Pembayaran via QRIS Winpay"}
+                    <span className="meta" style={{ fontWeight: 400 }}>
+                      {" "}
+                      · order {qris.orderId}
+                    </span>
+                  </p>
+                  <img src={qris.qrUrl} alt="Kode QRIS pembayaran" width={200} height={200} />
+                  <div className="qris-info">
+                    <strong>
+                      {qris.baseAmount.toLocaleString("id-ID")} Rp · {qris.credits} kredit
+                    </strong>
+                    <p className="meta" style={{ margin: "4px 0 0" }}>
+                      Biaya admin 0,2%:{" "}
+                      {qris.feeAmount.toLocaleString("id-ID")} Rp · Total: {qris.amount.toLocaleString("id-ID")} Rp
+                    </p>
+                    <p className="meta" style={{ margin: "4px 0 0" }}>
+                      Scan dengan aplikasi pembayaran apa pun (m-Banking, GoPay, OVO, DANA). Berlaku sampai{" "}
+                      {qris.expiredAt
+                        ? new Date(qris.expiredAt).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })
+                        : "15 menit lagi"}
+                      .
+                    </p>
+                    <p className="meta" style={{ margin: "4px 0 0" }}>
+                      <span className="busy-dot" aria-hidden="true" /> Menunggu pembayaran…
+                    </p>
+                    <button
+                      className="btn btn--2 btn--block"
+                      style={{ marginTop: "var(--space-xs)" }}
+                      onClick={() => {
+                        setQris(null);
+                        setTopupMsg(null);
+                      }}
+                    >
+                      Tutup
+                    </button>
+                  </div>
+                </div>
+              )}
+            </section>
+          </>
+        )}
 
         {isAdmin && (
           <section className="card">

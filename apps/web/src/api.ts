@@ -218,6 +218,25 @@ export const reconnectWaWaserver = () =>
 export const disconnectWaWaserver = () =>
   adminFetch<{ ok: boolean }>("/api/wa/waserver/session", { method: "DELETE" });
 
+// ── Langganan gateway WhatsApp waserver (Midtrans) ─────────────────────────
+export interface WaSubscribePlan {
+  orderId: string;
+  amount: number;
+  plan: "1bulan" | "2bulan" | "3bulan";
+  months: number;
+  qris: { qrUrl: string; qrContent: string; contractId?: string; referenceNo?: string; expiredAt: string };
+}
+export const waSubscribe = (plan: "1bulan" | "2bulan" | "3bulan") =>
+  adminFetch<WaSubscribePlan>("/api/wa/subscribe", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ plan }),
+  });
+export const getWaSubscribeStatus = (orderId: string) =>
+  adminFetch<{ orderId: string; amount: number; status: string; settled: boolean }>(
+    `/api/wa/subscribe/${orderId}/status`
+  );
+
 // ── Webhook Accurate: activity feed + config notifikasi WhatsApp ─────────────
 export interface AccurateEventRow {
   id: string;

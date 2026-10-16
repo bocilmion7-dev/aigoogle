@@ -451,6 +451,36 @@ a {
   align-items: center;
 }
 
+/* ---------- tab layout ---------- */
+
+.tabs {
+  display: flex;
+  gap: var(--space-xs);
+  margin-bottom: var(--space-s);
+  border-bottom: var(--border);
+  padding-bottom: var(--space-2xs);
+}
+
+.tabs__btn {
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--muted);
+  font: inherit;
+  font-weight: 500;
+  padding: var(--space-2xs) var(--space-s);
+  cursor: pointer;
+}
+
+.tabs__btn:hover {
+  color: var(--ink);
+}
+
+.tabs__btn--active {
+  color: var(--accent-strong);
+  border-bottom-color: var(--accent-strong);
+}
+
 /* ---------- forms ---------- */
 
 .field {

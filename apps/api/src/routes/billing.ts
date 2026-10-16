@@ -9,6 +9,7 @@ import { isEntitled } from "../billing/entitlement.js";
 import { generateQrMpm, midtransSnapReady, verifyMidtransNotification } from "../billing/midtrans-snap.js";
 import { paymentSettings, verifyWinpayCallback } from "../billing/winpay.js";
 import { finalizeWaTopup } from "../wa/service.js";
+import { writeAudit } from "../audit.js";
 
 export const billingRouter = Router();
 
@@ -162,6 +163,49 @@ snapNotifyRouter.post(
     // ── Topup WA via Midtrans ──
     if (ref.startsWith("mt-")) {
       if (paid || failed) await finalizeWaTopup(ref, paid, paid ? "settlement" : "cancel", "midtrans");
+      return res.json({ responseCode: "2005200", responseMessage: "Request has been processed successfully" });
+    }
+
+    // ── Langganan Waserver Gateway (prefix wg-) ──
+    if (ref.startsWith("wg-")) {
+      const payment = await prisma.payment.findUnique({ where: { orderId: ref } });
+      if (!payment) {
+        console.warn("[midtrans-snap] order waserver tidak dikenal:", ref);
+        return res.status(404).json({ responseCode: "4045200", responseMessage: "Order not found" });
+      }
+      const status = paid ? "settlement" : failed ? "cancel" : trx;
+      await prisma.payment.update({
+        where: { id: payment.id },
+        data: { status, paymentMethod: "qris" },
+      });
+      if (paid) {
+        const months = payment.amount >= 75000 ? 3 : payment.amount >= 50000 ? 2 : 1;
+        const expiresAt = new Date(Date.now() + months * 30 * 86400_000);
+        const existing = await prisma.subscription.findFirst({
+          where: { tenantId: payment.tenantId },
+          orderBy: { createdAt: "desc" },
+        });
+        if (existing) {
+          await prisma.subscription.update({
+            where: { id: existing.id },
+            data: { status: "active", plan: "wa_gateway", expiresAt },
+          });
+        } else {
+          await prisma.subscription.create({
+            data: { tenantId: payment.tenantId, plan: "wa_gateway", status: "active", expiresAt },
+          });
+        }
+        await writeAudit(payment.tenantId, "system", "wa.subscribe_settled", {
+          orderId: payment.orderId,
+          amount: payment.amount,
+          months,
+        });
+      } else if (failed) {
+        await writeAudit(payment.tenantId, "system", "wa.subscribe_failed", {
+          orderId: payment.orderId,
+          status: trx,
+        });
+      }
       return res.json({ responseCode: "2005200", responseMessage: "Request has been processed successfully" });
     }
 

@@ -200,26 +200,31 @@ waRouter.post(
     if (!body.success) return res.status(400).json({ error: "bad_request" });
     const tenantId = req.user!.tenant.id;
     const price = await waPricePerCredit();
-    const credits = creditsFromRupiah(body.data.amount, price);
+    // Biaya admin service charges 0.2% ditambah pada total yang dibayar;
+    // kredit dihitung dari jumlah pokok (tanpa biaya admin).
+    const baseAmount = body.data.amount;
+    const feeAmount = Math.floor(baseAmount * 0.002);
+    const totalAmount = baseAmount + feeAmount;
+    const credits = creditsFromRupiah(baseAmount, price);
     if (credits < 1) return res.status(400).json({ error: "minimal_topup", min: price });
     const want = body.data.provider ?? (await paymentProvider());
 
     // ── QRIS Midtrans BI-SNAP ──
     if (want === "midtrans") {
       if (!isBillingEnabled() || !midtransSnapReady()) {
-        return res.status(503).json({ error: "billing_dormant", credits, amount: body.data.amount });
+        return res.status(503).json({ error: "billing_dormant", credits, amount: totalAmount, feeAmount, baseAmount });
       }
       const orderId = `mt-${randomBytes(8).toString("hex")}`;
       await prisma.waTopup.create({
-        data: { tenantId, orderId, amount: body.data.amount, credits },
+        data: { tenantId, orderId, amount: totalAmount, credits },
       });
       try {
-        const qr = await generateQrMpm(orderId, body.data.amount);
+        const qr = await generateQrMpm(orderId, totalAmount);
         await prisma.waTopup.update({
           where: { orderId },
           data: { paymentMethod: "midtrans", providerRef: qr.referenceNo },
         });
-        return res.json({ orderId, credits, amount: body.data.amount, provider: "midtrans", qris: qr });
+        return res.json({ orderId, credits, amount: totalAmount, feeAmount, baseAmount, provider: "midtrans", qris: qr });
       } catch (e) {
         return res.status(502).json({
           error: "qris_gagal",
@@ -232,22 +237,22 @@ waRouter.post(
 
     const orderId = `wa-${randomBytes(8).toString("hex")}`;
     await prisma.waTopup.create({
-      data: { tenantId, orderId, amount: body.data.amount, credits },
+      data: { tenantId, orderId, amount: totalAmount, credits },
     });
 
     // ── QRIS via Winpay (default) ──
     if ((await paymentProvider()) === "winpay") {
       if (!(await winpayReady())) {
         // belum dikonfigurasi platform → dormant (dev/mock)
-        return res.status(503).json({ error: "billing_dormant", orderId, credits, amount: body.data.amount });
+        return res.status(503).json({ error: "billing_dormant", orderId, credits, amount: totalAmount, feeAmount, baseAmount });
       }
       try {
-        const qr = await generateQris(orderId, body.data.amount);
+        const qr = await generateQris(orderId, totalAmount);
         await prisma.waTopup.update({
           where: { orderId },
           data: { paymentMethod: "winpay", providerRef: qr.contractId },
         });
-        return res.json({ orderId, credits, amount: body.data.amount, provider: "winpay", qris: qr });
+        return res.json({ orderId, credits, amount: totalAmount, feeAmount, baseAmount, provider: "winpay", qris: qr });
       } catch (e) {
         return res.status(502).json({
           error: "qris_gagal",
@@ -260,10 +265,62 @@ waRouter.post(
 
     // ── Midtrans (legacy) ──
     if (!isBillingEnabled()) {
-      return res.status(503).json({ error: "billing_dormant", orderId, credits, amount: body.data.amount });
+      return res.status(503).json({ error: "billing_dormant", orderId, credits, amount: totalAmount, feeAmount, baseAmount });
     }
     // Midtrans Snap — implementasi penuh menyusul; untuk sekarang order tercatat
-    res.json({ orderId, credits, amount: body.data.amount, snapRedirect: null });
+    res.json({ orderId, credits, amount: totalAmount, feeAmount, baseAmount, snapRedirect: null });
+  })
+);
+
+/** Langganan bulanan gateway WhatsApp waserver via Midtrans (1bln 30rb / 2bln 50rb / 3bln 75rb). */
+const WA_SUB_PLANS: Record<string, { amount: number; months: number }> = {
+  "1bulan": { amount: 30000, months: 1 },
+  "2bulan": { amount: 50000, months: 2 },
+  "3bulan": { amount: 75000, months: 3 },
+};
+
+waRouter.post(
+  "/wa/subscribe",
+  requireUser,
+  asyncHandler(async (req, res) => {
+    const body = z.object({ plan: z.enum(["1bulan", "2bulan", "3bulan"]) }).safeParse(req.body);
+    if (!body.success) return res.status(400).json({ error: "bad_request" });
+    const tenantId = req.user!.tenant.id;
+    const plan = WA_SUB_PLANS[body.data.plan];
+    const amount = plan.amount;
+    const orderId = `wg-${randomBytes(8).toString("hex")}`;
+    await prisma.payment.create({ data: { tenantId, orderId, amount, status: "pending" } });
+    if (!isBillingEnabled() || !midtransSnapReady()) {
+      return res.status(503).json({ error: "billing_dormant", amount, orderId });
+    }
+    try {
+      const qr = await generateQrMpm(orderId, amount);
+      await prisma.payment.update({ where: { orderId }, data: { paymentMethod: "qris", fraudStatus: qr.referenceNo } });
+      return res.json({ orderId, amount, plan: body.data.plan, months: plan.months, qris: qr });
+    } catch (e) {
+      return res.status(502).json({
+        error: "qris_gagal",
+        detail: String(e instanceof Error ? e.message : e).slice(0, 200),
+        orderId,
+      });
+    }
+  })
+);
+
+waRouter.get(
+  "/wa/subscribe/:orderId/status",
+  requireUser,
+  asyncHandler(async (req, res) => {
+    const payment = await prisma.payment.findFirst({
+      where: { orderId: req.params.orderId, tenantId: req.user!.tenant.id },
+    });
+    if (!payment) return res.status(404).json({ error: "tidak_ditemukan" });
+    res.json({
+      orderId: payment.orderId,
+      amount: payment.amount,
+      status: payment.status,
+      settled: payment.status === "settlement",
+    });
   })
 );
 
