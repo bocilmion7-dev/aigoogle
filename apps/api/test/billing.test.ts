@@ -9,7 +9,13 @@ let api: ReturnType<typeof createApp>;
 let cookie = "";
 let tenantId = "";
 
+const ENV_BACKUP: Record<string, string | undefined> = {};
+const ENV_KEYS = ["BILLING_ENABLED", "MIDTRANS_SERVER_KEY"] as const;
+
 beforeAll(async () => {
+  for (const k of ENV_KEYS) ENV_BACKUP[k] = process.env[k];
+  process.env.BILLING_ENABLED = "0";
+  process.env.MIDTRANS_SERVER_KEY = "";
   api = createApp();
   const tenant = await prisma.tenant.create({
     data: { provider: "accurate", providerDbId: `bil-${randomBytes(3).toString("hex")}`, name: "PT Bil", alias: "BIL" },
@@ -23,7 +29,14 @@ beforeAll(async () => {
   await prisma.session.create({ data: { id: sid, userId: user.id, expiresAt: new Date(Date.now() + 86400_000) } });
   cookie = `sid=${sid}`;
 });
-afterAll(() => prisma.$disconnect());
+afterAll(() => {
+  for (const k of ENV_KEYS) {
+    const v = ENV_BACKUP[k];
+    if (v === undefined) delete process.env[k];
+    else process.env[k] = v;
+  }
+  return prisma.$disconnect();
+});
 
 describe("billing dormant", () => {
   it("status: enabled=false, entitled=true (tanpa login → 401)", async () => {

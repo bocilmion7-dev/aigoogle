@@ -10,6 +10,7 @@ import { requirePerm } from "../permissions.js";
 import { writeAudit } from "../audit.js";
 import { isBillingEnabled, billingServerKey, verifyWebhookSignature, type MidtransNotification } from "../billing/midtrans.js";
 import { generateQris, isBillingActive, paymentProvider, queryQris, winpayReady } from "../billing/winpay.js";
+import { generateQrMpm, midtransSnapReady } from "../billing/midtrans-snap.js";
 import {
   WA_COST_CREDITS_PER_MESSAGE,
   creditsFromRupiah,
@@ -182,12 +183,45 @@ waRouter.post(
   "/wa/topup",
   requireUser,
   asyncHandler(async (req, res) => {
-    const body = z.object({ amount: z.number().int().min(2000).max(10_000_000) }).safeParse(req.body);
+    const body = z
+      .object({
+        amount: z.number().int().min(2000).max(10_000_000),
+        provider: z.enum(["winpay", "midtrans"]).optional(),
+      })
+      .safeParse(req.body);
     if (!body.success) return res.status(400).json({ error: "bad_request" });
     const tenantId = req.user!.tenant.id;
     const price = await waPricePerCredit();
     const credits = creditsFromRupiah(body.data.amount, price);
     if (credits < 1) return res.status(400).json({ error: "minimal_topup", min: price });
+    const want = body.data.provider ?? (await paymentProvider());
+
+    // ── QRIS Midtrans BI-SNAP ──
+    if (want === "midtrans") {
+      if (!isBillingEnabled() || !midtransSnapReady()) {
+        return res.status(503).json({ error: "billing_dormant", credits, amount: body.data.amount });
+      }
+      const orderId = `mt-${randomBytes(8).toString("hex")}`;
+      await prisma.waTopup.create({
+        data: { tenantId, orderId, amount: body.data.amount, credits },
+      });
+      try {
+        const qr = await generateQrMpm(orderId, body.data.amount);
+        await prisma.waTopup.update({
+          where: { orderId },
+          data: { paymentMethod: "midtrans", providerRef: qr.referenceNo },
+        });
+        return res.json({ orderId, credits, amount: body.data.amount, provider: "midtrans", qris: qr });
+      } catch (e) {
+        return res.status(502).json({
+          error: "qris_gagal",
+          detail: String(e instanceof Error ? e.message : e).slice(0, 200),
+          orderId,
+          credits,
+        });
+      }
+    }
+
     const orderId = `wa-${randomBytes(8).toString("hex")}`;
     await prisma.waTopup.create({
       data: { tenantId, orderId, amount: body.data.amount, credits },

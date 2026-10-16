@@ -11,12 +11,11 @@ import { chatRouter } from "./routes/chat.js";
 import { audioRouter } from "./routes/audio.js";
 import { driveRouter } from "./routes/drive.js";
 import { adminRouter } from "./routes/admin.js";
-import { billingRouter } from "./routes/billing.js";
+import { billingRouter, snapNotifyRouter } from "./routes/billing.js";
 import { authRouter } from "./routes/auth.js";
 import { waRouter } from "./routes/wa.js";
 import { customersRouter } from "./routes/customers.js";
 import { webhookAccurateRouter, webhookRootRouter } from "./routes/webhook-accurate.js";
-import { winpayNotifyRouter } from "./routes/winpay.js";
 import { LlmHttpError } from "./ai/llm-error.js";
 
 export function createApp() {
@@ -41,8 +40,8 @@ export function createApp() {
   app.get("/api/health", (_req, res) => res.json({ ok: true }));
   // Notifikasi QRIS Winpay — pasang paling awal agar tak tertangkap router lain
   // (ada router dengan .use(middleware) tanpa path yang menangkap semua request)
-  app.use("/api", winpayNotifyRouter);
-  app.use(winpayNotifyRouter);
+  app.use("/api", snapNotifyRouter);
+  app.use(snapNotifyRouter);
   app.use("/api", meRouter);
   app.use("/api", authRouter);
   app.use("/api", launchRouter);

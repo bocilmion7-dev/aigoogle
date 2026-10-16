@@ -27,7 +27,7 @@ export function WhatsApp() {
   const [st, setSt] = useState<WaStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [amount, setAmount] = useState(10000);
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState<"winpay" | "midtrans" | null>(null);
   const [me, setMe] = useState<Awaited<ReturnType<typeof getMe>> | undefined>(undefined);
   const [waAuto, setWaAuto] = useState(false);
   const [waDaily, setWaDaily] = useState(false);
@@ -38,7 +38,16 @@ export function WhatsApp() {
   const [d360Msg, setD360Msg] = useState<string | null>(null);
   const [d360Busy, setD360Busy] = useState(false);
   const [qris, setQris] = useState<
-    { orderId: string; credits: number; amount: number; qrUrl: string; qrContent: string; expiredAt: string } | null
+    | {
+        orderId: string;
+        credits: number;
+        amount: number;
+        qrUrl: string;
+        qrContent: string;
+        expiredAt: string;
+        provider: "winpay" | "midtrans";
+      }
+    | null
   >(null);
   const [topupMsg, setTopupMsg] = useState<string | null>(null);
   const [openMsg, setOpenMsg] = useState<string | null>(null);
@@ -159,14 +168,16 @@ export function WhatsApp() {
     );
   }
 
-  async function topup() {
+  async function topup(provider: "winpay" | "midtrans" = "winpay") {
     setError(null);
-    setBusy(true);
+    setTopupMsg(null);
+    setQris(null); // panel QR lama (provider lain) tidak boleh tertinggal saat request baru
+    setBusy(provider);
     try {
       const res = await fetch("/api/wa/topup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount }),
+        body: JSON.stringify({ amount, provider }),
       });
       const j = (await res.json()) as {
         error?: string;
@@ -174,11 +185,18 @@ export function WhatsApp() {
         credits?: number;
         min?: number;
         amount?: number;
-        qris?: { qrUrl: string; qrContent: string; contractId: string; expiredAt: string };
+        provider?: "winpay" | "midtrans";
+        qris?: { qrUrl: string; qrContent: string; contractId?: string; referenceNo?: string; expiredAt: string };
       };
       if (res.ok && j.qris && j.orderId) {
         setTopupMsg(null);
-        setQris({ orderId: j.orderId, credits: j.credits ?? 0, amount: j.amount ?? amount, ...j.qris });
+        setQris({
+          orderId: j.orderId,
+          credits: j.credits ?? 0,
+          amount: j.amount ?? amount,
+          provider: j.provider ?? provider,
+          ...j.qris,
+        });
         return;
       }
       if (res.status === 503 && j.orderId) {
@@ -200,7 +218,7 @@ export function WhatsApp() {
         );
       } else load();
     } finally {
-      setBusy(false);
+      setBusy(null);
     }
   }
 
@@ -306,12 +324,25 @@ export function WhatsApp() {
             className="btn btn--block"
             style={{ marginTop: "var(--space-xs)" }}
             onClick={() => void topup()}
-            disabled={busy}
-            aria-busy={busy}
+            disabled={busy !== null}
+            aria-busy={busy === "winpay"}
             aria-label="Topup saldo WhatsApp"
           >
-            {busy && <span className="spinner" aria-hidden="true" />}
-            Topup {amount.toLocaleString("id-ID")} Rp ({Math.floor(amount / st.rupiahPerCredit)} kredit)
+            {busy === "winpay" && <span className="spinner" aria-hidden="true" />}
+            {busy === "winpay"
+              ? "Memproses…"
+              : `Topup ${amount.toLocaleString("id-ID")} Rp (${Math.floor(amount / st.rupiahPerCredit)} kredit)`}
+          </button>
+          <button
+            className="btn btn--2 btn--block"
+            style={{ marginTop: "var(--space-xs)" }}
+            onClick={() => void topup("midtrans")}
+            disabled={busy !== null}
+            aria-busy={busy === "midtrans"}
+            aria-label="Topup saldo via Midtrans QRIS"
+          >
+            {busy === "midtrans" && <span className="spinner" aria-hidden="true" />}
+            {busy === "midtrans" ? "Memproses…" : `Topup via Midtrans ${amount.toLocaleString("id-ID")} Rp`}
           </button>
           {topupMsg && (
             <p className="banner banner--ok" role="status" style={{ marginTop: "var(--space-xs)", marginBottom: 0 }}>
@@ -325,6 +356,20 @@ export function WhatsApp() {
           )}
           {qris && (
             <div className="qris-panel" role="status">
+              <p
+                className="meta"
+                style={{
+                  margin: "0 0 var(--space-xs)",
+                  fontWeight: 600,
+                  color: qris.provider === "midtrans" ? "var(--accent-strong)" : "var(--ink)",
+                }}
+              >
+                {qris.provider === "midtrans" ? "Pembayaran via QRIS Midtrans" : "Pembayaran via QRIS Winpay"}
+                <span className="meta" style={{ fontWeight: 400 }}>
+                  {" "}
+                  · order {qris.orderId}
+                </span>
+              </p>
               <img src={qris.qrUrl} alt="Kode QRIS pembayaran" width={200} height={200} />
               <div className="qris-info">
                 <strong>

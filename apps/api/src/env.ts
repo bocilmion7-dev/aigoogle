@@ -26,6 +26,18 @@ const Env = z.object({
   BILLING_ENABLED: z.string().default("0"),
   MIDTRANS_SERVER_KEY: z.string().default(""),
   MIDTRANS_CLIENT_KEY: z.string().default(""),
+  /** BI-SNAP: "sandbox" | "production" */
+  MIDTRANS_ENV: z.string().default("sandbox"),
+  MIDTRANS_CLIENT_ID: z.string().default(""),
+  MIDTRANS_CLIENT_SECRET: z.string().default(""),
+  MIDTRANS_PARTNER_ID: z.string().default(""),
+  MIDTRANS_MERCHANT_ID: z.string().default(""),
+  MIDTRANS_CHANNEL_ID: z.string().default("12345"),
+  /** PEM PKCS#8 merchant (escape \n sbg satu baris) — utk SHA256withRSA access-token */
+  MIDTRANS_MERCHANT_PRIVATE_KEY: z.string().default(""),
+  /** Public key Midtrans (PEM) — utk verifikasi signature notifikasi RSA */
+  MIDTRANS_PUBLIC_KEY: z.string().default(""),
+  MIDTRANS_PRO_PRICE: z.coerce.number().default(49000),
   META_APP_ID: z.string().default(""),
   META_APP_SECRET: z.string().default(""),
   META_WABA_ID: z.string().default(""),
