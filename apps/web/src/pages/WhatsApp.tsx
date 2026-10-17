@@ -258,6 +258,30 @@ export function WhatsApp() {
     }
   }
 
+  // polling status langganan waserver selama QR tampil
+  // WAJIB diletakkan sebelum early return if(!st) — jika tidak, jumlah hook
+  // berubah antar render (React #310: "Rendered more hooks than during the
+  // previous render") dan halaman blank.
+  useEffect(() => {
+    if (!subOrder) return;
+    const t = window.setInterval(() => {
+      void getWaSubscribeStatus(subOrder)
+        .then((j) => {
+          if (j.settled) {
+            setSubOrder(null);
+            setSubMsg("Langganan WhatsApp Gateway aktif.");
+            load();
+          } else if (j.status === "cancel" || j.status === "expire") {
+            setSubOrder(null);
+            setSubMsg(null);
+            setError("Langganan dibatalkan atau kedaluwarsa.");
+          }
+        })
+        .catch(() => undefined);
+    }, 4000);
+    return () => window.clearInterval(t);
+  }, [subOrder, load]);
+
   if (!st) {
     return (
       <div className="app">
@@ -340,27 +364,6 @@ export function WhatsApp() {
       setSubBusy(false);
     }
   }
-
-  // polling status langganan waserver selama QR tampil
-  useEffect(() => {
-    if (!subOrder) return;
-    const t = window.setInterval(() => {
-      void getWaSubscribeStatus(subOrder)
-        .then((j) => {
-          if (j.settled) {
-            setSubOrder(null);
-            setSubMsg("Langganan WhatsApp Gateway aktif.");
-            load();
-          } else if (j.status === "cancel" || j.status === "expire") {
-            setSubOrder(null);
-            setSubMsg(null);
-            setError("Langganan dibatalkan atau kedaluwarsa.");
-          }
-        })
-        .catch(() => undefined);
-    }, 4000);
-    return () => window.clearInterval(t);
-  }, [subOrder, load]);
 
   return (
     <div className="app">
