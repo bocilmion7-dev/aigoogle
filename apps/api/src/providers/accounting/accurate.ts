@@ -1,13 +1,46 @@
+/**
+ * Kolom default tiap daftar — HANYA nama yang benar-benar dikenal Accurate.
+ *
+ * Diverifikasi langsung ke API (uji 66 tool .list, nol error): nama kolom tak dikenal
+ * dibuang DIAM-DIAM tanpa pesan kesalahan. Karena itu daftar lama (no/customerName/date/
+ * total/status/code/unit/…) tidak pernah terbalaskan → model tidak melihat nomor transaksi
+ * lalu MENGARANG-nya (kasus nyata: menampilkan "INV-2050" dari id 2050, padahal nomor asli
+ * `SI.2017.01.00010`).
+ */
 const DEFAULT_LIST_FIELDS: Record<string, string> = {
-  "customer.list": "id,name,email,phone,phone1,mobilePhone",
-  "salesInvoice.list": "id,no,customerName,date,total,status,dueDate,customer,totalAmount,description",
-  "salesOrder.list": "id,no,customerName,date,total,status,customer,totalAmount",
-  "item.list": "id,code,name,unit,sellingPrice",
-  "vendor.list": "id,code,name,phone,email,address",
-  "glaccount.list": "id,code,name,type",
-  "purchaseInvoice.list": "id,no,vendorName,date,total,status,vendor,totalAmount",
-  "salesReceipt.list": "id,no,customerName,date,total,status,customer,totalAmount",
+  "customer.list": "id,customerNo,name,email,mobilePhone,balance",
+  "vendor.list": "id,vendorNo,name,email,mobilePhone,balance",
+  "item.list": "id,no,name,quantity",
+  "glaccount.list": "id,no,name,accountType,balance",
+  "currency.list": "id,code,name",
+  "salesInvoice.list": "id,number,transDate,dueDate,totalAmount,approvalStatus,customerNo,customer,description",
+  "salesOrder.list": "id,number,transDate,totalAmount,status,approvalStatus,customerNo,customer",
+  "salesQuotation.list": "id,number,transDate,totalAmount,approvalStatus,customerNo,customer,description",
+  "salesReceipt.list": "id,number,transDate,approvalStatus,customerNo,customer,description",
+  "salesReturn.list": "id,number,transDate,totalAmount,approvalStatus,customerNo,customer,description",
+  "deliveryOrder.list": "id,number,transDate,approvalStatus,customerNo,customer,description",
+  "purchaseInvoice.list": "id,number,transDate,dueDate,totalAmount,approvalStatus,vendor,description",
+  "purchaseOrder.list": "id,number,transDate,dueDate,totalAmount,approvalStatus,vendor,description",
+  "purchaseQuotation.list": "id,number,transDate,totalAmount,approvalStatus,vendor,description",
+  "purchaseReturn.list": "id,number,transDate,totalAmount,approvalStatus,vendor,description",
+  "journalVoucher.list": "id,number,transDate,totalAmount,approvalStatus,description",
+  "expense.list": "id,number,transDate,totalAmount,approvalStatus,description",
+  "bankTransfer.list": "id,number,transDate,totalAmount,approvalStatus,description",
 };
+
+/**
+ * Fallback utk SEMUA modul lain — satu daftar lintas modul; Accurate membuang sendiri
+ * nama kolom yang tidak berlaku di modul tsb (sudah diuji: 66/66 .list tanpa error),
+ * sehingga nomor transaksi/kode tetap muncul di modul yang belum tercantum di atas.
+ */
+const GENERIC_LIST_FIELDS =
+  "id,name,no,number,code,customerNo,vendorNo,transDate,dueDate,totalAmount,subTotal," +
+  "approvalStatus,description,quantity,balance,accountType,customer,vendor,email,mobilePhone";
+
+/** Kolom `fields` bawaan utk satu tool daftar (modul spesifik, atau fallback generik). */
+export function listFieldsFor(tool: string): string {
+  return DEFAULT_LIST_FIELDS[tool] ?? GENERIC_LIST_FIELDS;
+}
 
 import type {
   AccountingProvider,
@@ -292,9 +325,10 @@ export class AccurateAdapter implements AccountingProvider {
     if (route.method === "GET") {
       let merged = args;
       // API Accurate asli hanya membalas {id} kecuali dimintai fields;
-      // mock menyaring sendiri kolom yang dikenal → daftar gabungan aman dua arah
-      if (tool.endsWith(".list") && !(typeof args.fields === "string" && args.fields) && DEFAULT_LIST_FIELDS[tool]) {
-        merged = { ...args, fields: DEFAULT_LIST_FIELDS[tool] };
+      // mock menyaring sendiri kolom yang dikenal → daftar gabungan aman dua arah.
+      // Tanpa fallback generik, modul yang tak ada di map balik tanpa nomor transaksi.
+      if (tool.endsWith(".list") && !(typeof args.fields === "string" && args.fields)) {
+        merged = { ...args, fields: listFieldsFor(tool) };
       }
       const j = await this.moduleGet(`${route.path}${this.buildQuery(merged)}`, ctx, route.docsOnly);
       return j.d;

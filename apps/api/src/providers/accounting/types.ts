@@ -79,6 +79,19 @@ export interface ToolSpec {
   jsonSchema: Record<string, unknown>;
   requiredPermission: string;
   label: string;
+  /**
+   * Path aksi tidak ada di API Accurate asli (hanya ada di dokumentasi → respons HTML SPA).
+   * Tetap dicatat di katalog (cakupan penuh utk UI/permission), TAPI tidak boleh
+   * dikirim ke AI karena dijamin selalu gagal dan membuang satu putaran LLM.
+   */
+  unavailable?: boolean;
+  /**
+   * Minimal SATU dari field ini wajib terisi (skema `required` tidak bisa menyatakan
+   * "salah satu" — Accurate menerima id ATAU kunci alternatif, mis. customer/detail:
+   * `id` (integer) ATAU `customerNo`). Divalidasi di tool-loop sebelum eksekusi supaya
+   * panggilan kosong tidak menghabiskan satu putaran LLM (~15-20 dtk).
+   */
+  oneOfRequired?: string[];
 }
 export interface ProviderCtx {
   tenantId: string;

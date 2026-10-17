@@ -6,9 +6,9 @@ import {
 } from "../src/store.js";
 
 describe("store", () => {
-  it("menyediakan 2 db & 2 user fixture", () => {
+  it("menyediakan 2 db & 3 user fixture", () => {
     expect(listDbs()).toHaveLength(2);
-    expect(listUsers().map((u) => u.id)).toEqual(["user-admin", "user-staff"]);
+    expect(listUsers().map((u) => u.id)).toEqual(["user-admin", "user-staff", "user-platform"]);
     expect(getDb("1001")?.name).toBe("PT Maju Jaya");
   });
 

@@ -66,7 +66,20 @@ chatRouter.post(
 
     res.setHeader("Content-Type", "application/x-ndjson; charset=utf-8");
     res.setHeader("Cache-Control", "no-cache");
-    const send = (e: Record<string, unknown>) => res.write(JSON.stringify(e) + "\n");
+    let bytesSent = 0;
+    const send = (e: Record<string, unknown>) => {
+      const line = JSON.stringify(e) + "\n";
+      bytesSent += Buffer.byteLength(line);
+      res.write(line);
+    };
+    // klien menutup di tengah stream (klik navigasi/reload, jaringan putus, atau
+    // browser membatalkan) → rekam di journal agar tak lagi mustahil didiagnosis.
+    // bila TIDAK pernah muncul, berarti server yg menutup — bukan klien.
+    res.on("close", () => {
+      if (!res.writableEnded) {
+        console.warn(`[chat] stream ditutup di tengah jalan | bytes=${bytesSent} | writableEnded=${res.writableEnded}`);
+      }
+    });
 
     let session = body.data.sessionId
       ? await prisma.chatSession.findFirst({

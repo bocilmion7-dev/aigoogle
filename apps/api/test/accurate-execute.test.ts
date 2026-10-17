@@ -40,9 +40,9 @@ describe("AccurateAdapter execute/refresh/privilege", () => {
   });
 
   it("salesInvoice.list admin → ada transaksi total", async () => {
-    const d = (await adapter.execute("salesInvoice.list", {}, adminCtx)) as Array<{ total: number }>;
+    const d = (await adapter.execute("salesInvoice.list", {}, adminCtx)) as Array<{ totalAmount: number }>;
     expect(d.length).toBeGreaterThan(0);
-    expect(typeof d[0].total).toBe("number");
+    expect(typeof d[0].totalAmount).toBe("number");
   });
 
   it("staff tanpa hak customer → execute throw (provider gagal)", async () => {
@@ -80,15 +80,15 @@ describe("AccurateAdapter execute/refresh/privilege", () => {
   });
 
   it("salesInvoice.list dengan fields+keywords → row terfilter", async () => {
-    const d = (await adapter.execute("salesInvoice.list", { fields: "no,total", keywords: "FJ/2026" }, adminCtx)) as Array<Record<string, unknown>>;
-    expect(d[0]).toEqual({ no: "FJ/2026/0001", total: 2500000 });
+    const d = (await adapter.execute("salesInvoice.list", { fields: "number,totalAmount", keywords: "SI.2026.10.00001" }, adminCtx)) as Array<Record<string, unknown>>;
+    expect(d[0]).toEqual({ number: "SI.2026.10.00001", totalAmount: 2500000 });
   });
 
   it("item.list & glAccount.list admin → ada data", async () => {
     const items = (await adapter.execute("item.list", {}, adminCtx)) as Array<{ name: string }>;
     expect(items.map((i) => i.name)).toContain("Kertas A4");
-    const accounts = (await adapter.execute("glaccount.list", {}, adminCtx)) as Array<{ code: string }>;
-    expect(accounts.map((a) => a.code)).toContain("1000");
+    const accounts = (await adapter.execute("glaccount.list", {}, adminCtx)) as Array<{ no: string }>;
+    expect(accounts.map((a) => a.no)).toContain("1000");
   });
 
   it("customer.detail id C-001 → Budi Santoso; id salah → throw", async () => {

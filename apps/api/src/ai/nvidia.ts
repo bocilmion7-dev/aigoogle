@@ -222,6 +222,7 @@ export class RealNvidiaClient implements NvidiaClient {
       method: "POST",
       headers: this.headers(),
       body: JSON.stringify(body),
+      ...(opts.signal ? { signal: opts.signal } : {}),
     });
     if (!res.ok) throw new LlmHttpError(res.status, await res.text().catch(() => ""));
     if (!res.body) throw new LlmHttpError(502, "stream kosong");

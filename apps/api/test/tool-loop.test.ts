@@ -116,4 +116,50 @@ describe("runToolLoop (fake LLM)", () => {
     const out = await runToolLoop(opts);
     expect(out.text).toContain("waktu");
   });
+
+  const DETAIL: ToolSpec = {
+    name: "customer.detail",
+    description: "Detail pelanggan",
+    jsonSchema: { type: "object", properties: { id: { type: "number" }, customerNo: { type: "string" } } },
+    requiredPermission: "accurate:customer.view",
+    label: "Membuka detail pelanggan…",
+    oneOfRequired: ["id", "customerNo"],
+  };
+
+  it("oneOfRequired — panggilan tanpa id maupun kode ditolak SEBELUM ke provider", async () => {
+    const fake = new FakeLLMClient([
+      { parts: [{ functionCall: { name: "customer.detail", args: {}, id: "c1" } }] },
+      { parts: [{ text: "Data tidak ditemukan." }] },
+    ]);
+    const { opts } = deps({
+      client: fake,
+      tools: [...TOOLS, DETAIL],
+      providerExecute: async () => {
+        throw new Error("tidak boleh dipanggil");
+      },
+    });
+    const out = await runToolLoop(opts);
+    expect(out.trace[0]).toMatchObject({ tool: "customer.detail", ok: false, reason: "missing_args_oneof" });
+    expect(JSON.stringify(fake.calls[1].contents)).toContain("isi salah satu");
+  });
+
+  it("oneOfRequired — cukup salah satu field (kode) → provider dipanggil normal", async () => {
+    const fake = new FakeLLMClient([
+      { parts: [{ functionCall: { name: "customer.detail", args: { customerNo: "CSBY-0005" }, id: "c1" } }] },
+      { parts: [{ text: "Pelanggan Abadi Phone Center." }] },
+    ]);
+    const calls: Array<Record<string, unknown>> = [];
+    const { opts } = deps({
+      client: fake,
+      tools: [...TOOLS, DETAIL],
+      providerExecute: async (tool, args) => {
+        calls.push({ tool, args });
+        return { name: "Abadi Phone Center" };
+      },
+    });
+    const out = await runToolLoop(opts);
+    expect(calls).toEqual([{ tool: "customer.detail", args: { customerNo: "CSBY-0005" } }]);
+    expect(out.trace[0]).toMatchObject({ tool: "customer.detail", ok: true });
+    expect(out.text).toBe("Pelanggan Abadi Phone Center.");
+  });
 });

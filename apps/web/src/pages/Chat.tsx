@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { MessageInfo, SessionInfo } from "../chat-api";
-import { listMessages, listSessions, streamChat } from "../chat-api";
+import { CHAT_TIMEOUT_MS, isTimeoutError, listMessages, listSessions, streamChat } from "../chat-api";
 import { VoiceMode } from "../voice-mode";
 
 interface UiMsg {
@@ -72,27 +72,38 @@ export function Chat() {
     setMsgs((m) => [...m, { role: "user", content: text }, { role: "ai", content: "" }]);
     setInput("");
     try {
-      await streamChat(text, sessionId, (e) => {
-        setMsgs((m) => {
-          const copy = [...m];
-          const last = { ...copy[copy.length - 1] };
-          // nama proses (bukan nama tool) — tampil sbg status "thinking"
-          if (e.type === "tool_call") last.process = e.label || "Memproses data…";
-          if (e.type === "tool_result" && !e.ok) last.process = "Mencoba cara lain…";
-          // teks mulai mengalir → proses disembunyikan, ganti cursor streaming
-          if (e.type === "text_delta" || e.type === "done") last.process = undefined;
-          if (e.type === "text_delta") last.content += e.delta;
-          if (e.type === "error") setError(e.message);
-          copy[copy.length - 1] = last;
-          return copy;
-        });
-        if (e.type === "done") {
-          setBusy(false);
-          void listSessions().then(setSessions);
-        }
-      });
-    } catch {
-      setError("Koneksi terputus — coba lagi.");
+      await streamChat(
+        text,
+        sessionId,
+        (e) => {
+          setMsgs((m) => {
+            const copy = [...m];
+            const last = { ...copy[copy.length - 1] };
+            // nama proses (bukan nama tool) — tampil sbg status "thinking"
+            if (e.type === "tool_call") last.process = e.label || "Memproses data…";
+            if (e.type === "tool_result" && !e.ok) last.process = "Mencoba cara lain…";
+            // teks mulai mengalir → proses disembunyikan, ganti cursor streaming
+            if (e.type === "text_delta" || e.type === "done") last.process = undefined;
+            if (e.type === "text_delta") last.content += e.delta;
+            if (e.type === "error") setError(e.message);
+            copy[copy.length - 1] = last;
+            return copy;
+          });
+          if (e.type === "done") {
+            setBusy(false);
+            void listSessions().then(setSessions);
+          }
+        },
+        AbortSignal.timeout(CHAT_TIMEOUT_MS)
+      );
+    } catch (e) {
+      // rekam penyebab asli (selama ini dibuang → mustahil mendiagnosis)
+      console.error("[chat] stream failed:", e);
+      setError(
+        isTimeoutError(e)
+          ? "Waktu tunggu habis (2 menit) — coba lagi."
+          : "Koneksi terputus — coba lagi."
+      );
     } finally {
       setBusy(false);
     }

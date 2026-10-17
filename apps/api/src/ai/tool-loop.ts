@@ -98,6 +98,14 @@ class ThrottledEmitter {
   }
 }
 
+/** JSON dgn key urut — agar argumen identik (beda urut key) menghasilkan key cache sama. */
+function stableArgsKey(v: unknown): string {
+  if (v === null || typeof v !== "object") return JSON.stringify(v) ?? "null";
+  if (Array.isArray(v)) return "[" + v.map(stableArgsKey).join(",") + "]";
+  const o = v as Record<string, unknown>;
+  return "{" + Object.keys(o).sort().map((k) => JSON.stringify(k) + ":" + stableArgsKey(o[k])).join(",") + "}";
+}
+
 export async function runToolLoop(
   opts: ToolLoopOpts
 ): Promise<{ text: string; trace: Array<Record<string, unknown>> }> {
@@ -115,6 +123,9 @@ export async function runToolLoop(
   // berhenti & jelaskan alih-alih loop "Daftar…" yg sama berkali-kali
   const failCount = new Map<string, number>();
   const FAIL_CAP = 2;
+  // cache hasil tool (key stabil: nama + args urut) — model kadang memanggil tool
+  // identik berkali-kali dlm 1 sesi; hasilnya sama, tak perlu panggil Accurate lagi
+  const resultCache = new Map<string, unknown>();
 
   // throttled emitter: buffer teks lalu keluarkan bertahap supaya terasa mengetik
   const streamInterval = opts.streamIntervalMs ?? 60;
@@ -131,27 +142,42 @@ export async function runToolLoop(
       opts.onEvent({ type: "text_delta", delta: msg });
       return { text: msg, trace };
     }
-    // streaming: buffer teks via throttled emitter; kumpulkan parts utk tool call
+    // streaming: buffer teks via throttled emitter; kumpulkan parts utk tool call.
+    // signal membatasi waktu stream per step sisa deadline — call yg menggantung
+    // (Gonka/LLM lambat) dipotong tepat waktu, bukan menggantung tanpa batas.
     const parts: LLMPart[] = [];
-    for await (const part of opts.client.generateStream({
-      contents,
-      tools: [
-        {
-          functionDeclarations: opts.tools.map((t) => ({
-            name: t.name,
-            description: t.description,
-            parameters: t.jsonSchema,
-          })),
-        },
-      ],
-      system: opts.system ?? SYSTEM_PROMPT,
-      model: opts.model,
-    })) {
-      if (part.text && !part.thought) {
-        text += part.text;
-        emitter.push(part.text);
+    const stepSignal = AbortSignal.timeout(Math.max(500, deadline - now()));
+    try {
+      for await (const part of opts.client.generateStream({
+        contents,
+        tools: [
+          {
+            functionDeclarations: opts.tools.map((t) => ({
+              name: t.name,
+              description: t.description,
+              parameters: t.jsonSchema,
+            })),
+          },
+        ],
+        system: opts.system ?? SYSTEM_PROMPT,
+        model: opts.model,
+        signal: stepSignal,
+      })) {
+        if (part.text && !part.thought) {
+          text += part.text;
+          emitter.push(part.text);
+        }
+        parts.push(part);
       }
-      parts.push(part);
+    } catch (e) {
+      // stream dibatalkan krn lewat batas waktu → pesan deadline (teks sebagian tetap tampil)
+      if (stepSignal.aborted) {
+        await emitter.end();
+        const msg = "Butuh waktu lebih lama dari biasanya — coba persempit pertanyaan Anda.";
+        opts.onEvent({ type: "text_delta", delta: msg });
+        return { text: text + msg, trace };
+      }
+      throw e;
     }
     // stream selesai → tunggu buffer kosong (jangan dump sekaligus)
     await emitter.end();
@@ -190,6 +216,19 @@ export async function runToolLoop(
         });
         continue;
       }
+      // minimal satu field pilihan wajib terisi (skema `required` tak bisa menyatakan "atau")
+      const oneOf = spec.oneOfRequired ?? [];
+      if (oneOf.length > 0 && !oneOf.some((k) => args[k] !== undefined && args[k] !== null && args[k] !== "")) {
+        const errMsg = `args wajib diisi — isi salah satu dari: ${oneOf.join(" / ")}`;
+        console.error(`[tool-loop] ${spec.name} invalid:`, errMsg);
+        trace.push({ tool: spec.name, args, ok: false, reason: "missing_args_oneof" });
+        opts.onEvent({ type: "tool_result", tool: spec.name, ok: false });
+        contents.push({
+          role: "user",
+          parts: [{ functionResponse: { name: spec.name, response: { error: errMsg }, id: call.functionCall!.id } }],
+        });
+        continue;
+      }
       if (!opts.permissions.has(spec.requiredPermission)) {
         trace.push({ tool: spec.name, args: call.functionCall!.args, ok: false, reason: "no_permission" });
         opts.onEvent({ type: "tool_result", tool: spec.name, ok: false });
@@ -207,8 +246,23 @@ export async function runToolLoop(
         });
         continue;
       }
+      // tool+args identik pernah sukses → pakai hasil cache (hemat panggilan Accurate)
+      const cacheKey = `${spec.name}:${stableArgsKey(call.functionCall!.args ?? {})}`;
+      if (resultCache.has(cacheKey)) {
+        trace.push({ tool: spec.name, args: call.functionCall!.args, ok: true, cached: true });
+        opts.onEvent({ type: "tool_result", tool: spec.name, ok: true });
+        const result = resultCache.get(cacheKey);
+        const wrapped =
+          Array.isArray(result) ? { items: result } : result && typeof result === "object" ? result : { result };
+        contents.push({
+          role: "user",
+          parts: [{ functionResponse: { name: spec.name, response: wrapped, id: call.functionCall!.id } }],
+        });
+        continue;
+      }
       try {
         const result = await opts.providerExecute(spec.name, call.functionCall!.args);
+        resultCache.set(cacheKey, result);
         trace.push({ tool: spec.name, args: call.functionCall!.args, ok: true });
         opts.onEvent({ type: "tool_result", tool: spec.name, ok: true });
         const wrapped =

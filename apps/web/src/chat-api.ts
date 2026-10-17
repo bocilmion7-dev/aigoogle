@@ -18,6 +18,20 @@ export interface MessageInfo {
   createdAt: string;
 }
 
+/**
+ * Batas waktu 1 stream chat: 2 menit + margin 5 detik.
+ * Server (tool-loop) punya deadline 120 dtk + waktu penyiapan route — margin ini
+ * memastikan PESAN deadline dari server sempat dulu sampai ke klien, sehingga
+ * user melihat penjelasan (bukan batal sendiri). Kalau koneksi benar-benar macet,
+ * klien membatalkan sendiri — tak ada stream yg menggantung selamanya.
+ */
+export const CHAT_TIMEOUT_MS = 125_000;
+
+/** Abort/timeout dr klien sendiri — bedakan dgn putus koneksi beneran. */
+export function isTimeoutError(e: unknown): boolean {
+  return e instanceof Error && (e.name === "TimeoutError" || e.name === "AbortError");
+}
+
 export async function listSessions(): Promise<SessionInfo[]> {
   const res = await fetch("/api/chat/sessions");
   return res.ok ? res.json() : [];

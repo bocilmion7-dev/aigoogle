@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { streamChat, type ChatEvent } from "./chat-api";
+import { CHAT_TIMEOUT_MS, isTimeoutError, streamChat, type ChatEvent } from "./chat-api";
 import { getSettings } from "./api";
 import { cleanSpeech, speakWebAsync, stopSpeak, sttWebSpeech, ttsEdge } from "./voice";
 
@@ -54,6 +54,8 @@ export function VoiceMode({
     busyRef.current = true;
     setError(null);
     stopSpeak();
+    // true selama stream chat berjalan — bedakan error stream dgn error mikrofon/STT
+    let inStream = false;
     try {
       setPhase("listening");
       const text = await sttWebSpeech((abort) => {
@@ -67,11 +69,19 @@ export function VoiceMode({
       setAiText("");
       setPhase("thinking");
       let ai = "";
-      await streamChat(text.trim(), sessionId, (e: ChatEvent) => {
-        if (e.type === "start" && e.sessionId) setSessionId(e.sessionId);
-        if (e.type === "text_delta") ai += e.delta;
-        if (e.type === "error") setError(e.message);
-      }, undefined, true);
+      inStream = true;
+      await streamChat(
+        text.trim(),
+        sessionId,
+        (e: ChatEvent) => {
+          if (e.type === "start" && e.sessionId) setSessionId(e.sessionId);
+          if (e.type === "text_delta") ai += e.delta;
+          if (e.type === "error") setError(e.message);
+        },
+        AbortSignal.timeout(CHAT_TIMEOUT_MS),
+        true
+      );
+      inStream = false;
       if (!ai) {
         setPhase("idle");
         return;
@@ -85,7 +95,15 @@ export function VoiceMode({
       setPhase("idle");
     } catch (e) {
       const msg = e instanceof Error ? e.message : "";
-      if (msg && msg !== "stt_batal" && msg !== "stt_kosong" && msg !== "stt_timeout") {
+      if (inStream) {
+        // rekam penyebab asli stream (dulu dibuang → tak bisa didiagnosis)
+        console.error("[voice] stream failed:", e);
+        setError(
+          isTimeoutError(e)
+            ? "Waktu tunggu habis (2 menit) — coba lagi."
+            : "Koneksi terputus — coba lagi."
+        );
+      } else if (msg && msg !== "stt_batal" && msg !== "stt_kosong" && msg !== "stt_timeout") {
         setError(
           msg === "stt_mikrofon_ditolak"
             ? "Izin mikrofon ditolak — izinkan di pengaturan browser."

@@ -29,4 +29,6 @@ export interface GenerateOpts {
   system?: string;
   model?: string;
   responseModalities?: string[];
+  /** batas waktu stream — bila fired, fetch/body read dibatalkan (cegah call menggantung). */
+  signal?: AbortSignal;
 }

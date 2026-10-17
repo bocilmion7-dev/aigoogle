@@ -18,15 +18,15 @@ apiRouter.use("/customer", customerRouter);
 apiRouter.use("/sales-invoice", salesInvoiceRouter);
 apiRouter.use("/item", makeListRouter({
   module: "item", rows: (db) => db.data.item,
-  fieldsForDetail: ["id", "code", "name", "unit", "sellingPrice"],
+  fieldsForDetail: ["id", "no", "name", "quantity"],
 }));
 apiRouter.use("/vendor", makeListRouter({
   module: "vendor", rows: (db) => db.data.vendor,
-  fieldsForDetail: ["id", "code", "name"],
+  fieldsForDetail: ["id", "vendorNo", "name"],
 }));
 apiRouter.use("/glaccount", makeListRouter({
   module: "glaccount", rows: (db) => db.data.glaccount,
-  fieldsForDetail: ["id", "code", "name", "type"],
+  fieldsForDetail: ["id", "no", "name", "accountType", "balance"],
 }));
 apiRouter.use("/sales-order", makeListRouter({ module: "sales-order", rows: (db) => db.data["sales-order"] }));
 apiRouter.use("/sales-receipt", makeListRouter({ module: "sales-receipt", rows: (db) => db.data["sales-receipt"], addable: true }));

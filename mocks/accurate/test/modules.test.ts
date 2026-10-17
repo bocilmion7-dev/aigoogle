@@ -30,7 +30,7 @@ describe("modul read + isolasi tenant (bentuk real)", () => {
     const res = await request(app).get("/accurate/api/sales-invoice/list.do")
       .set("Authorization", bearer).set("X-Session-ID", sid);
     expect(res.body.s).toBe(true);
-    expect(res.body.d[0].total).toBe(2500000);
+    expect(res.body.d[0].totalAmount).toBe(2500000);
   });
 
   it("staff db 1001: customer ditolak (s false + pesan)", async () => {
@@ -64,9 +64,9 @@ describe("modul read + isolasi tenant (bentuk real)", () => {
   it("fields & keywords & sp.page bekerja di item/list.do", async () => {
     const a = await session("1001");
     const res = await request(app)
-      .get("/accurate/api/item/list.do?fields=code,name&keywords=A4&sp.page=1&sp.pageSize=1")
+      .get("/accurate/api/item/list.do?fields=no,name&keywords=A4&sp.page=1&sp.pageSize=1")
       .set("Authorization", a.bearer).set("X-Session-ID", a.sid);
-    expect(res.body.d).toEqual([{ code: "BRG-001", name: "Kertas A4" }]);
+    expect(res.body.d).toEqual([{ no: "BRG-001", name: "Kertas A4" }]);
     expect(res.body.sp).toMatchObject({ page: 1, pageSize: 1, rowCount: 1 });
   });
 
@@ -79,7 +79,7 @@ describe("modul read + isolasi tenant (bentuk real)", () => {
     const si = await request(app).get("/accurate/api/sales-invoice/detail.do?id=SI-001")
       .set("Authorization", a.bearer).set("X-Session-ID", a.sid);
     expect(si.body.s).toBe(true);
-    expect(si.body.d[0].no).toBe("FJ/2026/0001");
+    expect(si.body.d[0].number).toBe("SI.2026.10.00001");
     const bad = await request(app).get("/accurate/api/customer/detail.do?id=XXX")
       .set("Authorization", a.bearer).set("X-Session-ID", a.sid);
     expect(bad.body.s).toBe(false);

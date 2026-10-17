@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { randomUUID } from "node:crypto";
 import { sessionGuard, ok, fail } from "../session.js";
-import { getDb, privilegeOf, type MockDb } from "../store.js";
+import { getDb, privilegeOf, normalizeRow, type MockDb } from "../store.js";
 
 export type Row = Record<string, unknown>;
 
@@ -63,7 +63,7 @@ export function makeListRouter(opts: {
         ? req.body
         : {}) as Record<string, unknown>;
       const prefix = opts.module.replace(/[^a-z]/gi, "").slice(0, 2).toUpperCase();
-      const row: Row = { id: `${prefix}-${randomUUID().slice(0, 8)}`, ...body };
+      const row: Row = { id: `${prefix}-${randomUUID().slice(0, 8)}`, ...normalizeRow(body) };
       (opts.rows(getDb(dbId)!) as Row[]).push(row);
       res.json(ok(row.id));
     });

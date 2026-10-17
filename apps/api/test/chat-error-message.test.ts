@@ -26,8 +26,22 @@ describe("pesan error banner chat", () => {
     );
   });
 
+  it("429 TPM (per-menit) → jeda singkat dari pesan provider", () => {
+    const TPM =
+      "Rate limit reached for model `openai/gpt-oss-20b` in organization `org_x` service tier `on_demand` on tokens per minute (TPM): Limit 8000, Used 6278, Requested 3503. Please try again in 13.3575s.";
+    const msg = friendlyChatErrorMessage(new LlmHttpError(429, TPM));
+    expect(msg).toContain("Permintaan AI sedang ramai");
+    expect(msg).toContain("14 detik");
+  });
+
+  it("koneksi terputus di tengah (ECONNRESET/terminated) → pesan koneksi", () => {
+    const terminated = "TypeError: terminated\n[cause]: Error: read ECONNRESET\n code: 'ECONNRESET'";
+    expect(friendlyChatErrorMessage(new Error(terminated))).toContain("Koneksi ke layanan AI terputus");
+    expect(friendlyChatErrorMessage(new Error("read ECONNRESET"))).toContain("Koneksi ke layanan AI terputus");
+  });
+
   it("error lain → gangguan generik", () => {
-    expect(friendlyChatErrorMessage(new Error("ECONNRESET"))).toBe("Terjadi gangguan — coba lagi.");
+    expect(friendlyChatErrorMessage(new Error("kesalahan tak dikenal"))).toBe("Terjadi gangguan — coba lagi.");
     expect(friendlyChatErrorMessage("string")).toBe("Terjadi gangguan — coba lagi.");
   });
 });

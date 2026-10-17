@@ -13,6 +13,20 @@ export function friendlyChatErrorMessage(e: unknown): string {
       : "Kuota AI harian habis — coba lagi beberapa menit lagi.";
   }
 
+  // rate limit per-menit (TPM) — batas token/menit, reset cepat → minta jeda singkat
+  if (/rate.?limit|tokens per minute|\(TPM\)|per minute/i.test(m)) {
+    const detik = /\btry again in ([\d.]+)s/i.exec(m)?.[1];
+    const d = detik ? Math.ceil(parseFloat(detik)) : null;
+    return d && d > 0
+      ? `Permintaan AI sedang ramai — coba lagi dalam ${d} detik.`
+      : "Permintaan AI sedang ramai — coba lagi sebentar lagi.";
+  }
+
+  // koneksi ke provider AI terputus di tengah streaming (Gonka reset/ECONNRESET)
+  if (/terminated|ECONNRESET|socket hang up|network|read ECONNRESET/i.test(m)) {
+    return "Koneksi ke layanan AI terputus di tengah — coba lagi.";
+  }
+
   if (/503|tidak ada model|tidak ada provider|tidak tersedia/i.test(m)) {
     return "Layanan AI sedang tidak tersedia — atur provider di menu AI atau coba lagi sebentar.";
   }

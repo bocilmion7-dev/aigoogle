@@ -1,7 +1,7 @@
 import { Router, type Request, type Response } from "express";
 import { randomUUID } from "node:crypto";
 import { sessionGuard, ok, fail } from "./session.js";
-import { getDb, privilegeOf, type MockDb, type Row } from "./store.js";
+import { getDb, privilegeOf, normalizeRow, type MockDb, type Row } from "./store.js";
 import { ACCURATE_MODULES } from "./manifest.js";
 
 function guard(req: Request, res: Response, mod: string, need: "view" | "create" | "delete"): boolean {
@@ -88,7 +88,7 @@ export function makeModuleRouter(mod: string): Router {
             ? (req.body as Row)
             : {};
         const prefix = mod.replace(/[^a-zA-Z]/g, "").slice(0, 3).toUpperCase();
-        const row: Row = { id: `${prefix}-${randomUUID().slice(0, 8)}`, ...body };
+        const row: Row = { id: `${prefix}-${randomUUID().slice(0, 8)}`, ...normalizeRow(body) };
         rowsOf(getDb(req.mockCtx!.dbId)!, mod).push(row);
         res.json(ok(row.id));
       });

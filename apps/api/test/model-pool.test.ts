@@ -1,6 +1,6 @@
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { prisma } from "../src/db.js";
-import { withModelFailover, getDefaultModel, MAX_FAILURES } from "../src/ai/model-pool.js";
+import { withModelFailover, withStreamFailover, getDefaultModel, MAX_FAILURES } from "../src/ai/model-pool.js";
 import { LlmHttpError } from "../src/ai/llm-error.js";
 
 async function seedProvider(models: string[], opts?: { active?: boolean; failures?: Record<string, number> }) {
@@ -136,5 +136,72 @@ describe("pool model AI (failover DB)", () => {
     expect(await getDefaultModel()).toBe("");
     await seedProvider(["z1", "z2"], { active: true });
     expect(await getDefaultModel()).toBe("z1");
+  });
+});
+
+// Skenario stream: error sblm output terkirim → di-retry (inilah yg dulu lolos krn
+// generator lazy di luar try/catch failover → user lihat "koneksi terputus").
+describe("withStreamFailover (retry error stream sebelum output)", () => {
+  it("429 rate limit SEBELUM output → di-retry model sama → sukses tanpa kehilangan data", async () => {
+    await seedProvider(["a"]);
+    let attempts = 0;
+    const items: string[] = [];
+    const gen = withStreamFailover<string>(
+      async function* () {
+        attempts++;
+        if (attempts === 1) throw new LlmHttpError(429, "rate limit on tokens per minute (TPM): try again in 13s");
+        yield "halo";
+        yield "dunia";
+      },
+      "a"
+    );
+    for await (const i of gen) items.push(i);
+    expect(attempts).toBe(2); // gagal sekali → backoff → coba lagi → sukses
+    expect(items).toEqual(["halo", "dunia"]);
+  });
+
+  it("koneksi terputus (ECONNRESET/terminated) SEBELUM output → di-retry", async () => {
+    await seedProvider(["a"]);
+    let attempts = 0;
+    const items: string[] = [];
+    const gen = withStreamFailover<string>(
+      async function* () {
+        attempts++;
+        if (attempts === 1) throw new TypeError("terminated: read ECONNRESET");
+        yield "ok";
+      },
+      "a"
+    );
+    for await (const i of gen) items.push(i);
+    expect(attempts).toBe(2);
+    expect(items).toEqual(["ok"]);
+  });
+
+  it("error SETELAH output terkirim → diteruskan apa adanya (tanpa duplikasi teks)", async () => {
+    await seedProvider(["a"]);
+    const items: string[] = [];
+    const gen = withStreamFailover<string>(
+      async function* () {
+        yield "sebagian";
+        throw new LlmHttpError(429, "rate limit on tokens per minute (TPM)");
+      },
+      "a"
+    );
+    await expect(async () => {
+      for await (const i of gen) items.push(i);
+    }).rejects.toThrow(/rate limit/);
+    expect(items).toEqual(["sebagian"]); // tak diulang → tak diduplikasi
+  });
+
+  it("429 terus-menerus sampai semua percobaan habis → error diteruskan", async () => {
+    await seedProvider(["a"]);
+    await expect(
+      withStreamFailover<string>(
+        async function* () {
+          throw new LlmHttpError(429, "rate limit on tokens per minute (TPM)");
+        },
+        "a"
+      ).next()
+    ).rejects.toThrow(/rate limit/);
   });
 });

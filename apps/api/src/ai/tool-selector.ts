@@ -45,8 +45,6 @@ const KEYWORD_MAP: Array<{ keywords: RegExp; modules: string[] }> = [
 
 /** tool yang selalu disertakan (inti akuntansi, jarang salah) */
 const CORE_TOOLS = [
-  "report.list",
-  "report.detail",
   "glaccount.list",
   "glaccount.detail",
   "glaccount.get-balance",
@@ -81,6 +79,10 @@ export function selectTools(userMessage: string, allTools: ToolSpec[] = ACCURATE
   const msg = userMessage.toLowerCase();
   const matchedModules = new Set<string>();
 
+  // tool dgn path tak ada di API Accurate asli (docsOnly) dijamin selalu gagal →
+  // buang di sini agar tak memakan slot & satu putaran LLM percuma
+  const usable = allTools.filter((t) => !t.unavailable);
+
   for (const { keywords, modules } of KEYWORD_MAP) {
     if (keywords.test(msg)) {
       for (const m of modules) matchedModules.add(m);
@@ -88,7 +90,7 @@ export function selectTools(userMessage: string, allTools: ToolSpec[] = ACCURATE
   }
 
   // filter tools: (modul terdeteksi ATAU core) DAN action read-only
-  const selected = allTools.filter((t) => {
+  const selected = usable.filter((t) => {
     if (!READ_ACTIONS.test(t.name)) return false;
     if (CORE_TOOLS.includes(t.name)) return true;
     if (matchedModules.size === 0) return false;
@@ -104,7 +106,7 @@ export function selectTools(userMessage: string, allTools: ToolSpec[] = ACCURATE
 
   // fallback: tak ada match → core tools saja (+ beberapa list umum)
   if (selected.length === 0 || matchedModules.size === 0) {
-    return allTools.filter((t) => CORE_TOOLS.includes(t.name) && READ_ACTIONS.test(t.name));
+    return usable.filter((t) => CORE_TOOLS.includes(t.name) && READ_ACTIONS.test(t.name));
   }
 
   return selected;

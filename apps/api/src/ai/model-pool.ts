@@ -104,6 +104,8 @@ export async function withModelFailover<T>(
         } catch (e) {
           const st = errStatus(e);
           if (ABORT_STATUS.has(st)) throw e;
+          // batasan waktu (abort/timeout) → jangan retry/pindah model
+          if (e instanceof Error && (e.name === "AbortError" || e.name === "TimeoutError")) throw e;
           lastErr = e;
           // model tidak support tool calling → skip permanen (guard/safeguard models)
           if (/tool calling.*not supported|does not support tools/i.test(errMsg(e))) {
@@ -148,6 +150,94 @@ export async function withModelFailover<T>(
     models = await candidates(preferred);
     out = await cycle(models);
     if (out.ok) return out.value;
+  }
+
+  throw lastErr ?? new LlmHttpError(503, "tidak ada model AI tersedia");
+}
+
+/**
+ * Failover untuk STREAM (async generator).
+ *
+ * Perbedaan dgn withModelFailover: `run` hanya MENGEMBALIKAN generator (lazy —
+ * belum ada HTTP). Bila fetch+error dilakukan di luar (saat `yield*`), seluruh
+ * logika retry/failover di withModelFailover dilewati → 429/ECONNRESET langsung
+ * meledak ke user. Di sini iterasi dilakukan DI DALAM try/catch failover.
+ *
+ * Retry hanya bila BELUM ada output yg diyield utk attempt tsb (gagal saat
+ * connect/header/awal stream) — jika sebagian teks sudah terkirim ke caller,
+ * mengulang akan menduplikasi teks → error diteruskan apa adanya.
+ */
+export async function* withStreamFailover<T>(
+  iterate: (c: ModelCandidate) => AsyncGenerator<T>,
+  preferred?: string
+): AsyncGenerator<T> {
+  let lastErr: unknown = null;
+  let sawTransient = false;
+  let done = false; // ditandai saat 1 kandidat sukses tuntas
+
+  // cycle = async generator agar bisa yield item sambil menjalankan retry/failover
+  const cycle = async function* (cands: ModelCandidate[]): AsyncGenerator<T> {
+    for (const c of cands) {
+      const maxRetry429 = 2;
+      for (let attempt = 0; ; attempt++) {
+        let yielded = false;
+        try {
+          for await (const item of iterate(c)) {
+            yielded = true;
+            yield item;
+          }
+          await markOk(c);
+          done = true;
+          return;
+        } catch (e) {
+          // sudah terkirim sebagian output → tak bisa diulang tanpa duplikasi teks
+          if (yielded) throw e;
+          // batasan waktu kita sendiri (abort/timeout) → jangan retry/pindah model
+          if (e instanceof Error && (e.name === "AbortError" || e.name === "TimeoutError")) throw e;
+          const st = errStatus(e);
+          if (ABORT_STATUS.has(st)) throw e;
+          lastErr = e;
+          if (/tool calling.*not supported|does not support tools/i.test(errMsg(e))) {
+            await markFail(c, 400, "tool_calling_unsupported");
+            break;
+          }
+          if (st === 429 && /tokens per day|\(TPD\)|per day/i.test(errMsg(e))) {
+            await prisma.aiProviderModel.updateMany({
+              where: { providerId: c.provider.id, name: c.model },
+              data: { lastError: errMsg(e), lastFailAt: new Date() },
+            });
+            throw e;
+          }
+          const isRateLimit = st === 429 && /rate.?limit|itpm|tokens per minute|per minute/i.test(errMsg(e));
+          if (isRateLimit && attempt < maxRetry429) {
+            await new Promise((r) => setTimeout(r, 1500 * (attempt + 1)));
+            continue;
+          }
+          // koneksi terputus sblm output (ECONNRESET/terminated) → retry singkat
+          const isConnDrop = /terminated|ECONNRESET|socket hang up|network/i.test(errMsg(e));
+          if (isConnDrop && attempt < 2) {
+            await new Promise((r) => setTimeout(r, 800 * (attempt + 1)));
+            continue;
+          }
+          if (isTransient(st)) {
+            sawTransient = true;
+            await markFail(c, st, errMsg(e));
+          }
+          break;
+        }
+      }
+    }
+  };
+
+  let models = await candidates(preferred);
+  for await (const item of cycle(models)) yield item;
+  if (done) return;
+
+  if (sawTransient) {
+    await resetActiveFailures();
+    models = await candidates(preferred);
+    for await (const item of cycle(models)) yield item;
+    if (done) return;
   }
 
   throw lastErr ?? new LlmHttpError(503, "tidak ada model AI tersedia");
