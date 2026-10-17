@@ -187,16 +187,33 @@ export async function runToolLoop(
     if (calls.length === 0) return { text, trace };
 
     contents.push({ role: "model", parts: visible });
+
+    // --- Adapter agregasi: klasifikasi semua tool call lalu eksekusi paralel ---
+    // Setiap call divalidasi & diklasifikasi dulu; call yg butuh panggilan Accurate
+    // (tidak cache, argumen valid, punya izin) dijalankan BERSAMAAN via Promise.all
+    // alih-alih satu per satu — mempercepat jawaban saat model memanggil banyak tool.
+    interface PendingCall {
+      call: (typeof calls)[number];
+      spec: ToolSpec;
+      cacheKey: string;
+    }
+    const pending: PendingCall[] = [];
+    const pushResponse = (
+      name: string,
+      id: string | undefined,
+      response: unknown
+    ): void => {
+      contents.push({
+        role: "user",
+        parts: [{ functionResponse: { name, response, id } }],
+      });
+    };
+
     for (const call of calls) {
       const spec = opts.tools.find((t) => t.name === call.functionCall!.name);
       if (!spec) {
         trace.push({ tool: call.functionCall!.name, args: call.functionCall!.args, ok: false, reason: "unknown_tool" });
-        contents.push({
-          role: "user",
-          parts: [
-            { functionResponse: { name: call.functionCall!.name, response: { error: "tool tidak dikenal" }, id: call.functionCall!.id } },
-          ],
-        });
+        pushResponse(call.functionCall!.name, call.functionCall!.id, { error: "tool tidak dikenal" });
         continue;
       }
       opts.onEvent({ type: "tool_call", tool: spec.name, label: spec.label });
@@ -210,10 +227,7 @@ export async function runToolLoop(
         console.error(`[tool-loop] ${spec.name} invalid:`, errMsg);
         trace.push({ tool: spec.name, args, ok: false, reason: "missing_args" });
         opts.onEvent({ type: "tool_result", tool: spec.name, ok: false });
-        contents.push({
-          role: "user",
-          parts: [{ functionResponse: { name: spec.name, response: { error: errMsg }, id: call.functionCall!.id } }],
-        });
+        pushResponse(spec.name, call.functionCall!.id, { error: errMsg });
         continue;
       }
       // minimal satu field pilihan wajib terisi (skema `required` tak bisa menyatakan "atau")
@@ -223,26 +237,14 @@ export async function runToolLoop(
         console.error(`[tool-loop] ${spec.name} invalid:`, errMsg);
         trace.push({ tool: spec.name, args, ok: false, reason: "missing_args_oneof" });
         opts.onEvent({ type: "tool_result", tool: spec.name, ok: false });
-        contents.push({
-          role: "user",
-          parts: [{ functionResponse: { name: spec.name, response: { error: errMsg }, id: call.functionCall!.id } }],
-        });
+        pushResponse(spec.name, call.functionCall!.id, { error: errMsg });
         continue;
       }
       if (!opts.permissions.has(spec.requiredPermission)) {
         trace.push({ tool: spec.name, args: call.functionCall!.args, ok: false, reason: "no_permission" });
         opts.onEvent({ type: "tool_result", tool: spec.name, ok: false });
-        contents.push({
-          role: "user",
-          parts: [
-            {
-              functionResponse: {
-                name: spec.name,
-                response: { error: `Anda tidak punya akses modul ${spec.requiredPermission}` },
-                id: call.functionCall!.id,
-              },
-            },
-          ],
+        pushResponse(spec.name, call.functionCall!.id, {
+          error: `Anda tidak punya akses modul ${spec.requiredPermission}`,
         });
         continue;
       }
@@ -254,48 +256,56 @@ export async function runToolLoop(
         const result = resultCache.get(cacheKey);
         const wrapped =
           Array.isArray(result) ? { items: result } : result && typeof result === "object" ? result : { result };
-        contents.push({
-          role: "user",
-          parts: [{ functionResponse: { name: spec.name, response: wrapped, id: call.functionCall!.id } }],
-        });
+        pushResponse(spec.name, call.functionCall!.id, wrapped);
         continue;
       }
-      try {
-        const result = await opts.providerExecute(spec.name, call.functionCall!.args);
-        resultCache.set(cacheKey, result);
-        trace.push({ tool: spec.name, args: call.functionCall!.args, ok: true });
-        opts.onEvent({ type: "tool_result", tool: spec.name, ok: true });
-        const wrapped =
-          Array.isArray(result) ? { items: result } : result && typeof result === "object" ? result : { result };
-        contents.push({
-          role: "user",
-          parts: [{ functionResponse: { name: spec.name, response: wrapped, id: call.functionCall!.id } }],
-        });
-      } catch (e) {
-        const errMsg = e instanceof Error ? e.message : "gagal";
-        console.error(`[tool-loop] ${spec.name} gagal:`, errMsg, "| args:", JSON.stringify(call.functionCall!.args).slice(0, 200));
-        trace.push({ tool: spec.name, args: call.functionCall!.args, ok: false, reason: "execute_error" });
-        opts.onEvent({ type: "tool_result", tool: spec.name, ok: false });
-        contents.push({
-          role: "user",
-          parts: [
-            {
-              functionResponse: { name: spec.name, response: { error: errMsg }, id: call.functionCall!.id },
-            },
-          ],
-        });
-        // error koneksi (Accurate terputus/sibuk) → langsung jelaskan, jangan serahkan ke model (bisa salah tebak)
-        if (/koneksi|hubungi|terputus|belum aktif|fetch failed|ECONNREFUSED|ENOTFOUND|sibuk|timeout/i.test(errMsg)) {
-          const msg = `Saya tidak dapat mengambil data karena ${errMsg.replace(/^tidak dapat menghubungi /, "")}. Silakan periksa koneksi Anda lalu coba lagi.`;
-          opts.onEvent({ type: "text_delta", delta: msg });
-          return { text: msg, trace };
-        }
-        // tool yg sama gagal berkali-kali → hentikan agar tak loop membingungkan
-        const n = (failCount.get(spec.name) ?? 0) + 1;
-        failCount.set(spec.name, n);
-        if (n >= FAIL_CAP) {
-          opts.onEvent({ type: "text_delta", delta: "Data belum bisa diambil saat ini — coba lagi beberapa saat lagi." });
-          return { text: "Data belum bisa diambil saat ini — coba lagi beberapa saat lagi.", trace };
+      pending.push({ call, spec, cacheKey });
+    }
+
+    // eksekusi paralel: hasil disimpan per indeks, lalu di-push sesuai urutan asli
+    if (pending.length > 0) {
+      const results = await Promise.all(
+        pending.map(async ({ call, spec, cacheKey }) => {
+          try {
+            const result = await opts.providerExecute(spec.name, call.functionCall!.args);
+            resultCache.set(cacheKey, result);
+            return { spec, call, ok: true as const, result };
+          } catch (e) {
+            const errMsg = e instanceof Error ? e.message : "gagal";
+            console.error(`[tool-loop] ${spec.name} gagal:`, errMsg, "| args:", JSON.stringify(call.functionCall!.args).slice(0, 200));
+            return { spec, call, ok: false as const, errMsg };
+          }
+        })
+      );
+
+      for (const r of results) {
+        if (r.ok) {
+          trace.push({ tool: r.spec.name, args: r.call.functionCall!.args, ok: true });
+          opts.onEvent({ type: "tool_result", tool: r.spec.name, ok: true });
+          const wrapped =
+            Array.isArray(r.result)
+              ? { items: r.result }
+              : r.result && typeof r.result === "object"
+                ? r.result
+                : { result: r.result };
+          pushResponse(r.spec.name, r.call.functionCall!.id, wrapped);
+        } else {
+          trace.push({ tool: r.spec.name, args: r.call.functionCall!.args, ok: false, reason: "execute_error" });
+          opts.onEvent({ type: "tool_result", tool: r.spec.name, ok: false });
+          pushResponse(r.spec.name, r.call.functionCall!.id, { error: r.errMsg });
+          // error koneksi (Accurate terputus/sibuk) → langsung jelaskan, jangan serahkan ke model (bisa salah tebak)
+          if (/koneksi|hubungi|terputus|belum aktif|fetch failed|ECONNREFUSED|ENOTFOUND|sibuk|timeout/i.test(r.errMsg)) {
+            const msg = `Saya tidak dapat mengambil data karena ${r.errMsg.replace(/^tidak dapat menghubungi /, "")}. Silakan periksa koneksi Anda lalu coba lagi.`;
+            opts.onEvent({ type: "text_delta", delta: msg });
+            return { text: msg, trace };
+          }
+          // tool yg sama gagal berkali-kali → hentikan agar tak loop membingungkan
+          const n = (failCount.get(r.spec.name) ?? 0) + 1;
+          failCount.set(r.spec.name, n);
+          if (n >= FAIL_CAP) {
+            opts.onEvent({ type: "text_delta", delta: "Data belum bisa diambil saat ini — coba lagi beberapa saat lagi." });
+            return { text: "Data belum bisa diambil saat ini — coba lagi beberapa saat lagi.", trace };
+          }
         }
       }
     }

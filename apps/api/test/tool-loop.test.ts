@@ -82,6 +82,41 @@ describe("runToolLoop (fake LLM)", () => {
     expect(JSON.stringify(second.contents)).toContain("functionResponse");
   });
 
+  it("adapter agregasi — beberapa tool call independen dieksekusi PARALEL (overlap waktu), bukan satu per satu", async () => {
+    const fake = new FakeLLMClient([
+      {
+        parts: [
+          { functionCall: { name: "customer.list", args: {}, id: "c1" } },
+          { functionCall: { name: "salesInvoice.list", args: {}, id: "c2" } },
+        ],
+      },
+      { parts: [{ text: "Ada 2 pelanggan & 3 faktur." }] },
+    ]);
+    const timeline: Array<{ tool: string; phase: "start" | "end" }> = [];
+    const { opts } = deps({
+      client: fake,
+      providerExecute: async (tool: string) => {
+        timeline.push({ tool, phase: "start" });
+        await new Promise((r) => setTimeout(r, 50));
+        timeline.push({ tool, phase: "end" });
+        return tool === "customer.list" ? { items: ["Budi", "Siti"] } : { items: ["INV-1", "INV-2", "INV-3"] };
+      },
+    });
+    const out = await runToolLoop(opts);
+    expect(out.text).toBe("Ada 2 pelanggan & 3 faktur.");
+    // kedua tool harus mulai SEBELUM salah satu selesai → terbukti paralel
+    const starts = timeline.filter((t) => t.phase === "start").map((t) => t.tool);
+    expect(starts).toEqual(["customer.list", "salesInvoice.list"]);
+    // hasil tetap di-push ke model sesuai urutan tool call asli (c1 lalu c2)
+    const second = fake.calls[1];
+    const resp = JSON.stringify(second.contents);
+    expect(resp.indexOf("customer.list")).toBeLessThan(resp.indexOf("salesInvoice.list"));
+    expect(out.trace).toEqual([
+      { tool: "customer.list", args: {}, ok: true },
+      { tool: "salesInvoice.list", args: {}, ok: true },
+    ]);
+  });
+
   it("permission ditolak → tidak panggil provider; AI diminta menjawab tidak punya akses", async () => {
     const fake = new FakeLLMClient([
       { parts: [{ functionCall: { name: "salesInvoice.list", args: {}, id: "c1" } }] },
