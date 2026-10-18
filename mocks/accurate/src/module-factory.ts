@@ -96,7 +96,25 @@ export function makeModuleRouter(mod: string): Router {
       // aksi GET khusus (balance, mutation, stock, …) — balas row pertama sbg representasi
       r.get(`/${a.action}.do`, sessionGuard, (req, res) => {
         if (!guard(req, res, mod, "view")) return;
-        const row = rowsOf(getDb(req.mockCtx!.dbId)!, mod)[0] ?? { id: "" };
+        const db = getDb(req.mockCtx!.dbId)!;
+        // get-pl membalas SELURUH akun P&L periode (bentuk asli: accountNo, accountName,
+        // amount, isParent, lvl, accountType) — deret dari baris glaccount ber-plAmount
+        if (mod === "glaccount" && a.action === "get-pl-account-amount") {
+          const PNL = ["REVENUE", "COST_OF_GOOD_SOLD", "EXPENSE", "OTHER_INCOME", "OTHER_EXPENSE"];
+          const rows = rowsOf(db, "glaccount")
+            .filter((r) => PNL.includes(String(r.accountType)) && r.plAmount !== undefined)
+            .map((r) => ({
+              accountNo: String(r.no ?? ""),
+              accountName: String(r.name ?? ""),
+              amount: Number(r.plAmount) || 0,
+              isParent: false,
+              lvl: 1,
+              accountType: String(r.accountType),
+            }));
+          res.json(ok(rows));
+          return;
+        }
+        const row = rowsOf(db, mod)[0] ?? { id: "" };
         res.json(ok([row]));
       });
     }

@@ -10,11 +10,11 @@ import { ACCURATE_CATALOG } from "../src/providers/accounting/catalog.js";
  */
 describe("kolom default daftar (diverifikasi langsung ke API Accurate)", () => {
   it.each([
-    ["salesInvoice.list", ["number", "transDate", "totalAmount", "customerNo", "customer", "approvalStatus"]],
+    ["salesInvoice.list", ["number", "transDate", "totalAmount", "customerNo", "customer", "approvalStatus", "statusName"]],
     ["salesReceipt.list", ["number", "transDate", "customer", "customerNo"]],
     ["salesReturn.list", ["number", "transDate", "totalAmount"]],
     ["salesOrder.list", ["number", "transDate", "totalAmount", "status"]],
-    ["purchaseInvoice.list", ["number", "transDate", "totalAmount", "vendor"]],
+    ["purchaseInvoice.list", ["number", "transDate", "totalAmount", "vendor", "statusName"]],
     ["customer.list", ["customerNo", "name", "email"]],
     ["vendor.list", ["vendorNo", "name"]],
     ["item.list", ["no", "name", "quantity"]],

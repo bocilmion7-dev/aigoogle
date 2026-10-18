@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ACCURATE_CATALOG } from "../src/providers/accounting/catalog.js";
+import { AGGREGATION_TOOLS } from "../src/providers/accounting/aggregation.js";
 import { selectTools } from "../src/ai/tool-selector.js";
 
 const find = (n: string) => ACCURATE_CATALOG.find((t) => t.name === n);
@@ -104,5 +105,26 @@ describe("tool docsOnly (path tak ada di API Accurate asli)", () => {
     const names = selectTools("tampilkan laporan laba rugi saya").map((t) => t.name);
     expect(names).toContain("glaccount.get-pl-account-amount");
     expect(names).toContain("glaccount.get-bs-account-amount");
+  });
+
+  it("tool agregasi selalu ikut — termasuk saat fallback tanpa keyword modul ('halo')", () => {
+    // panggil seperti rute chat (capabilityCatalog = catalog + agregasi)
+    const catalog = [...ACCURATE_CATALOG, ...AGGREGATION_TOOLS];
+    const names = selectTools("halo", catalog).map((t) => t.name);
+    expect(names).toEqual(
+      expect.arrayContaining([
+        "customer.lastOrderByName",
+        "salesInvoice.summary",
+        "purchaseInvoice.summary",
+        "vendor.lastPurchaseByName",
+        "vendor.unpaidByName",
+        "vendor.summaryByName",
+        "salesInvoice.perCustomer",
+        "item.topSelling",
+        "receivables.summary",
+        "payables.summary",
+        "gl.plSummary",
+      ])
+    );
   });
 });

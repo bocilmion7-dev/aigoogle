@@ -69,19 +69,26 @@ export function Chat() {
     }
     setBusy(true);
     setError(null);
-    setMsgs((m) => [...m, { role: "user", content: text }, { role: "ai", content: "" }]);
+    // indikator tampil SEJAK AWAL (0 dtk) — tanpa ini layar diam ±4 dtk selama LLM turn 1
+    setMsgs((m) => [...m, { role: "user", content: text }, { role: "ai", content: "", process: "Menganalisis pertanyaan…" }]);
     setInput("");
     try {
       await streamChat(
         text,
         sessionId,
         (e) => {
+          // event "start" membawa sessionId buatan server → simpan;
+          // tanpa ini tiap pesan dikirim sessionId=null → server bikin SESI BARU
+          // per pesan → riwayat terputus & AI linglung saat balas "ya" dst.
+          if (e.type === "start" && e.sessionId) setSessionId(e.sessionId);
           setMsgs((m) => {
             const copy = [...m];
             const last = { ...copy[copy.length - 1] };
             // nama proses (bukan nama tool) — tampil sbg status "thinking"
             if (e.type === "tool_call") last.process = e.label || "Memproses data…";
-            if (e.type === "tool_result" && !e.ok) last.process = "Mencoba cara lain…";
+            // data sudah masuk → ganti status "Menganalisis…" jadi penyusunan jawaban
+            // (turn LLM ke-2 bisa ±5 dtk — tanpa teks ini layar terlihat mandeg)
+            if (e.type === "tool_result") last.process = e.ok ? "Menyusun jawaban…" : "Mencoba cara lain…";
             // teks mulai mengalir → proses disembunyikan, ganti cursor streaming
             if (e.type === "text_delta" || e.type === "done") last.process = undefined;
             if (e.type === "text_delta") last.content += e.delta;

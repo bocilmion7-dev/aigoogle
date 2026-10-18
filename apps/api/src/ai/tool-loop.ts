@@ -145,7 +145,13 @@ export async function runToolLoop(
   // catatan ke dalamnya membuat gateway LLM (Gonka) menandai "tampered — re-run" dan
   // model justru MENGULANG tool (kebalikan dr tujuan). Instruksi anti-ulang diserahkan
   // ke system prompt.
-  const aggNameHits: Array<{ tool: string; name: string; customer: Record<string, unknown> | null; result: unknown }> = [];
+  const aggNameHits: Array<{
+    tool: string;
+    name: string;
+    customer: Record<string, unknown> | null;
+    vendor: Record<string, unknown> | null;
+    result: unknown;
+  }> = [];
   const normName = (v: unknown) => String(v ?? "").trim().toLowerCase();
   const nameCovered = (a: string, b: string) => a.length >= 3 && b.length >= 3 && (a.includes(b) || b.includes(a));
 
@@ -315,6 +321,18 @@ export async function runToolLoop(
           continue;
         }
       }
+      // vendor.list dgn keywords nama yg SUDAH di-agregasi (trio vendor) → balas
+      // dari data agregasi (mirror customer.list di atas)
+      if (spec.name === "vendor.list" && args.keywords !== undefined && args.keywords !== null && args.keywords !== "") {
+        const kw = normName(args.keywords);
+        const prior = kw ? aggNameHits.find((h) => h.vendor && nameCovered(h.name, kw)) : undefined;
+        if (prior?.vendor) {
+          trace.push({ tool: spec.name, args, ok: true, nudged: true });
+          opts.onEvent({ type: "tool_result", tool: spec.name, ok: true });
+          pushResponse(spec.name, call.functionCall!.id, { items: [prior.vendor] });
+          continue;
+        }
+      }
       // duplikat persis dlm putaran sama → eksekusi sekali, hasil dipakai semua id
       const dupPending = pending.find((p) => p.cacheKey === cacheKey);
       if (dupPending) {
@@ -356,8 +374,14 @@ export async function runToolLoop(
           // simpan hasil agregasi by-name → bekal nudge anti-verifikasi-ulang
           if (AGGREGATION_NAMES.has(r.spec.name)) {
             const nm = normName((r.call.functionCall!.args ?? {}).name);
-            const cust = (r.result as { customer?: Record<string, unknown> } | null)?.customer ?? null;
-            aggNameHits.push({ tool: r.spec.name, name: nm, customer: cust, result: r.result });
+            const res = r.result as { customer?: Record<string, unknown>; vendor?: Record<string, unknown> } | null;
+            aggNameHits.push({
+              tool: r.spec.name,
+              name: nm,
+              customer: res?.customer ?? null,
+              vendor: res?.vendor ?? null,
+              result: r.result,
+            });
           }
           // duplikat persis dlm putaran → balas dgn hasil yg sama (tanpa eksekusi ulang)
           for (const d of r.dups) {

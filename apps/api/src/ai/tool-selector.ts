@@ -70,6 +70,15 @@ const CORE_TOOLS = [
   "customer.unpaidByName",
   "customer.summaryByName",
   "salesInvoice.summary",
+  "purchaseInvoice.summary",
+  "vendor.lastPurchaseByName",
+  "vendor.unpaidByName",
+  "vendor.summaryByName",
+  "salesInvoice.perCustomer",
+  "item.topSelling",
+  "receivables.summary",
+  "payables.summary",
+  "gl.plSummary",
 ];
 
 /** action yang boleh dikirim (read-only + aman) — create/save/delete disembunyikan dari AI */
@@ -114,7 +123,14 @@ export function selectTools(userMessage: string, allTools: ToolSpec[] = ACCURATE
 
   // fallback: tak ada match → core tools saja (+ beberapa list umum)
   if (selected.length === 0 || matchedModules.size === 0) {
-    return usable.filter((t) => CORE_TOOLS.includes(t.name) && READ_ACTIONS.test(t.name));
+    // tool agregasi IKUT dibawa di fallback — komentar "selalu dikirim" (baris atas)
+    // harus berlaku juga tanpa keyword modul (dulu regex READ_ACTIONS membuang
+    // "*.summary"/"*.perCustomer" → putaran LLM terbuang percuma)
+    return usable.filter(
+      (t) =>
+        (CORE_TOOLS.includes(t.name) && READ_ACTIONS.test(t.name)) ||
+        AGGREGATION_TOOLS.some((a) => a.name === t.name)
+    );
   }
 
   return selected;

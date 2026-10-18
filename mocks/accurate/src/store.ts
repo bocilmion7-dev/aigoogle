@@ -69,8 +69,12 @@ const dbs: Record<string, MockDb> = {
       "sales-invoice": [
         {
           id: "SI-001", number: "SI.2026.10.00001", transDate: "01/10/2026", dueDate: "01/11/2026",
-          totalAmount: 2500000, approvalStatus: "APPROVED", customerNo: "CSBY-0001",
+          totalAmount: 2500000, approvalStatus: "APPROVED", statusName: "Belum Lunas", customerNo: "CSBY-0001",
           customer: { id: "C-001", customerNo: "CSBY-0001", name: "Budi Santoso" }, description: null,
+          // rincian baris — dipakai agregasi item.topSelling (mirror field API asli)
+          detailItem: [
+            { detailName: "Kertas A4", quantity: 10, unitPrice: 250000, totalPrice: 2500000, itemId: "I-01" },
+          ],
         },
       ],
       item: [
@@ -86,6 +90,13 @@ const dbs: Record<string, MockDb> = {
         { id: "G-1100", no: "1100", name: "Bank", accountType: "CASH_BANK", balance: 500000 },
         { id: "G-4000", no: "4000", name: "Penjualan", accountType: "REVENUE", balance: 0 },
         { id: "G-5000", no: "5000", name: "Harga Pokok Penjualan", accountType: "EXPENSE", balance: 0 },
+        // akun P&L dgn mutasi periode berjalan (plAmount dipakai mock get-pl-account-amount)
+        { id: "G-4001", no: "4001", name: "Penjualan Barang", accountType: "REVENUE", balance: 0, plAmount: 10000000 },
+        { id: "G-5001", no: "5001", name: "Harga Pokok Penjualan Barang", accountType: "COST_OF_GOOD_SOLD", balance: 0, plAmount: 6000000 },
+        { id: "G-6001", no: "6001", name: "Beban Gaji", accountType: "EXPENSE", balance: 0, plAmount: 2000000 },
+        { id: "G-6002", no: "6002", name: "Beban Sewa", accountType: "EXPENSE", balance: 0, plAmount: 500000 },
+        { id: "G-4101", no: "4101", name: "Pendapatan Lain-lain", accountType: "OTHER_INCOME", balance: 0, plAmount: 500000 },
+        { id: "G-7101", no: "7101", name: "Beban Bunga", accountType: "OTHER_EXPENSE", balance: 0, plAmount: 100000 },
       ],
       "sales-order": [
         {
@@ -104,7 +115,7 @@ const dbs: Record<string, MockDb> = {
       "purchase-invoice": [
         {
           id: "PI-001", number: "PI.2026.10.00001", transDate: "03/10/2026", dueDate: "03/11/2026",
-          totalAmount: 800000, approvalStatus: "APPROVED",
+          totalAmount: 800000, approvalStatus: "APPROVED", statusName: "Belum Lunas",
           vendor: { id: "V-01", vendorNo: "VJKT-0001", name: "CV Sentosa Mandiri" }, description: null,
         },
       ],

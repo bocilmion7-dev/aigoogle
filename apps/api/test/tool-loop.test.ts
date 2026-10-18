@@ -207,6 +207,20 @@ describe("nudge anti-verifikasi-ulang & dedup (hemat putaran LLM)", () => {
     requiredPermission: "accurate:customer.view",
     label: "Mencari pesanan terakhir…",
   };
+  const AGG_VENDOR: ToolSpec = {
+    name: "vendor.unpaidByName",
+    description: "Utang belum dibayar pemasok by nama",
+    jsonSchema: { type: "object", properties: { name: { type: "string" } }, required: ["name"] },
+    requiredPermission: "accurate:vendor.view",
+    label: "Menghitung utang pemasok…",
+  };
+  const VENDOR_LIST: ToolSpec = {
+    name: "vendor.list",
+    description: "Daftar pemasok",
+    jsonSchema: { type: "object", properties: {} },
+    requiredPermission: "accurate:vendor.view",
+    label: "Mengambil data pemasok…",
+  };
 
   it("duplikat persis dlm 1 putaran → provider dieksekusi sekali, hasil dipakai semua id", async () => {
     let n = 0;
@@ -248,6 +262,28 @@ describe("nudge anti-verifikasi-ulang & dedup (hemat putaran LLM)", () => {
     expect(executed).toEqual(["customer.lastOrderByName"]);
     expect(out.trace.find((t) => t.tool === "customer.list")).toMatchObject({ ok: true, nudged: true });
     expect(out.text).toBe("Budi punya 1 faktur.");
+  });
+
+  it("vendor.list dgn keywords nama yg SUDAH di-agregasi (trio vendor) → dijawab dari data agregasi (tanpa eksekusi)", async () => {
+    const executed: string[] = [];
+    const fake = new FakeLLMClient([
+      { parts: [{ functionCall: { name: "vendor.unpaidByName", args: { name: "CV Sentosa Mandiri" }, id: "a1" } }] },
+      { parts: [{ functionCall: { name: "vendor.list", args: { keywords: "CV Sentosa" }, id: "v1" } }] },
+      { parts: [{ text: "Utang CV Sentosa 800000." }] },
+    ]);
+    const { opts } = deps({
+      client: fake,
+      tools: [...TOOLS, AGG_VENDOR, VENDOR_LIST],
+      permissions: new Set(["accurate:customer.view", "accurate:sales-invoice.view", "accurate:vendor.view"]),
+      providerExecute: async (tool) => {
+        executed.push(tool);
+        return { vendor: { vendorNo: "VJKT-0001", name: "CV Sentosa Mandiri" }, totalUnpaid: 800000, countUnpaid: 1 };
+      },
+    });
+    const out = await runToolLoop(opts);
+    expect(executed).toEqual(["vendor.unpaidByName"]);
+    expect(out.trace.find((t) => t.tool === "vendor.list")).toMatchObject({ ok: true, nudged: true });
+    expect(out.text).toBe("Utang CV Sentosa 800000.");
   });
 
   it("agregasi dgn nama tercakup ('Budi' setelah 'Budi Santoso') → tak eksekusi ulang, data dari hasil pertama", async () => {

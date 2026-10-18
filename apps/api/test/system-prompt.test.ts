@@ -17,6 +17,9 @@ describe("buildSystemPrompt", () => {
     expect(p).toContain("glaccount.get-balance");
     // larangan menampilkan proses berpikir
     expect(p).toContain("Jangan tampilkan proses berpikir");
+    // gaya manusia: teks biasa, tanpa emoji & simbol format (hanya tanda baca)
+    expect(p).toContain("GAYA MANUSIA");
+    expect(p).toContain("TANPA emoji");
   });
 
   it("tidak menyarankan tool yang tak ada di API Accurate asli", () => {
