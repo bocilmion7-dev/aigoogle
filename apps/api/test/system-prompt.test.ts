@@ -47,4 +47,15 @@ describe("buildSystemPrompt", () => {
     // customerNo tidak bisa difilter → cari via keywords
     expect(p).toContain("keywords");
   });
+
+  it("wajib verifikasi total = jumlah komponen & jawab ambigu 'hutang tahun X' dua makna", () => {
+    const p = buildSystemPrompt();
+    // kasus nyata: total kewajiban disebut Rp64.192.148.364, rinciannya sendiri Rp64.182.148.364
+    expect(p).toContain("JUMLAHKAN ULANG komponen");
+    expect(p).toContain("PERSIS sama dengan jumlah rincian");
+    // ambigu "hutang tahun 2017" → posisi per akhir periode + faktur outstanding periode itu
+    expect(p).toContain("DUA-DUANYA");
+    expect(p).toContain("asOfDate");
+    expect(p).toContain("receivables.summary dengan fromDate");
+  });
 });

@@ -223,6 +223,23 @@ describe("AccurateAdapter execute/refresh/privilege", () => {
       expect(r.vendors[0]).toMatchObject({ vendorNo: "VJKT-0001", name: "CV Sentosa Mandiri", invoiceCount: 1, total: 800000 });
     });
 
+    it("summary piutang/utang berperiode → hanya faktur outstanding dalam rentang tanggal", async () => {
+      const pay = (await adapter.execute("payables.summary", { fromDate: "01/10/2026", toDate: "31/10/2026" }, adminCtx)) as {
+        period?: { fromDate: string };
+        summary: { totalPayables: number; invoiceCount: number };
+      };
+      expect(pay.period).toEqual({ fromDate: "01/10/2026", toDate: "31/10/2026" });
+      expect(pay.summary).toMatchObject({ totalPayables: 800000, invoiceCount: 1 });
+      const pay2017 = (await adapter.execute("payables.summary", { fromDate: "01/01/2017", toDate: "31/12/2017" }, adminCtx)) as {
+        summary: { totalPayables: number; invoiceCount: number };
+      };
+      expect(pay2017.summary).toMatchObject({ totalPayables: 0, invoiceCount: 0 });
+      const rec = (await adapter.execute("receivables.summary", { fromDate: "01/10/2026", toDate: "31/10/2026" }, adminCtx)) as {
+        summary: { totalReceivables: number; invoiceCount: number };
+      };
+      expect(rec.summary).toMatchObject({ totalReceivables: 2500000, invoiceCount: 1 });
+    });
+
     it("gl.plSummary → laba rugi dihitung dari akun P&L (leaf saja)", async () => {
       const r = (await adapter.execute("gl.plSummary", {}, adminCtx)) as {
         summary: {

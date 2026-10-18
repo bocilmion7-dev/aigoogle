@@ -188,10 +188,15 @@ export const AGGREGATION_TOOLS: AggToolSpec[] = [
       "serta daftar pelanggan terbesar beserta tagihannya — dalam SATU tool. " +
       "Langsung pakai tool ini utk \"berapa total piutang perusahaan\" / \"siapa yang paling banyak berutang\". " +
       "Untuk piutang SATU pelanggan pakai customer.unpaidByName; untuk daftar semua pelanggan pakai receivables.summary ini. " +
-      "Argumen: limit (jumlah pelanggan teratas, default 10).",
+      "Bila user menanya piutang \"tahun/bulan X\" (periode faktur), isi fromDate & toDate — hasil hanya faktur periode itu yg belum dibayar. " +
+      "Argumen: limit (jumlah pelanggan teratas, default 10), fromDate & toDate opsional (dd/mm/yyyy, kosong = semua periode).",
     jsonSchema: {
       type: "object",
-      properties: { limit: { type: "number", description: "Jumlah pelanggan teratas (default 10)" } },
+      properties: {
+        limit: { type: "number", description: "Jumlah pelanggan teratas (default 10)" },
+        fromDate: { type: "string", description: "Tanggal mulai faktur (dd/mm/yyyy, kosong = semua)" },
+        toDate: { type: "string", description: "Tanggal akhir faktur (dd/mm/yyyy, kosong = semua)" },
+      },
     },
     requiredPermission: "accurate:sales-invoice.view",
     requires: ["accurate:sales-invoice.view", "accurate:customer.view"],
@@ -204,10 +209,15 @@ export const AGGREGATION_TOOLS: AggToolSpec[] = [
       "serta daftar pemasok terbesar beserta tagihannya — dalam SATU tool. " +
       "Langsung pakai tool ini utk \"berapa total utang perusahaan\" / \"utang ke pemasok mana terbesar\". " +
       "Untuk utang SATU pemasok pakai vendor.unpaidByName. " +
-      "Argumen: limit (jumlah pemasok teratas, default 10).",
+      "Bila user menanya utang \"tahun/bulan X\" (periode faktur), isi fromDate & toDate — hasil hanya faktur periode itu yg belum dibayar. " +
+      "Argumen: limit (jumlah pemasok teratas, default 10), fromDate & toDate opsional (dd/mm/yyyy, kosong = semua periode).",
     jsonSchema: {
       type: "object",
-      properties: { limit: { type: "number", description: "Jumlah pemasok teratas (default 10)" } },
+      properties: {
+        limit: { type: "number", description: "Jumlah pemasok teratas (default 10)" },
+        fromDate: { type: "string", description: "Tanggal mulai faktur (dd/mm/yyyy, kosong = semua)" },
+        toDate: { type: "string", description: "Tanggal akhir faktur (dd/mm/yyyy, kosong = semua)" },
+      },
     },
     requiredPermission: "accurate:purchase-invoice.view",
     requires: ["accurate:purchase-invoice.view", "accurate:vendor.view"],
@@ -374,6 +384,22 @@ function periodOf(args: Record<string, unknown>): { from: string; to: string } {
   const from = String(args.fromDate ?? monthStart);
   const to = String(args.toDate ?? endOfMonthOf(from));
   return { from, to };
+}
+
+/** filter outstanding + periode transDate opsional (fromDate/toDate dd/mm/yyyy) utk summary piutang/utang */
+function outstandingPeriodFilter(args: Record<string, unknown>): Record<string, unknown> {
+  const filter: Record<string, unknown> = { outstanding: true };
+  const from = args.fromDate ? String(args.fromDate) : "";
+  const to = args.toDate ? String(args.toDate) : from;
+  if (from && to) filter.transDate = { op: "BETWEEN", value: [from, to] };
+  return filter;
+}
+
+/** echo periode bila fromDate+toDate terisi (utk label jawaban "posisi per 31/12/2017") */
+function periodEcho(args: Record<string, unknown>): { fromDate: string; toDate: string } | null {
+  const from = args.fromDate ? String(args.fromDate) : "";
+  const to = args.toDate ? String(args.toDate) : from;
+  return from && to ? { fromDate: from, toDate: to } : null;
 }
 
 /** cari pemasok by nama → baris pertama yg cocok (atau null) — mirror findCustomer */
@@ -669,7 +695,7 @@ export async function runAggregation(
     case "receivables.summary": {
       const limit = Math.max(1, Math.min(50, Number(args.limit ?? 10) || 10));
       const all = await listAllPages(execute, "salesInvoice.list", {
-        filter: { outstanding: true },
+        filter: outstandingPeriodFilter(args),
         sort: "id|desc",
       });
       type Group = { customerNo: string; name: string; invoiceCount: number; total: number };
@@ -685,7 +711,9 @@ export async function runAggregation(
       }
       const customers = [...groups.values()].sort((a, b) => b.total - a.total);
       const totalReceivables = customers.reduce((s, g) => s + g.total, 0);
+      const period = periodEcho(args);
       return {
+        ...(period ? { period } : {}),
         summary: {
           totalReceivables,
           invoiceCount: all.rows.length,
@@ -698,7 +726,7 @@ export async function runAggregation(
     case "payables.summary": {
       const limit = Math.max(1, Math.min(50, Number(args.limit ?? 10) || 10));
       const all = await listAllPages(execute, "purchaseInvoice.list", {
-        filter: { outstanding: true },
+        filter: outstandingPeriodFilter(args),
         sort: "id|desc",
       });
       type Group = { vendorNo: string; name: string; invoiceCount: number; total: number };
@@ -714,7 +742,9 @@ export async function runAggregation(
       }
       const vendors = [...groups.values()].sort((a, b) => b.total - a.total);
       const totalPayables = vendors.reduce((s, g) => s + g.total, 0);
+      const period = periodEcho(args);
       return {
+        ...(period ? { period } : {}),
         summary: {
           totalPayables,
           invoiceCount: all.rows.length,
