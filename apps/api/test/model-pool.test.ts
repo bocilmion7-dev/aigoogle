@@ -115,6 +115,24 @@ describe("pool model AI (failover DB)", () => {
     expect(x?.failureCount).toBe(0);
   });
 
+  it("TimeoutError (percobaan menggantung) → lanjut kandidat berikut, bukan menumpuk; failureCount tak naik", async () => {
+    await seedProvider(["a", "b"]);
+    const tried: string[] = [];
+    const out = await withModelFailover(
+      "generate",
+      async (c) => {
+        tried.push(c.model);
+        if (c.model === "a") throw new DOMException("The operation was aborted due to timeout", "TimeoutError");
+        return `ok-${c.model}`;
+      },
+      "a"
+    );
+    expect(out).toBe("ok-b");
+    expect(tried).toEqual(["a", "b"]);
+    const a = await prisma.aiProviderModel.findFirst({ where: { name: "a" } });
+    expect(a?.failureCount).toBe(0); // timeout bukan kesehatan model — jangan demote
+  });
+
   it("model demoted (failureCount ≥ MAX) tidak jadi kandidat; preferred tetap bisa unshift bila belum demoted", async () => {
     await seedProvider(["a", "b"], { failures: { a: MAX_FAILURES } });
     const tried: string[] = [];
@@ -203,5 +221,34 @@ describe("withStreamFailover (retry error stream sebelum output)", () => {
         "a"
       ).next()
     ).rejects.toThrow(/rate limit/);
+  });
+
+  it("TimeoutError SEBELUM output → pindah ke kandidat berikut (failover), hasil dari model b", async () => {
+    await seedProvider(["a", "b"]);
+    const tried: string[] = [];
+    const items: string[] = [];
+    const gen = withStreamFailover<string>(
+      async function* (c) {
+        tried.push(c.model);
+        if (c.model === "a") throw new DOMException("The operation was aborted due to timeout", "TimeoutError");
+        yield `ok-${c.model}`;
+      },
+      "a"
+    );
+    for await (const i of gen) items.push(i);
+    expect(tried).toEqual(["a", "b"]);
+    expect(items).toEqual(["ok-b"]);
+  });
+
+  it("semua kandidat TimeoutError → error timeout diteruskan (bukan 503 generik)", async () => {
+    await seedProvider(["a", "b"]);
+    await expect(
+      withStreamFailover<string>(
+        async function* () {
+          throw new DOMException("The operation was aborted due to timeout", "TimeoutError");
+        },
+        "a"
+      ).next()
+    ).rejects.toThrow(/timeout/i);
   });
 });

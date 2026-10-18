@@ -40,6 +40,19 @@ describe("pesan error banner chat", () => {
     expect(friendlyChatErrorMessage(new Error("read ECONNRESET"))).toContain("Koneksi ke layanan AI terputus");
   });
 
+  it("402 insufficient balance → saldo habis (minta admin top-up)", () => {
+    const body = '{"error":{"message":"Insufficient balance","type":"insufficient_funds","balance_ngonka":"19900"}}';
+    const msg = friendlyChatErrorMessage(new LlmHttpError(402, body));
+    expect(msg).toContain("Saldo layanan AI habis");
+    expect(msg).toContain("admin");
+  });
+
+  it("timeout percobaan yg bocor ke user → pesan 'terlalu lama merespon'", () => {
+    expect(friendlyChatErrorMessage(new DOMException("The operation was aborted due to timeout", "TimeoutError"))).toBe(
+      "AI terlalu lama merespon — coba lagi."
+    );
+  });
+
   it("error lain → gangguan generik", () => {
     expect(friendlyChatErrorMessage(new Error("kesalahan tak dikenal"))).toBe("Terjadi gangguan — coba lagi.");
     expect(friendlyChatErrorMessage("string")).toBe("Terjadi gangguan — coba lagi.");

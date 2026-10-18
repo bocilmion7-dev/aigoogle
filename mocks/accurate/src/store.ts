@@ -97,6 +97,9 @@ const dbs: Record<string, MockDb> = {
         { id: "G-6002", no: "6002", name: "Beban Sewa", accountType: "EXPENSE", balance: 0, plAmount: 500000 },
         { id: "G-4101", no: "4101", name: "Pendapatan Lain-lain", accountType: "OTHER_INCOME", balance: 0, plAmount: 500000 },
         { id: "G-7101", no: "7101", name: "Beban Bunga", accountType: "OTHER_EXPENSE", balance: 0, plAmount: 100000 },
+        // akun neraca utk mock get-bs-account-amount (balance dipakai sbg amount)
+        { id: "G-2100", no: "2100", name: "Utang Usaha", accountType: "ACCOUNT_PAYABLE", balance: 300000 },
+        { id: "G-3000", no: "3000", name: "Modal Usaha", accountType: "EQUITY", balance: 400000 },
       ],
       "sales-order": [
         {

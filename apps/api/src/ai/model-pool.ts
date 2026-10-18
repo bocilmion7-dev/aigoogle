@@ -104,8 +104,16 @@ export async function withModelFailover<T>(
         } catch (e) {
           const st = errStatus(e);
           if (ABORT_STATUS.has(st)) throw e;
-          // batasan waktu (abort/timeout) → jangan retry/pindah model
-          if (e instanceof Error && (e.name === "AbortError" || e.name === "TimeoutError")) throw e;
+          // abort dari luar (tutup halaman / user batal) → hentikan total
+          if (e instanceof Error && e.name === "AbortError") throw e;
+          // timeout PER PERCOBAAN (AbortSignal per kandidat di llm-client):
+          // kandidat ini dianggap menggantung → lanjut kandidat berikut, jangan
+          // menumpuk sampai deadline total milik user
+          if (e instanceof Error && e.name === "TimeoutError") {
+            lastErr = e;
+            console.warn(`[llm] model ${c.model} timeout percobaan ke-${attempt + 1} → lanjut kandidat berikutnya`);
+            break;
+          }
           lastErr = e;
           // model tidak support tool calling → skip permanen (guard/safeguard models)
           if (/tool calling.*not supported|does not support tools/i.test(errMsg(e))) {
@@ -134,6 +142,7 @@ export async function withModelFailover<T>(
             sawTransient = true;
             await markFail(c, st, errMsg(e));
           }
+          console.warn(`[llm] gagal model ${c.model} (status=${st} percobaan ke-${attempt + 1}): ${errMsg(e).slice(0, 140)}`);
           break; // pindah ke kandidat berikutnya
         }
       }
@@ -192,8 +201,13 @@ export async function* withStreamFailover<T>(
         } catch (e) {
           // sudah terkirim sebagian output → tak bisa diulang tanpa duplikasi teks
           if (yielded) throw e;
-          // batasan waktu kita sendiri (abort/timeout) → jangan retry/pindah model
-          if (e instanceof Error && (e.name === "AbortError" || e.name === "TimeoutError")) throw e;
+          // abort luar → hentikan; timeout percobaan → kandidat berikut (menggantung)
+          if (e instanceof Error && e.name === "AbortError") throw e;
+          if (e instanceof Error && e.name === "TimeoutError") {
+            lastErr = e;
+            console.warn(`[llm] model ${c.model} timeout percobaan ke-${attempt + 1} → lanjut kandidat berikutnya`);
+            break;
+          }
           const st = errStatus(e);
           if (ABORT_STATUS.has(st)) throw e;
           lastErr = e;
@@ -223,6 +237,7 @@ export async function* withStreamFailover<T>(
             sawTransient = true;
             await markFail(c, st, errMsg(e));
           }
+          console.warn(`[llm] gagal model ${c.model} (status=${st} percobaan ke-${attempt + 1}): ${errMsg(e).slice(0, 140)}`);
           break;
         }
       }

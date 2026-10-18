@@ -176,6 +176,7 @@ export async function runToolLoop(
     // (Gonka/LLM lambat) dipotong tepat waktu, bukan menggantung tanpa batas.
     const parts: LLMPart[] = [];
     const stepSignal = AbortSignal.timeout(Math.max(500, deadline - now()));
+    const streamStart = Date.now();
     try {
       for await (const part of opts.client.generateStream({
         contents,
@@ -201,6 +202,7 @@ export async function runToolLoop(
     } catch (e) {
       // stream dibatalkan krn lewat batas waktu → pesan deadline (teks sebagian tetap tampil)
       if (stepSignal.aborted) {
+        console.warn(`[tool-loop] potong stream — melewati batas waktu (${((Date.now() - streamStart) / 1000).toFixed(1)}s)`);
         await emitter.end();
         const msg = "Butuh waktu lebih lama dari biasanya — coba persempit pertanyaan Anda.";
         opts.onEvent({ type: "text_delta", delta: msg });

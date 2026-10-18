@@ -22,9 +22,21 @@ export function friendlyChatErrorMessage(e: unknown): string {
       : "Permintaan AI sedang ramai — coba lagi sebentar lagi.";
   }
 
+  // saldo provider AI habis (Gonka 402 insufficient_funds) — perlu top-up admin,
+  // bukan "coba lagi" yg menyesatkan
+  if (/insufficient|out of credit|top.?up/i.test(m)) {
+    return "Saldo layanan AI habis — hubungi admin untuk mengisi ulang.";
+  }
+
   // koneksi ke provider AI terputus di tengah streaming (Gonka reset/ECONNRESET)
   if (/terminated|ECONNRESET|socket hang up|network|read ECONNRESET/i.test(m)) {
     return "Koneksi ke layanan AI terputus di tengah — coba lagi.";
+  }
+
+  // timeout PER PERCOBAAN yg bocor ke user (mis. sudah terkirim sebagian output
+  // saat kandidat kena batas 70 dtk) — bukan deadline total, sampaikan dgn jelas
+  if (/timeout|waktu tunggu habis|the operation was aborted due to timeout/i.test(m)) {
+    return "AI terlalu lama merespon — coba lagi.";
   }
 
   if (/503|tidak ada model|tidak ada provider|tidak tersedia/i.test(m)) {

@@ -114,6 +114,25 @@ export function makeModuleRouter(mod: string): Router {
           res.json(ok(rows));
           return;
         }
+        // get-bs membalas SELURUH akun neraca (bentuk asli sama dgn get-pl:
+        // accountNo, accountName, amount, isParent, lvl, accountType) — leaf dari
+        // baris glaccount bertipe aset/kewajiban/modal (bukan P&L), amount = balance
+        if (mod === "glaccount" && a.action === "get-bs-account-amount") {
+          const PNL = ["REVENUE", "COST_OF_GOOD_SOLD", "EXPENSE", "OTHER_INCOME", "OTHER_EXPENSE"];
+          const rows = rowsOf(db, "glaccount")
+            .filter((r) => !PNL.includes(String(r.accountType)))
+            .map((r) => ({
+              parentNo: "",
+              amount: Number(r.balance) || 0,
+              lvl: 1,
+              isParent: false,
+              accountNo: String(r.no ?? ""),
+              accountName: String(r.name ?? ""),
+              accountType: String(r.accountType),
+            }));
+          res.json(ok(rows));
+          return;
+        }
         const row = rowsOf(db, mod)[0] ?? { id: "" };
         res.json(ok([row]));
       });

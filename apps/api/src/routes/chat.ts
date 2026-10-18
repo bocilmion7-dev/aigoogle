@@ -123,6 +123,7 @@ chatRouter.post(
     console.log(`[chat] tools: ${stats.count}/${provider.capabilityCatalog().length} (~${stats.approxTokens} tok) | msg: ${body.data.message.slice(0, 80)}`);
     // ctx bisa berubah setelah refresh session "Upsss..."
     let liveCtx = ctx;
+    const t0 = Date.now();
 
     try {
       const out = await runToolLoop({
@@ -166,8 +167,9 @@ chatRouter.post(
         data: { sessionId: session.id, role: "ai", content: out.text, toolTrace: JSON.stringify(out.trace) },
       });
       send({ type: "done", messageId: aiMsg.id });
+      console.log(`[chat] selesai ${((Date.now() - t0) / 1000).toFixed(1)}s | tools: ${tools.length} | msg: ${body.data.message.slice(0, 40)}`);
     } catch (e) {
-      console.error("[chat] stream error:", e);
+      console.error(`[chat] stream error (${((Date.now() - t0) / 1000).toFixed(1)}s):`, e);
       send({ type: "error", message: friendlyChatErrorMessage(e) });
     }
     res.end();

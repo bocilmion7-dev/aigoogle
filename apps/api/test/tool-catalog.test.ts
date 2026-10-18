@@ -124,6 +124,7 @@ describe("tool docsOnly (path tak ada di API Accurate asli)", () => {
         "receivables.summary",
         "payables.summary",
         "gl.plSummary",
+        "gl.bsSummary",
       ])
     );
   });

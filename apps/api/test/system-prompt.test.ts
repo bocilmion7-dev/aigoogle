@@ -57,5 +57,16 @@ describe("buildSystemPrompt", () => {
     expect(p).toContain("DUA-DUANYA");
     expect(p).toContain("asOfDate");
     expect(p).toContain("receivables.summary dengan fromDate");
+    // gl.bsSummary menggantikan get-bs mentah (38KB) utk pertanyaan posisi keuangan
+    expect(p).toContain("gl.bsSummary");
+    expect(p).toContain("posisi keuangan → gl.bsSummary");
+  });
+
+  it("mode suara: aturan lisan hanya aktif saat voice=true", () => {
+    const v = buildSystemPrompt({ voice: true });
+    expect(v).toContain("MODE SUARA");
+    expect(v).toContain("DIBACAKAN");
+    expect(v).toContain("kalimat lisan");
+    expect(buildSystemPrompt()).not.toContain("MODE SUARA");
   });
 });

@@ -68,9 +68,9 @@ describe("AccurateAdapter execute/refresh/privilege", () => {
     expect(admin.allowViewModules).toEqual(expect.arrayContaining(["customer", "sales-invoice"]));
   });
 
-  it("capabilityCatalog → 366 tool cakupan penuh + 13 tool agregasi, teranotasi permission", () => {
+  it("capabilityCatalog → 366 tool cakupan penuh + 14 tool agregasi, teranotasi permission", () => {
     const cat = adapter.capabilityCatalog();
-    expect(cat).toHaveLength(379);
+    expect(cat).toHaveLength(380);
     expect(cat.map((t) => t.name)).toEqual(
       expect.arrayContaining([
         "customer.detail", "customer.list", "glaccount.list", "item.list",
@@ -258,6 +258,21 @@ describe("AccurateAdapter execute/refresh/privilege", () => {
         netProfit: 1900000,
       });
       expect(r.topAccounts.revenue[0]).toMatchObject({ accountName: "Penjualan Barang", amount: 10000000 });
+    });
+
+    it("gl.bsSummary → posisi keuangan per tanggal dari leaf neraca", async () => {
+      const r = (await adapter.execute("gl.bsSummary", { asOfDate: "31/12/2017" }, adminCtx)) as {
+        period: { asOfDate: string };
+        accountCount: number;
+        summary: { totalAssets: number; totalLiabilities: number; totalEquity: number };
+        byType: Array<{ accountType: string; amount: number }>;
+        topAccounts: { assets: Array<{ accountName: string; amount: number }> };
+      };
+      expect(r.period.asOfDate).toBe("31/12/2017");
+      expect(r.accountCount).toBe(4);
+      expect(r.summary).toEqual({ totalAssets: 600000, totalLiabilities: 300000, totalEquity: 400000 });
+      expect(r.byType.map((t) => t.accountType)).toEqual(["CASH_BANK", "EQUITY", "ACCOUNT_PAYABLE"]);
+      expect(r.topAccounts.assets[0]).toMatchObject({ accountName: "Bank", amount: 500000 });
     });
 
     it("pelanggan tidak ditemukan → error informatif, bukan throw", async () => {

@@ -2297,25 +2297,6 @@ pre.block {
   text-align: center;
 }
 
-.voice-mode__transcript {
-  max-height: 34vh;
-  overflow-y: auto;
-  width: 100%;
-  font-size: var(--step--1);
-  line-height: 1.55;
-  color: rgba(255, 255, 255, 0.88);
-}
-.voice-mode__transcript p { margin: 0 0 var(--space-s); }
-.voice-mode__who {
-  display: inline-block;
-  font-weight: 700;
-  color: var(--accent);
-  margin-right: 6px;
-  text-transform: uppercase;
-  font-size: var(--step--2);
-  letter-spacing: 0.04em;
-}
-
 .voice-mode__mic {
   width: 76px;
   height: 76px;

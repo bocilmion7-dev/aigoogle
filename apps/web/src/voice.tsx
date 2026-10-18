@@ -167,8 +167,16 @@ export function cleanSpeech(text: string): string {
 
 let resumeTimer: ReturnType<typeof setInterval> | null = null;
 
+/**
+ * Teks siap diucapkan — dipakai SEMUA engine TTS (Web Speech & Edge) supaya
+ * tabel jadi kalimat lisan & simbol/markdown tidak ikut dibacakan.
+ */
+export function toSpokenText(text: string): string {
+  return cleanSpeech(tablesToSentences(text));
+}
+
 function utterance(text: string): SpeechSynthesisUtterance {
-  const u = new SpeechSynthesisUtterance(cleanSpeech(tablesToSentences(text)));
+  const u = new SpeechSynthesisUtterance(toSpokenText(text));
   u.lang = "id-ID";
   const idVoice = window.speechSynthesis?.getVoices().find((v) => v.lang?.toLowerCase().startsWith("id"));
   if (idVoice) u.voice = idVoice;

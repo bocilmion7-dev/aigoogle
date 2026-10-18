@@ -4,6 +4,15 @@ import type { GenerateOpts, LLMPart } from "./llm-types.js";
 
 export { LlmHttpError };
 
+/** batas PER PERCOBAAN — origin yg menggantung (522/queue senyap) dilepas & failover,
+ * bukan menunggu deadline total 125 dtk milik user sampai habis. */
+const ATTEMPT_TIMEOUT_MS = 70_000;
+
+function attemptSignal(outer?: AbortSignal): AbortSignal {
+  const t = AbortSignal.timeout(ATTEMPT_TIMEOUT_MS);
+  return outer ? AbortSignal.any([outer, t]) : t;
+}
+
 export interface LLMClient {
   generate(opts: GenerateOpts): Promise<{ parts: LLMPart[] }>;
   generateStream(opts: GenerateOpts): AsyncGenerator<LLMPart>;
@@ -14,7 +23,7 @@ export class RealLLMClient implements LLMClient {
     return withModelFailover(
       "generate",
       async (c: ModelCandidate) => {
-        const { parts } = await c.client.generate({ ...opts, model: c.model });
+        const { parts } = await c.client.generate({ ...opts, model: c.model, signal: attemptSignal(opts.signal) });
         return { parts };
       },
       opts.model || (await getDefaultModel())
@@ -27,7 +36,8 @@ export class RealLLMClient implements LLMClient {
     // try/catch failover sehingga 429/ECONNRESET sblm output ikut di-retry.
     const preferred = opts.model || (await getDefaultModel());
     yield* withStreamFailover<LLMPart>(
-      (c: ModelCandidate) => c.client.generateStream({ ...opts, model: c.model }),
+      (c: ModelCandidate) =>
+        c.client.generateStream({ ...opts, model: c.model, signal: attemptSignal(opts.signal) }),
       preferred
     );
   }

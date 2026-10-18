@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { CHAT_TIMEOUT_MS, isTimeoutError, streamChat, type ChatEvent } from "./chat-api";
 import { getSettings } from "./api";
-import { cleanSpeech, speakWebAsync, stopSpeak, sttWebSpeech, ttsEdge } from "./voice";
-
+import { speakWebAsync, stopSpeak, sttWebSpeech, toSpokenText, ttsEdge } from "./voice";
 type Phase = "idle" | "listening" | "thinking" | "speaking";
 
 const HINT: Record<Phase, string> = {
@@ -26,8 +25,6 @@ export function VoiceMode({
   onExit: () => void;
 }) {
   const [phase, setPhase] = useState<Phase>("idle");
-  const [userText, setUserText] = useState("");
-  const [aiText, setAiText] = useState("");
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<(() => void) | null>(null);
   const busyRef = useRef(false);
@@ -50,6 +47,11 @@ export function VoiceMode({
   }, [onExit]);
 
   async function handleMic() {
+    // klik mic saat sedang mendengarkan = berhenti (stt_batal ditelan tanpa error)
+    if (phase === "listening") {
+      abortRef.current?.();
+      return;
+    }
     if (busyRef.current) return;
     busyRef.current = true;
     setError(null);
@@ -65,8 +67,6 @@ export function VoiceMode({
         setPhase("idle");
         return;
       }
-      setUserText(text.trim());
-      setAiText("");
       setPhase("thinking");
       let ai = "";
       inStream = true;
@@ -86,11 +86,10 @@ export function VoiceMode({
         setPhase("idle");
         return;
       }
-      setAiText(ai);
       setPhase("speaking");
       // suara balasan mengikuti engine yg dipilih (edge = TTS neural server, selain itu Web Speech browser)
       const settings = await getSettings().catch(() => null);
-      if (settings?.voiceEngine === "edge") await ttsEdge(ai).catch(() => speakWebAsync(ai));
+      if (settings?.voiceEngine === "edge") await ttsEdge(toSpokenText(ai)).catch(() => speakWebAsync(ai));
       else await speakWebAsync(ai);
       setPhase("idle");
     } catch (e) {
@@ -143,28 +142,14 @@ export function VoiceMode({
             {error}
           </p>
         )}
-        {(userText || aiText) && (
-          <div className="voice-mode__transcript" aria-label="Transkrip percakapan">
-            {userText && (
-              <p>
-                <span className="voice-mode__who">Anda</span> {cleanSpeech(userText)}
-              </p>
-            )}
-            {aiText && (
-              <p>
-                <span className="voice-mode__who">AI</span> {aiText}
-              </p>
-            )}
-          </div>
-        )}
       </div>
 
       <button
         className={`voice-mode__mic${phase === "listening" ? " voice-mode__mic--live" : ""}`}
         onClick={() => void handleMic()}
         disabled={phase === "thinking" || phase === "speaking"}
-        aria-label={phase === "listening" ? "Mendengarkan" : "Bicara"}
-        title={phase === "listening" ? "Mendengarkan…" : "Tekan lalu bicara"}
+        aria-label={phase === "listening" ? "Berhenti mendengarkan" : "Bicara"}
+        title={phase === "listening" ? "Klik untuk berhenti" : "Tekan lalu bicara"}
       >
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
           <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z" />

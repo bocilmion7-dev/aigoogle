@@ -242,6 +242,24 @@ export const AGGREGATION_TOOLS: AggToolSpec[] = [
     requires: ["accurate:glaccount.view"],
     label: "Menghitung laba rugi…",
   },
+  {
+    name: "gl.bsSummary",
+    description:
+      "Ringkasan posisi keuangan (neraca/balance sheet) per tanggal dalam SATU panggilan: " +
+      "total aset, total kewajiban, modal, rincian per jenis akun, dan akun-akun terbesar di tiap bagian. " +
+      "Langsung pakai tool ini utk \"posisi keuangan per 31/12/2017\" / \"berapa aset dan hutang\" — " +
+      "JANGAN panggil glaccount.get-bs-account-amount (mentah, 38KB) lagi setelahnya. " +
+      "Argumen: asOfDate (dd/mm/yyyy, default hari ini).",
+    jsonSchema: {
+      type: "object",
+      properties: {
+        asOfDate: { type: "string", description: "Tanggal posisi (dd/mm/yyyy, cth: 31/12/2017; default hari ini)" },
+      },
+    },
+    requiredPermission: "accurate:glaccount.view",
+    requires: ["accurate:glaccount.view"],
+    label: "Menyusun posisi keuangan…",
+  },
 ];
 
 export const AGGREGATION_NAMES = new Set(AGGREGATION_TOOLS.map((t) => t.name));
@@ -267,6 +285,26 @@ function metaOf(v: unknown): { total: number; pageCount: number } {
   }
   const rows = asArray(v);
   return { total: rows.length, pageCount: rows.length ? 1 : 0 };
+}
+
+/** helper: petakan tipe akun neraca ke bagian (aset / kewajiban / modal / lainnya) */
+const BS_ASSET_TYPES = new Set([
+  "CASH_BANK", "ACCOUNT_RECEIVABLE", "INVENTORY", "FIXED_ASSET",
+  "OTHER_CURRENT_ASSET", "OTHER_ASSET", "ACCUMULATED_DEPRECIATION",
+]);
+const BS_LIABILITY_TYPES = new Set([
+  "ACCOUNT_PAYABLE", "SHORT_TERM_LIABILITY", "LONG_TERM_LIABILITY",
+  "OTHER_CURRENT_LIABILITY", "OTHER_LIABILITY", "UNEARNED_REVENUE",
+]);
+const BS_EQUITY_TYPES = new Set(["EQUITY", "RETAINED_EARNINGS", "OWNER_EQUITY"]);
+function bsSection(type: string): "aset" | "kewajiban" | "modal" | "lainnya" {
+  if (BS_ASSET_TYPES.has(type)) return "aset";
+  if (BS_LIABILITY_TYPES.has(type)) return "kewajiban";
+  if (BS_EQUITY_TYPES.has(type)) return "modal";
+  if (/ASSET|CASH|BANK|INVENTORY|RECEIVABLE|PREPAID|DEPOSIT|ACCUMULATED/.test(type)) return "aset";
+  if (/LIAB|PAYABLE|UNearned|UNEARNED|DEBT/.test(type)) return "kewajiban";
+  if (/EQUITY|CAPITAL|RETAINED|RESERVE/.test(type)) return "modal";
+  return "lainnya";
 }
 
 /**
@@ -799,6 +837,51 @@ export async function runAggregation(
           operatingExpense: top("EXPENSE"),
           otherIncome: top("OTHER_INCOME"),
           otherExpense: top("OTHER_EXPENSE"),
+        },
+      };
+    }
+    case "gl.bsSummary": {
+      const p2 = (n: number) => String(n).padStart(2, "0");
+      const now = new Date();
+      const asOfDate = String(args.asOfDate ?? `${p2(now.getDate())}/${p2(now.getMonth() + 1)}/${now.getFullYear()}`);
+      const raw = await execute("glaccount.get-bs-account-amount", { asOfDate });
+      const rows = asArray(raw);
+      const sections = { aset: 0, kewajiban: 0, modal: 0, lainnya: 0 };
+      const typeSums = new Map<string, { amount: number; section: string }>();
+      const leaves: Array<{ accountNo: string; accountName: string; accountType: string; amount: number; section: string }> = [];
+      for (const r of rows) {
+        if (r.isParent === true) continue;
+        const type = String(r.accountType ?? "");
+        const amount = Number(r.amount) || 0;
+        const section = bsSection(type);
+        sections[section] += amount;
+        const t = typeSums.get(type) ?? { amount: 0, section };
+        t.amount += amount;
+        typeSums.set(type, t);
+        leaves.push({ accountNo: String(r.accountNo ?? ""), accountName: String(r.accountName ?? ""), accountType: type, amount, section });
+      }
+      const top = (sec: string) =>
+        leaves
+          .filter((a) => a.section === sec && a.amount !== 0)
+          .sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount))
+          .slice(0, 8);
+      const byType = [...typeSums.entries()]
+        .map(([accountType, v]) => ({ accountType, section: v.section, amount: Math.round(v.amount) }))
+        .sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
+      return {
+        period: { asOfDate },
+        accountCount: rows.length,
+        summary: {
+          totalAssets: Math.round(sections.aset),
+          totalLiabilities: Math.round(sections.kewajiban),
+          totalEquity: Math.round(sections.modal),
+          ...(sections.lainnya !== 0 ? { unclassified: Math.round(sections.lainnya) } : {}),
+        },
+        byType,
+        topAccounts: {
+          assets: top("aset"),
+          liabilities: top("kewajiban"),
+          equity: top("modal"),
         },
       };
     }

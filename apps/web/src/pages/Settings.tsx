@@ -129,7 +129,7 @@ export function Settings() {
                 type="radio" name="voice" checked={aset?.voiceEngine === "edge"}
                 onChange={() => aset && setAset({ ...aset, voiceEngine: "edge" })}
               />
-              <span>Edge — STT di browser, TTS neural (gratis)</span>
+              <span>Neural (server) — Azure TTS bila dikonfigurasi, fallback Edge/Google</span>
             </label>
           </div>
 

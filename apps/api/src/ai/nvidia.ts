@@ -150,6 +150,18 @@ export interface NvidiaClient {
   generateStream(opts: GenerateOpts): AsyncGenerator<LLMPart>;
 }
 
+/**
+ * effort penalaran model thinking. Tanpa param ini, GLM-5.3 menalar 30-90 detik
+ * per putaran (terverifikasi: default 33 dtk ke teks pertama vs "low" 4,1 dtk);
+ * provider menerima "minimal"/"low"/"medium"/"high". Set
+ * AIGOOGLE_REASONING_EFFORT=off utk kirim tanpa param (perilaku lama).
+ */
+function reasoningEffort(): string | undefined {
+  const v = (process.env.AIGOOGLE_REASONING_EFFORT ?? "low").trim().toLowerCase();
+  if (!v || v === "off" || v === "none") return undefined;
+  return v;
+}
+
 /** Parse JSON respons OpenAI-compatible yg mungkin diakhiri trailing non-JSON (mis. "data: [DONE]" dari 9Router). */
 function parseOpenAIJson(text: string): unknown {
   try {
@@ -187,6 +199,8 @@ export class RealNvidiaClient implements NvidiaClient {
       model: opts.model,
       messages: toOpenAIMessages(opts),
     };
+    const effort = reasoningEffort();
+    if (effort) body.reasoning_effort = effort;
     if (tools?.length) {
       body.tools = tools;
       body.tool_choice = "auto";
@@ -214,6 +228,8 @@ export class RealNvidiaClient implements NvidiaClient {
       messages: toOpenAIMessages(opts),
       stream: true,
     };
+    const effort = reasoningEffort();
+    if (effort) body.reasoning_effort = effort;
     if (tools?.length) {
       body.tools = tools;
       body.tool_choice = "auto";

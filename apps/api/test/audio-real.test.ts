@@ -49,6 +49,7 @@ describe("audio (TTS Edge)", () => {
     }
     expect(res.status).toBe(200);
     expect(res.headers["content-type"]).toContain("audio/mpeg");
+    expect(["azure", "edge", "google"]).toContain(res.headers["x-tts-engine"]);
     expect((res.body as Buffer).length).toBeGreaterThan(1000);
   }, 60000);
 });

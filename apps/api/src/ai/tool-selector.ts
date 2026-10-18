@@ -79,6 +79,7 @@ const CORE_TOOLS = [
   "receivables.summary",
   "payables.summary",
   "gl.plSummary",
+  "gl.bsSummary",
 ];
 
 /** action yang boleh dikirim (read-only + aman) — create/save/delete disembunyikan dari AI */
