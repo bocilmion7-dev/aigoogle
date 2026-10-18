@@ -1,5 +1,6 @@
 import type { ToolSpec } from "../providers/accounting/types.js";
 import { ACCURATE_CATALOG } from "../providers/accounting/catalog.js";
+import { AGGREGATION_TOOLS } from "../providers/accounting/aggregation.js";
 
 /**
  * Dynamic tool selection — kirim hanya tool yang relevan dgn pertanyaan user.
@@ -64,6 +65,11 @@ const CORE_TOOLS = [
   "salesReceipt.list",
   "payment.list",
   "bankTransfer.list",
+  // tool agregasi — selalu tersedia supaya model memilih SATU tool alih-alih pecah jadi 3
+  "customer.lastOrderByName",
+  "customer.unpaidByName",
+  "customer.summaryByName",
+  "salesInvoice.summary",
 ];
 
 /** action yang boleh dikirim (read-only + aman) — create/save/delete disembunyikan dari AI */
@@ -91,6 +97,8 @@ export function selectTools(userMessage: string, allTools: ToolSpec[] = ACCURATE
 
   // filter tools: (modul terdeteksi ATAU core) DAN action read-only
   const selected = usable.filter((t) => {
+    // tool agregasi selalu dikirim (satu tool pemangkas putaran, bukan pecahan)
+    if (AGGREGATION_TOOLS.some((a) => a.name === t.name)) return true;
     if (!READ_ACTIONS.test(t.name)) return false;
     if (CORE_TOOLS.includes(t.name)) return true;
     if (matchedModules.size === 0) return false;

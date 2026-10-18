@@ -23,11 +23,14 @@ export async function runWaJobs(): Promise<{ dueChecked: number; reportsSent: nu
       try {
         const ctx = await accurateCtxFor(t.id);
         if (!ctx) continue;
-        const rows = (await accurateProvider().execute(
+        const listed = await accurateProvider().execute(
           "salesInvoice.list",
           { fields: "no,customerName,date,total,status" },
           ctx
-        )) as Array<Record<string, unknown>>;
+        );
+        const rows = (Array.isArray(listed)
+          ? listed
+          : (listed as { items?: Array<Record<string, unknown>> }).items ?? []) as Array<Record<string, unknown>>;
         const due = rows.filter((r) => {
           const d = String(r.dueDate ?? r.date ?? "");
           return d && d <= today && !/paid|lunas/i.test(String(r.status ?? ""));

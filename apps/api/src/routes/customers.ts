@@ -45,14 +45,16 @@ customersRouter.get(
     const key = `${req.user!.tenant.id}:accurate:customer:list:${keywords}`;
     const hit = cache.get<Array<{ id: string; name: string; invoiceCount: number; invoiceTotal: number }>>(key);
     if (hit) return res.json(hit);
-    const rows = (await provider.execute("customer.list", keywords ? { keywords } : {}, ctx)) as Array<
+    const listed = await provider.execute("customer.list", keywords ? { keywords } : {}, ctx);
+    const rows = (Array.isArray(listed) ? listed : (listed as { items?: Array<Record<string, unknown>> }).items ?? []) as Array<
       Record<string, unknown>
     >;
     let invoices: Array<Record<string, unknown>> = [];
     try {
-      invoices = (await provider.execute("salesInvoice.list", { pageSize: 500, page: 1 }, ctx)) as Array<
-        Record<string, unknown>
-      >;
+      const invListed = await provider.execute("salesInvoice.list", { pageSize: 500, page: 1 }, ctx);
+      invoices = (Array.isArray(invListed)
+        ? invListed
+        : (invListed as { items?: Array<Record<string, unknown>> }).items ?? []) as Array<Record<string, unknown>>;
     } catch {
       invoices = [];
     }

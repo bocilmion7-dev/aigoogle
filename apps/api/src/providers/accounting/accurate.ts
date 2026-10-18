@@ -59,15 +59,27 @@ import type {
 } from "./types.js";
 import { ACCURATE_CATALOG } from "./catalog.js";
 import { ACTION_ROUTES, ACCURATE_OAUTH_SCOPES } from "./accurate-paths.js";
+import { AGGREGATION_TOOLS, runAggregation } from "./aggregation.js";
 
 interface Envelope<T> {
   s?: boolean;
   d?: T;
   /** sebagian aksi save membalas objek hasil di "r" (bukan "s"/"d") */
   r?: unknown;
+  /** meta pagination daftar (page, pageSize, rowCount, pageCount) */
+  sp?: { page?: number; pageSize?: number; rowCount?: number; pageCount?: number };
   session?: string;
   host?: string;
   admin?: boolean;
+}
+
+export interface ListResult {
+  items: Array<Record<string, unknown>>;
+  page: number;
+  pageSize: number;
+  /** TOTAL baris yang cocok dgn filter (bukan hanya halaman ini) */
+  total: number;
+  pageCount: number;
 }
 
 interface GlAccount {
@@ -210,7 +222,8 @@ export class AccurateAdapter implements AccountingProvider {
   }
 
   capabilityCatalog(): ToolSpec[] {
-    return ACCURATE_CATALOG;
+    // katalog penuh = aksi Accurate asli (366) + tool agregasi server-side (pemangkas putaran LLM)
+    return [...ACCURATE_CATALOG, ...AGGREGATION_TOOLS];
   }
 
   /** fetch API company dgn deteksi HTML (SPA = path tak ada / transient 302) + retry utk non-docsOnly */
@@ -306,6 +319,9 @@ export class AccurateAdapter implements AccountingProvider {
             const vals = Array.isArray(value) ? value : [value];
             vals.forEach((v, i) => qs.set(`filter.${field}.val${vals.length > 1 ? `[${i}]` : ""}`, String(v)));
           }
+        } else if (cond !== undefined && cond !== null) {
+          // kolom tanpa operator (filter.customerNo, filter.outstanding) → value langsung
+          qs.set(`filter.${field}`, String(cond));
         }
       }
     }
@@ -320,6 +336,10 @@ export class AccurateAdapter implements AccountingProvider {
   }
 
   async execute(tool: string, args: Record<string, unknown>, ctx: ProviderCtx): Promise<unknown> {
+    // tool agregasi server-side → jalankan rantai Accurate (search → list → detail) sekali
+    if (AGGREGATION_TOOLS.some((t) => t.name === tool)) {
+      return runAggregation(tool, args, ctx, (t, a) => this.execute(t, a, ctx));
+    }
     const route = ACTION_ROUTES[tool];
     if (!route) throw new Error(`tool tidak dikenal: ${tool}`);
     if (route.method === "GET") {
@@ -331,6 +351,19 @@ export class AccurateAdapter implements AccountingProvider {
         merged = { ...args, fields: listFieldsFor(tool) };
       }
       const j = await this.moduleGet(`${route.path}${this.buildQuery(merged)}`, ctx, route.docsOnly);
+      if (tool.endsWith(".list")) {
+        // bentuk + meta total/halaman → model TAHU jumlah baris & tak menebak-nebak
+        // paging (dulu: page 2, page 3 … tiap halaman = +1 putaran LLM 0,5-15 dtk)
+        const items = Array.isArray(j.d) ? (j.d as Array<Record<string, unknown>>) : [];
+        const sp = j.sp ?? {};
+        return {
+          items,
+          page: sp.page ?? 1,
+          pageSize: sp.pageSize ?? items.length,
+          total: sp.rowCount ?? items.length,
+          pageCount: sp.pageCount ?? (items.length ? 1 : 0),
+        } satisfies ListResult;
+      }
       return j.d;
     }
     if (route.method === "DELETE") {

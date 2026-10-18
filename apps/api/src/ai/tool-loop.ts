@@ -2,6 +2,7 @@ import type { LLMClient } from "./llm-client.js";
 import type { LLMContent, LLMPart } from "./llm-types.js";
 import { SYSTEM_PROMPT } from "./system-prompt.js";
 import type { ToolSpec } from "../providers/accounting/types.js";
+import { AGGREGATION_NAMES } from "../providers/accounting/aggregation.js";
 
 export interface ToolLoopEvent {
   type: "start" | "tool_call" | "tool_result" | "text_delta" | "done" | "error";
@@ -96,6 +97,15 @@ class ThrottledEmitter {
       }, 20);
     });
   }
+  /**
+   * Kirim seluruh buffer SEKALIGUS & matikan timer — dipakai utk narasi transisi
+   * sebelum tool call: jangan tahan eksekusi tool menunggu efek "mengetik" selesai
+   * (dulu ~10-20 dtk terbuang percuma tiap putaran).
+   */
+  flushAll(): void {
+    if (this.timer) { clearInterval(this.timer); this.timer = null; }
+    if (this.buffer) { this.emit(this.buffer); this.buffer = ""; }
+  }
 }
 
 /** JSON dgn key urut — agar argumen identik (beda urut key) menghasilkan key cache sama. */
@@ -127,9 +137,22 @@ export async function runToolLoop(
   // identik berkali-kali dlm 1 sesi; hasilnya sama, tak perlu panggil Accurate lagi
   const resultCache = new Map<string, unknown>();
 
+  // --- nudge anti "verifikasi ulang" ---
+  // Model gemar memeriksa ulang hasil agregasi dgn nama mirip (lastOrderByName("Budi")
+  // setelah "Budi Santoso") atau customer.list keywords nama yg sama. Setiap putaran
+  // = +1 panggilan LLM (0,5-15 dtk) → jawab dari data yg sudah ada tanpa eksekusi ulang.
+  // CATATAN: functionResponse harus berisi DATA MURNI hasil eksekusi — menambah teks
+  // catatan ke dalamnya membuat gateway LLM (Gonka) menandai "tampered — re-run" dan
+  // model justru MENGULANG tool (kebalikan dr tujuan). Instruksi anti-ulang diserahkan
+  // ke system prompt.
+  const aggNameHits: Array<{ tool: string; name: string; customer: Record<string, unknown> | null; result: unknown }> = [];
+  const normName = (v: unknown) => String(v ?? "").trim().toLowerCase();
+  const nameCovered = (a: string, b: string) => a.length >= 3 && b.length >= 3 && (a.includes(b) || b.includes(a));
+
   // throttled emitter: buffer teks lalu keluarkan bertahap supaya terasa mengetik
-  const streamInterval = opts.streamIntervalMs ?? 60;
-  const streamChunk = opts.streamChunkSize ?? 2;
+  // (15ms × 3 char ≈ 200 char/s — masih terasa mengetik, tapi tak menambah latensi berarti)
+  const streamInterval = opts.streamIntervalMs ?? 15;
+  const streamChunk = opts.streamChunkSize ?? 3;
   const emitter = new ThrottledEmitter(
     (delta) => opts.onEvent({ type: "text_delta", delta }),
     streamInterval,
@@ -179,9 +202,16 @@ export async function runToolLoop(
       }
       throw e;
     }
-    // stream selesai → tunggu buffer kosong (jangan dump sekaligus)
-    await emitter.end();
+    // stream selesai → tentukan dulu apakah ada tool call pada step ini
     const calls = parts.filter((p) => p.functionCall && p.functionCall.name);
+    if (calls.length > 0) {
+      // narasi transisi SEBELUM tool call → flush sekaligus: eksekusi tool jangan
+      // tertahan menunggu efek mengetik (dulu ~10-20 dtk terbuang tiap putaran)
+      emitter.flushAll();
+    } else {
+      // jawaban final → selesaikan efek mengetik agar terasa natural
+      await emitter.end();
+    }
     // bagian `thought` = penalaran internal model thinking — jangan tampilkan/simpan
     const visible = parts.filter((p) => !p.thought);
     if (calls.length === 0) return { text, trace };
@@ -196,6 +226,8 @@ export async function runToolLoop(
       call: (typeof calls)[number];
       spec: ToolSpec;
       cacheKey: string;
+      /** call identik dlm putaran SAMA — dijawab dgn hasil yang sama (eksekusi sekali) */
+      dups: Array<(typeof calls)[number]>;
     }
     const pending: PendingCall[] = [];
     const pushResponse = (
@@ -259,21 +291,53 @@ export async function runToolLoop(
         pushResponse(spec.name, call.functionCall!.id, wrapped);
         continue;
       }
-      pending.push({ call, spec, cacheKey });
+      // agregasi by-name dgn nama "tercakup" hasil sebelumnya (mis. "Budi" → "Budi Santoso")
+      // → jawab dgn data yg sudah ada tanpa putaran eksekusi
+      if (AGGREGATION_NAMES.has(spec.name) && args.name !== undefined && args.name !== null && args.name !== "") {
+        const nm = normName(args.name);
+        const prior = aggNameHits.find((h) => h.tool === spec.name && nameCovered(h.name, nm));
+        if (prior && typeof prior.result === "object" && prior.result) {
+          trace.push({ tool: spec.name, args, ok: true, nudged: true });
+          opts.onEvent({ type: "tool_result", tool: spec.name, ok: true });
+          pushResponse(spec.name, call.functionCall!.id, prior.result);
+          continue;
+        }
+      }
+      // customer.list dgn keywords nama yg SUDAH di-agregasi → cross-check; balas dgn
+      // baris pelanggan dari hasil agregasi (tanpa putaran eksekusi)
+      if (spec.name === "customer.list" && args.keywords !== undefined && args.keywords !== null && args.keywords !== "") {
+        const kw = normName(args.keywords);
+        const prior = kw ? aggNameHits.find((h) => h.customer && nameCovered(h.name, kw)) : undefined;
+        if (prior?.customer) {
+          trace.push({ tool: spec.name, args, ok: true, nudged: true });
+          opts.onEvent({ type: "tool_result", tool: spec.name, ok: true });
+          pushResponse(spec.name, call.functionCall!.id, { items: [prior.customer] });
+          continue;
+        }
+      }
+      // duplikat persis dlm putaran sama → eksekusi sekali, hasil dipakai semua id
+      const dupPending = pending.find((p) => p.cacheKey === cacheKey);
+      if (dupPending) {
+        dupPending.dups.push(call);
+        trace.push({ tool: spec.name, args: call.functionCall!.args, ok: true, dup: true });
+        opts.onEvent({ type: "tool_result", tool: spec.name, ok: true });
+        continue;
+      }
+      pending.push({ call, spec, cacheKey, dups: [] });
     }
 
     // eksekusi paralel: hasil disimpan per indeks, lalu di-push sesuai urutan asli
     if (pending.length > 0) {
       const results = await Promise.all(
-        pending.map(async ({ call, spec, cacheKey }) => {
+        pending.map(async ({ call, spec, cacheKey, dups }) => {
           try {
             const result = await opts.providerExecute(spec.name, call.functionCall!.args);
             resultCache.set(cacheKey, result);
-            return { spec, call, ok: true as const, result };
+            return { spec, call, dups, ok: true as const, result };
           } catch (e) {
             const errMsg = e instanceof Error ? e.message : "gagal";
             console.error(`[tool-loop] ${spec.name} gagal:`, errMsg, "| args:", JSON.stringify(call.functionCall!.args).slice(0, 200));
-            return { spec, call, ok: false as const, errMsg };
+            return { spec, call, dups, ok: false as const, errMsg };
           }
         })
       );
@@ -289,10 +353,21 @@ export async function runToolLoop(
                 ? r.result
                 : { result: r.result };
           pushResponse(r.spec.name, r.call.functionCall!.id, wrapped);
+          // simpan hasil agregasi by-name → bekal nudge anti-verifikasi-ulang
+          if (AGGREGATION_NAMES.has(r.spec.name)) {
+            const nm = normName((r.call.functionCall!.args ?? {}).name);
+            const cust = (r.result as { customer?: Record<string, unknown> } | null)?.customer ?? null;
+            aggNameHits.push({ tool: r.spec.name, name: nm, customer: cust, result: r.result });
+          }
+          // duplikat persis dlm putaran → balas dgn hasil yg sama (tanpa eksekusi ulang)
+          for (const d of r.dups) {
+            pushResponse(r.spec.name, d.functionCall!.id, wrapped);
+          }
         } else {
           trace.push({ tool: r.spec.name, args: r.call.functionCall!.args, ok: false, reason: "execute_error" });
           opts.onEvent({ type: "tool_result", tool: r.spec.name, ok: false });
           pushResponse(r.spec.name, r.call.functionCall!.id, { error: r.errMsg });
+          for (const d of r.dups) pushResponse(r.spec.name, d.functionCall!.id, { error: r.errMsg });
           // error koneksi (Accurate terputus/sibuk) → langsung jelaskan, jangan serahkan ke model (bisa salah tebak)
           if (/koneksi|hubungi|terputus|belum aktif|fetch failed|ECONNREFUSED|ENOTFOUND|sibuk|timeout/i.test(r.errMsg)) {
             const msg = `Saya tidak dapat mengambil data karena ${r.errMsg.replace(/^tidak dapat menghubungi /, "")}. Silakan periksa koneksi Anda lalu coba lagi.`;

@@ -198,3 +198,96 @@ describe("runToolLoop (fake LLM)", () => {
     expect(out.text).toBe("Pelanggan Abadi Phone Center.");
   });
 });
+
+describe("nudge anti-verifikasi-ulang & dedup (hemat putaran LLM)", () => {
+  const AGG: ToolSpec = {
+    name: "customer.lastOrderByName",
+    description: "Pesanan terakhir pelanggan by nama",
+    jsonSchema: { type: "object", properties: { name: { type: "string" } }, required: ["name"] },
+    requiredPermission: "accurate:customer.view",
+    label: "Mencari pesanan terakhir…",
+  };
+
+  it("duplikat persis dlm 1 putaran → provider dieksekusi sekali, hasil dipakai semua id", async () => {
+    let n = 0;
+    const fake = new FakeLLMClient([
+      {
+        parts: [
+          { functionCall: { name: "customer.list", args: {}, id: "c1" } },
+          { functionCall: { name: "customer.list", args: {}, id: "c2" } },
+        ],
+      },
+      { parts: [{ text: "Selesai." }] },
+    ]);
+    const { opts } = deps({
+      client: fake,
+      providerExecute: async () => { n++; return { data: "x" }; },
+    });
+    const out = await runToolLoop(opts);
+    expect(n).toBe(1);
+    expect(out.text).toBe("Selesai.");
+    expect(out.trace.filter((t) => t.tool === "customer.list").length).toBe(2);
+  });
+
+  it("customer.list dgn keywords nama yg SUDAH di-agregasi → dijawab dari data agregasi (tanpa eksekusi)", async () => {
+    const executed: string[] = [];
+    const fake = new FakeLLMClient([
+      { parts: [{ functionCall: { name: "customer.lastOrderByName", args: { name: "Budi Santoso" }, id: "a1" } }] },
+      { parts: [{ functionCall: { name: "customer.list", args: { keywords: "Budi" }, id: "c1" } }] },
+      { parts: [{ text: "Budi punya 1 faktur." }] },
+    ]);
+    const { opts } = deps({
+      client: fake,
+      tools: [...TOOLS, AGG],
+      providerExecute: async (tool) => {
+        executed.push(tool);
+        return { customer: { customerNo: "CSBY-0001", name: "Budi Santoso" }, lastOrder: { number: "SI.1" } };
+      },
+    });
+    const out = await runToolLoop(opts);
+    expect(executed).toEqual(["customer.lastOrderByName"]);
+    expect(out.trace.find((t) => t.tool === "customer.list")).toMatchObject({ ok: true, nudged: true });
+    expect(out.text).toBe("Budi punya 1 faktur.");
+  });
+
+  it("agregasi dgn nama tercakup ('Budi' setelah 'Budi Santoso') → tak eksekusi ulang, data dari hasil pertama", async () => {
+    let n = 0;
+    const fake = new FakeLLMClient([
+      { parts: [{ functionCall: { name: "customer.lastOrderByName", args: { name: "Budi Santoso" }, id: "a1" } }] },
+      { parts: [{ functionCall: { name: "customer.lastOrderByName", args: { name: "Budi" }, id: "a2" } }] },
+      { parts: [{ text: "Pesanan terakhir Budi." }] },
+    ]);
+    const { opts } = deps({
+      client: fake,
+      tools: [...TOOLS, AGG],
+      providerExecute: async () => { n++; return { customer: { customerNo: "CSBY-0001", name: "Budi Santoso" }, lastOrder: { number: "SI.1" } }; },
+    });
+    const out = await runToolLoop(opts);
+    expect(n).toBe(1);
+    expect(out.trace.filter((t) => t.tool === "customer.lastOrderByName")).toMatchObject([
+      { ok: true },
+      { ok: true, nudged: true },
+    ]);
+  });
+
+  it("cache-hit antar putaran → hasil dari cache tanpa eksekusi ulang & tanpa modifikasi response", async () => {
+    const fake = new FakeLLMClient([
+      { parts: [{ functionCall: { name: "customer.list", args: { keywords: "Siti" }, id: "c1" } }] },
+      { parts: [{ functionCall: { name: "customer.list", args: { keywords: "Siti" }, id: "c2" } }] },
+      { parts: [{ text: "Ada Siti." }] },
+    ]);
+    let n = 0;
+    const { opts } = deps({
+      client: fake,
+      providerExecute: async () => { n++; return { items: [{ name: "Siti" }] }; },
+    });
+    const out = await runToolLoop(opts);
+    expect(n).toBe(1);
+    // response kedua = data cache apa adanya (menambah catatan membuat gateway LLM
+    // menandai "tampered — re-run" → model justru mengulang tool)
+    const second = JSON.stringify(fake.calls[2].contents);
+    expect(second).toContain("Siti");
+    expect(second).not.toContain("catatan");
+    expect(out.trace[1]).toMatchObject({ tool: "customer.list", cached: true });
+  });
+});

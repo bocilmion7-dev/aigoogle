@@ -47,7 +47,8 @@ describe("execute semua aksi Accurate vs mock", () => {
       const mod = modulOf(path);
       if (firstId.has(mod)) return firstId.get(mod)!;
       try {
-        const rows = (await adapter.execute(`${prefix}.list`, {}, adminCtx)) as Array<{ id?: string }>;
+        const r = await adapter.execute(`${prefix}.list`, {}, adminCtx);
+        const rows = (Array.isArray(r) ? r : ((r as { items?: Array<{ id?: string }> }).items ?? [])) as Array<{ id?: string }>;
         firstId.set(mod, rows[0]?.id ?? "");
       } catch {
         firstId.set(mod, "");

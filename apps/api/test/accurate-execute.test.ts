@@ -35,12 +35,14 @@ afterAll(async () => {
 
 describe("AccurateAdapter execute/refresh/privilege", () => {
   it("customer.list admin → data mock PT Maju Jaya", async () => {
-    const d = (await adapter.execute("customer.list", {}, adminCtx)) as Array<{ name: string }>;
+    const r = await adapter.execute("customer.list", {}, adminCtx);
+    const d = (r as { items: Array<{ name: string }> }).items;
     expect(d.map((c) => c.name)).toContain("Budi Santoso");
   });
 
   it("salesInvoice.list admin → ada transaksi total", async () => {
-    const d = (await adapter.execute("salesInvoice.list", {}, adminCtx)) as Array<{ totalAmount: number }>;
+    const r = await adapter.execute("salesInvoice.list", {}, adminCtx);
+    const d = (r as { items: Array<{ totalAmount: number }> }).items;
     expect(d.length).toBeGreaterThan(0);
     expect(typeof d[0].totalAmount).toBe("number");
   });
@@ -68,11 +70,11 @@ describe("AccurateAdapter execute/refresh/privilege", () => {
 
   it("capabilityCatalog → 366 tool cakupan penuh teranotasi permission", () => {
     const cat = adapter.capabilityCatalog();
-    expect(cat).toHaveLength(366);
+    expect(cat).toHaveLength(370);
     expect(cat.map((t) => t.name)).toEqual(
       expect.arrayContaining([
         "customer.detail", "customer.list", "glaccount.list", "item.list",
-        "purchaseInvoice.list", "salesInvoice.detail", "salesInvoice.list",
+        "purchaseInvoice.detail", "salesInvoice.detail", "salesInvoice.list",
         "salesOrder.list", "salesReceipt.list", "vendor.list",
       ])
     );
@@ -80,14 +82,18 @@ describe("AccurateAdapter execute/refresh/privilege", () => {
   });
 
   it("salesInvoice.list dengan fields+keywords → row terfilter", async () => {
-    const d = (await adapter.execute("salesInvoice.list", { fields: "number,totalAmount", keywords: "SI.2026.10.00001" }, adminCtx)) as Array<Record<string, unknown>>;
+    const d = (
+      (await adapter.execute("salesInvoice.list", { fields: "number,totalAmount", keywords: "SI.2026.10.00001" }, adminCtx)) as {
+        items: Array<Record<string, unknown>>;
+      }
+    ).items;
     expect(d[0]).toEqual({ number: "SI.2026.10.00001", totalAmount: 2500000 });
   });
 
   it("item.list & glAccount.list admin → ada data", async () => {
-    const items = (await adapter.execute("item.list", {}, adminCtx)) as Array<{ name: string }>;
+    const items = ((await adapter.execute("item.list", {}, adminCtx)) as { items: Array<{ name: string }> }).items;
     expect(items.map((i) => i.name)).toContain("Kertas A4");
-    const accounts = (await adapter.execute("glaccount.list", {}, adminCtx)) as Array<{ no: string }>;
+    const accounts = ((await adapter.execute("glaccount.list", {}, adminCtx)) as { items: Array<{ no: string }> }).items;
     expect(accounts.map((a) => a.no)).toContain("1000");
   });
 
@@ -95,5 +101,52 @@ describe("AccurateAdapter execute/refresh/privilege", () => {
     const d = (await adapter.execute("customer.detail", { id: "C-001" }, adminCtx)) as Array<{ name: string }>;
     expect(d[0].name).toBe("Budi Santoso");
     await expect(adapter.execute("customer.detail", { id: "XXX" }, adminCtx)).rejects.toThrow();
+  });
+
+  describe("tool agregasi server-side", () => {
+    it("customer.lastOrderByName → pesanan terakhir pelanggan tanpa tahu ID", async () => {
+      const r = (await adapter.execute("customer.lastOrderByName", { name: "Budi" }, adminCtx)) as {
+        customer: { customerNo: string; name: string };
+        lastOrder: { number: string } | null;
+      };
+      expect(r.customer.name).toBe("Budi Santoso");
+      expect(r.lastOrder?.number).toBe("SI.2026.10.00001");
+    });
+
+    it("customer.unpaidByName → total piutang belum dibayar", async () => {
+      const r = (await adapter.execute("customer.unpaidByName", { name: "Budi" }, adminCtx)) as {
+        customer: { customerNo: string };
+        totalUnpaid: number;
+        countUnpaid: number;
+      };
+      expect(r.customer.customerNo).toBe("CSBY-0001");
+      expect(r.totalUnpaid).toBe(2500000);
+      expect(r.countUnpaid).toBe(1);
+    });
+
+    it("customer.summaryByName → ringkasan pelanggan", async () => {
+      const r = (await adapter.execute("customer.summaryByName", { name: "Budi" }, adminCtx)) as {
+        customer: { name: string };
+        summary: { invoiceCount: number; totalSales: number };
+      };
+      expect(r.customer.name).toBe("Budi Santoso");
+      expect(r.summary.invoiceCount).toBe(1);
+      expect(r.summary.totalSales).toBe(2500000);
+    });
+
+    it("salesInvoice.summary → ringkasan penjualan periode", async () => {
+      const r = (await adapter.execute("salesInvoice.summary", { fromDate: "01/10/2026", toDate: "31/10/2026" }, adminCtx)) as {
+        summary: { invoiceCount: number; totalSales: number };
+      };
+      expect(r.summary.invoiceCount).toBe(1);
+      expect(r.summary.totalSales).toBe(2500000);
+    });
+
+    it("pelanggan tidak ditemukan → error informatif, bukan throw", async () => {
+      const r = (await adapter.execute("customer.lastOrderByName", { name: "Tidak Ada" }, adminCtx)) as {
+        error: string;
+      };
+      expect(r.error).toContain("tidak ditemukan");
+    });
   });
 });
