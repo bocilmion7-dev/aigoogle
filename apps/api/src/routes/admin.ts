@@ -91,7 +91,10 @@ adminRouter.get(
       if (!byPerm.has(t.requiredPermission)) byPerm.set(t.requiredPermission, t.name);
     }
     const modules = [...byPerm.entries()].map(([key, label]) => ({ key, label, mirrorChecked: false }));
-    const ctx = await accurateCtxFor(req.user!.tenant.id);
+    // platform session tak punya req.user → pakai tenantScope (?tenantId= bila ada);
+    // tanpa pilihan tenant, mirror Accurate dilewati (mirrorChecked tetap false)
+    const scope = await tenantScope(req);
+    const ctx = scope.tenantId ? await accurateCtxFor(scope.tenantId) : null;
     if (ctx) {
       try {
         const groups = await provider.privilegeCatalog(ctx);
@@ -129,7 +132,8 @@ adminRouter.put(
         skipDuplicates: true,
       }),
     ]);
-    await writeAudit(scope.tenantId, req.user!.id, "role.permissions.update", {
+    // actor: user perusahaan ATAU platform admin (req.platform — req.user undefined utk psid)
+    await writeAudit(scope.tenantId, req.user?.id ?? req.platform?.id ?? "platform", "role.permissions.update", {
       roleKey: role.key,
       permissions: body.data.permissions,
     });
@@ -157,7 +161,8 @@ adminRouter.put(
   asyncHandler(async (req, res) => {
     const body = z.object({ roleKey: z.string().min(1) }).safeParse(req.body);
     if (!body.success) return res.status(400).json({ error: "bad_request" });
-    if (req.params.id === req.user!.id) {
+    // pembanding id: req.user undefined utk sesi platform → jangan dibaca paksa
+    if (req.user && req.params.id === req.user.id) {
       return res.status(400).json({ error: "tidak_boleh_ubah_role_sendiri" });
     }
     const scope = await tenantScope(req);
@@ -168,7 +173,7 @@ adminRouter.put(
     });
     if (!role) return res.status(404).json({ error: "role_tidak_ditemukan" });
     await prisma.user.update({ where: { id: user.id }, data: { roleId: role.id } });
-    await writeAudit(scope.tenantId, req.user!.id, "user.role.update", {
+    await writeAudit(scope.tenantId, req.user?.id ?? req.platform?.id ?? "platform", "user.role.update", {
       userId: user.id,
       roleKey: role.key,
     });
@@ -190,7 +195,11 @@ adminRouter.get(
     if (!q.success) return res.status(400).json({ error: "bad_request" });
     const scope = await tenantScope(req);
     const rows = await prisma.auditLog.findMany({
-      where: { tenantId: scope.tenantId, ...(q.data.action ? { action: q.data.action } : {}) },
+      where: {
+        // platform & tanpa pilihan tenant → SEMUA audit lintas perusahaan
+        ...(scope.isPlatform && !scope.tenantId ? {} : { tenantId: scope.tenantId }),
+        ...(q.data.action ? { action: q.data.action } : {}),
+      },
       orderBy: { createdAt: "desc" },
       take: q.data.limit,
     });

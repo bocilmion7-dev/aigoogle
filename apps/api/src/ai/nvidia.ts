@@ -248,6 +248,8 @@ export class RealNvidiaClient implements NvidiaClient {
     const toolAcc = new Map<number, { id: string; name: string; args: string }>();
     let buffer = "";
     let textEmitted = false;
+    let finishReason: string | null = null;
+    let reasoningChars = 0;
 
     const reader = res.body.getReader();
     try {
@@ -269,12 +271,14 @@ export class RealNvidiaClient implements NvidiaClient {
             choices?: Array<{
               delta?: {
                 content?: string;
+                reasoning_content?: string;
                 tool_calls?: Array<{
                   index?: number;
                   id?: string;
                   function?: { name?: string; arguments?: string };
                 }>;
               };
+              finish_reason?: string | null;
             }>;
           };
           try {
@@ -283,8 +287,16 @@ export class RealNvidiaClient implements NvidiaClient {
             continue;
           }
 
-          const delta = chunk.choices?.[0]?.delta;
+          const choice = chunk.choices?.[0];
+          const delta = choice?.delta;
           if (!delta) continue;
+          if (choice?.finish_reason) finishReason = choice.finish_reason;
+
+          // penalaran internal → yield sbg bagian thought (tampilan/simpanan di-skip tool-loop)
+          if (delta.reasoning_content) {
+            reasoningChars += delta.reasoning_content.length;
+            yield { text: delta.reasoning_content, thought: true };
+          }
 
           // teks → yield langsung (streaming ke user)
           if (delta.content) {
@@ -327,9 +339,10 @@ export class RealNvidiaClient implements NvidiaClient {
         },
       };
     }
-    // jika tak ada teks & tak ada tool call, yield text kosong agar loop tahu selesai
+    // jika tak ada teks & tak ada tool call → putaran kosong (biasanya model hanya
+    // menalar lalu berhenti / kena potong) — catat utk diagnosis jawaban-kosong
     if (!textEmitted && toolAcc.size === 0) {
-      // nothing — caller akan lihat generator selesai tanpa parts
+      console.warn(`[nvidia] stream kosong (finish=${finishReason ?? "?"}, reasoning=${reasoningChars} kar)`);
     }
   }
 }

@@ -129,6 +129,8 @@ export async function runToolLoop(
   ];
   opts.onEvent({ type: "start" });
   let text = "";
+  // jawaban final bisa KOSONG (model hanya mengirim penalaran/thought) → ulangi sekali
+  let retriedEmpty = false;
   // hitung gagal per tool — bila1 tool gagal berulang (mis. koneksi mati),
   // berhenti & jelaskan alih-alih loop "Daftar…" yg sama berkali-kali
   const failCount = new Map<string, number>();
@@ -216,13 +218,33 @@ export async function runToolLoop(
       // narasi transisi SEBELUM tool call → flush sekaligus: eksekusi tool jangan
       // tertahan menunggu efek mengetik (dulu ~10-20 dtk terbuang tiap putaran)
       emitter.flushAll();
-    } else {
+    } else if (text.trim()) {
       // jawaban final → selesaikan efek mengetik agar terasa natural
       await emitter.end();
+      return { text, trace };
+    } else if (!retriedEmpty) {
+      // model mengembalikan konten KOSONG (hanya menalar lalu berhenti). Re-ask
+      // identik terbukti mengulang penalaran ~39 dtk dgn hasil sama → perbaiki
+      // percakapan: minta jawaban final langsung sebagai teks, tanpa tool.
+      retriedEmpty = true;
+      console.warn(`[tool-loop] jawaban kosong — nudge perbaikan sekali (putaran ${((Date.now() - streamStart) / 1000).toFixed(1)}s)`);
+      contents.push({
+        role: "user",
+        parts: [
+          {
+            text: "Balasan sebelumnya kosong. Tulis SEKARANG jawaban akhir Anda sebagai teks langsung dari data yang sudah ada — ringkas, tanpa memanggil tool lagi.",
+          },
+        ],
+      });
+      continue;
+    } else {
+      const msg = "Maaf, saya tidak menghasilkan jawaban — silakan ulangi pertanyaannya.";
+      emitter.push(msg);
+      await emitter.end();
+      return { text: msg, trace };
     }
     // bagian `thought` = penalaran internal model thinking — jangan tampilkan/simpan
     const visible = parts.filter((p) => !p.thought);
-    if (calls.length === 0) return { text, trace };
 
     contents.push({ role: "model", parts: visible });
 
