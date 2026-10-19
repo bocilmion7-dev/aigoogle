@@ -74,12 +74,18 @@ const CORE_TOOLS = [
   "vendor.lastPurchaseByName",
   "vendor.unpaidByName",
   "vendor.summaryByName",
+  "customer.salesByName",
+  "vendor.purchasesByName",
   "salesInvoice.perCustomer",
+  "purchaseInvoice.perVendor",
   "item.topSelling",
+  "item.byName",
   "receivables.summary",
   "payables.summary",
   "gl.plSummary",
   "gl.bsSummary",
+  "finance.overview",
+  "cashflow.summary",
 ];
 
 /** action yang boleh dikirim (read-only + aman) — create/save/delete disembunyikan dari AI */

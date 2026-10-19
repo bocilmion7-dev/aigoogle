@@ -67,6 +67,29 @@ export const AGGREGATION_TOOLS: AggToolSpec[] = [
     label: "Menyusun ringkasan pelanggan…",
   },
   {
+    name: "customer.salesByName",
+    description:
+      "SEMUA faktur penjualan dari SATU pelanggan berdasarkan NAMA + periode opsional — dalam SATU tool. " +
+      "Langsung pakai tool ini utk \"tampilkan semua pembelian/faktur/penjualan dari <nama> di tahun X\" / \"rincian belanja Abadi Jaya\" — " +
+      "JANGAN customer.list dulu lalu salesInvoice.list manual (boros putaran LLM). " +
+      "Mengembalikan data pelanggan + daftar faktur (nomor, tanggal, total) + jumlah & total. " +
+      "Argumen: name = nama pelanggan (boleh sebagian); fromDate & toDate (dd/mm/yyyy) OPSIONAL — kosongkan keduanya utk SELURUH periode (\"selama ini\"). " +
+      "Bila hasilnya \"tidak ditemukan\", kemungkinan nama tsb adalah PEMASOK — langsung coba vendor.purchasesByName (JANGAN ulangi customer.list dgn kata kunci lain). " +
+      "Pembelian dari sisi PEMASOK pakai vendor.purchasesByName.",
+    jsonSchema: {
+      type: "object",
+      properties: {
+        name: { type: "string", description: "Nama pelanggan (boleh sebagian, mis. 'Abadi')" },
+        fromDate: { type: "string", description: "Tanggal mulai (dd/mm/yyyy, kosong = semua periode)" },
+        toDate: { type: "string", description: "Tanggal akhir (dd/mm/yyyy, kosong = semua periode)" },
+      },
+      required: ["name"],
+    },
+    requiredPermission: "accurate:customer.view",
+    requires: ["accurate:customer.view", "accurate:sales-invoice.view"],
+    label: "Mengambil semua faktur pelanggan…",
+  },
+  {
     name: "salesInvoice.summary",
     description:
       "Ringkasan penjualan per periode: total nilai, jumlah faktur, rata-rata, dan daftar ringkas — dalam SATU tool. " +
@@ -116,6 +139,29 @@ export const AGGREGATION_TOOLS: AggToolSpec[] = [
     label: "Mencari pembelian terakhir pemasok…",
   },
   {
+    name: "vendor.purchasesByName",
+    description:
+      "SEMUA faktur pembelian dari SATU pemasok berdasarkan NAMA + periode opsional — dalam SATU tool. " +
+      "Langsung pakai tool ini utk \"tampilkan semua pembelian dari <pemasok> di tahun X\" / \"rincikan pembelian CV Sentosa\" — " +
+      "JANGAN vendor.list dulu lalu purchaseInvoice.list manual (boros putaran LLM). " +
+      "Mengembalikan data pemasok + daftar faktur (nomor, tanggal, total) + jumlah & total. " +
+      "Argumen: name = nama pemasok (boleh sebagian); fromDate & toDate (dd/mm/yyyy) OPSIONAL — kosongkan keduanya utk SELURUH periode (\"selama ini\"). " +
+      "Bila hasilnya \"tidak ditemukan\", kemungkinan nama tsb adalah PELANGGAN — langsung coba customer.salesByName (JANGAN ulangi vendor.list dgn kata kunci lain). " +
+      "Pembelian dari sisi PELANGGAN (siapa yang beli) pakai customer.salesByName.",
+    jsonSchema: {
+      type: "object",
+      properties: {
+        name: { type: "string", description: "Nama pemasok (boleh sebagian, mis. 'CV Sentosa')" },
+        fromDate: { type: "string", description: "Tanggal mulai (dd/mm/yyyy, kosong = semua periode)" },
+        toDate: { type: "string", description: "Tanggal akhir (dd/mm/yyyy, kosong = semua periode)" },
+      },
+      required: ["name"],
+    },
+    requiredPermission: "accurate:vendor.view",
+    requires: ["accurate:vendor.view", "accurate:purchase-invoice.view"],
+    label: "Mengambil semua faktur pemasok…",
+  },
+  {
     name: "vendor.unpaidByName",
     description:
       "Total utang BELUM DIBAYAR (unpaid) dari pemasok berdasarkan NAMA — tidak perlu tahu ID. " +
@@ -149,14 +195,16 @@ export const AGGREGATION_TOOLS: AggToolSpec[] = [
   {
     name: "salesInvoice.perCustomer",
     description:
-      "Rincian penjualan dikelompokkan per pelanggan untuk satu periode: nama+kode pelanggan, jumlah faktur, total nilai — dalam SATU tool. " +
-      "Langsung pakai tool ini utk \"rincikan penjualan per pelanggan\" — JANGAN tarik semua halaman salesInvoice.list. " +
-      "Argumen: fromDate & toDate (dd/mm/yyyy). Bila kosong, default = bulan berjalan.",
+      "Penjualan dikelompokkan per PELANGGAN: nama+kode pelanggan, jumlah faktur, total nilai — dalam SATU tool. " +
+      "Langsung pakai tool ini utk \"siapa yang paling banyak membeli / belanja terbanyak / pembelian terbanyak\" (dari sisi PELANGGAN) " +
+      "atau \"rincikan penjualan per pelanggan\" — JANGAN tarik semua halaman salesInvoice.list. " +
+      "Argumen: fromDate & toDate (dd/mm/yyyy) OPSIONAL — kosongkan keduanya utk SELURUH periode (\"selama ini\"). " +
+      "Untuk pengelompokan pembelian dari sisi PEMASOK pakai purchaseInvoice.perVendor.",
     jsonSchema: {
       type: "object",
       properties: {
-        fromDate: { type: "string", description: "Tanggal mulai (dd/mm/yyyy, cth: 01/10/2026)" },
-        toDate: { type: "string", description: "Tanggal akhir (dd/mm/yyyy, cth: 17/10/2026)" },
+        fromDate: { type: "string", description: "Tanggal mulai (dd/mm/yyyy, kosong = semua periode)" },
+        toDate: { type: "string", description: "Tanggal akhir (dd/mm/yyyy, kosong = semua periode)" },
       },
     },
     requiredPermission: "accurate:sales-invoice.view",
@@ -164,10 +212,31 @@ export const AGGREGATION_TOOLS: AggToolSpec[] = [
     label: "Mengelompokkan penjualan per pelanggan…",
   },
   {
+    name: "purchaseInvoice.perVendor",
+    description:
+      "Pembelian dikelompokkan per PEMASOK: nama+kode pemasok, jumlah faktur, total nilai — dalam SATU tool. " +
+      "Langsung pakai tool ini utk \"pemasok mana yang paling banyak menjual ke kita / pembelian terbanyak per pemasok\" — " +
+      "JANGAN tarik semua halaman purchaseInvoice.list + hitung manual. " +
+      "Argumen: fromDate & toDate (dd/mm/yyyy) OPSIONAL — kosongkan keduanya utk SELURUH periode (\"selama ini\"). " +
+      "Untuk pembelian dari sisi PELANGGAN (siapa yang beli) pakai salesInvoice.perCustomer.",
+    jsonSchema: {
+      type: "object",
+      properties: {
+        fromDate: { type: "string", description: "Tanggal mulai (dd/mm/yyyy, kosong = semua periode)" },
+        toDate: { type: "string", description: "Tanggal akhir (dd/mm/yyyy, kosong = semua periode)" },
+      },
+    },
+    requiredPermission: "accurate:purchase-invoice.view",
+    requires: ["accurate:purchase-invoice.view"],
+    label: "Mengelompokkan pembelian per pemasok…",
+  },
+  {
     name: "item.topSelling",
     description:
       "Barang PALING LARIS pada satu periode (diurutkan dari jumlah terjual) — dalam SATU tool. " +
       "Langsung pakai tool ini utk \"barang apa yang paling laris / terlaris bulan ini\" — JANGAN pakai item.list / salesInvoice.list + detail satu per satu. " +
+      "Tiap baris: qty terjual, nilai total, dan avgUnitPrice (harga rata-rata terjual) → cukup utk \"barang mana yang paling besar nilainya\". " +
+      "Harga jual terkini / stok SATU barang pakai item.byName. " +
       "Argumen: fromDate & toDate (dd/mm/yyyy, default bulan berjalan), limit (jumlah baris, default 10).",
     jsonSchema: {
       type: "object",
@@ -180,6 +249,22 @@ export const AGGREGATION_TOOLS: AggToolSpec[] = [
     requiredPermission: "accurate:sales-invoice.view",
     requires: ["accurate:sales-invoice.view"],
     label: "Menghitung barang terlaris…",
+  },
+  {
+    name: "item.byName",
+    description:
+      "Info SATU barang berdasarkan NAMA: kode, harga jual terkini, stok, kuantitas terdaftar — dalam SATU tool. " +
+      "Langsung pakai tool ini utk \"berapa harga Kertas A4 / stok X / cari barang X\" — " +
+      "JANGAN item.list berkali-kali lalu item.get-selling-price & item.get-stock satu per satu (boros putaran LLM). " +
+      "Barang terlaris per periode pakai item.topSelling.",
+    jsonSchema: {
+      type: "object",
+      properties: { name: { type: "string", description: "Nama/kode barang (boleh sebagian, mis. 'Kertas A4')" } },
+      required: ["name"],
+    },
+    requiredPermission: "accurate:item.view",
+    requires: ["accurate:item.view"],
+    label: "Mencari data barang…",
   },
   {
     name: "receivables.summary",
@@ -259,6 +344,45 @@ export const AGGREGATION_TOOLS: AggToolSpec[] = [
     requiredPermission: "accurate:glaccount.view",
     requires: ["accurate:glaccount.view"],
     label: "Menyusun posisi keuangan…",
+  },
+  {
+    name: "finance.overview",
+    description:
+      "Laporan keuangan satu periode SEKALI jalan: laba rugi, posisi keuangan (aset/utang/modal per akhir periode), " +
+      "serta total penjualan & pembelian periode itu — dalam SATU tool. " +
+      "Langsung pakai tool ini utk \"tampilkan laporan keuangan bulan X / laporan keuangan lengkap\" — " +
+      "JANGAN gl.plSummary + gl.bsSummary + salesInvoice.summary satu per satu (3 putaran LLM). " +
+      "Hanya laba rugi → gl.plSummary; hanya aset/utang → gl.bsSummary. " +
+      "Arus kas (kas masuk vs keluar) → cashflow.summary.",
+    jsonSchema: {
+      type: "object",
+      properties: {
+        fromDate: { type: "string", description: "Tanggal mulai (dd/mm/yyyy, default bulan berjalan)" },
+        toDate: { type: "string", description: "Tanggal akhir (dd/mm/yyyy, default akhir periode)" },
+      },
+    },
+    requiredPermission: "accurate:glaccount.view",
+    requires: ["accurate:glaccount.view", "accurate:sales-invoice.view", "accurate:purchase-invoice.view"],
+    label: "Menyusun laporan keuangan…",
+  },
+  {
+    name: "cashflow.summary",
+    description:
+      "Arus kas satu periode dalam SATU tool: kas masuk (penerimaan penjualan) vs kas keluar " +
+      "(pembayaran pembelian, biaya/expense, pengeluaran lain) — total, rincian per sumber, dan entri terbesar. " +
+      "Langsung pakai tool ini utk \"arus kas bulan ini / kas masuk dan keluar / uang keluar kemana saja\" — " +
+      "JANGAN bankTransfer.list + salesReceipt.list + expense.list manual (transfer antar rekening sendiri TIDAK dihitung). " +
+      "Argumen: fromDate & toDate (dd/mm/yyyy, default bulan berjalan).",
+    jsonSchema: {
+      type: "object",
+      properties: {
+        fromDate: { type: "string", description: "Tanggal mulai (dd/mm/yyyy, default bulan berjalan)" },
+        toDate: { type: "string", description: "Tanggal akhir (dd/mm/yyyy, default akhir periode)" },
+      },
+    },
+    requiredPermission: "accurate:sales-receipt.view",
+    requires: ["accurate:sales-receipt.view", "accurate:purchase-payment.view", "accurate:expense.view"],
+    label: "Menghitung arus kas…",
   },
 ];
 
@@ -359,12 +483,18 @@ function publicInfo(row: Record<string, unknown>): Record<string, unknown> {
 async function customerInvoices(
   execute: (tool: string, args: Record<string, unknown>) => Promise<unknown>,
   customerNo: string,
-  opts: { limit?: number } = {}
+  opts: { limit?: number; period?: { from: string; to: string } } = {}
 ): Promise<{ rows: Array<Record<string, unknown>>; total: number; truncated: boolean }> {
   // catatan (diverifikasi ke API asli): filter pakai VALUE LANGSUNG filter.customerNo=CSBY-0005.
   // Bentuk objek {customerNo:{op,value}} DITOLAK ("Pelanggan tidak tepat"), argumen top-level
   // customerNo="…" diabaikan (tidak memfilter) → baris pelanggan lain bisa bocor.
-  const base = { filter: { customerNo }, sort: "id|desc" };
+  const base = {
+    filter: {
+      customerNo,
+      ...(opts.period ? { transDate: { op: "BETWEEN", value: [opts.period.from, opts.period.to] } } : {}),
+    },
+    sort: "id|desc",
+  };
   const fetched =
     opts.limit !== undefined
       ? await (async () => {
@@ -424,6 +554,12 @@ function periodOf(args: Record<string, unknown>): { from: string; to: string } {
   return { from, to };
 }
 
+/** periode OPSIONAL — null bila keduanya kosong ("selama ini" = tanpa filter tanggal) */
+function optionalPeriod(args: Record<string, unknown>): { from: string; to: string } | null {
+  if (!args.fromDate && !args.toDate) return null;
+  return periodOf(args);
+}
+
 /** filter outstanding + periode transDate opsional (fromDate/toDate dd/mm/yyyy) utk summary piutang/utang */
 function outstandingPeriodFilter(args: Record<string, unknown>): Record<string, unknown> {
   const filter: Record<string, unknown> = { outstanding: true };
@@ -457,10 +593,16 @@ async function findVendor(
 async function vendorInvoices(
   execute: (tool: string, args: Record<string, unknown>) => Promise<unknown>,
   vendorNo: string,
-  opts: { limit?: number } = {}
+  opts: { limit?: number; period?: { from: string; to: string } } = {}
 ): Promise<{ rows: Array<Record<string, unknown>>; total: number; truncated: boolean }> {
   // filter vendorNo value langsung — diverifikasi live ke API asli (60ms, terekstrak benar)
-  const base = { filter: { vendorNo }, sort: "id|desc" };
+  const base = {
+    filter: {
+      vendorNo,
+      ...(opts.period ? { transDate: { op: "BETWEEN", value: [opts.period.from, opts.period.to] } } : {}),
+    },
+    sort: "id|desc",
+  };
   const fetched =
     opts.limit !== undefined
       ? await (async () => {
@@ -565,6 +707,31 @@ export async function runAggregation(
         lastOrder: inv.rows[0] ?? null,
       };
     }
+    case "customer.salesByName": {
+      const name = String(args.name ?? "").trim();
+      if (!name) throw new Error("name wajib diisi");
+      const customer = await findCustomer(execute, name);
+      if (!customer)
+        return {
+          error: `pelanggan "${name}" tidak ditemukan`,
+          hint: "Bila nama ini adalah PEMASOK (kita yang membeli darinya), gunakan vendor.purchasesByName.",
+        };
+      const period = optionalPeriod(args);
+      const inv = await customerInvoices(execute, String(customer.customerNo ?? ""), { period: period ?? undefined });
+      const rows = inv.rows;
+      const total = rows.reduce((s, r) => s + (Number(r.totalAmount) || 0), 0);
+      return {
+        customer: publicInfo(customer),
+        period: period ? { fromDate: period.from, toDate: period.to } : "semua",
+        summary: { invoiceCount: rows.length, totalSales: total, ...(inv.truncated ? { truncated: true } : {}) },
+        invoices: rows.slice(0, 20).map((r) => ({
+          number: r.number,
+          transDate: r.transDate,
+          totalAmount: r.totalAmount,
+          status: r.approvalStatus ?? r.status ?? null,
+        })),
+      };
+    }
     case "salesInvoice.summary": {
       const { from, to } = periodOf(args);
       const all = await listAllPages(execute, "salesInvoice.list", {
@@ -614,6 +781,31 @@ export async function runAggregation(
         lastPurchase: invoices.rows[0] ?? null,
       };
     }
+    case "vendor.purchasesByName": {
+      const name = String(args.name ?? "").trim();
+      if (!name) throw new Error("name wajib diisi");
+      const vendor = await findVendor(execute, name);
+      if (!vendor)
+        return {
+          error: `pemasok "${name}" tidak ditemukan`,
+          hint: "Bila nama ini adalah PELANGGAN (kita yang menjual kepadanya), gunakan customer.salesByName.",
+        };
+      const period = optionalPeriod(args);
+      const inv = await vendorInvoices(execute, String(vendor.vendorNo ?? ""), { period: period ?? undefined });
+      const rows = inv.rows;
+      const total = rows.reduce((s, r) => s + (Number(r.totalAmount) || 0), 0);
+      return {
+        vendor: publicInfo(vendor),
+        period: period ? { fromDate: period.from, toDate: period.to } : "semua",
+        summary: { invoiceCount: rows.length, totalPurchase: total, ...(inv.truncated ? { truncated: true } : {}) },
+        invoices: rows.slice(0, 20).map((r) => ({
+          number: r.number,
+          transDate: r.transDate,
+          totalAmount: r.totalAmount,
+          status: r.approvalStatus ?? r.status ?? null,
+        })),
+      };
+    }
     case "vendor.unpaidByName": {
       const name = String(args.name ?? "").trim();
       if (!name) throw new Error("name wajib diisi");
@@ -652,9 +844,9 @@ export async function runAggregation(
       };
     }
     case "salesInvoice.perCustomer": {
-      const { from, to } = periodOf(args);
+      const period = optionalPeriod(args);
       const all = await listAllPages(execute, "salesInvoice.list", {
-        filter: { transDate: { op: "BETWEEN", value: [from, to] } },
+        ...(period ? { filter: { transDate: { op: "BETWEEN", value: [period.from, period.to] } } } : {}),
         sort: "id|desc",
       });
       const rows = all.rows;
@@ -673,7 +865,7 @@ export async function runAggregation(
       const customers = [...groups.values()].sort((a, b) => b.total - a.total);
       const totalSales = customers.reduce((s, g) => s + g.total, 0);
       return {
-        period: { fromDate: from, toDate: to },
+        period: period ? { fromDate: period.from, toDate: period.to } : "semua",
         summary: {
           customerCount: customers.length,
           invoiceCount: rows.length,
@@ -681,6 +873,37 @@ export async function runAggregation(
           ...(all.truncated ? { truncated: true, totalOnServer: all.total } : {}),
         },
         customers: customers.slice(0, 20),
+      };
+    }
+    case "purchaseInvoice.perVendor": {
+      const period = optionalPeriod(args);
+      const all = await listAllPages(execute, "purchaseInvoice.list", {
+        ...(period ? { filter: { transDate: { op: "BETWEEN", value: [period.from, period.to] } } } : {}),
+        sort: "id|desc",
+      });
+      const rows = all.rows;
+      type Group = { vendorNo: string; name: string; invoiceCount: number; total: number };
+      const groups = new Map<string, Group>();
+      for (const r of rows) {
+        const vend = (r.vendor ?? {}) as Record<string, unknown>;
+        const vno = String(r.vendorNo ?? vend.vendorNo ?? "");
+        const key = vno || String(vend.name ?? "") || "tanpa-kode";
+        const g = groups.get(key) ?? { vendorNo: vno, name: String(vend.name ?? vno), invoiceCount: 0, total: 0 };
+        g.invoiceCount += 1;
+        g.total += Number(r.totalAmount) || 0;
+        groups.set(key, g);
+      }
+      const vendors = [...groups.values()].sort((a, b) => b.total - a.total);
+      const totalPurchase = vendors.reduce((s, g) => s + g.total, 0);
+      return {
+        period: period ? { fromDate: period.from, toDate: period.to } : "semua",
+        summary: {
+          vendorCount: vendors.length,
+          invoiceCount: rows.length,
+          totalPurchase,
+          ...(all.truncated ? { truncated: true, totalOnServer: all.total } : {}),
+        },
+        vendors: vendors.slice(0, 20),
       };
     }
     case "item.topSelling": {
@@ -715,7 +938,14 @@ export async function runAggregation(
           detailErrors += 1;
         }
       });
-      const items = [...agg.values()].sort((a, b) => b.quantity - a.quantity).slice(0, limit);
+      const items = [...agg.values()]
+        .sort((a, b) => b.quantity - a.quantity)
+        .slice(0, limit)
+        .map((g) => ({
+          ...g,
+          // harga rata-rata terjual — matikan kebutuhan get-selling-price per barang
+          avgUnitPrice: g.quantity > 0 ? Math.round(g.amount / g.quantity) : null,
+        }));
       const scanTruncated = rows.length > scanned.length;
       return {
         period: { fromDate: from, toDate: to },
@@ -883,6 +1113,130 @@ export async function runAggregation(
           liabilities: top("kewajiban"),
           equity: top("modal"),
         },
+      };
+    }
+    case "item.byName": {
+      const name = String(args.name ?? "").trim();
+      if (!name) throw new Error("name wajib diisi");
+      const rows = asArray(
+        await execute("item.list", { keywords: name, fields: "id,no,name,quantity", pageSize: 10 })
+      );
+      const q = name.toLowerCase();
+      const hit =
+        rows.find(
+          (r) => String(r.name ?? "").toLowerCase().includes(q) || String(r.no ?? "").toLowerCase().includes(q)
+        ) ?? rows[0];
+      if (!hit) return { error: `barang "${name}" tidak ditemukan` };
+      const no = String(hit.no ?? "");
+      const [priceRes, stockRes] = await Promise.all([
+        execute("item.get-selling-price", { no }).catch(() => null),
+        execute("item.get-stock", { no }).catch(() => null),
+      ]);
+      const first = (v: unknown): Record<string, unknown> | null => {
+        const a = asArray(v);
+        if (a.length) return a[0];
+        if (v && typeof v === "object") return v as Record<string, unknown>;
+        return null;
+      };
+      const numIn = (row: Record<string, unknown> | null, keys: string[]): number | null => {
+        if (!row) return null;
+        for (const k of keys) {
+          const raw = row[k];
+          if (raw !== undefined && raw !== null && Number.isFinite(Number(raw))) return Number(raw);
+        }
+        return null;
+      };
+      const priceRow = first(priceRes);
+      const stockRow = first(stockRes);
+      const sellingPrice = numIn(priceRow, ["price", "sellingPrice", "amount", "value"]);
+      const stock = numIn(stockRow, ["stock", "stockQuantity", "quantity", "balance"]) ?? numIn(hit, ["quantity"]);
+      const alternatives = rows.filter((r) => r !== hit).slice(0, 4);
+      return {
+        item: publicInfo(hit),
+        sellingPrice,
+        stock,
+        ...(priceRow && typeof priceRow.currencyCode === "string" ? { currencyCode: priceRow.currencyCode } : {}),
+        ...(alternatives.length ? { alternatives: alternatives.map(publicInfo) } : {}),
+      };
+    }
+    case "finance.overview": {
+      const { from, to } = periodOf(args);
+      const periodFilter = { filter: { transDate: { op: "BETWEEN", value: [from, to] } }, sort: "id|desc" };
+      // rekursif ke tool agregasi yang sudah teruji — tanpa duplikasi logika
+      const [pl, bs, sales, purchase] = await Promise.all([
+        runAggregation("gl.plSummary", { fromDate: from, toDate: to }, ctx, execute),
+        runAggregation("gl.bsSummary", { asOfDate: to }, ctx, execute),
+        listAllPages(execute, "salesInvoice.list", periodFilter),
+        listAllPages(execute, "purchaseInvoice.list", periodFilter),
+      ]);
+      const plO = pl as { summary: unknown; topAccounts: unknown };
+      const bsO = bs as { summary: unknown };
+      const sum = (rows: Array<Record<string, unknown>>) =>
+        rows.reduce((s, r) => s + (Number(r.totalAmount) || 0), 0);
+      return {
+        period: { fromDate: from, toDate: to },
+        labaRugi: plO.summary,
+        posisiKeuangan: bsO.summary,
+        topAccounts: plO.topAccounts,
+        penjualan: {
+          invoiceCount: sales.rows.length,
+          totalSales: sum(sales.rows),
+          ...(sales.truncated ? { truncated: true } : {}),
+        },
+        pembelian: {
+          invoiceCount: purchase.rows.length,
+          totalPurchase: sum(purchase.rows),
+          ...(purchase.truncated ? { truncated: true } : {}),
+        },
+      };
+    }
+    case "cashflow.summary": {
+      const { from, to } = periodOf(args);
+      const periodFilter = { filter: { transDate: { op: "BETWEEN", value: [from, to] } }, sort: "id|desc" };
+      // daftar mungkin tak mengembalikan totalAmount di modul tertentu → minta kandidat kolom
+      // (Accurate membuang kolom yang tak berlaku; mock menyaring sendiri — aman dua arah)
+      const FIELDS = "id,number,transDate,totalAmount,amount,paidAmount,description";
+      const amt = (r: Record<string, unknown>): number =>
+        Number(r.totalAmount ?? r.amount ?? r.paidAmount ?? r.total ?? 0) || 0;
+      const [receipts, pp, exp, oth] = await Promise.all([
+        listAllPages(execute, "salesReceipt.list", { fields: FIELDS, ...periodFilter }),
+        listAllPages(execute, "purchasePayment.list", { fields: FIELDS, ...periodFilter }),
+        listAllPages(execute, "expense.list", { fields: FIELDS, ...periodFilter }),
+        listAllPages(execute, "otherPayment.list", { fields: FIELDS, ...periodFilter }),
+      ]);
+      const tag = (rows: Array<Record<string, unknown>>, source: string) =>
+        rows.map((r) => ({ source, number: r.number, transDate: r.transDate, amount: amt(r), description: r.description ?? null }));
+      const inEntries = tag(receipts.rows, "penerimaan penjualan");
+      const outEntries = [
+        ...tag(pp.rows, "pembayaran pembelian"),
+        ...tag(exp.rows, "biaya/expense"),
+        ...tag(oth.rows, "pengeluaran lain"),
+      ];
+      const totalCashIn = inEntries.reduce((s, e) => s + e.amount, 0);
+      const totalCashOut = outEntries.reduce((s, e) => s + e.amount, 0);
+      const group = (entries: typeof inEntries) => {
+        const m = new Map<string, { source: string; count: number; total: number }>();
+        for (const e of entries) {
+          const g = m.get(e.source) ?? { source: e.source, count: 0, total: 0 };
+          g.count += 1;
+          g.total += e.amount;
+          m.set(e.source, g);
+        }
+        return [...m.values()];
+      };
+      return {
+        period: { fromDate: from, toDate: to },
+        summary: {
+          totalCashIn,
+          totalCashOut,
+          netCashFlow: totalCashIn - totalCashOut,
+          cashInCount: inEntries.length,
+          cashOutCount: outEntries.length,
+        },
+        breakdown: { masuk: group(inEntries), keluar: group(outEntries) },
+        cashIn: inEntries.slice(0, 10),
+        cashOut: [...outEntries].sort((a, b) => b.amount - a.amount).slice(0, 10),
+        note: "Transfer antar rekening sendiri tidak dihitung sebagai kas masuk/keluar.",
       };
     }
     default:

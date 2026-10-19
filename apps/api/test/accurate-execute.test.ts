@@ -68,9 +68,9 @@ describe("AccurateAdapter execute/refresh/privilege", () => {
     expect(admin.allowViewModules).toEqual(expect.arrayContaining(["customer", "sales-invoice"]));
   });
 
-  it("capabilityCatalog → 366 tool cakupan penuh + 14 tool agregasi, teranotasi permission", () => {
+  it("capabilityCatalog → 366 tool cakupan penuh + 20 tool agregasi, teranotasi permission", () => {
     const cat = adapter.capabilityCatalog();
-    expect(cat).toHaveLength(380);
+    expect(cat).toHaveLength(386);
     expect(cat.map((t) => t.name)).toEqual(
       expect.arrayContaining([
         "customer.detail", "customer.list", "glaccount.list", "item.list",
@@ -195,14 +195,140 @@ describe("AccurateAdapter execute/refresh/privilege", () => {
       expect(r.customers[0]).toMatchObject({ customerNo: "CSBY-0001", name: "Budi Santoso", invoiceCount: 1, total: 2500000 });
     });
 
+    it("salesInvoice.perCustomer TANPA tanggal → seluruh periode ('selama ini')", async () => {
+      const r = (await adapter.execute("salesInvoice.perCustomer", {}, adminCtx)) as {
+        period: string;
+        summary: { customerCount: number; invoiceCount: number; totalSales: number };
+        customers: Array<{ name: string; total: number }>;
+      };
+      expect(r.period).toBe("semua");
+      expect(r.summary).toMatchObject({ customerCount: 1, invoiceCount: 1, totalSales: 2500000 });
+      expect(r.customers[0]).toMatchObject({ name: "Budi Santoso", total: 2500000 });
+    });
+
+    it("purchaseInvoice.perVendor → pembelian dikelompokkan per pemasok (urut total desc)", async () => {
+      const r = (await adapter.execute("purchaseInvoice.perVendor", { fromDate: "01/10/2026", toDate: "31/10/2026" }, adminCtx)) as {
+        summary: { vendorCount: number; invoiceCount: number; totalPurchase: number };
+        vendors: Array<{ vendorNo: string; name: string; invoiceCount: number; total: number }>;
+      };
+      expect(r.summary).toMatchObject({ vendorCount: 1, invoiceCount: 1, totalPurchase: 800000 });
+      expect(r.vendors[0]).toMatchObject({ vendorNo: "VJKT-0001", name: "CV Sentosa Mandiri", invoiceCount: 1, total: 800000 });
+    });
+
+    it("purchaseInvoice.perVendor TANPA tanggal → seluruh periode ('selama ini')", async () => {
+      const r = (await adapter.execute("purchaseInvoice.perVendor", {}, adminCtx)) as {
+        period: string;
+        summary: { totalPurchase: number };
+      };
+      expect(r.period).toBe("semua");
+      expect(r.summary.totalPurchase).toBe(800000);
+    });
+
+    it("customer.salesByName → semua faktur pelanggan by nama (1 tool, tanpa customer.list dulu)", async () => {
+      const r = (await adapter.execute("customer.salesByName", { name: "Budi" }, adminCtx)) as {
+        customer: { name: string };
+        period: string;
+        summary: { invoiceCount: number; totalSales: number };
+        invoices: Array<{ number: string; totalAmount: number }>;
+      };
+      expect(r.customer.name).toBe("Budi Santoso");
+      expect(r.period).toBe("semua");
+      expect(r.summary).toMatchObject({ invoiceCount: 1, totalSales: 2500000 });
+      expect(r.invoices[0]).toMatchObject({ number: "SI.2026.10.00001", totalAmount: 2500000 });
+    });
+
+    it("customer.salesByName + periode → faktur terfilter; periode kosong → 0 baris", async () => {
+      const inPeriod = (await adapter.execute(
+        "customer.salesByName",
+        { name: "Budi", fromDate: "01/10/2026", toDate: "31/10/2026" },
+        adminCtx
+      )) as { period: { fromDate: string }; summary: { invoiceCount: number } };
+      expect(inPeriod.period.fromDate).toBe("01/10/2026");
+      expect(inPeriod.summary.invoiceCount).toBe(1);
+      const otherYear = (await adapter.execute(
+        "customer.salesByName",
+        { name: "Budi", fromDate: "01/01/2017", toDate: "31/12/2017" },
+        adminCtx
+      )) as { summary: { invoiceCount: number; totalSales: number } };
+      expect(otherYear.summary).toMatchObject({ invoiceCount: 0, totalSales: 0 });
+    });
+
+    it("customer.salesByName nama tak ditemukan → error", async () => {
+      const r = (await adapter.execute("customer.salesByName", { name: "Tidak Ada" }, adminCtx)) as { error: string };
+      expect(r.error).toContain("tidak ditemukan");
+    });
+
+    it("vendor.purchasesByName → semua faktur pemasok by nama (1 tool, tanpa vendor.list dulu)", async () => {
+      const r = (await adapter.execute("vendor.purchasesByName", { name: "Sentosa" }, adminCtx)) as {
+        vendor: { name: string };
+        period: string;
+        summary: { invoiceCount: number; totalPurchase: number };
+        invoices: Array<{ number: string; totalAmount: number }>;
+      };
+      expect(r.vendor.name).toBe("CV Sentosa Mandiri");
+      expect(r.period).toBe("semua");
+      expect(r.summary).toMatchObject({ invoiceCount: 1, totalPurchase: 800000 });
+      expect(r.invoices[0]).toMatchObject({ number: "PI.2026.10.00001", totalAmount: 800000 });
+    });
+
     it("item.topSelling → barang terlaris dari detailItem tiap faktur", async () => {
       const r = (await adapter.execute("item.topSelling", { fromDate: "01/10/2026", toDate: "31/10/2026" }, adminCtx)) as {
         summary: { invoicesScanned: number; detailErrors: number };
-        items: Array<{ itemName: string; quantity: number; amount: number }>;
+        items: Array<{ itemName: string; quantity: number; amount: number; avgUnitPrice: number | null }>;
       };
       expect(r.summary.invoicesScanned).toBe(1);
       expect(r.summary.detailErrors).toBe(0);
-      expect(r.items[0]).toMatchObject({ itemName: "Kertas A4", quantity: 10, amount: 2500000 });
+      expect(r.items[0]).toMatchObject({ itemName: "Kertas A4", quantity: 10, amount: 2500000, avgUnitPrice: 250000 });
+    });
+
+    it("item.byName → kode + harga jual + stok sekali jalan (tanpa item.list berulang)", async () => {
+      const r = (await adapter.execute("item.byName", { name: "Kertas A4" }, adminCtx)) as {
+        item: { no: string; name: string };
+        sellingPrice: number | null;
+        stock: number | null;
+      };
+      expect(r.item).toMatchObject({ no: "BRG-001", name: "Kertas A4" });
+      expect(r.sellingPrice).toBe(250000);
+      expect(r.stock).toBe(100);
+    });
+
+    it("item.byName barang tak ditemukan → error", async () => {
+      const r = (await adapter.execute("item.byName", { name: "Barang Tiada" }, adminCtx)) as { error: string };
+      expect(r.error).toContain("tidak ditemukan");
+    });
+
+    it("finance.overview → laba rugi + neraca + penjualan/pembelian dalam SATU tool", async () => {
+      const r = (await adapter.execute(
+        "finance.overview",
+        { fromDate: "01/10/2026", toDate: "31/10/2026" },
+        adminCtx
+      )) as {
+        period: { fromDate: string };
+        labaRugi: { netProfit: number; revenue: number };
+        posisiKeuangan: { totalAssets: number };
+        penjualan: { invoiceCount: number; totalSales: number };
+        pembelian: { invoiceCount: number; totalPurchase: number };
+      };
+      expect(r.period.fromDate).toBe("01/10/2026");
+      expect(r.labaRugi).toMatchObject({ revenue: 10000000, netProfit: 1900000 });
+      expect(r.posisiKeuangan.totalAssets).toBe(600000);
+      expect(r.penjualan).toMatchObject({ invoiceCount: 1, totalSales: 2500000 });
+      expect(r.pembelian).toMatchObject({ invoiceCount: 1, totalPurchase: 800000 });
+    });
+
+    it("cashflow.summary → kas masuk penerimaan vs kas keluar, transfer tak dihitung", async () => {
+      const r = (await adapter.execute(
+        "cashflow.summary",
+        { fromDate: "01/10/2026", toDate: "31/10/2026" },
+        adminCtx
+      )) as {
+        summary: { totalCashIn: number; totalCashOut: number; netCashFlow: number; cashInCount: number };
+        breakdown: { masuk: Array<{ source: string; total: number }> };
+        note: string;
+      };
+      expect(r.summary).toMatchObject({ totalCashIn: 1500000, totalCashOut: 0, netCashFlow: 1500000, cashInCount: 1 });
+      expect(r.breakdown.masuk[0]).toMatchObject({ source: "penerimaan penjualan", total: 1500000 });
+      expect(r.note).toContain("tidak dihitung");
     });
 
     it("receivables.summary → total piutang usaha global + daftar per pelanggan", async () => {

@@ -133,6 +133,20 @@ export function makeModuleRouter(mod: string): Router {
           res.json(ok(rows));
           return;
         }
+        // item.get-selling-price / get-stock → bentuk asli: {no, price} / {no, stock}
+        if (mod === "item" && (a.action === "get-selling-price" || a.action === "get-stock")) {
+          const db2 = getDb(req.mockCtx!.dbId)!;
+          const items = rowsOf(db2, "item");
+          const item = items.find((r) => String(r.no) === String(req.query.no ?? "")) ?? items[0] ?? { id: "" };
+          res.json(
+            ok([
+              a.action === "get-selling-price"
+                ? { no: item.no, name: item.name, price: Number(item.price ?? 0), currencyCode: "IDR" }
+                : { no: item.no, name: item.name, stock: Number(item.quantity) || 0, warehouseName: "Semua Gudang" },
+            ])
+          );
+          return;
+        }
         const row = rowsOf(db, mod)[0] ?? { id: "" };
         res.json(ok([row]));
       });

@@ -78,8 +78,8 @@ const dbs: Record<string, MockDb> = {
         },
       ],
       item: [
-        { id: "I-01", no: "BRG-001", name: "Kertas A4", quantity: 100 },
-        { id: "I-02", no: "BRG-002", name: "Tinta Printer", quantity: 50 },
+        { id: "I-01", no: "BRG-001", name: "Kertas A4", quantity: 100, price: 250000 },
+        { id: "I-02", no: "BRG-002", name: "Tinta Printer", quantity: 50, price: 85000 },
       ],
       vendor: [
         { id: "V-01", vendorNo: "VJKT-0001", name: "CV Sentosa Mandiri", email: null, mobilePhone: null, balance: 0 },
@@ -111,7 +111,8 @@ const dbs: Record<string, MockDb> = {
       "sales-receipt": [
         {
           id: "SR-001", number: "111.102-01.2026.10.00002", transDate: "02/10/2026",
-          approvalStatus: "APPROVED", customerNo: "CSBY-0001",
+          totalAmount: 1500000, approvalStatus: "APPROVED",
+          customerNo: "CSBY-0001",
           customer: { id: "C-001", customerNo: "CSBY-0001", name: "Budi Santoso" }, description: null,
         },
       ],
@@ -139,7 +140,7 @@ const dbs: Record<string, MockDb> = {
         },
       ],
       item: [
-        { id: "I-11", no: "BRG-101", name: "Spanduk", quantity: 20 },
+        { id: "I-11", no: "BRG-101", name: "Spanduk", quantity: 20, price: 50000 },
       ],
       vendor: [
         { id: "V-11", vendorNo: "VJKT-0101", name: "PT Multi Supply", email: null, mobilePhone: null, balance: 0 },
