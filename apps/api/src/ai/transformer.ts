@@ -707,10 +707,14 @@ const FORMATTERS: Record<string, Fmt> = {
       : "seluruh periode";
     const customers = Array.isArray(r.customers) ? (r.customers as Record<string, unknown>[]) : [];
     if (customers.length === 0) return `Tidak ada penjualan pada ${periodStr}.`;
-    const list = customers
-      .slice(0, 15)
-      .map((c, i) => `${i + 1}. ${nameOf(c, "name", "customerName")} (${nameOf(c, "customerNo")}) — ${fmtMoney(c.total)} dari ${c.invoiceCount ?? 0} faktur`)
-      .join("\n");
+    const rowOf = (c: Record<string, unknown>, i: number) =>
+      `${i + 1}. ${nameOf(c, "name", "customerName")} (${nameOf(c, "customerNo")}) — ${fmtMoney(c.total)} dari ${c.invoiceCount ?? 0} faktur`;
+    // user minta N pelanggan ("cari 3 pelanggan") → tampilkan HANYA N baris, tanpa total semua / pelanggan terkecil
+    const lim = Number(r.limit) || 0;
+    if (lim > 0) {
+      return `${Math.min(lim, customers.length)} pelanggan dengan penjualan terbesar (${periodStr}):\n\n${customers.slice(0, lim).map(rowOf).join("\n")}`;
+    }
+    const list = customers.slice(0, 15).map(rowOf).join("\n");
     const custCount = Number((r.summary as Record<string, unknown> | undefined)?.customerCount) || customers.length;
     const totalAll = Number((r.summary as Record<string, unknown> | undefined)?.totalSales) || 0;
     const sm = (r.summary as Record<string, unknown> | undefined)?.smallest as Record<string, unknown> | undefined;
@@ -727,10 +731,14 @@ const FORMATTERS: Record<string, Fmt> = {
       : "seluruh periode";
     const vendors = Array.isArray(r.vendors) ? (r.vendors as Record<string, unknown>[]) : [];
     if (vendors.length === 0) return `Tidak ada pembelian pada ${periodStr}.`;
-    const list = vendors
-      .slice(0, 15)
-      .map((v, i) => `${i + 1}. ${nameOf(v, "name", "vendorName")} (${nameOf(v, "vendorNo")}) — ${fmtMoney(v.total)} dari ${v.invoiceCount ?? 0} faktur`)
-      .join("\n");
+    const rowOfV = (v: Record<string, unknown>, i: number) =>
+      `${i + 1}. ${nameOf(v, "name", "vendorName")} (${nameOf(v, "vendorNo")}) — ${fmtMoney(v.total)} dari ${v.invoiceCount ?? 0} faktur`;
+    // user minta N pemasok ("cari 3 pemasok") → tampilkan HANYA N baris, tanpa total semua / pemasok terkecil
+    const lim = Number(r.limit) || 0;
+    if (lim > 0) {
+      return `${Math.min(lim, vendors.length)} pemasok dengan pembelian terbesar (${periodStr}):\n\n${vendors.slice(0, lim).map(rowOfV).join("\n")}`;
+    }
+    const list = vendors.slice(0, 15).map(rowOfV).join("\n");
     const totalAll = Number((r.summary as Record<string, unknown> | undefined)?.totalPurchase) || 0;
     const venCount = Number((r.summary as Record<string, unknown> | undefined)?.vendorCount) || vendors.length;
     const sm = (r.summary as Record<string, unknown> | undefined)?.smallest as Record<string, unknown> | undefined;

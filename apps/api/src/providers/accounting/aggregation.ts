@@ -251,12 +251,14 @@ export const AGGREGATION_TOOLS: AggToolSpec[] = [
       "Langsung pakai tool ini utk \"siapa yang paling banyak membeli / belanja terbanyak / pembelian terbanyak\" (dari sisi PELANGGAN) " +
       "atau \"rincikan penjualan per pelanggan\" — JANGAN tarik semua halaman salesInvoice.list. " +
       "Argumen: fromDate & toDate (dd/mm/yyyy) OPSIONAL — kosongkan keduanya utk SELURUH periode (\"selama ini\"). " +
+      "Argumen limit OPSIONAL — bila diisi, hanya N pelanggan teratas (urut total menurun) yang dikembalikan (contoh: \"cari 3 pelanggan\" → limit 3). " +
       "Untuk pengelompokan pembelian dari sisi PEMASOK pakai purchaseInvoice.perVendor.",
     jsonSchema: {
       type: "object",
       properties: {
         fromDate: { type: "string", description: "Tanggal mulai (dd/mm/yyyy, kosong = semua periode)" },
         toDate: { type: "string", description: "Tanggal akhir (dd/mm/yyyy, kosong = semua periode)" },
+        limit: { type: "integer", description: "Tampilkan hanya N pelanggan teratas (kosong = semua, maks 20)" },
       },
     },
     requiredPermission: "accurate:sales-invoice.view",
@@ -270,12 +272,14 @@ export const AGGREGATION_TOOLS: AggToolSpec[] = [
       "Langsung pakai tool ini utk \"pemasok mana yang paling banyak menjual ke kita / pembelian terbanyak per pemasok\" — " +
       "JANGAN tarik semua halaman purchaseInvoice.list + hitung manual. " +
       "Argumen: fromDate & toDate (dd/mm/yyyy) OPSIONAL — kosongkan keduanya utk SELURUH periode (\"selama ini\"). " +
+      "Argumen limit OPSIONAL — bila diisi, hanya N pemasok teratas (urut total menurun) yang dikembalikan (contoh: \"cari 3 pemasok\" → limit 3). " +
       "Untuk pembelian dari sisi PELANGGAN (siapa yang beli) pakai salesInvoice.perCustomer.",
     jsonSchema: {
       type: "object",
       properties: {
         fromDate: { type: "string", description: "Tanggal mulai (dd/mm/yyyy, kosong = semua periode)" },
         toDate: { type: "string", description: "Tanggal akhir (dd/mm/yyyy, kosong = semua periode)" },
+        limit: { type: "integer", description: "Tampilkan hanya N pemasok teratas (kosong = semua, maks 20)" },
       },
     },
     requiredPermission: "accurate:purchase-invoice.view",
@@ -1697,6 +1701,7 @@ export async function runAggregation(
       const customers = [...groups.values()].sort((a, b) => b.total - a.total);
       const totalSales = customers.reduce((s, g) => s + g.total, 0);
       const smallest = customers.length ? customers[customers.length - 1] : null;
+      const limit = Math.min(20, Math.max(0, Number(args.limit) || 0));
       return {
         period: period ? { fromDate: period.from, toDate: period.to } : "semua",
         summary: {
@@ -1706,7 +1711,8 @@ export async function runAggregation(
           ...(smallest ? { smallest: { name: smallest.name, invoiceCount: smallest.invoiceCount, total: smallest.total } } : {}),
           ...(all.truncated ? { truncated: true, totalOnServer: all.total } : {}),
         },
-        customers: customers.slice(0, 20),
+        ...(limit ? { limit } : {}),
+        customers: customers.slice(0, limit || 20),
       };
     }
     case "purchaseInvoice.perVendor": {
@@ -1730,6 +1736,7 @@ export async function runAggregation(
       const vendors = [...groups.values()].sort((a, b) => b.total - a.total);
       const totalPurchase = vendors.reduce((s, g) => s + g.total, 0);
       const smallest = vendors.length ? vendors[vendors.length - 1] : null;
+      const limit = Math.min(20, Math.max(0, Number(args.limit) || 0));
       return {
         period: period ? { fromDate: period.from, toDate: period.to } : "semua",
         summary: {
@@ -1739,7 +1746,8 @@ export async function runAggregation(
           ...(smallest ? { smallest: { name: smallest.name, invoiceCount: smallest.invoiceCount, total: smallest.total } } : {}),
           ...(all.truncated ? { truncated: true, totalOnServer: all.total } : {}),
         },
-        vendors: vendors.slice(0, 20),
+        ...(limit ? { limit } : {}),
+        vendors: vendors.slice(0, limit || 20),
       };
     }
     case "item.topSelling": {

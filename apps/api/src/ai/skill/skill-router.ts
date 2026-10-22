@@ -435,6 +435,21 @@ function tryRoute(msg: string): { tool: string; args: Record<string, unknown> } 
     if (lim) args.limit = lim;
     return { tool: "item.topSelling", args };
   }
+  /* — "cari N pelanggan/pemasok" — user hanya minta N baris — */
+  // tanpa limit, perCustomer menjawab semua pelanggan + total + terkecil (kepanjangan)
+  const wordNum: Record<string, number> = { dua: 2, tiga: 3, empat: 4, lima: 5, enam: 6, tujuh: 7, delapan: 8, sembilan: 9, sepuluh: 10 };
+  const nParty =
+    m.match(/\b(?:cari|temukan|tampilkan|sebutkan|daftar|urutkan|pilih|ambil|tunjukkan|siapa)\b[^.?!]*\b(\d{1,2}|dua|tiga|empat|lima|enam|tujuh|delapan|sembilan|sepuluh)\b\s*(?:pelanggan|customer|pembeli|pemasok|vendor|supplier)\b/) ??
+    m.match(/\b(\d{1,2}|dua|tiga|empat|lima)\b\s+(?:pelanggan|customer|pembeli|pemasok|vendor|supplier)\b[^.?!]*\b(?:terbesar|terbanyak|paling\s+banyak)\b/);
+  if (nParty && !/\bpiutang\b|\butang\b|\bhutang\b|\bbelum\s+lunas\b|\bjatuh\s+tempo\b|\bbarang\b|\bproduk\b|\bretur\b/.test(m)) {
+    const n = Number(nParty[1]) || wordNum[nParty[1]] || 0;
+    const partyChunk = m.slice(nParty.index ?? 0, (nParty.index ?? 0) + nParty[0].length);
+    const isVendor = /pemasok|vendor|supplier/.test(partyChunk);
+    if (n >= 1 && n <= 20) {
+      return { tool: isVendor ? "purchaseInvoice.perVendor" : "salesInvoice.perCustomer", args: { limit: n, ...range } };
+    }
+  }
+
   // pelanggan bertransaksi tahun Y → count via perCustomer
   if (/\bpelanggan\b[^?!]*\bbertransaksi\b/.test(m)) {
     return { tool: "salesInvoice.perCustomer", args: { ...range } };
