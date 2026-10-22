@@ -1,7 +1,7 @@
 import type { LLMClient } from "./llm-client.js";
 import type { LLMContent } from "./llm-types.js";
 import { AGGREGATION_TOOLS } from "../providers/accounting/aggregation.js";
-import { heuristicRoute } from "./skill/skill-router.js";
+
 
 /**
  * Transformer: router ringan → agregasi adapter.
@@ -40,6 +40,7 @@ const ROUTER_SYSTEM =
   '"Berapa laba bersih dan siapa pemasok terbesar".\n' +
   '- Pertanyaan RANKING (terbesar/terbanyak/kedua/urutkan): penjualan/pemesanan → salesInvoice.perCustomer (tanpa tanggal bila "sepanjang masa"); piutang → receivables.summary; utang → payables.summary; pembelian/pemasok → purchaseInvoice.perVendor. "Faktur penjualan terbesar pada tahun X" → salesInvoice.summary dgn tanggal; "faktur pembelian terbesar pada tahun X" → purchaseInvoice.summary dgn tanggal (ringkasan memuat faktur terbesar).\n' +
   '- "siapa pembeli / pernah membeli barang X / pelanggan pembeli X" → item.buyers(name, fromDate?, toDate?).\n' +
+  '- "berapa nilai penjualan total barang X" / "berapa total penjualan barang X" / "berapa unit X yang terjual" / "berapa uang dari penjualan barang X" → item.buyers(name) — ambil summary.totalAmount (atau totalQuantity utk unit). BUKAN item.byName (itu info stok/harga).\n' +
   '- "pemasok/supplier/suplier mana yang memasok/mensupply barang X / siapa pemasok X / total pembelian barang X dari semua pemasok" → item.suppliers(name, fromDate?, toDate?).\n' +
   '- "faktur penjualan apa saja yang memuat/mengandung barang X" → item.invoices(name, type:"sale"). "faktur pembelian mana dari pemasok Y yang isinya barang X" → item.invoices(name, type:"purchase", entity:"Y").\n' +
   '- Pertanyaan yg menyebut DUA periode berbeda ("pada tahun 2016 DAN 2017", "bulan Januari vs Februari") = komparatif → {"tool":null} supaya dihitung terpisah per periode — JANGAN mencampur dua periode jadi SATU rentang tanggal.\n' +
@@ -61,22 +62,6 @@ export async function transformToRoute(opts: {
   client: LLMClient;
   model: string;
 }): Promise<Route | null> {
-  // skill layer: routing deterministik tanpa LLM — cocok → langsung eksekusi
-  // (0 token, <1ms, bebas model). skip → pola non-agregasi, langsung tool loop.
-  // miss → LLM router seperti biasa.
-  const heur = heuristicRoute(opts.userMessage);
-  if (heur?.kind === "skip") {
-    console.log(`[skill] skip → tool loop (tanpa LLM router) | ${opts.userMessage.slice(0, 60)}`);
-    return null;
-  }
-  if (heur?.kind === "route") {
-    const known = AGGREGATION_TOOLS.some((t) => t.name === heur.tool);
-    if (known) {
-      console.log(`[skill] heuristic → ${heur.tool} ${JSON.stringify(heur.args).slice(0, 100)}`);
-      return { tool: heur.tool, args: heur.args };
-    }
-  }
-
   const recent = opts.history.slice(-4);
   const contents: LLMContent[] = [
     ...recent.map((h) => ({ role: h.role, parts: [{ text: h.text.slice(0, 500) }] })),

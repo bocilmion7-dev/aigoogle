@@ -39,6 +39,7 @@ PANDUAN INTENT (paling sering ditanya):
 - "barang paling laris / terlaris" → item.topSelling(fromDate, toDate, limit) — urutan jumlah terjual sudah jadi.
 - "siapa pembeli / pernah membeli barang X" → item.buyers(name, fromDate?, toDate?) — daftar pelanggan pembeli beserta unit & nilai per pelanggan sudah jadi. JANGAN item.topSelling + salesInvoice.list + detail satu per satu.
 - "berapa total unit barang X yang terjual (sepanjang masa)" → item.buyers(name) lalu ambil summary.totalQuantity — JANGAN item.byName (itu info barang/stok) dan JANGAN item.invoices.
+- "berapa nilai penjualan total barang X" / "berapa total penjualan barang X" / "berapa uang dari penjualan barang X" → item.buyers(name) lalu ambil summary.totalAmount — JANGAN item.byName (itu info barang/stok).
 - "pemasok/supplier/suplier mana yang memasok barang X / total pembelian barang X dari semua pemasok" → item.suppliers(name, fromDate?, toDate?) — daftar pemasok + unit & nilai per pemasok sudah jadi (kebalikan item.buyers).
 - "faktur penjualan apa saja yang memuat/mengandung barang X" → item.invoices(name, type:"sale"); "faktur pembelian mana dari pemasok Y yang isinya barang X" → item.invoices(name, type:"purchase", entity:"Y") — daftar nomor faktur + tanggal + qty per faktur sudah jadi.
 - "barang apa saja yang dibeli/diterima pelanggan X / barang yang dijual ke X" → customer.itemsByName(name, fromDate?, toDate?) — daftar barang + unit + nilai per barang sudah jadi. JANGAN customer.salesByName (hanya daftar faktur, tanpa isinya).
