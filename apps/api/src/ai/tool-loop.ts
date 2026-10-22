@@ -131,6 +131,9 @@ export async function runToolLoop(
   let text = "";
   // jawaban final bisa KOSONG (model hanya mengirim penalaran/thought) → ulangi sekali
   let retriedEmpty = false;
+  // jawaban TEKS tanpa satu pun tool call (model menjawab dari ingatan/riwayat —
+  // terbukti menghasilkan nomor faktur & angka karangan) → nudge paksa panggil tool
+  let retriedNoTool = false;
   // hitung gagal per tool — bila1 tool gagal berulang (mis. koneksi mati),
   // berhenti & jelaskan alih-alih loop "Daftar…" yg sama berkali-kali
   const failCount = new Map<string, number>();
@@ -218,8 +221,33 @@ export async function runToolLoop(
       // narasi transisi SEBELUM tool call → flush sekaligus: eksekusi tool jangan
       // tertahan menunggu efek mengetik (dulu ~10-20 dtk terbuang tiap putaran)
       emitter.flushAll();
+    } else if (text.trim() && trace.length > 0) {
+      // jawaban final SETELAH tool sukses → selesaikan efek mengetik agar natural
+      await emitter.end();
+      return { text, trace };
+    } else if (text.trim() && !retriedNoTool && (/\d/.test(text) || text.length > 120)) {
+      // teks muncul tapi BELUM ada tool sukses → kemungkinan besar jawaban karangan
+      // dari ingatan/riwayat. Tolak & paksa panggil tool sekali.
+      // Catatan: teks throttle sudah terkirim bertahap ke client (tak bisa ditarik);
+      // yang penting jawaban AKHIR menyusul dari hasil tool yang valid.
+      retriedNoTool = true;
+      console.warn(`[tool-loop] jawaban tanpa tool — nudge paksa tool (putaran ${((Date.now() - streamStart) / 1000).toFixed(1)}s)`);
+      text = "";
+      contents.push({ role: "model", parts: [{ text: "(belum memanggil tool)" }] });
+      contents.push({
+        role: "user",
+        parts: [
+          {
+            text:
+              "Anda menjawab tanpa memanggil SATU PUN tool — angka dan nomor dari ingatan/riwayat BUKAN data Accurate yang valid. " +
+              "ULANGI sekarang: panggil SATU tool agregasi yang paling relevan untuk pertanyaan user (lihat daftar tool), " +
+              "lalu susun jawaban HANYA dari hasil tool itu. Jangan menjawab langsung tanpa tool.",
+          },
+        ],
+      });
+      continue;
     } else if (text.trim()) {
-      // jawaban final → selesaikan efek mengetik agar terasa natural
+      // sudah pernah nudge tapi model tetap menjawab tanpa tool → terima dgn catatan
       await emitter.end();
       return { text, trace };
     } else if (!retriedEmpty) {

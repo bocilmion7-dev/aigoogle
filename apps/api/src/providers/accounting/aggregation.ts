@@ -90,6 +90,26 @@ export const AGGREGATION_TOOLS: AggToolSpec[] = [
     label: "Mengambil semua faktur pelanggan…",
   },
   {
+    name: "customer.itemsByName",
+    description:
+      "Daftar BARANG yang pernah dijual ke SATU pelanggan berdasarkan NAMA (dari baris detail faktur) + periode opsional — dalam SATU tool. " +
+      "Langsung pakai tool ini utk \"barang apa saja yang dibeli/diterima <pelanggan> / barang apa yang dijual ke X\" — " +
+      "JANGAN customer.salesByName + salesInvoice.detail satu per satu (hanya daftar faktur, tanpa isinya; boros & lambat). " +
+      "Tiap baris: nama barang, total qty, nilai, jumlah faktur. Pertanyaan daftar FAKTUR (nomor/tanggal) pakai customer.salesByName.",
+    jsonSchema: {
+      type: "object",
+      properties: {
+        name: { type: "string", description: "Nama pelanggan (boleh sebagian, mis. 'Abadi')" },
+        fromDate: { type: "string", description: "Tanggal mulai (dd/mm/yyyy, kosong = semua periode)" },
+        toDate: { type: "string", description: "Tanggal akhir (dd/mm/yyyy, kosong = semua periode)" },
+      },
+      required: ["name"],
+    },
+    requiredPermission: "accurate:sales-invoice.view",
+    requires: ["accurate:customer.view", "accurate:sales-invoice.view"],
+    label: "Mengambil barang per pelanggan…",
+  },
+  {
     name: "salesInvoice.summary",
     description:
       "Ringkasan penjualan per periode: total nilai, jumlah faktur, rata-rata, dan daftar ringkas — dalam SATU tool. " +
@@ -121,6 +141,18 @@ export const AGGREGATION_TOOLS: AggToolSpec[] = [
     requiredPermission: "accurate:purchase-invoice.view",
     requires: ["accurate:purchase-invoice.view"],
     label: "Menyusun ringkasan pembelian…",
+  },
+  {
+    name: "invoice.biggestBoth",
+    description:
+      "Faktur penjualan TERBESAR dan faktur pembelian TERBESAR (sepanjang masa) dalam SATU tool — " +
+      "seluruh halaman diurutkan menurun menurut totalAmount, kembalikan nomor + nilai + nama pelanggan/pemasok di kedua sisi. " +
+      "Utk \"faktur penjualan terbesar dan faktur pembelian terbesar — sebutkan nomor dan nilainya\" — " +
+      "JANGAN salesInvoice.summary + purchaseInvoice.summary terpisah (default-nya bulan berjalan → salah) dan JANGAN urut manual di model (pernah salah urut).",
+    jsonSchema: { type: "object", properties: {} },
+    requiredPermission: "accurate:sales-invoice.view",
+    requires: ["accurate:sales-invoice.view", "accurate:purchase-invoice.view"],
+    label: "Mencari faktur terbesar kedua sisi…",
   },
   {
     name: "vendor.lastPurchaseByName",
@@ -160,6 +192,26 @@ export const AGGREGATION_TOOLS: AggToolSpec[] = [
     requiredPermission: "accurate:vendor.view",
     requires: ["accurate:vendor.view", "accurate:purchase-invoice.view"],
     label: "Mengambil semua faktur pemasok…",
+  },
+  {
+    name: "vendor.itemsByName",
+    description:
+      "Daftar BARANG yang pernah dibeli dari SATU pemasok berdasarkan NAMA (dari baris detail faktur) + periode opsional — dalam SATU tool. " +
+      "Langsung pakai tool ini utk \"barang apa saja yang dibeli/di-suplai dari <pemasok> / pemasok X menjual apa saja ke kita\" — " +
+      "JANGAN vendor.purchasesByName + purchaseInvoice.detail satu per satu (hanya daftar faktur, tanpa isinya; boros & lambat). " +
+      "Tiap baris: nama barang, total qty, nilai, jumlah faktur. Pertanyaan daftar FAKTUR (nomor/tanggal) pakai vendor.purchasesByName.",
+    jsonSchema: {
+      type: "object",
+      properties: {
+        name: { type: "string", description: "Nama pemasok (boleh sebagian, mis. 'Mega Mendung')" },
+        fromDate: { type: "string", description: "Tanggal mulai (dd/mm/yyyy, kosong = semua periode)" },
+        toDate: { type: "string", description: "Tanggal akhir (dd/mm/yyyy, kosong = semua periode)" },
+      },
+      required: ["name"],
+    },
+    requiredPermission: "accurate:purchase-invoice.view",
+    requires: ["accurate:vendor.view", "accurate:purchase-invoice.view"],
+    label: "Mengambil barang per pemasok…",
   },
   {
     name: "vendor.unpaidByName",
@@ -265,6 +317,71 @@ export const AGGREGATION_TOOLS: AggToolSpec[] = [
     requiredPermission: "accurate:item.view",
     requires: ["accurate:item.view"],
     label: "Mencari data barang…",
+  },
+  {
+    name: "item.buyers",
+    description:
+      "Siapa saja PELANGGAN yang pernah membeli SATU barang tertentu (berdasarkan nama), beserta jumlah unit & nilai per pelanggan — dalam SATU tool. " +
+      "Langsung pakai tool ini utk \"siapa pembeli barang X / siapa yang beli Hard Case / pelanggan pembeli Samsung S7\" — " +
+      "JANGAN item.topSelling + salesInvoice.list + detail satu per satu (boros putaran & lambat). " +
+      "Cocok utk pertanyaan relasi barang↔pelanggan. Periode opsional (default semua periode).",
+    jsonSchema: {
+      type: "object",
+      properties: {
+        name: { type: "string", description: "Nama/kode barang (boleh sebagian, mis. 'Hard Case')" },
+        fromDate: { type: "string", description: "Tanggal mulai (dd/mm/yyyy) — opsional" },
+        toDate: { type: "string", description: "Tanggal akhir (dd/mm/yyyy) — opsional" },
+      },
+      required: ["name"],
+    },
+    requiredPermission: "accurate:sales-invoice.view",
+    requires: ["accurate:sales-invoice.view"],
+    label: "Mencari pembeli barang…",
+  },
+  {
+    name: "item.suppliers",
+    description:
+      "Siapa saja PEMASOK/supplier/suplier yang pernah mensupply SATU barang tertentu (berdasarkan nama barang), " +
+      "beserta jumlah unit & nilai per pemasok — dalam SATU tool (kebalikan dari item.buyers). " +
+      "Langsung pakai tool ini utk \"pemasok mana yang memasok barang X / suplier Oppo / siapa pemasok Samsung S7 / " +
+      "total pembelian barang X dari semua pemasok\" — JANGAN vendor.purchasesByName + detail satu per satu. " +
+      "Sinonim: suplier = supplier = pemasok = vendor. Periode opsional (default semua periode).",
+    jsonSchema: {
+      type: "object",
+      properties: {
+        name: { type: "string", description: "Nama/kode BARANG (boleh sebagian, mis. 'Oppo')" },
+        fromDate: { type: "string", description: "Tanggal mulai (dd/mm/yyyy) — opsional" },
+        toDate: { type: "string", description: "Tanggal akhir (dd/mm/yyyy) — opsional" },
+      },
+      required: ["name"],
+    },
+    requiredPermission: "accurate:purchase-invoice.view",
+    requires: ["accurate:purchase-invoice.view"],
+    label: "Mencari pemasok barang…",
+  },
+  {
+    name: "item.invoices",
+    description:
+      "Daftar FAKTUR yang MEMUAT/MENGANDUNG SATU barang tertentu — penjualan (default) ATAU pembelian — dalam SATU tool. " +
+      "Langsung pakai tool ini utk \"faktur penjualan apa saja yang memuat barang X / faktur pembelian mana dari pemasok Y yang isinya barang X\" — " +
+      "JANGAN item.byName + salesInvoice.list/purchaseInvoice.list manual (gagal menyaring per-baris). " +
+      "Setiap baris: nomor faktur, tanggal, pelanggan/pemasok, total faktur, qty & nilai barang tsb di faktur tsb. " +
+      "Argumen: name = nama barang; type = \"sale\" (faktur jual, default) atau \"purchase\" (faktur beli); " +
+      "entity = nama pelanggan/pemasok OPSIONAL utk mempersempit; fromDate/toDate opsional.",
+    jsonSchema: {
+      type: "object",
+      properties: {
+        name: { type: "string", description: "Nama/kode barang (boleh sebagian, mis. 'Iphone 6 S 128 GB')" },
+        type: { type: "string", enum: ["sale", "purchase"], description: "sale = faktur penjualan (default), purchase = faktur pembelian" },
+        entity: { type: "string", description: "Nama pelanggan (type=sale) / pemasok (type=purchase) — opsional" },
+        fromDate: { type: "string", description: "Tanggal mulai (dd/mm/yyyy) — opsional" },
+        toDate: { type: "string", description: "Tanggal akhir (dd/mm/yyyy) — opsional" },
+      },
+      required: ["name"],
+    },
+    requiredPermission: "accurate:sales-invoice.view",
+    requires: ["accurate:customer.view", "accurate:sales-invoice.view", "accurate:purchase-invoice.view"],
+    label: "Mencari faktur per barang…",
   },
   {
     name: "receivables.summary",
@@ -384,6 +501,293 @@ export const AGGREGATION_TOOLS: AggToolSpec[] = [
     requires: ["accurate:sales-receipt.view", "accurate:purchase-payment.view", "accurate:expense.view"],
     label: "Menghitung arus kas…",
   },
+  {
+    name: "journalVoucher.summary",
+    description:
+      "Ringkasan jurnal umum: JUMLAH transaksi + TOTAL nilai (penjumlahan OTOMATIS — JANGAN menjumlah manual dari journalVoucher.list, angka besar mudah meleset). " +
+      "Tanpa argumen = seluruh masa. Isi fromDate & toDate (dd/mm/yyyy) utk periode tertentu, mis. tahun 2016 → 01/01/2016 & 31/12/2016.",
+    jsonSchema: {
+      type: "object",
+      properties: {
+        fromDate: { type: "string", description: "Tanggal mulai (dd/mm/yyyy, cth: 01/01/2016)" },
+        toDate: { type: "string", description: "Tanggal akhir (dd/mm/yyyy, cth: 31/12/2016)" },
+      },
+    },
+    requiredPermission: "accurate:journal-voucher.view",
+    requires: ["accurate:journal-voucher.view"],
+    label: "Menyusun ringkasan jurnal umum…",
+  },
+  {
+    name: "salesReturn.summary",
+    description:
+      "Ringkasan retur penjualan: JUMLAH transaksi + TOTAL nilai (penjumlahan OTOMATIS — utk \"berapa total nilai retur penjualan\"; JANGAN jumlahkan salesReturn.list manual). " +
+      "Tanpa argumen = seluruh masa; isi fromDate & toDate (dd/mm/yyyy) utk periode tertentu.",
+    jsonSchema: {
+      type: "object",
+      properties: {
+        fromDate: { type: "string", description: "Tanggal mulai (dd/mm/yyyy, cth: 01/01/2017)" },
+        toDate: { type: "string", description: "Tanggal akhir (dd/mm/yyyy, cth: 31/12/2017)" },
+      },
+    },
+    requiredPermission: "accurate:sales-return.view",
+    requires: ["accurate:sales-return.view"],
+    label: "Menghitung retur penjualan…",
+  },
+  {
+    name: "purchaseReturn.summary",
+    description:
+      "Ringkasan retur pembelian: JUMLAH transaksi + TOTAL nilai (penjumlahan OTOMATIS — utk \"berapa total nilai retur pembelian\"; JANGAN jumlahkan purchaseReturn.list manual). " +
+      "Tanpa argumen = seluruh masa; isi fromDate & toDate (dd/mm/yyyy) utk periode tertentu.",
+    jsonSchema: {
+      type: "object",
+      properties: {
+        fromDate: { type: "string", description: "Tanggal mulai (dd/mm/yyyy, cth: 01/01/2017)" },
+        toDate: { type: "string", description: "Tanggal akhir (dd/mm/yyyy, cth: 31/12/2017)" },
+      },
+    },
+    requiredPermission: "accurate:purchase-return.view",
+    requires: ["accurate:purchase-return.view"],
+    label: "Menghitung retur pembelian…",
+  },
+  {
+    name: "salesInvoice.summaryMulti",
+    description:
+      "Perbandingan penjualan DUA periode dalam SATU panggilan: total, jumlah faktur, rata-rata per faktur, " +
+      "JUMLAH PELANGGAN AKTIF dan JUMLAH FAKTUR LUNAS untuk masing-masing periode, plus gabungan dan selisihnya — semua sudah DIHITUNG (bukan perkiraan). " +
+      "Langsung pakai utk \"total penjualan bulan A dan bulan B\", \"selisih bulan A dengan bulan B\", " +
+      "\"berapa faktur bulan A berbanding bulan B\", \"rata-rata penjualan tahun X dan tahun Y\", " +
+      "\"berapa pelanggan aktif tahun X dan tahun Y\", \"berapa faktur lunas tahun X dan tahun Y\". " +
+      "Isi fromDate1/toDate1 & fromDate2/toDate2 (dd/mm/yyyy) + label1/label2 utk nama periode.",
+    jsonSchema: {
+      type: "object",
+      properties: {
+        fromDate1: { type: "string", description: "Tanggal mulai periode 1 (dd/mm/yyyy)" },
+        toDate1: { type: "string", description: "Tanggal akhir periode 1 (dd/mm/yyyy)" },
+        label1: { type: "string", description: "Nama periode 1 (mis. November 2016)" },
+        fromDate2: { type: "string", description: "Tanggal mulai periode 2 (dd/mm/yyyy)" },
+        toDate2: { type: "string", description: "Tanggal akhir periode 2 (dd/mm/yyyy)" },
+        label2: { type: "string", description: "Nama periode 2 (mis. Desember 2016)" },
+      },
+    },
+    requiredPermission: "accurate:sales-invoice.view",
+    requires: ["accurate:sales-invoice.view"],
+    label: "Membandingkan dua periode penjualan…",
+  },
+  {
+    name: "fixedAsset.summary",
+    description:
+      "Jumlah aset tetap yang DIBELI pada tahun tertentu (filter transDate dd/mm/yyyy — tahun = 4 digit terakhir), dihitung presisi di SEMUA halaman. " +
+      "Utk \"ada berapa aset tetap yang dibeli tahun X\" — JANGAN fixedAsset.list lalu hitung manual.",
+    jsonSchema: {
+      type: "object",
+      properties: {
+        year: { type: "integer", description: "Tahun pembelian (cth: 2015)" },
+      },
+      required: ["year"],
+    },
+    requiredPermission: "accurate:fixed-asset.view",
+    requires: ["accurate:fixed-asset.view"],
+    label: "Menghitung aset tetap per tahun…",
+  },
+  {
+    name: "journalVoucher.yearSummary",
+    description:
+      "Jumlah jurnal umum PER TAHUN — dikelompokkan berdasarkan transDate (tanggal, dd/mm/yyyy), BUKAN nomor JV " +
+      "(nomor bisa beda tahun dgn tanggal). Menghasilkan tahun dengan transaksi TERBANYAK + rincian seluruh tahun. " +
+      "Utk \"tahun berapa yang paling banyak memiliki jurnal umum dan berapa jumlahnya\".",
+    jsonSchema: { type: "object", properties: {} },
+    requiredPermission: "accurate:journal-voucher.view",
+    requires: ["accurate:journal-voucher.view"],
+    label: "Mengelompokkan jurnal umum per tahun…",
+  },
+  {
+    name: "item.zeroStock",
+    description:
+      "Daftar LENGKAP item berkuantitas/stok 0 (SEMUA halaman, presisi) beserta jumlahnya. " +
+      "Utk \"barang mana yang stoknya paling sedikit / apa saja yang stoknya 0\" — sebutkan SEMUA nama item stok nol; JANGAN item.list manual.",
+    jsonSchema: { type: "object", properties: {} },
+    requiredPermission: "accurate:item.view",
+    requires: ["accurate:item.view"],
+    label: "Menyusun daftar item stok nol…",
+  },
+  {
+    name: "item.stockOverview",
+    description:
+      "Ringkasan persediaan presisi: JUMLAH JENIS barang + TOTAL seluruh stok (penjumlahan quantity SEMUA halaman) + JUMLAH GUDANG. " +
+      "Utk \"ada berapa jenis barang, berapa total seluruh stok, dan berapa gudang\" — angka total stok sudah dihitung server; JANGAN jumlahkan item.list manual. " +
+      "BUKAN utk \"barang mana stoknya paling banyak/terbesar\" (stockOverview tak menyebut nama barang — utk itu pakai item.list lalu urut quantity).",
+    jsonSchema: { type: "object", properties: {} },
+    requiredPermission: "accurate:item.view",
+    requires: ["accurate:item.view"],
+    label: "Menghitung total stok & gudang…",
+  },
+  {
+    name: "autoNumber.summary",
+    description:
+      "Jumlah aturan penomoran otomatis (auto number) yang terdaftar — dihitung presisi dari SEMUA baris (bukan perkiraan). " +
+      "Utk \"ada berapa aturan penomoran otomatis / auto number yang terdaftar\".",
+    jsonSchema: { type: "object", properties: {} },
+    requiredPermission: "accurate:auto-number.view",
+    requires: ["accurate:auto-number.view"],
+    label: "Menghitung aturan penomoran otomatis…",
+  },
+  {
+    name: "purchaseInvoice.summaryMulti",
+    description:
+      "Perbandingan pembelian DUA periode dalam SATU panggilan: total, jumlah faktur, rata-rata per faktur tiap periode, " +
+      "plus gabungan & selisih — semua DIHITUNG SERVER dari nilai asli (presisi; selisih pembelian sering meleset 1 rupiah " +
+      "bila total mengandung desimal dan dijumlah/diurung manual). " +
+      "Utk \"total pembelian tahun X dan tahun Y\", \"selisih total pembelian tahun X dengan tahun Y\". " +
+      "Isi fromDate1/toDate1 & fromDate2/toDate2 (dd/mm/yyyy) + label1/label2.",
+    jsonSchema: {
+      type: "object",
+      properties: {
+        fromDate1: { type: "string", description: "Tanggal mulai periode 1 (dd/mm/yyyy)" },
+        toDate1: { type: "string", description: "Tanggal akhir periode 1 (dd/mm/yyyy)" },
+        label1: { type: "string", description: "Nama periode 1 (mis. tahun 2016)" },
+        fromDate2: { type: "string", description: "Tanggal mulai periode 2 (dd/mm/yyyy)" },
+        toDate2: { type: "string", description: "Tanggal akhir periode 2 (dd/mm/yyyy)" },
+        label2: { type: "string", description: "Nama periode 2 (mis. tahun 2017)" },
+      },
+    },
+    requiredPermission: "accurate:purchase-invoice.view",
+    requires: ["accurate:purchase-invoice.view"],
+    label: "Membandingkan dua periode pembelian…",
+  },
+  {
+    name: "arap.summary",
+    description:
+      "Piutang usaha + utang usaha SEKALIGUS dalam SATU panggilan: total masing-masing, jumlah faktur tiap sisi, " +
+      "serta mana yang lebih besar beserta selisihnya — semua DIHITUNG dari nilai asli (presisi). " +
+      "Utk \"berapa total piutang usaha dan total utang usaha\", \"mana yang lebih besar: piutang atau utang\". " +
+      "Bukan utk periode tahun/bulan tertentu (itu pakai receivables.summary + payables.summary terpisah).",
+    jsonSchema: {
+      type: "object",
+      properties: {
+        limit: { type: "number", description: "Jumlah pelanggan/pemasok teratas tiap sisi (default 5)" },
+      },
+    },
+    requiredPermission: "accurate:sales-invoice.view",
+    requires: [
+      "accurate:sales-invoice.view",
+      "accurate:purchase-invoice.view",
+      "accurate:customer.view",
+      "accurate:vendor.view",
+    ],
+    label: "Menghitung piutang & utang usaha…",
+  },
+  {
+    name: "invoice.statusCounts",
+    description:
+      "Jumlah faktur penjualan/pembelian LUNAS vs BELUM LUNAS (presisi dari SEMUA halaman; lunas = statusName mengandung \"lunas\" tapi bukan \"belum lunas\"). " +
+      "Tanpa periode = seluruh masa; isi fromDate/toDate (dd/mm/yyyy) utk tahun/periode tertentu. " +
+      "Utk \"ada berapa faktur penjualan/pembelian yang sudah lunas / belum lunas (tahun X)\" — " +
+      "JANGAN .list lalu hitung manual (sering meleset 1 karena model menyebut nomor faktur perlahan).",
+    jsonSchema: {
+      type: "object",
+      properties: {
+        side: {
+          type: "string",
+          enum: ["sales", "purchase"],
+          description: "sales = faktur penjualan, purchase = faktur pembelian",
+        },
+        fromDate: { type: "string", description: "Tanggal mulai (dd/mm/yyyy) — opsional" },
+        toDate: { type: "string", description: "Tanggal akhir (dd/mm/yyyy) — opsional" },
+      },
+      required: ["side"],
+    },
+    requiredPermission: "accurate:sales-invoice.view",
+    requires: ["accurate:sales-invoice.view", "accurate:purchase-invoice.view"],
+    label: "Menghitung faktur lunas vs belum lunas…",
+  },
+  {
+    name: "party.yoySummary",
+    description:
+      "Perbandingan penjualan (pelanggan) ATAU pembelian (pemasok) DUA TAHUN dalam SATU panggilan: total & jumlah faktur tiap tahun, " +
+      "plus arah perubahan (naik/turun/sama) dan selisihnya — semua DIHITUNG SERVER dari nilai asli (presisi). " +
+      "Utk \"penjualan pelanggan X naik/turun dari tahun A ke tahun B? Sebutkan angkanya\", \"pembelian pemasok X dari tahun A ke tahun B\". " +
+      "Isi party (customer|vendor), name, year1, year2.",
+    jsonSchema: {
+      type: "object",
+      properties: {
+        party: { type: "string", enum: ["customer", "vendor"], description: "customer = sisi penjualan, vendor = sisi pembelian" },
+        name: { type: "string", description: "Nama pelanggan/pemasok" },
+        year1: { type: "integer", description: "Tahun pertama (cth: 2016)" },
+        year2: { type: "integer", description: "Tahun kedua (cth: 2017)" },
+      },
+      required: ["name", "year1", "year2"],
+    },
+    requiredPermission: "accurate:sales-invoice.view",
+    requires: ["accurate:sales-invoice.view", "accurate:purchase-invoice.view"],
+    label: "Membandingkan penjualan/pembelian antar tahun…",
+  },
+  {
+    name: "return.summaryBoth",
+    description:
+      "Total retur penjualan DAN total retur pembelian SEKALIGUS dalam SATU panggilan (seluruh masa atau berdua berperiode sama): " +
+      "jumlah dokumen + total tiap sisi + mana yang lebih besar + selisihnya, dihitung server dari nilai asli. " +
+      "Utk \"berapa total retur penjualan dan total retur pembelian? Mana yang lebih besar\" — " +
+      "JANGAN salesReturn.summary + purchaseReturn.summary terpisah apalagi .list + jumlah manual (pernah meleset: 192.532.600 vs 192.537.400).",
+    jsonSchema: {
+      type: "object",
+      properties: {
+        fromDate: { type: "string", description: "Tanggal mulai (dd/mm/yyyy) — opsional" },
+        toDate: { type: "string", description: "Tanggal akhir (dd/mm/yyyy) — opsional" },
+      },
+    },
+    requiredPermission: "accurate:sales-invoice.view",
+    requires: ["accurate:sales-invoice.view", "accurate:purchase-invoice.view"],
+    label: "Menjumlahkan retur penjualan & pembelian…",
+  },
+  {
+    name: "salesReceipt.yearCount",
+    description:
+      "Jumlah bukti penerimaan penjualan (sales receipt) pada TAHUN tertentu — dihitung dari kolom transDate (dd/mm/yyyy), " +
+      "BUKAN tahun yang muncul di nomor dokumen (nomor bisa beda tahun dgn tanggal). SEMUA halaman, presisi. " +
+      "Utk \"ada berapa bukti penerimaan penjualan tahun X\" — JANGAN salesReceipt.list lalu hitung manual (pernah meleset: 6 vs data 7).",
+    jsonSchema: {
+      type: "object",
+      properties: {
+        year: { type: "integer", description: "Tahun transDate (cth: 2016)" },
+      },
+      required: ["year"],
+    },
+    requiredPermission: "accurate:sales-receipt.view",
+    requires: ["accurate:sales-receipt.view"],
+    label: "Menghitung bukti penerimaan penjualan per tahun…",
+  },
+  {
+    name: "deliveryOrder.yearCount",
+    description:
+      "Jumlah surat jalan (delivery order) pada TAHUN tertentu — dihitung dari kolom transDate (dd/mm/yyyy), " +
+      "SEMUA halaman, presisi. Utk \"ada berapa surat jalan tahun X\" — JANGAN deliveryOrder.list lalu hitung manual (pernah meleset: model menyebut 6 dokumen tapi menomori 5).",
+    jsonSchema: {
+      type: "object",
+      properties: {
+        year: { type: "integer", description: "Tahun transDate (cth: 2016)" },
+      },
+      required: ["year"],
+    },
+    requiredPermission: "accurate:delivery-order.view",
+    requires: ["accurate:delivery-order.view"],
+    label: "Menghitung surat jalan per tahun…",
+  },
+  {
+    name: "item.topStock",
+    description:
+      "Daftar barang dengan stok TERBANYAK (quantity) — SEMUA halaman item.list diurutkan menurun oleh quantity, presisi. " +
+      "Utk \"barang mana stoknya paling banyak\", \"apa saja tiga barang dengan stok terbanyak\" — " +
+      "JANGAN item.stockOverview (itu hanya jumlah jenis/unit/gudang, TIDAK menyebut nama barang) dan JANGAN item.list manual.",
+    jsonSchema: {
+      type: "object",
+      properties: {
+        limit: { type: "integer", description: "Jumlah barang teratas (default 10)" },
+      },
+    },
+    requiredPermission: "accurate:item.view",
+    requires: ["accurate:item.view"],
+    label: "Mengurutkan barang stok terbanyak…",
+  },
 ];
 
 export const AGGREGATION_NAMES = new Set(AGGREGATION_TOOLS.map((t) => t.name));
@@ -443,7 +847,7 @@ async function listAllPages(
   args: Record<string, unknown>
 ): Promise<{ rows: Array<Record<string, unknown>>; total: number; pageCount: number; truncated: boolean }> {
   const PAGE_SIZE = 1000;
-  const MAX_PAGES = 5;
+  const MAX_PAGES = 10;
   const first = await execute(tool, { ...args, pageSize: PAGE_SIZE, page: 1 });
   const rows = asArray(first);
   const { total, pageCount } = metaOf(first);
@@ -462,10 +866,11 @@ async function findCustomer(
   name: string
 ): Promise<Record<string, unknown> | null> {
   const rows = asArray(await execute("customer.list", { keywords: name, pageSize: 10 }));
-  const q = String(name ?? "").trim().toLowerCase();
+  const q = normName(name);
   const hit =
-    rows.find((r) => String(r.name ?? "").toLowerCase().includes(q) || String(r.customerNo ?? "").toLowerCase().includes(q)) ??
-    rows[0];
+    rows.find((r) => normName(r.name).includes(q) || normName(r.customerNo) === q) ??
+    rows.find((r) => q.split(" ").filter(Boolean).every((t) => normName(r.name).includes(t))) ??
+    (rows.length === 1 ? rows[0] : null);
   return hit ?? null;
 }
 
@@ -560,6 +965,16 @@ function optionalPeriod(args: Record<string, unknown>): { from: string; to: stri
   return periodOf(args);
 }
 
+/** nomor tanggal dd/mm/yyyy → YYYYMMDD utk sorting/filtering client-side */
+function dmyNum(v: unknown): number {
+  const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})/.exec(String(v ?? ""));
+  return m ? Number(m[3]) * 10000 + Number(m[2]) * 100 + Number(m[1]) : 0;
+}
+const byTransDateDesc = (a: Record<string, unknown>, b: Record<string, unknown>) => dmyNum(b.transDate) - dmyNum(a.transDate);
+/** normalisasi nama utk pencocokan klien: huruf kecil, tanpa tanda baca, spasi rapat */
+const normName = (v: unknown) =>
+  String(v ?? "").toLowerCase().replace(/[^\w\s]/g, " ").replace(/\s+/g, " ").trim();
+
 /** filter outstanding + periode transDate opsional (fromDate/toDate dd/mm/yyyy) utk summary piutang/utang */
 function outstandingPeriodFilter(args: Record<string, unknown>): Record<string, unknown> {
   const filter: Record<string, unknown> = { outstanding: true };
@@ -582,10 +997,11 @@ async function findVendor(
   name: string
 ): Promise<Record<string, unknown> | null> {
   const rows = asArray(await execute("vendor.list", { keywords: name, pageSize: 10 }));
-  const q = String(name ?? "").trim().toLowerCase();
+  const q = normName(name);
   const hit =
-    rows.find((r) => String(r.name ?? "").toLowerCase().includes(q) || String(r.vendorNo ?? "").toLowerCase().includes(q)) ??
-    rows[0];
+    rows.find((r) => normName(r.name).includes(q) || normName(r.vendorNo) === q) ??
+    rows.find((r) => q.split(" ").filter(Boolean).every((t) => normName(r.name).includes(t))) ??
+    (rows.length === 1 ? rows[0] : null);
   return hit ?? null;
 }
 
@@ -652,6 +1068,25 @@ async function mapPool<T>(
   await Promise.all(workers);
 }
 
+/** detail kadang gagal transient (rate-limit) — retry agar 1 faktur hilang tak mengubah hasil agregasi */
+async function executeWithRetry(
+  execute: (tool: string, args: Record<string, unknown>) => Promise<unknown>,
+  tool: string,
+  args: Record<string, unknown>,
+  attempts = 3
+): Promise<unknown> {
+  let lastErr: unknown;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await execute(tool, args);
+    } catch (e) {
+      lastErr = e;
+      if (i < attempts - 1) await new Promise((r) => setTimeout(r, 300 * (i + 1)));
+    }
+  }
+  throw lastErr;
+}
+
 export async function runAggregation(
   tool: string,
   args: Record<string, unknown>,
@@ -664,10 +1099,11 @@ export async function runAggregation(
       if (!name) throw new Error("name wajib diisi");
       const customer = await findCustomer(execute, name);
       if (!customer) return { error: `pelanggan "${name}" tidak ditemukan` };
-      const invoices = await customerInvoices(execute, String(customer.customerNo ?? ""), { limit: 1 });
+      const invoices = await customerInvoices(execute, String(customer.customerNo ?? ""));
+      const rows = [...invoices.rows].sort(byTransDateDesc);
       return {
         customer: publicInfo(customer),
-        lastOrder: invoices.rows[0] ?? null,
+        lastOrder: rows[0] ?? null,
       };
     }
     case "customer.unpaidByName": {
@@ -690,13 +1126,15 @@ export async function runAggregation(
       if (!name) throw new Error("name wajib diisi");
       const customer = await findCustomer(execute, name);
       if (!customer) return { error: `pelanggan "${name}" tidak ditemukan` };
-      const inv = await customerInvoices(execute, String(customer.customerNo ?? ""));
+      const period = optionalPeriod(args);
+      const inv = await customerInvoices(execute, String(customer.customerNo ?? ""), { period: period ?? undefined });
       const total = inv.rows.reduce((s, r) => s + (Number(r.totalAmount) || 0), 0);
       const up = await customerUnpaidInvoices(execute, String(customer.customerNo ?? ""));
       const totalUnpaid = up.rows.reduce((s, r) => s + (Number(r.totalAmount) || 0), 0);
       const truncated = inv.truncated || up.truncated;
       return {
         customer: publicInfo(customer),
+        ...(period ? { period: { fromDate: period.from, toDate: period.to } } : {}),
         summary: {
           invoiceCount: inv.rows.length,
           totalSales: total,
@@ -732,6 +1170,58 @@ export async function runAggregation(
         })),
       };
     }
+    case "customer.itemsByName": {
+      const name = String(args.name ?? "").trim();
+      if (!name) throw new Error("name wajib diisi");
+      const customer = await findCustomer(execute, name);
+      if (!customer)
+        return {
+          error: `pelanggan "${name}" tidak ditemukan`,
+          hint: "Bila nama ini adalah PEMASOK (kita membeli darinya), gunakan vendor.itemsByName.",
+        };
+      const period = optionalPeriod(args);
+      const inv = await customerInvoices(execute, String(customer.customerNo ?? ""), { period: period ?? undefined });
+      const rows = inv.rows.slice(0, 100);
+      type ItemAgg = { itemName: string; quantity: number; amount: number; invoiceCount: number };
+      const items = new Map<string, ItemAgg>();
+      let detailErrors = 0;
+      await mapPool(rows, 4, async (r) => {
+        try {
+          const d = await executeWithRetry(execute, "salesInvoice.detail", { id: r.id });
+          const iv = (Array.isArray(d) ? d[0] : d) as Record<string, unknown> | null;
+          const lines = Array.isArray(iv?.detailItem) ? (iv.detailItem as Array<Record<string, unknown>>) : [];
+          for (const it of lines) {
+            const itemObj = (it.item ?? {}) as Record<string, unknown>;
+            const nm = String(it.detailName ?? itemObj.name ?? "").trim();
+            if (!nm) continue;
+            const g = items.get(nm) ?? { itemName: nm, quantity: 0, amount: 0, invoiceCount: 0 };
+            g.quantity += Number(it.quantity) || 0;
+            g.amount += Number(it.totalPrice) || 0;
+            g.invoiceCount += 1;
+            items.set(nm, g);
+          }
+        } catch {
+          detailErrors += 1;
+        }
+      });
+      const list = [...items.values()].sort((a, b) => b.amount - a.amount);
+      const scanTruncated = inv.rows.length > rows.length;
+      return {
+        customer: publicInfo(customer),
+        period: period ? { fromDate: period.from, toDate: period.to } : "semua",
+        summary: {
+          invoicesScanned: rows.length,
+          invoiceCount: inv.rows.length,
+          itemCount: list.length,
+          totalQuantity: list.reduce((s, i) => s + i.quantity, 0),
+          totalAmount: list.reduce((s, i) => s + i.amount, 0),
+          detailErrors,
+          ...(scanTruncated ? { scanTruncated: true } : {}),
+          ...(inv.truncated ? { listTruncated: true } : {}),
+        },
+        items: list,
+      };
+    }
     case "salesInvoice.summary": {
       const { from, to } = periodOf(args);
       const all = await listAllPages(execute, "salesInvoice.list", {
@@ -740,6 +1230,22 @@ export async function runAggregation(
       });
       const rows = all.rows;
       const total = rows.reduce((s, r) => s + (Number(r.totalAmount) || 0), 0);
+      // N teratas by amount — rows urut id|desc, "faktur terbesar" tak boleh terlewat
+      const topByAmount = [...rows]
+        .sort((a, b) => (Number(b.totalAmount) || 0) - (Number(a.totalAmount) || 0))
+        .slice(0, 10)
+        .map((r) => ({ number: r.number, transDate: r.transDate, totalAmount: r.totalAmount, customerName: (r.customer as Record<string, unknown> | undefined)?.name ?? null }));
+      // pelanggan terbesar (akumulasi per pelanggan) — utk "siapa pelanggan terbesarnya"
+      const byCust = new Map<string, { customerName: string; total: number; invoiceCount: number }>();
+      for (const r of rows) {
+        const nm = String((r.customer as Record<string, unknown> | undefined)?.name ?? r.customerNo ?? "");
+        if (!nm) continue;
+        const g = byCust.get(nm) ?? { customerName: nm, total: 0, invoiceCount: 0 };
+        g.total += Number(r.totalAmount) || 0;
+        g.invoiceCount += 1;
+        byCust.set(nm, g);
+      }
+      const topByCustomer = [...byCust.values()].sort((a, b) => b.total - a.total).slice(0, 3);
       return {
         period: { fromDate: from, toDate: to },
         summary: {
@@ -748,6 +1254,8 @@ export async function runAggregation(
           average: rows.length ? Math.round(total / rows.length) : 0,
           ...(all.truncated ? { truncated: true, totalOnServer: all.total } : {}),
         },
+        topByAmount,
+        topByCustomer,
         invoices: rows.slice(0, 20),
       };
     }
@@ -759,15 +1267,284 @@ export async function runAggregation(
       });
       const rows = all.rows;
       const total = rows.reduce((s, r) => s + (Number(r.totalAmount) || 0), 0);
+      const topByAmount = [...rows]
+        .sort((a, b) => (Number(b.totalAmount) || 0) - (Number(a.totalAmount) || 0))
+        .slice(0, 10)
+        .map((r) => ({
+          number: r.number,
+          transDate: r.transDate,
+          totalAmount: r.totalAmount,
+          vendorName: (r.vendor as Record<string, unknown> | undefined)?.name ?? null,
+        }));
       return {
         period: { fromDate: from, toDate: to },
         summary: {
           invoiceCount: rows.length,
-          totalPurchase: total,
+          totalPurchase: Math.trunc(total),
           average: rows.length ? Math.round(total / rows.length) : 0,
           ...(all.truncated ? { truncated: true, totalOnServer: all.total } : {}),
         },
+        topByAmount,
         invoices: rows.slice(0, 20),
+      };
+    }
+    case "invoice.biggestBoth": {
+      const topOf = (
+        rows: Array<Record<string, unknown>>,
+        partyKey: "customer" | "vendor"
+      ) => {
+        const best = [...rows].sort((a, b) => (Number(b.totalAmount) || 0) - (Number(a.totalAmount) || 0))[0];
+        if (!best) return null;
+        const party = (best[partyKey] ?? {}) as Record<string, unknown>;
+        return {
+          number: String(best.number ?? ""),
+          transDate: best.transDate,
+          totalAmount: Number(best.totalAmount) || 0,
+          partyName: String(party.name ?? (partyKey === "customer" ? best.customerNo : best.vendorNo) ?? ""),
+        };
+      };
+      const [sales, purchase] = await Promise.all([
+        listAllPages(execute, "salesInvoice.list", { sort: "id|desc" }),
+        listAllPages(execute, "purchaseInvoice.list", { sort: "id|desc" }),
+      ]);
+      return {
+        sales: topOf(sales.rows, "customer"),
+        purchase: topOf(purchase.rows, "vendor"),
+        ...(sales.truncated || purchase.truncated ? { truncated: true } : {}),
+      };
+    }
+    case "salesInvoice.summaryMulti": {
+      const mk = async (fd: unknown, td: unknown, label: unknown) => {
+        const from = String(fd ?? "");
+        const to = String(td ?? "");
+        const all = await listAllPages(execute, "salesInvoice.list", {
+          filter: { transDate: { op: "BETWEEN", value: [from, to] } },
+          sort: "id|desc",
+        });
+        const rows = all.rows;
+        const total = rows.reduce((s, r) => s + (Number(r.totalAmount) || 0), 0);
+        const paidCount = rows.filter((r) => {
+          const st = String(r.statusName ?? "").toLowerCase();
+          return st.includes("lunas") && !st.includes("belum");
+        }).length;
+        const customerCount = new Set(
+          rows.map((r) => String(r.customerName ?? r.customerId ?? JSON.stringify(r.customer ?? "")))
+        ).size;
+        return {
+          label: String(label ?? `${from}-${to}`),
+          fromDate: from,
+          toDate: to,
+          invoiceCount: rows.length,
+          totalSales: total,
+          average: rows.length ? Math.round(total / rows.length) : 0,
+          customerCount,
+          paidCount,
+        };
+      };
+      const p1 = await mk(args.fromDate1, args.toDate1, args.label1);
+      const p2 = await mk(args.fromDate2, args.toDate2, args.label2);
+      return {
+        periods: [p1, p2],
+        combined: { totalSales: p1.totalSales + p2.totalSales, invoiceCount: p1.invoiceCount + p2.invoiceCount },
+        diff: {
+          totalSales: Math.abs(p1.totalSales - p2.totalSales),
+          average: Math.abs(p1.average - p2.average),
+          invoiceCount: Math.abs(p1.invoiceCount - p2.invoiceCount),
+        },
+      };
+    }
+    case "purchaseInvoice.summaryMulti": {
+      const mk = async (fd: unknown, td: unknown, label: unknown) => {
+        const from = String(fd ?? "");
+        const to = String(td ?? "");
+        const all = await listAllPages(execute, "purchaseInvoice.list", {
+          filter: { transDate: { op: "BETWEEN", value: [from, to] } },
+          sort: "id|desc",
+        });
+        const rows = all.rows;
+        const total = rows.reduce((s, r) => s + (Number(r.totalAmount) || 0), 0);
+        return {
+          label: String(label ?? `${from}-${to}`),
+          fromDate: from,
+          toDate: to,
+          invoiceCount: rows.length,
+          totalPurchaseRaw: total,
+          totalPurchase: Math.trunc(total),
+          average: rows.length ? Math.round(total / rows.length) : 0,
+        };
+      };
+      const p1 = await mk(args.fromDate1, args.toDate1, args.label1);
+      const p2 = await mk(args.fromDate2, args.toDate2, args.label2);
+      const diffRaw = Math.abs(p1.totalPurchaseRaw - p2.totalPurchaseRaw);
+      return {
+        periods: [p1, p2],
+        combined: {
+          totalPurchase: Math.trunc(p1.totalPurchaseRaw + p2.totalPurchaseRaw),
+          invoiceCount: p1.invoiceCount + p2.invoiceCount,
+        },
+        diff: {
+          totalPurchase: Math.trunc(diffRaw),
+          average: Math.abs(p1.average - p2.average),
+          invoiceCount: Math.abs(p1.invoiceCount - p2.invoiceCount),
+        },
+      };
+    }
+    case "fixedAsset.summary": {
+      const year = Math.trunc(Number(args.year)) || 0;
+      const all = await listAllPages(execute, "fixedAsset.list", {});
+      const rows = year ? all.rows.filter((r) => String(r.transDate ?? "").endsWith("/" + year)) : [];
+      return {
+        year,
+        count: rows.length,
+        items: rows.slice(0, 10).map((r) => ({
+          number: r.number ?? null,
+          transDate: r.transDate ?? null,
+          description: r.description ?? r.assetName ?? null,
+          quantity: Number(r.quantity) || 1,
+        })),
+        ...(all.truncated ? { truncated: true, totalOnServer: all.total } : {}),
+      };
+    }
+    case "journalVoucher.yearSummary": {
+      const all = await listAllPages(execute, "journalVoucher.list", {});
+      const byYear = new Map<number, { year: number; count: number; totalAmount: number }>();
+      for (const r of all.rows) {
+        const ds = String(r.transDate ?? "");
+        const year = Number(ds.slice(-4));
+        if (!year || year < 1900 || year > 2200) continue;
+        const g = byYear.get(year) ?? { year, count: 0, totalAmount: 0 };
+        g.count += 1;
+        g.totalAmount += Number(r.totalAmount) || 0;
+        byYear.set(year, g);
+      }
+      const years = [...byYear.values()].sort((a, b) => b.count - a.count || a.year - b.year);
+      return {
+        years,
+        top: years[0] ?? null,
+        totalJournals: all.rows.length,
+        ...(all.truncated ? { truncated: true, totalOnServer: all.total } : {}),
+      };
+    }
+    case "item.zeroStock": {
+      const all = await listAllPages(execute, "item.list", {});
+      const qty = (r: Record<string, unknown>) => Number(r.quantity) || 0;
+      const zeros = all.rows.filter((r) => qty(r) === 0);
+      const minQty = all.rows.length ? Math.min(...all.rows.map(qty)) : 0;
+      return {
+        zeroCount: zeros.length,
+        minQuantity: minQty,
+        items: zeros.map((r) => ({
+          no: r.no ?? r.number ?? null,
+          name: r.name ?? r.itemName ?? null,
+          quantity: 0,
+        })),
+        ...(all.truncated ? { truncated: true, totalOnServer: all.total } : {}),
+      };
+    }
+    case "item.topStock": {
+      const limit = Math.max(1, Math.min(50, Number(args.limit ?? 10) || 10));
+      const all = await listAllPages(execute, "item.list", {});
+      const sorted = [...all.rows].sort((a, b) => (Number(b.quantity) || 0) - (Number(a.quantity) || 0));
+      return {
+        limit,
+        itemKindCount: all.rows.length,
+        items: sorted.slice(0, limit).map((r) => ({
+          no: r.no ?? r.number ?? null,
+          name: r.name ?? r.itemName ?? null,
+          quantity: Number(r.quantity) || 0,
+        })),
+        ...(all.truncated ? { truncated: true, totalOnServer: all.total } : {}),
+      };
+    }
+    case "item.stockOverview": {
+      const all = await listAllPages(execute, "item.list", {});
+      const totalQuantity = all.rows.reduce((s, r) => s + (Number(r.quantity) || 0), 0);
+      let warehouses: string[] = [];
+      let warehouseTruncated = false;
+      try {
+        const w = await listAllPages(execute, "warehouse.list", {});
+        warehouses = w.rows.map((r) => String(r.name ?? r.warehouseName ?? "")).filter(Boolean);
+        warehouseTruncated = w.truncated;
+      } catch {
+        warehouses = [];
+      }
+      return {
+        itemCount: all.rows.length,
+        totalQuantity,
+        warehouseCount: warehouses.length,
+        warehouses: warehouses.slice(0, 20),
+        ...(all.truncated ? { truncated: true, totalOnServer: all.total } : {}),
+        ...(warehouseTruncated ? { warehouseTruncated: true } : {}),
+      };
+    }
+    case "autoNumber.summary": {
+      const all = await listAllPages(execute, "autoNumber.list", {});
+      return {
+        count: all.rows.length,
+        items: all.rows.slice(0, 10).map((r) => ({ name: r.name ?? r.description ?? null })),
+        ...(all.truncated ? { truncated: true, totalOnServer: all.total } : {}),
+      };
+    }
+    case "journalVoucher.summary": {
+      const period = optionalPeriod(args);
+      const all = await listAllPages(execute, "journalVoucher.list", {});
+      const rows = period
+        ? all.rows.filter((r) => {
+            const t = dmyNum(r.transDate);
+            return t >= dmyNum(period.from) && t <= dmyNum(period.to);
+          })
+        : all.rows;
+      const total = rows.reduce((s, r) => s + (Number(r.totalAmount) || 0), 0);
+      const topByAmount = [...rows]
+        .sort((a, b) => (Number(b.totalAmount) || 0) - (Number(a.totalAmount) || 0))
+        .slice(0, 5)
+        .map((r) => ({ number: r.number, transDate: r.transDate, totalAmount: r.totalAmount }));
+      return {
+        ...(period ? { period: { fromDate: period.from, toDate: period.to } } : { period: "semua" }),
+        summary: {
+          journalCount: rows.length,
+          totalAmount: Math.trunc(total),
+          ...(all.truncated ? { truncated: true, totalOnServer: all.total } : {}),
+        },
+        topByAmount,
+      };
+    }
+    case "salesReturn.summary": {
+      const period = optionalPeriod(args);
+      const all = await listAllPages(execute, "salesReturn.list", {});
+      const rows = period
+        ? all.rows.filter((r) => {
+            const t = dmyNum(r.transDate);
+            return t >= dmyNum(period.from) && t <= dmyNum(period.to);
+          })
+        : all.rows;
+      const total = rows.reduce((s, r) => s + (Number(r.totalAmount) || 0), 0);
+      return {
+        ...(period ? { period: { fromDate: period.from, toDate: period.to } } : { period: "semua" }),
+        summary: {
+          returnCount: rows.length,
+          totalAmount: Math.trunc(total),
+          ...(all.truncated ? { truncated: true, totalOnServer: all.total } : {}),
+        },
+      };
+    }
+    case "purchaseReturn.summary": {
+      const period = optionalPeriod(args);
+      const all = await listAllPages(execute, "purchaseReturn.list", {});
+      const rows = period
+        ? all.rows.filter((r) => {
+            const t = dmyNum(r.transDate);
+            return t >= dmyNum(period.from) && t <= dmyNum(period.to);
+          })
+        : all.rows;
+      const total = rows.reduce((s, r) => s + (Number(r.totalAmount) || 0), 0);
+      return {
+        ...(period ? { period: { fromDate: period.from, toDate: period.to } } : { period: "semua" }),
+        summary: {
+          returnCount: rows.length,
+          totalAmount: Math.trunc(total),
+          ...(all.truncated ? { truncated: true, totalOnServer: all.total } : {}),
+        },
       };
     }
     case "vendor.lastPurchaseByName": {
@@ -775,10 +1552,11 @@ export async function runAggregation(
       if (!name) throw new Error("name wajib diisi");
       const vendor = await findVendor(execute, name);
       if (!vendor) return { error: `pemasok "${name}" tidak ditemukan` };
-      const invoices = await vendorInvoices(execute, String(vendor.vendorNo ?? ""), { limit: 1 });
+      const invoices = await vendorInvoices(execute, String(vendor.vendorNo ?? ""));
+      const rows = [...invoices.rows].sort(byTransDateDesc);
       return {
         vendor: publicInfo(vendor),
-        lastPurchase: invoices.rows[0] ?? null,
+        lastPurchase: rows[0] ?? null,
       };
     }
     case "vendor.purchasesByName": {
@@ -806,6 +1584,58 @@ export async function runAggregation(
         })),
       };
     }
+    case "vendor.itemsByName": {
+      const name = String(args.name ?? "").trim();
+      if (!name) throw new Error("name wajib diisi");
+      const vendor = await findVendor(execute, name);
+      if (!vendor)
+        return {
+          error: `pemasok "${name}" tidak ditemukan`,
+          hint: "Bila nama ini adalah PELANGGAN (kita menjual kepadanya), gunakan customer.itemsByName.",
+        };
+      const period = optionalPeriod(args);
+      const inv = await vendorInvoices(execute, String(vendor.vendorNo ?? ""), { period: period ?? undefined });
+      const rows = inv.rows.slice(0, 100);
+      type ItemAgg = { itemName: string; quantity: number; amount: number; invoiceCount: number };
+      const items = new Map<string, ItemAgg>();
+      let detailErrors = 0;
+      await mapPool(rows, 4, async (r) => {
+        try {
+          const d = await executeWithRetry(execute, "purchaseInvoice.detail", { id: r.id });
+          const iv = (Array.isArray(d) ? d[0] : d) as Record<string, unknown> | null;
+          const lines = Array.isArray(iv?.detailItem) ? (iv.detailItem as Array<Record<string, unknown>>) : [];
+          for (const it of lines) {
+            const itemObj = (it.item ?? {}) as Record<string, unknown>;
+            const nm = String(it.detailName ?? itemObj.name ?? "").trim();
+            if (!nm) continue;
+            const g = items.get(nm) ?? { itemName: nm, quantity: 0, amount: 0, invoiceCount: 0 };
+            g.quantity += Number(it.quantity) || 0;
+            g.amount += Number(it.totalPrice) || 0;
+            g.invoiceCount += 1;
+            items.set(nm, g);
+          }
+        } catch {
+          detailErrors += 1;
+        }
+      });
+      const list = [...items.values()].sort((a, b) => b.amount - a.amount);
+      const scanTruncated = inv.rows.length > rows.length;
+      return {
+        vendor: publicInfo(vendor),
+        period: period ? { fromDate: period.from, toDate: period.to } : "semua",
+        summary: {
+          invoicesScanned: rows.length,
+          invoiceCount: inv.rows.length,
+          itemCount: list.length,
+          totalQuantity: list.reduce((s, i) => s + i.quantity, 0),
+          totalAmount: list.reduce((s, i) => s + i.amount, 0),
+          detailErrors,
+          ...(scanTruncated ? { scanTruncated: true } : {}),
+          ...(inv.truncated ? { listTruncated: true } : {}),
+        },
+        items: list,
+      };
+    }
     case "vendor.unpaidByName": {
       const name = String(args.name ?? "").trim();
       if (!name) throw new Error("name wajib diisi");
@@ -826,13 +1656,15 @@ export async function runAggregation(
       if (!name) throw new Error("name wajib diisi");
       const vendor = await findVendor(execute, name);
       if (!vendor) return { error: `pemasok "${name}" tidak ditemukan` };
-      const inv = await vendorInvoices(execute, String(vendor.vendorNo ?? ""));
+      const period = optionalPeriod(args);
+      const inv = await vendorInvoices(execute, String(vendor.vendorNo ?? ""), { period: period ?? undefined });
       const total = inv.rows.reduce((s, r) => s + (Number(r.totalAmount) || 0), 0);
       const up = await vendorUnpaidInvoices(execute, String(vendor.vendorNo ?? ""));
       const totalUnpaid = up.rows.reduce((s, r) => s + (Number(r.totalAmount) || 0), 0);
       const truncated = inv.truncated || up.truncated;
       return {
         vendor: publicInfo(vendor),
+        ...(period ? { period: { fromDate: period.from, toDate: period.to } } : {}),
         summary: {
           invoiceCount: inv.rows.length,
           totalPurchase: total,
@@ -864,12 +1696,14 @@ export async function runAggregation(
       }
       const customers = [...groups.values()].sort((a, b) => b.total - a.total);
       const totalSales = customers.reduce((s, g) => s + g.total, 0);
+      const smallest = customers.length ? customers[customers.length - 1] : null;
       return {
         period: period ? { fromDate: period.from, toDate: period.to } : "semua",
         summary: {
           customerCount: customers.length,
           invoiceCount: rows.length,
           totalSales,
+          ...(smallest ? { smallest: { name: smallest.name, invoiceCount: smallest.invoiceCount, total: smallest.total } } : {}),
           ...(all.truncated ? { truncated: true, totalOnServer: all.total } : {}),
         },
         customers: customers.slice(0, 20),
@@ -895,12 +1729,14 @@ export async function runAggregation(
       }
       const vendors = [...groups.values()].sort((a, b) => b.total - a.total);
       const totalPurchase = vendors.reduce((s, g) => s + g.total, 0);
+      const smallest = vendors.length ? vendors[vendors.length - 1] : null;
       return {
         period: period ? { fromDate: period.from, toDate: period.to } : "semua",
         summary: {
           vendorCount: vendors.length,
           invoiceCount: rows.length,
           totalPurchase,
+          ...(smallest ? { smallest: { name: smallest.name, invoiceCount: smallest.invoiceCount, total: smallest.total } } : {}),
           ...(all.truncated ? { truncated: true, totalOnServer: all.total } : {}),
         },
         vendors: vendors.slice(0, 20),
@@ -919,9 +1755,9 @@ export async function runAggregation(
       const scanned = rows.slice(0, SCAN_CAP);
       const agg = new Map<string, { itemName: string; quantity: number; amount: number }>();
       let detailErrors = 0;
-      await mapPool(scanned, 6, async (r) => {
+      await mapPool(scanned, 4, async (r) => {
         try {
-          const d = await execute("salesInvoice.detail", { id: r.id });
+          const d = await executeWithRetry(execute, "salesInvoice.detail", { id: r.id });
           // API asli membalas objek faktur; mock membalas array 1 baris
           const inv = (Array.isArray(d) ? d[0] : d) as Record<string, unknown> | null;
           const items = Array.isArray(inv?.detailItem) ? (inv.detailItem as Array<Record<string, unknown>>) : [];
@@ -979,9 +1815,26 @@ export async function runAggregation(
       }
       const customers = [...groups.values()].sort((a, b) => b.total - a.total);
       const totalReceivables = customers.reduce((s, g) => s + g.total, 0);
+      // faktur jatuh tempo paling dekat (urut dd/mm/yyyy ASLI — sort server salah utk format ini)
+      let earliestDue: Record<string, unknown> | null = null;
+      let minDue = Number.MAX_SAFE_INTEGER;
+      for (const r of all.rows) {
+        const n = dmyNum(r.dueDate);
+        if (n > 0 && n < minDue) {
+          minDue = n;
+          earliestDue = {
+            number: r.number ?? null,
+            dueDate: r.dueDate ?? null,
+            totalAmount: r.totalAmount ?? null,
+            customerName: (r.customer as Record<string, unknown> | undefined)?.name ?? null,
+            customerNo: r.customerNo ?? null,
+          };
+        }
+      }
       const period = periodEcho(args);
       return {
         ...(period ? { period } : {}),
+        ...(earliestDue ? { earliestDue } : {}),
         summary: {
           totalReceivables,
           invoiceCount: all.rows.length,
@@ -1020,6 +1873,187 @@ export async function runAggregation(
           ...(all.truncated ? { truncated: true, totalOnServer: all.total } : {}),
         },
         vendors: vendors.slice(0, limit),
+      };
+    }
+    case "arap.summary": {
+      const limit = Math.max(1, Math.min(50, Number(args.limit ?? 5) || 5));
+      const [ar, ap] = await Promise.all([
+        listAllPages(execute, "salesInvoice.list", { filter: outstandingPeriodFilter(args), sort: "id|desc" }),
+        listAllPages(execute, "purchaseInvoice.list", { filter: outstandingPeriodFilter(args), sort: "id|desc" }),
+      ]);
+      const groupSum = (rows: Record<string, unknown>[], party: "customer" | "vendor") => {
+        const groups = new Map<string, { name: string; invoiceCount: number; total: number }>();
+        for (const r of rows) {
+          const obj = (r[party] ?? {}) as Record<string, unknown>;
+          const no = String(r[`${party}No`] ?? obj[`${party}No`] ?? "");
+          const key = no || String(obj.name ?? "") || "tanpa-kode";
+          const g = groups.get(key) ?? { name: String(obj.name ?? no), invoiceCount: 0, total: 0 };
+          g.invoiceCount += 1;
+          g.total += Number(r.totalAmount) || 0;
+          groups.set(key, g);
+        }
+        return [...groups.values()].sort((a, b) => b.total - a.total);
+      };
+      const customers = groupSum(ar.rows, "customer");
+      const vendors = groupSum(ap.rows, "vendor");
+      const totalReceivables = customers.reduce((s, g) => s + g.total, 0);
+      const totalPayables = vendors.reduce((s, g) => s + g.total, 0);
+      const diff = totalPayables - totalReceivables;
+      return {
+        receivables: {
+          total: totalReceivables,
+          invoiceCount: ar.rows.length,
+          customerCount: customers.length,
+          customers: customers.slice(0, limit),
+        },
+        payables: {
+          total: totalPayables,
+          invoiceCount: ap.rows.length,
+          vendorCount: vendors.length,
+          vendors: vendors.slice(0, limit),
+        },
+        larger: diff === 0 ? "sama" : diff > 0 ? "utang" : "piutang",
+        diff: Math.trunc(Math.abs(diff)),
+        ...(ar.truncated ? { arTruncated: true, arTotalOnServer: ar.total } : {}),
+        ...(ap.truncated ? { apTruncated: true, apTotalOnServer: ap.total } : {}),
+      };
+    }
+    case "invoice.statusCounts": {
+      const side = String(args.side ?? "sales") === "purchase" ? "purchase" : "sales";
+      const tool = side === "purchase" ? "purchaseInvoice.list" : "salesInvoice.list";
+      const period = optionalPeriod(args);
+      const all = await listAllPages(execute, tool, {
+        ...(period ? { filter: { transDate: { op: "BETWEEN", value: [period.from, period.to] } } } : {}),
+        sort: "id|desc",
+      });
+      let paid = 0;
+      let unpaid = 0;
+      for (const r of all.rows) {
+        const st = String(r.statusName ?? r.status ?? "").toLowerCase();
+        if (st.includes("lunas") && !st.includes("belum")) paid += 1;
+        else unpaid += 1;
+      }
+      return {
+        side,
+        scope: period ? { fromDate: period.from, toDate: period.to } : "semua",
+        invoiceCount: all.rows.length,
+        paid,
+        unpaid,
+        ...(all.truncated ? { truncated: true, totalOnServer: all.total } : {}),
+      };
+    }
+    case "party.yoySummary": {
+      const party = String(args.party ?? "customer") === "vendor" ? "vendor" : "customer";
+      const name = String(args.name ?? "").trim();
+      const y1 = Number(args.year1) || 0;
+      const y2 = Number(args.year2) || 0;
+      if (!name) throw new Error("name wajib diisi");
+      if (!y1 || !y2) throw new Error("year1 & year2 wajib diisi");
+      const range = (y: number) => ({ from: `01/01/${y}`, to: `31/12/${y}` });
+      const sum = (rows: Array<Record<string, unknown>>) => rows.reduce((s, r) => s + (Number(r.totalAmount) || 0), 0);
+      const finish = (
+        entity: Record<string, unknown>,
+        a: { rows: Array<Record<string, unknown>>; truncated: boolean },
+        b: { rows: Array<Record<string, unknown>>; truncated: boolean },
+        unit: "penjualan" | "pembelian"
+      ) => {
+        const t1 = sum(a.rows);
+        const t2 = sum(b.rows);
+        return {
+          party,
+          unit,
+          entity: publicInfo(entity),
+          years: [
+            { year: y1, invoiceCount: a.rows.length, total: t1 },
+            { year: y2, invoiceCount: b.rows.length, total: t2 },
+          ],
+          direction: t2 > t1 ? "naik" : t2 < t1 ? "turun" : "sama",
+          diff: Math.trunc(Math.abs(t2 - t1)),
+          ...(a.truncated || b.truncated ? { truncated: true } : {}),
+        };
+      };
+      if (party === "vendor") {
+        const vendor = await findVendor(execute, name);
+        if (!vendor) return { error: `pemasok "${name}" tidak ditemukan` };
+        const vno = String(vendor.vendorNo ?? "");
+        const [a, b] = await Promise.all([
+          vendorInvoices(execute, vno, { period: range(y1) }),
+          vendorInvoices(execute, vno, { period: range(y2) }),
+        ]);
+        return finish(vendor, a, b, "pembelian");
+      }
+      const customer = await findCustomer(execute, name);
+      if (!customer) return { error: `pelanggan "${name}" tidak ditemukan` };
+      const cno = String(customer.customerNo ?? "");
+      const [a, b] = await Promise.all([
+        customerInvoices(execute, cno, { period: range(y1) }),
+        customerInvoices(execute, cno, { period: range(y2) }),
+      ]);
+      return finish(customer, a, b, "penjualan");
+    }
+    case "return.summaryBoth": {
+      const period = optionalPeriod(args);
+      const count = async (tool: string) => {
+        const all = await listAllPages(execute, tool, {});
+        const rows = period
+          ? all.rows.filter((r) => {
+              const t = dmyNum(r.transDate);
+              return t >= dmyNum(period.from) && t <= dmyNum(period.to);
+            })
+          : all.rows;
+        return {
+          returnCount: rows.length,
+          totalAmount: Math.trunc(rows.reduce((s, r) => s + (Number(r.totalAmount) || 0), 0)),
+          truncated: all.truncated,
+        };
+      };
+      const [sr, pr] = await Promise.all([count("salesReturn.list"), count("purchaseReturn.list")]);
+      const diff = pr.totalAmount - sr.totalAmount;
+      return {
+        ...(period ? { period: { fromDate: period.from, toDate: period.to } } : { period: "semua" }),
+        salesReturn: sr,
+        purchaseReturn: pr,
+        larger: diff === 0 ? "sama" : diff > 0 ? "purchaseReturn" : "salesReturn",
+        diff: Math.trunc(Math.abs(diff)),
+        ...(sr.truncated || pr.truncated ? { truncated: true } : {}),
+      };
+    }
+    case "salesReceipt.yearCount": {
+      const year = Number(args.year) || 0;
+      if (!year) throw new Error("year wajib diisi");
+      const all = await listAllPages(execute, "salesReceipt.list", { sort: "id|desc" });
+      const rows = all.rows
+        .filter((r) => Math.floor(dmyNum(r.transDate) / 10000) === year)
+        .sort((a, b) => dmyNum(b.transDate) - dmyNum(a.transDate));
+      return {
+        year,
+        scope: "transDate",
+        count: rows.length,
+        receipts: rows.slice(0, 20).map((r) => ({
+          number: String(r.number ?? ""),
+          transDate: r.transDate,
+          totalAmount: Number(r.totalAmount) || 0,
+        })),
+        ...(all.truncated ? { truncated: true, totalOnServer: all.total } : {}),
+      };
+    }
+    case "deliveryOrder.yearCount": {
+      const year = Number(args.year) || 0;
+      if (!year) throw new Error("year wajib diisi");
+      const all = await listAllPages(execute, "deliveryOrder.list", { sort: "id|desc" });
+      const rows = all.rows
+        .filter((r) => Math.floor(dmyNum(r.transDate) / 10000) === year)
+        .sort((a, b) => dmyNum(b.transDate) - dmyNum(a.transDate));
+      return {
+        year,
+        scope: "transDate",
+        count: rows.length,
+        deliveries: rows.slice(0, 20).map((r) => ({
+          number: String(r.number ?? ""),
+          transDate: r.transDate,
+          description: String(r.description ?? ""),
+        })),
+        ...(all.truncated ? { truncated: true, totalOnServer: all.total } : {}),
       };
     }
     case "gl.plSummary": {
@@ -1121,10 +2155,10 @@ export async function runAggregation(
       const rows = asArray(
         await execute("item.list", { keywords: name, fields: "id,no,name,quantity", pageSize: 10 })
       );
-      const q = name.toLowerCase();
+      const q = name.toLowerCase().replace(/\s+/g, " ");
       const hit =
         rows.find(
-          (r) => String(r.name ?? "").toLowerCase().includes(q) || String(r.no ?? "").toLowerCase().includes(q)
+          (r) => String(r.name ?? "").toLowerCase().replace(/\s+/g, " ").includes(q) || String(r.no ?? "").toLowerCase().includes(q)
         ) ?? rows[0];
       if (!hit) return { error: `barang "${name}" tidak ditemukan` };
       const no = String(hit.no ?? "");
@@ -1157,6 +2191,297 @@ export async function runAggregation(
         stock,
         ...(priceRow && typeof priceRow.currencyCode === "string" ? { currencyCode: priceRow.currencyCode } : {}),
         ...(alternatives.length ? { alternatives: alternatives.map(publicInfo) } : {}),
+      };
+    }
+    case "item.buyers": {
+      const name = String(args.name ?? "").trim();
+      if (!name) throw new Error("name wajib diisi");
+      const period = optionalPeriod(args);
+      const periodFilter = period ? { transDate: { op: "BETWEEN", value: [period.from, period.to] } } : undefined;
+      const all = await listAllPages(execute, "salesInvoice.list", {
+        ...(periodFilter ? { filter: periodFilter } : {}),
+        sort: "id|desc",
+      });
+      const rows = all.rows;
+      const SCAN_CAP = 100;
+      const scanned = rows.slice(0, SCAN_CAP);
+      // cocokkan tanpa spasi — "Iphone 5 16 GB" == "iphone 5 16gb" (argumen model sering beda spasi)
+      const q = name.toLowerCase().replace(/\s+/g, "");
+      const norm = (s: string) => s.toLowerCase().replace(/\s+/g, "");
+      type Buyer = { customerNo: string; name: string; quantity: number; amount: number; invoiceCount: number };
+      type ScanLine = { qty: number; amt: number; exact: boolean };
+      const scans: Array<{ cno: string; cname: string; lines: ScanLine[] }> = [];
+      let detailErrors = 0;
+      const failed: Record<string, unknown>[] = [];
+      const scanOne = async (r: Record<string, unknown>) => {
+        const d = await executeWithRetry(execute, "salesInvoice.detail", { id: r.id });
+        const inv = (Array.isArray(d) ? d[0] : d) as Record<string, unknown> | null;
+        const items = Array.isArray(inv?.detailItem) ? (inv.detailItem as Array<Record<string, unknown>>) : [];
+        const lines: ScanLine[] = [];
+        for (const it of items) {
+          const itemObj = (it.item ?? {}) as Record<string, unknown>;
+          const nm = String(it.detailName ?? itemObj.name ?? "").trim();
+          if (!nm) continue;
+          const nmN = norm(nm);
+          if (!nmN.includes(q)) continue;
+          lines.push({ qty: Number(it.quantity) || 0, amt: Number(it.totalPrice) || 0, exact: nmN === q });
+        }
+        if (!lines.length) return;
+        const cust = (r.customer ?? (inv?.customer as Record<string, unknown>) ?? {}) as Record<string, unknown>;
+        const cno = String(r.customerNo ?? cust.customerNo ?? "");
+        const cname = String(cust.name ?? r.customerName ?? cno);
+        scans.push({ cno, cname, lines });
+      };
+      await mapPool(scanned, 4, async (r) => {
+        try {
+          await scanOne(r);
+        } catch {
+          failed.push(r);
+        }
+      });
+      // retry satu per satu utk faktur yang gagal diambil detailnya (glitch antrean) — jangan sampai 1 faktur bikin hasil kosong
+      for (const r of failed) {
+        try {
+          await scanOne(r);
+        } catch {
+          detailErrors += 1;
+        }
+      }
+      if (detailErrors > 0) console.warn(`[aggregation] item.buyers "${name}": ${detailErrors} detail faktur gagal diambil — hasil mungkin tidak lengkap`);
+      // exact match dulu — substring longgar ("Anti Gores Iphone 6" vs "…6S Plus") membuat total bengkak
+      const anyExact = scans.some((s) => s.lines.some((l) => l.exact));
+      const buyers = new Map<string, Buyer>();
+      let matchedInvoices = 0;
+      for (const sc of scans) {
+        const use = anyExact ? sc.lines.filter((l) => l.exact) : sc.lines;
+        if (!use.length) continue;
+        matchedInvoices += 1;
+        const key = sc.cno || sc.cname || "tanpa-kode";
+        const g = buyers.get(key) ?? { customerNo: sc.cno, name: sc.cname, quantity: 0, amount: 0, invoiceCount: 0 };
+        for (const l of use) {
+          g.quantity += l.qty;
+          g.amount += l.amt;
+        }
+        g.invoiceCount += 1;
+        buyers.set(key, g);
+      }
+      const list = [...buyers.values()].sort((a, b) => b.amount - a.amount);
+      const totalQty = list.reduce((s, b) => s + b.quantity, 0);
+      const totalAmt = list.reduce((s, b) => s + b.amount, 0);
+      const scanTruncated = rows.length > scanned.length;
+      return {
+        item: name,
+        ...(period ? { period: { fromDate: period.from, toDate: period.to } } : {}),
+        summary: {
+          invoicesInPeriod: rows.length,
+          invoicesScanned: scanned.length,
+          matchedInvoices,
+          buyerCount: list.length,
+          totalQuantity: totalQty,
+          totalAmount: totalAmt,
+          avgUnitPrice: totalQty > 0 ? Math.round(totalAmt / totalQty) : null,
+          detailErrors,
+          ...(scanTruncated ? { scanTruncated: true } : {}),
+          ...(all.truncated ? { listTruncated: true, totalOnServer: all.total } : {}),
+        },
+        buyers: list,
+      };
+    }
+    case "item.suppliers": {
+      const name = String(args.name ?? "").trim();
+      if (!name) throw new Error("name wajib diisi");
+      const period = optionalPeriod(args);
+      const periodFilter = period ? { transDate: { op: "BETWEEN", value: [period.from, period.to] } } : undefined;
+      const all = await listAllPages(execute, "purchaseInvoice.list", {
+        ...(periodFilter ? { filter: periodFilter } : {}),
+        sort: "id|desc",
+      });
+      const rows = all.rows;
+      const SCAN_CAP = 100;
+      const scanned = rows.slice(0, SCAN_CAP);
+      const q = name.toLowerCase().replace(/\s+/g, "");
+      const norm = (s: string) => s.toLowerCase().replace(/\s+/g, "");
+      type Sup = { vendorNo: string; name: string; quantity: number; amount: number; invoiceCount: number };
+      type ScanLineSup = { qty: number; amt: number; exact: boolean };
+      const scans: Array<{ vno: string; vname: string; lines: ScanLineSup[] }> = [];
+      let detailErrors = 0;
+      const failed: Record<string, unknown>[] = [];
+      const scanOne = async (r: Record<string, unknown>) => {
+        const d = await executeWithRetry(execute, "purchaseInvoice.detail", { id: r.id });
+        const inv = (Array.isArray(d) ? d[0] : d) as Record<string, unknown> | null;
+        const items = Array.isArray(inv?.detailItem) ? (inv.detailItem as Array<Record<string, unknown>>) : [];
+        const lines: ScanLineSup[] = [];
+        for (const it of items) {
+          const itemObj = (it.item ?? {}) as Record<string, unknown>;
+          const nm = String(it.detailName ?? itemObj.name ?? "").trim();
+          if (!nm) continue;
+          const nmN = norm(nm);
+          if (!nmN.includes(q)) continue;
+          lines.push({ qty: Number(it.quantity) || 0, amt: Number(it.totalPrice) || 0, exact: nmN === q });
+        }
+        if (!lines.length) return;
+        const ven = (r.vendor ?? (inv?.vendor as Record<string, unknown>) ?? {}) as Record<string, unknown>;
+        const vno = String(r.vendorNo ?? ven.vendorNo ?? "");
+        const vname = String(ven.name ?? r.vendorName ?? vno);
+        scans.push({ vno, vname, lines });
+      };
+      await mapPool(scanned, 4, async (r) => {
+        try {
+          await scanOne(r);
+        } catch {
+          failed.push(r);
+        }
+      });
+      // retry satu per satu utk faktur yang gagal diambil detailnya (glitch antrean) — jangan sampai 1 faktur bikin hasil salah
+      for (const r of failed) {
+        try {
+          await scanOne(r);
+        } catch {
+          detailErrors += 1;
+        }
+      }
+      if (detailErrors > 0) console.warn(`[aggregation] item.suppliers "${name}": ${detailErrors} detail faktur gagal diambil — hasil mungkin tidak lengkap`);
+      const anyExact = scans.some((s) => s.lines.some((l) => l.exact));
+      const suppliers = new Map<string, Sup>();
+      let matchedInvoices = 0;
+      for (const sc of scans) {
+        const use = anyExact ? sc.lines.filter((l) => l.exact) : sc.lines;
+        if (!use.length) continue;
+        matchedInvoices += 1;
+        const key = sc.vno || sc.vname || "tanpa-kode";
+        const g = suppliers.get(key) ?? { vendorNo: sc.vno, name: sc.vname, quantity: 0, amount: 0, invoiceCount: 0 };
+        for (const l of use) {
+          g.quantity += l.qty;
+          g.amount += l.amt;
+        }
+        g.invoiceCount += 1;
+        suppliers.set(key, g);
+      }
+      const list = [...suppliers.values()].sort((a, b) => b.amount - a.amount);
+      const totalQty = list.reduce((s, b) => s + b.quantity, 0);
+      const totalAmt = list.reduce((s, b) => s + b.amount, 0);
+      const scanTruncated = rows.length > scanned.length;
+      return {
+        item: name,
+        ...(period ? { period: { fromDate: period.from, toDate: period.to } } : {}),
+        summary: {
+          invoicesInPeriod: rows.length,
+          invoicesScanned: scanned.length,
+          matchedInvoices,
+          supplierCount: list.length,
+          totalQuantity: totalQty,
+          totalAmount: totalAmt,
+          avgUnitPrice: totalQty > 0 ? Math.round(totalAmt / totalQty) : null,
+          detailErrors,
+          ...(scanTruncated ? { scanTruncated: true } : {}),
+          ...(all.truncated ? { listTruncated: true, totalOnServer: all.total } : {}),
+        },
+        suppliers: list,
+      };
+    }
+    case "item.invoices": {
+      const name = String(args.name ?? "").trim();
+      if (!name) throw new Error("name wajib diisi");
+      const type = String(args.type ?? "sale") === "purchase" ? "purchase" : "sale";
+      const period = optionalPeriod(args);
+      const listName = type === "purchase" ? "purchaseInvoice.list" : "salesInvoice.list";
+      const detailName = type === "purchase" ? "purchaseInvoice.detail" : "salesInvoice.detail";
+      const entity = String(args.entity ?? "").trim();
+      const filter: Record<string, unknown> = {};
+      if (period) filter.transDate = { op: "BETWEEN", value: [period.from, period.to] };
+      let partyLabel = type === "purchase" ? "pemasok" : "pelanggan";
+      if (entity) {
+        if (type === "purchase") {
+          const v = await findVendor(execute, entity);
+          if (!v)
+            return {
+              error: `pemasok "${entity}" tidak ditemukan`,
+              hint: "Bila nama ini adalah PELANGGAN, pakai type=\"sale\".",
+            };
+          filter.vendorNo = String(v.vendorNo ?? "");
+        } else {
+          const c = await findCustomer(execute, entity);
+          if (!c)
+            return {
+              error: `pelanggan "${entity}" tidak ditemukan`,
+              hint: "Bila nama ini adalah PEMASOK, pakai type=\"purchase\".",
+            };
+          filter.customerNo = String(c.customerNo ?? "");
+        }
+      }
+      const all = await listAllPages(execute, listName, {
+        ...(Object.keys(filter).length ? { filter } : {}),
+        sort: "id|desc",
+      });
+      const rows = all.rows.slice(0, 100);
+      const q = name.toLowerCase().replace(/\s+/g, "");
+      const norm = (s: string) => s.toLowerCase().replace(/\s+/g, "");
+      type InvRow = {
+        number: string;
+        transDate: unknown;
+        party: string;
+        totalAmount: unknown;
+        itemQuantity: number;
+        itemAmount: number;
+      };
+      type InvLine = { qty: number; amt: number; exact: boolean };
+      const scans: Array<{ r: Record<string, unknown>; party: string; lines: InvLine[] }> = [];
+      let detailErrors = 0;
+      await mapPool(rows, 4, async (r) => {
+        try {
+          const d = await executeWithRetry(execute, detailName, { id: r.id });
+          const inv = (Array.isArray(d) ? d[0] : d) as Record<string, unknown> | null;
+          const items = Array.isArray(inv?.detailItem) ? (inv.detailItem as Array<Record<string, unknown>>) : [];
+          const lines: InvLine[] = [];
+          for (const it of items) {
+            const itemObj = (it.item ?? {}) as Record<string, unknown>;
+            const nm = String(it.detailName ?? itemObj.name ?? "").trim();
+            if (!nm) continue;
+            const nmN = norm(nm);
+            if (!nmN.includes(q)) continue;
+            lines.push({ qty: Number(it.quantity) || 0, amt: Number(it.totalPrice) || 0, exact: nmN === q });
+          }
+          if (!lines.length) return;
+          const partyObj = (type === "purchase" ? (r.vendor ?? inv?.vendor) : (r.customer ?? inv?.customer)) ?? {};
+          const party = String((partyObj as Record<string, unknown>).name ?? r.customerName ?? r.vendorName ?? "");
+          scans.push({ r, party, lines });
+        } catch {
+          detailErrors += 1;
+        }
+      });
+      const anyExact = scans.some((s) => s.lines.some((l) => l.exact));
+      const matched: InvRow[] = [];
+      for (const sc of scans) {
+        const use = anyExact ? sc.lines.filter((l) => l.exact) : sc.lines;
+        if (!use.length) continue;
+        matched.push({
+          number: String(sc.r.number ?? ""),
+          transDate: sc.r.transDate,
+          party: sc.party,
+          totalAmount: sc.r.totalAmount,
+          itemQuantity: use.reduce((s, l) => s + l.qty, 0),
+          itemAmount: use.reduce((s, l) => s + l.amt, 0),
+        });
+      }
+      matched.sort((a, b) => String(b.transDate ?? "").localeCompare(String(a.transDate ?? "")));
+      const scanTruncated = all.rows.length > rows.length;
+      return {
+        item: name,
+        type,
+        ...(entity ? { entity } : {}),
+        ...(period ? { period: { fromDate: period.from, toDate: period.to } } : {}),
+        partyLabel,
+        summary: {
+          invoicesInPeriod: all.rows.length,
+          invoicesScanned: rows.length,
+          matchedInvoices: matched.length,
+          totalItemQuantity: matched.reduce((s, i) => s + i.itemQuantity, 0),
+          totalItemAmount: matched.reduce((s, i) => s + i.itemAmount, 0),
+          detailErrors,
+          ...(scanTruncated ? { scanTruncated: true } : {}),
+          ...(all.truncated ? { listTruncated: true, totalOnServer: all.total } : {}),
+        },
+        invoices: matched.slice(0, 30),
       };
     }
     case "finance.overview": {

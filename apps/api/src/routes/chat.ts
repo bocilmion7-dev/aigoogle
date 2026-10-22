@@ -9,6 +9,7 @@ import { friendlyChatErrorMessage } from "../ai/chat-error-message.js";
 import { getModuleModel } from "../ai/module-model.js";
 import { runToolLoop } from "../ai/tool-loop.js";
 import { selectTools, toolStats } from "../ai/tool-selector.js";
+import { transformToRoute, formatAggregationResult } from "../ai/transformer.js";
 import type { LLMContent } from "../ai/llm-types.js";
 import { buildSystemPrompt } from "../ai/system-prompt.js";
 import { loadPermissionSet } from "../permissions.js";
@@ -125,29 +126,81 @@ chatRouter.post(
     let liveCtx = ctx;
     const t0 = Date.now();
 
+    // providerExecute dipakai BOTH fast path (transformer) & tool loop penuh
+    const providerExecute = async (tool: string, args: Record<string, unknown>) => {
+      if (!liveCtx) return Promise.reject(new Error("koneksi Accurate belum aktif — hubungkan ulang di Pengaturan"));
+      try {
+        return await provider.execute(tool, args, liveCtx);
+      } catch (e: unknown) {
+        const m = e instanceof Error ? e.message : String(e);
+        if (/upsss/i.test(m)) {
+          await new Promise((r) => setTimeout(r, 2000));
+          const fresh = await refreshAccurateSession(user.tenant.id).catch(() => null);
+          if (fresh) liveCtx = fresh;
+          return await provider.execute(tool, args, liveCtx);
+        }
+        if (/fetch failed|ECONNREFUSED|ENOTFOUND|socket|network/i.test(m)) {
+          throw new Error("tidak dapat menghubungi Accurate — koneksi ke server akuntansi terputus");
+        }
+        throw e;
+      }
+    };
+
     try {
+      // ─── FAST PATH: transformer → agregasi adapter ───
+      // Router ringan (~1rb token) pilih 1 tool → eksekusi → format (0 token LLM).
+      // Bila router gagal/ragu → jatuh ke runToolLoop penuh (aman, inkremental).
+      const route = await transformToRoute({
+        userMessage: body.data.message,
+        history: history
+          .filter((c) => c.parts.some((p) => p.text))
+          .map((c) => ({
+            role: (c.role === "model" ? "model" : "user") as "user" | "model",
+            text: c.parts.map((p) => p.text ?? "").join(" ").slice(0, 500),
+          })),
+        client: llmClient(),
+        model: preferredModel || (await getDefaultModel()),
+      });
+      if (route) {
+        const spec = provider.capabilityCatalog().find((t) => t.name === route.tool);
+        const label = spec && "label" in spec ? (spec as { label?: string }).label : undefined;
+        const perm = spec && "requiredPermission" in spec ? (spec as { requiredPermission?: string }).requiredPermission : undefined;
+        if (!perm || permissions.has(perm)) {
+          console.log(`[chat] transformer pilih ${route.tool} ${JSON.stringify(route.args).slice(0, 120)}`);
+          send({ type: "start", sessionId: session.id });
+          send({ type: "tool_call", tool: route.tool, label });
+          try {
+            const result = await providerExecute(route.tool, route.args);
+            send({ type: "tool_result", tool: route.tool, ok: true });
+            const answer = formatAggregationResult(route.tool, result);
+            if (answer) {
+              // kirim jawaban sebagai beberapa chunk supaya terasa natural (bukan dinding teks)
+              const chunkSize = Math.ceil(answer.length / 4);
+              for (let i = 0; i < answer.length; i += chunkSize) {
+                send({ type: "text_delta", delta: answer.slice(i, i + chunkSize) });
+              }
+              void writeAudit(user.tenant.id, user.id, "tool.call", { tool: route.tool, args: route.args, ok: true });
+              const aiMsg = await prisma.chatMessage.create({
+                data: { sessionId: session.id, role: "ai", content: answer, toolTrace: JSON.stringify([{ tool: route.tool, args: route.args, ok: true }]) },
+              });
+              send({ type: "done", messageId: aiMsg.id });
+              console.log(`[chat] fast-path selesai ${((Date.now() - t0) / 1000).toFixed(1)}s | tool: ${route.tool} | msg: ${body.data.message.slice(0, 40)}`);
+              res.end();
+              return;
+            }
+            // format null → bentuk result tak terduga → jatuh ke tool loop
+            console.warn(`[transformer] format null utk ${route.tool} — jatuh ke tool loop`);
+          } catch (e) {
+            // eksekusi gagal (koneksi Accurate putus dkk) → jatuh ke tool loop (punya pesan error sendiri)
+            console.warn(`[chat] fast-path eksekusi gagal (${e instanceof Error ? e.message : e}) — jatuh ke tool loop`);
+          }
+        }
+      }
+
+      // ─── SLOW PATH: runToolLoop penuh (38 tool, streaming) ───
       const out = await runToolLoop({
         client: llmClient(),
-        providerExecute: async (tool, args) => {
-          if (!liveCtx) return Promise.reject(new Error("koneksi Accurate belum aktif — hubungkan ulang di Pengaturan"));
-          // "Upsss..." = session expired ATAU rate-limit transient → retry sekali dgn jeda 2 dtk
-          try {
-            return await provider.execute(tool, args, liveCtx);
-          } catch (e: unknown) {
-            const m = e instanceof Error ? e.message : String(e);
-            if (/upsss/i.test(m)) {
-              await new Promise((r) => setTimeout(r, 2000));
-              // refresh session sekali — session expired juga memicu "Upsss..."
-              const fresh = await refreshAccurateSession(user.tenant.id).catch(() => null);
-              if (fresh) liveCtx = fresh;
-              return await provider.execute(tool, args, liveCtx);
-            }
-            if (/fetch failed|ECONNREFUSED|ENOTFOUND|socket|network/i.test(m)) {
-              throw new Error("tidak dapat menghubungi Accurate — koneksi ke server akuntansi terputus");
-            }
-            throw e;
-          }
-        },
+        providerExecute,
         permissions,
         system: buildSystemPrompt({ tenantName: user.tenant.name, voice: body.data.voice === true }),
         tools,

@@ -19,7 +19,7 @@ const KEYWORD_MAP: Array<{ keywords: RegExp; modules: string[] }> = [
   // penjualan
   { keywords: /penjualan|sales|jual|faktur\s*penjualan|invoice\s*penjualan|surat\s*jalan|pesanan\s*penjualan|quotation|penawaran|retur\s*penjualan/i, modules: ["salesInvoice", "salesOrder", "salesQuotation", "salesReturn", "salesReceipt", "deliveryOrder", "shipment"] },
   // pembelian
-  { keywords: /pembelian|purchase|beli|faktur\s*pembelian|pesanan\s*pembelian|retur\s*pembelian|pemasok/i, modules: ["purchaseInvoice", "purchaseOrder", "purchaseReturn", "receive"] },
+  { keywords: /pembelian|purchase|beli|faktur\s*pembelian|pesanan\s*pembelian|retur\s*pembelian|pemasok|permintaan\s*pembelian/i, modules: ["purchaseInvoice", "purchaseOrder", "purchaseReturn", "receive", "purchaseRequisition"] },
   // pembayaran / kas / bank
   { keywords: /pembayaran|payment|bayar|kas|bank|transfer|tunai|cek|giro/i, modules: ["payment", "bankTransfer", "salesReceipt"] },
   // laporan / laba rugi / neraca
@@ -42,6 +42,16 @@ const KEYWORD_MAP: Array<{ keywords: RegExp; modules: string[] }> = [
   { keywords: /aset|asset|tetap|depreciation|penyusutan/i, modules: ["fixedAsset"] },
   // department / cabang
   { keywords: /departemen|department|cabang|branch|divisi/i, modules: ["department", "branch"] },
+  // modul niche — tanpa ini pertanyaan "ada berapa X tercatat" jatuh ke fallback
+  // dan model menjawab "tidak ada tool-nya" (padahal <modul>.list ada di katalog)
+  { keywords: /pembayaran\s+lain|other\s*payment|penerimaan\s+lain|other\s*deposit|transfer\s+barang|penyesuaian\s+barang|penerimaan\s+barang|receive\s*item/i, modules: ["otherPayment", "otherDeposit", "itemTransfer", "itemAdjustment", "receiveItem"] },
+  { keywords: /purchase\s*payment|pembayaran\s+pemasok|pembayaran\s+ke\s+pemasok/i, modules: ["purchasePayment"] },
+  { keywords: /hak\s+akses|access\s*privilege|otoritas/i, modules: ["accessPrivilege"] },
+  { keywords: /auto\s*number|penomoran\s+otomatis|nomor\s+otomatis/i, modules: ["autoNumber"] },
+  { keywords: /free\s*on\s*board|\bfob\b|roll\s*over|rollover/i, modules: ["freeonboard", "rollOver", "fob"] },
+  { keywords: /opname|stock\s*opname/i, modules: ["stockOpnameOrder", "stockOpnameResult"] },
+  { keywords: /komisi\s+salesman|salesman\s*commission/i, modules: ["salesmanCommission"] },
+  { keywords: /kategori\s*harga|price\s*category/i, modules: ["priceCategory"] },
 ];
 
 /** tool yang selalu disertakan (inti akuntansi, jarang salah) */
@@ -75,11 +85,16 @@ const CORE_TOOLS = [
   "vendor.unpaidByName",
   "vendor.summaryByName",
   "customer.salesByName",
+  "customer.itemsByName",
   "vendor.purchasesByName",
+  "vendor.itemsByName",
   "salesInvoice.perCustomer",
   "purchaseInvoice.perVendor",
   "item.topSelling",
   "item.byName",
+  "item.buyers",
+  "item.suppliers",
+  "item.invoices",
   "receivables.summary",
   "payables.summary",
   "gl.plSummary",

@@ -48,6 +48,12 @@ const Env = z.object({
   WASERVER_API_KEY: z.string().default(""),
   /** Kunci bersama utk verifikasi event balikan dari waserver (header X-Events-Key) */
   WASERVER_EVENTS_KEY: z.string().default(""),
+  /** OVERRIDE LLM SEMENTARA (utk bench/darurat) — bila ketiga variabel terisi,
+   * kandidat model langsung dari env TANPA menyentuh tabel AiProvider di database.
+   * Lepas dengan mengosongkan env + restart service. */
+  LLM_OVERRIDE_BASE_URL: z.string().default(""),
+  LLM_OVERRIDE_API_KEY: z.string().default(""),
+  LLM_OVERRIDE_MODEL: z.string().default(""),
 });
 function parseEnv() {
   const parsed = Env.safeParse(process.env);

@@ -1,6 +1,9 @@
 import { prisma } from "../db.js";
+import { env } from "../env.js";
 import { LlmHttpError } from "./llm-error.js";
 import { RealNvidiaClient, type NvidiaClient } from "./nvidia.js";
+
+let overrideLogged = false;
 
 /**
  * Pool model AI berbasis DB (tabel AiProvider + AiProviderModel).
@@ -39,6 +42,20 @@ function toCandidate(p: { id: string; name: string; baseUrl: string; apiKey: str
 }
 
 async function candidates(preferred?: string): Promise<ModelCandidate[]> {
+  // Override LLM sementara dari env (bench/darurat) — TIDAK menyentuh database.
+  const { LLM_OVERRIDE_BASE_URL, LLM_OVERRIDE_API_KEY, LLM_OVERRIDE_MODEL } = env;
+  if (LLM_OVERRIDE_BASE_URL && LLM_OVERRIDE_API_KEY && LLM_OVERRIDE_MODEL) {
+    if (!overrideLogged) {
+      overrideLogged = true;
+      console.warn(`[model-pool] LLM override aktif (env): ${LLM_OVERRIDE_MODEL} @ ${LLM_OVERRIDE_BASE_URL}`);
+    }
+    return [
+      toCandidate(
+        { id: "llm-override", name: "LLM Override (env)", baseUrl: LLM_OVERRIDE_BASE_URL, apiKey: LLM_OVERRIDE_API_KEY },
+        LLM_OVERRIDE_MODEL
+      ),
+    ];
+  }
   const active = await prisma.aiProvider.findFirst({
     where: { isActive: true },
     include: { models: { where: { failureCount: { lt: MAX_FAILURES } }, orderBy: { rank: "asc" } } },

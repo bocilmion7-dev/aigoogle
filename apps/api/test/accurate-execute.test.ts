@@ -68,14 +68,19 @@ describe("AccurateAdapter execute/refresh/privilege", () => {
     expect(admin.allowViewModules).toEqual(expect.arrayContaining(["customer", "sales-invoice"]));
   });
 
-  it("capabilityCatalog → 366 tool cakupan penuh + 20 tool agregasi, teranotasi permission", () => {
+  it("capabilityCatalog → 366 tool cakupan penuh + 43 tool agregasi, teranotasi permission", () => {
     const cat = adapter.capabilityCatalog();
-    expect(cat).toHaveLength(386);
+    expect(cat).toHaveLength(409);
     expect(cat.map((t) => t.name)).toEqual(
       expect.arrayContaining([
         "customer.detail", "customer.list", "glaccount.list", "item.list",
         "purchaseInvoice.detail", "salesInvoice.detail", "salesInvoice.list",
         "salesOrder.list", "salesReceipt.list", "vendor.list",
+        "item.buyers",
+        "item.suppliers",
+        "item.invoices",
+        "customer.itemsByName",
+        "vendor.itemsByName",
       ])
     );
     expect(cat.every((t) => t.requiredPermission.startsWith("accurate:"))).toBe(true);
