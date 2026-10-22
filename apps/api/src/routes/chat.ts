@@ -174,11 +174,19 @@ chatRouter.post(
             send({ type: "tool_result", tool: route.tool, ok: true });
             const answer = formatAggregationResult(route.tool, result);
             if (answer) {
-              // kirim jawaban sebagai beberapa chunk supaya terasa natural (bukan dinding teks)
-              const chunkSize = Math.ceil(answer.length / 4);
-              for (let i = 0; i < answer.length; i += chunkSize) {
-                send({ type: "text_delta", delta: answer.slice(i, i + chunkSize) });
-              }
+              // streaming per-karakter → teks terasa "hidup" (bukan dinding teks mendadak)
+              const CHUNK = 3;        // karakter per burst
+              const INTERVAL = 12;    // ms antar burst → ~250 karakter/dtk
+              let idx = 0;
+              await new Promise<void>((resolve) => {
+                const timer = setInterval(() => {
+                  if (res.writableEnded || res.destroyed) { clearInterval(timer); resolve(); return; }
+                  const chunk = answer.slice(idx, idx + CHUNK);
+                  if (!chunk) { clearInterval(timer); resolve(); return; }
+                  send({ type: "text_delta", delta: chunk });
+                  idx += CHUNK;
+                }, INTERVAL);
+              });
               void writeAudit(user.tenant.id, user.id, "tool.call", { tool: route.tool, args: route.args, ok: true });
               const aiMsg = await prisma.chatMessage.create({
                 data: { sessionId: session.id, role: "ai", content: answer, toolTrace: JSON.stringify([{ tool: route.tool, args: route.args, ok: true }]) },
