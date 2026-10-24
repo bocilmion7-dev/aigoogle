@@ -391,6 +391,25 @@ describe("AccurateAdapter execute/refresh/privilege", () => {
       expect(r.topAccounts.revenue[0]).toMatchObject({ accountName: "Penjualan Barang", amount: 10000000 });
     });
 
+    it("gl.plSummary monthly:true → rincian 12 bulan + laba bersih per bulan", async () => {
+      const r = (await adapter.execute(
+        "gl.plSummary",
+        { fromDate: "01/01/2017", toDate: "31/12/2017", monthly: true },
+        adminCtx
+      )) as { monthly?: Array<{ label: string; netProfit: number }> };
+      expect(r.monthly).toHaveLength(12);
+      expect(r.monthly![0]!.label).toBe("Januari 2017");
+      expect(r.monthly![11]!.label).toBe("Desember 2017");
+      expect(r.monthly!.every((m) => typeof m.netProfit === "number")).toBe(true);
+    });
+
+    it("gl.plSummary tanpa monthly → tidak ada field monthly", async () => {
+      const r = (await adapter.execute("gl.plSummary", { fromDate: "01/01/2017", toDate: "31/12/2017" }, adminCtx)) as {
+        monthly?: unknown;
+      };
+      expect(r.monthly).toBeUndefined();
+    });
+
     it("gl.bsSummary → posisi keuangan per tanggal dari leaf neraca", async () => {
       const r = (await adapter.execute("gl.bsSummary", { asOfDate: "31/12/2017" }, adminCtx)) as {
         period: { asOfDate: string };

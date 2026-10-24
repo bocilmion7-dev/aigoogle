@@ -79,6 +79,8 @@ const ROUTER_SYSTEM =
   '- "berapa total nilai seluruh job order / job order mana nilainya terbesar" → jobOrder.summary (tanpa argumen).\n' +
   '- "saldo di kartu pelanggan/pemasok paling besar (di kartu)" → party.cardBalance (side, limit) — BUKAN receivables.summary.\n' +
   '- Untuk pertanyaan lanjutan ("yang kedua siapa?", "bandingkan keduanya", "dari pelanggan itu"), gunakan riwayat untuk resolve referensi.\n' +
+  '- "berapa lama rugi/laba tahun X", "bulan apa saja yang rugi", "berapa bulan rugi tahun X" → ' +
+  'gl.plSummary(fromDate 01/01/X, toDate 31/12/X, monthly:true). "berapa laba/rugi tahun X" (tanpa kata "lama/bulan") → gl.plSummary tanpa monthly.\n' +
   '- "cari/temukan/lacak faktur|file|dokumen|nota|kuitansi|PDF DI GOOGLE DRIVE" (pesan menyebut drive/google drive) → ' +
   'drive.findInvoices(keywords) — file DOKUMEN di Drive, BUKAN faktur Accurate. Tanpa kata "drive" → tool Accurate biasa.\n' +
   '- "buatkan/bikin/cetak nota|faktur (PDF) lalu simpan/unggah/upload ke google drive" → drive.createDoc(docType, no?, date?, customerName?, items:[{name,qty,price}], note?, folder?) — ' +
@@ -1091,14 +1093,51 @@ const FORMATTERS: Record<string, Fmt> = {
     const cogs = Number(s?.costOfGoodsSold) || 0;
     const gross = Number(s?.grossProfit) || 0;
     const opex = Number(s?.operatingExpense) || 0;
+    const otherIncome = Number(s?.otherIncome) || 0;
+    const otherExpense = Number(s?.otherExpense) || 0;
     const net = Number(s?.netProfit) || 0;
+
+    const monthly = Array.isArray(r.monthly)
+      ? (r.monthly as Array<Record<string, unknown>>).map((m) => ({
+          label: String(m.label ?? ""),
+          net: Number(m.netProfit) || 0,
+        }))
+      : null;
+
+    if (monthly && monthly.length > 0) {
+      const loss = monthly.filter((m) => m.net < 0);
+      const head =
+        loss.length === 0
+          ? `Sepanjang ${from}–${to} tidak ada bulan yang rugi — laba bersih tidak negatif di semua ${monthly.length} bulan.`
+          : `Sepanjang ${from}–${to} rugi pada ${loss.length} dari ${monthly.length} bulan: ${loss
+              .map((m) => `${m.label} (${fmtMoney(m.net)})`)
+              .join(", ")}.`;
+      return (
+        head +
+        "\n\n" +
+        mdTable(
+          ["Bulan", "Laba Bersih"],
+          monthly.map((m) => [m.label, fmtMoney(m.net)]),
+          [1]
+        )
+      );
+    }
+
     return (
-      `Laba rugi ${from}–${to}:\n` +
-      `• Pendapatan: ${fmtMoney(revenue)}\n` +
-      `• Harga pokok penjualan: ${fmtMoney(cogs)}\n` +
-      `• Laba kotor: ${fmtMoney(gross)}\n` +
-      `• Beban operasional: ${fmtMoney(opex)}\n` +
-      `• Laba bersih: ${fmtMoney(net)}`
+      `Laba rugi ${from}–${to}:\n\n` +
+      mdTable(
+        ["Komponen", "Jumlah"],
+        [
+          ["Pendapatan", fmtMoney(revenue)],
+          ["Harga pokok penjualan", fmtMoney(cogs)],
+          ["Laba kotor", fmtMoney(gross)],
+          ["Beban operasional", fmtMoney(opex)],
+          ["Pendapatan lain", fmtMoney(otherIncome)],
+          ["Beban lain", fmtMoney(otherExpense)],
+          ["Laba bersih", fmtMoney(net)],
+        ],
+        [1]
+      )
     );
   },
 

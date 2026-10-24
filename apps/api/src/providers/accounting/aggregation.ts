@@ -441,12 +441,18 @@ export const AGGREGATION_TOOLS: AggToolSpec[] = [
       "laba kotor, beban operasional, pendapatan & beban lainnya, serta laba bersih — " +
       "langsung dihitung dari seluruh akun P&L di buku besar. " +
       "Langsung pakai tool ini utk \"berapa laba/rugi bulan ini\" — JANGAN panggil glaccount.get-pl-account-amount lagi. " +
-      "Argumen: fromDate & toDate (dd/mm/yyyy). Bila kosong, default = bulan berjalan.",
+      "Argumen: fromDate & toDate (dd/mm/yyyy). Bila kosong, default = bulan berjalan. " +
+      "Utk \"berapa lama rugi/laba tahun X\" atau \"bulan apa saja yang rugi\" → kirim monthly:true " +
+      "(rentang setahun penuh) — hasil memuat rincian laba bersih per bulan.",
     jsonSchema: {
       type: "object",
       properties: {
         fromDate: { type: "string", description: "Tanggal mulai (dd/mm/yyyy, cth: 01/10/2026)" },
         toDate: { type: "string", description: "Tanggal akhir (dd/mm/yyyy, cth: 31/10/2026)" },
+        monthly: {
+          type: "boolean",
+          description: "true = sertakan rincian laba bersih per bulan (utk pertanyaan berapa lama/berapa bulan rugi)",
+        },
       },
     },
     requiredPermission: "accurate:glaccount.view",
@@ -1172,6 +1178,51 @@ function periodOf(args: Record<string, unknown>): { from: string; to: string } {
   const from = String(args.fromDate ?? monthStart);
   const to = String(args.toDate ?? endOfMonthOf(from));
   return { from, to };
+}
+
+const MONTH_ID = [
+  "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+  "Juli", "Agustus", "September", "Oktober", "November", "Desember",
+];
+
+/** daftar bulan (label + rentang tanggal) antara from & to dd/mm/yyyy — maks 24 bulan */
+function monthsBetween(from: string, to: string): Array<{ label: string; from: string; to: string }> {
+  const p = (n: number) => String(n).padStart(2, "0");
+  const parse = (s: string) => {
+    const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    return m ? { m: Number(m[2]), y: Number(m[3]) } : null;
+  };
+  const a = parse(from);
+  const b = parse(to);
+  if (!a || !b) return [];
+  const out: Array<{ label: string; from: string; to: string }> = [];
+  let y = a.y;
+  let m = a.m;
+  while ((y < b.y || (y === b.y && m <= b.m)) && out.length < 24) {
+    const last = new Date(y, m, 0).getDate();
+    out.push({ label: `${MONTH_ID[m - 1]} ${y}`, from: `01/${p(m)}/${y}`, to: `${p(last)}/${p(m)}/${y}` });
+    m += 1;
+    if (m > 12) {
+      m = 1;
+      y += 1;
+    }
+  }
+  return out;
+}
+
+/** jalankan async fn dgn batas konkurensi (hindari 12 request serentak ke Accurate) */
+async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
+  const out: R[] = new Array(items.length);
+  let next = 0;
+  const workers = Array.from({ length: Math.max(1, Math.min(limit, items.length)) }, async () => {
+    for (;;) {
+      const idx = next++;
+      if (idx >= items.length) return;
+      out[idx] = await fn(items[idx]!);
+    }
+  });
+  await Promise.all(workers);
+  return out;
 }
 
 /** periode OPSIONAL — null bila keduanya kosong ("selama ini" = tanpa filter tanggal) */
@@ -2342,9 +2393,29 @@ export async function runAggregation(
       const grossProfit = sums.REVENUE - sums.COST_OF_GOOD_SOLD;
       const netProfit =
         sums.REVENUE - sums.COST_OF_GOOD_SOLD - sums.EXPENSE + sums.OTHER_INCOME - sums.OTHER_EXPENSE;
+
+      // rincian per bulan (utk "berapa lama rugi tahun X" / "bulan apa saja rugi")
+      let monthly: Array<{ label: string; netProfit: number }> | undefined;
+      if (args.monthly === true || args.monthly === "true") {
+        const months = monthsBetween(from, to);
+        monthly = await mapLimit(months, 4, async (m) => {
+          const rawM = await execute("glaccount.get-pl-account-amount", { fromDate: m.from, toDate: m.to });
+          let net = 0;
+          for (const r of asArray(rawM)) {
+            if (r.isParent === true) continue;
+            const cat = String(r.accountType ?? "");
+            const amount = Number(r.amount) || 0;
+            if (cat === "REVENUE" || cat === "OTHER_INCOME") net += amount;
+            else if (cat === "COST_OF_GOOD_SOLD" || cat === "EXPENSE" || cat === "OTHER_EXPENSE") net -= amount;
+          }
+          return { label: m.label, netProfit: Math.round(net) };
+        });
+      }
+
       return {
         period: { fromDate: from, toDate: to },
         accountCount: rows.length,
+        ...(monthly ? { monthly } : {}),
         summary: {
           revenue: Math.round(sums.REVENUE),
           costOfGoodsSold: Math.round(sums.COST_OF_GOOD_SOLD),
