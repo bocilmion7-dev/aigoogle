@@ -1,4 +1,4 @@
-import type { DriveClient, DriveFile, DriveFolder, DriveSearchHit, ListResult } from "./types.js";
+import type { DriveClient, DriveFile, DriveFolder, DriveSearchHit, ListResult, UploadResult } from "./types.js";
 
 export interface MockSeed {
   folders: DriveFolder[];
@@ -34,6 +34,12 @@ export class MockDriveClient implements DriveClient {
         mimeType: f.mimeType,
         folderName: this.folders.find((d) => d.id === f.parents)?.name ?? "",
       }));
+  }
+  async upload(name: string, mimeType: string, bytes: Uint8Array, parentId = "root"): Promise<UploadResult> {
+    if (!this.hasFolder(parentId)) throw new Error("folder tidak ditemukan");
+    const id = `up-${this.files.length + 1}`;
+    this.files.push({ id, name, parents: parentId, mimeType, text: "" });
+    return { id, name, webViewLink: `https://drive.google.com/file/d/${id}/view` };
   }
   async getText(fileId: string): Promise<string> {
     return this.files.find((f) => f.id === fileId)?.text ?? "";

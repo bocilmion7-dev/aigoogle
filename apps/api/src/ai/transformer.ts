@@ -81,6 +81,8 @@ const ROUTER_SYSTEM =
   '- Untuk pertanyaan lanjutan ("yang kedua siapa?", "bandingkan keduanya", "dari pelanggan itu"), gunakan riwayat untuk resolve referensi.\n' +
   '- "cari/temukan/lacak faktur|file|dokumen|nota|kuitansi|PDF DI GOOGLE DRIVE" (pesan menyebut drive/google drive) → ' +
   'drive.findInvoices(keywords) — file DOKUMEN di Drive, BUKAN faktur Accurate. Tanpa kata "drive" → tool Accurate biasa.\n' +
+  '- "buatkan/bikin/cetak nota|faktur (PDF) lalu simpan/unggah/upload ke google drive" → drive.createDoc(docType, no?, date?, customerName?, items:[{name,qty,price}], note?, folder?) — ' +
+  'WAJIB isi items lengkap dari pesan/riwayat user. JANGAN null bila item disebut.\n' +
   "- Nama orang/barang boleh sebagian (\"Abadi\" → name:\"Abadi\").\n" +
   "- Tanggal format dd/mm/yyyy. Tanpa tanggal = semua periode.\n" +
   "- Bila ragu atau pertanyaan di luar cakupan tool, balas {\"tool\":null}.\n\n" +
@@ -1173,6 +1175,17 @@ const FORMATTERS: Record<string, Fmt> = {
       `Ditemukan ${files.length} file di Google Drive untuk "${kw}":\n\n` +
       mdTable(["Nama File", "Folder", "Terakhir Diubah", "Link"], rows)
     );
+  },
+
+  "drive.createDoc": (r) => {
+    const name = String(r.fileName ?? "");
+    const link = String(r.link ?? "");
+    const folder = String(r.folder ?? "Drive Saya");
+    const total = fmtMoney(r.total);
+    const kind = String(r.docType ?? "dokumen");
+    const kindLabel = kind.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+    const tail = link ? `\n\n[Buka ${name}](${link})` : "";
+    return `${kindLabel} ${name} sudah dibuat (total ${total}) dan diunggah ke Google Drive folder ${folder}.${tail}`;
   },
 
   "module.recordCount": (r) => {

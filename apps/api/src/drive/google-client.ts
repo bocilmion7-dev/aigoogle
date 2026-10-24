@@ -1,6 +1,7 @@
-import type { DriveClient, DriveFile, DriveFolder, DriveSearchHit, ListResult } from "./types.js";
+import type { DriveClient, DriveFile, DriveFolder, DriveSearchHit, ListResult, UploadResult } from "./types.js";
 
 const API = "https://www.googleapis.com/drive/v3";
+const UPLOAD_API = "https://www.googleapis.com/upload/drive/v3";
 
 /** Timeout per-request — endpoint Google bisa menggantung setelah koneksi half-open. */
 const FETCH_TIMEOUT_MS = 30_000;
@@ -31,6 +32,39 @@ export class GoogleDriveClient implements DriveClient {
       else files.push(row);
     }
     return { folders, files };
+  }
+
+  /** unggah file baru — multipart (metadata + isi) dalam satu request */
+  async upload(
+    name: string,
+    mimeType: string,
+    bytes: Uint8Array,
+    parentId = "root"
+  ): Promise<UploadResult> {
+    const boundary = `----aigoogle${Date.now().toString(16)}`;
+    const enc = new TextEncoder();
+    const meta = JSON.stringify({ name, parents: [parentId] });
+    const head = enc.encode(
+      `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${meta}\r\n` +
+        `--${boundary}\r\nContent-Type: ${mimeType}\r\n\r\n`
+    );
+    const tail = enc.encode(`\r\n--${boundary}--`);
+    const body = new Uint8Array(head.length + bytes.length + tail.length);
+    body.set(head, 0);
+    body.set(bytes, head.length);
+    body.set(tail, head.length + bytes.length);
+    const res = await this.fetch(
+      `${UPLOAD_API}/files?uploadType=multipart&fields=${encodeURIComponent("id,name,webViewLink")}`,
+      {
+        method: "POST",
+        headers: { ...this.headers(), "Content-Type": `multipart/related; boundary=${boundary}` },
+        body,
+      }
+    );
+    if (!res.ok) throw new Error(`drive upload gagal (${res.status})`);
+    const j = (await res.json()) as { id?: string; name?: string; webViewLink?: string };
+    if (!j.id) throw new Error("drive upload gagal (tanpa id)");
+    return { id: j.id, name: j.name ?? name, webViewLink: j.webViewLink };
   }
 
   /** cari file berdasarkan nama di SELURUH Drive (bukan per folder) */

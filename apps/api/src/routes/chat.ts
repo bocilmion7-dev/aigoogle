@@ -9,7 +9,7 @@ import { friendlyChatErrorMessage } from "../ai/chat-error-message.js";
 import { getModuleModel } from "../ai/module-model.js";
 import { runToolLoop } from "../ai/tool-loop.js";
 import { selectTools, toolStats } from "../ai/tool-selector.js";
-import { DRIVE_FIND, DRIVE_TOOLS, executeDriveTool } from "../ai/drive-tools.js";
+import { DRIVE_TOOLS, executeDriveTool } from "../ai/drive-tools.js";
 import { transformToRoute, formatAggregationResult } from "../ai/transformer.js";
 import type { LLMContent } from "../ai/llm-types.js";
 import { buildSystemPrompt } from "../ai/system-prompt.js";
@@ -134,7 +134,7 @@ chatRouter.post(
     // providerExecute dipakai BOTH fast path (transformer) & tool loop penuh
     const providerExecute = async (tool: string, args: Record<string, unknown>) => {
       // tool Google Drive tidak butuh sesi Accurate
-      if (tool === DRIVE_FIND) return executeDriveTool(user.tenant.id, tool, args);
+      if (DRIVE_TOOLS.some((t) => t.name === tool)) return executeDriveTool(user.tenant.id, tool, args);
       if (!liveCtx) return Promise.reject(new Error("koneksi Accurate belum aktif — hubungkan ulang di Pengaturan"));
       try {
         return await provider.execute(tool, args, liveCtx);

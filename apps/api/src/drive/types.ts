@@ -19,8 +19,15 @@ export interface DriveSearchHit extends DriveFile {
   webViewLink?: string;
   modifiedTime?: string;
 }
+export interface UploadResult {
+  id: string;
+  name: string;
+  webViewLink?: string;
+}
 export interface DriveClient {
   list(folderId: string): Promise<ListResult>;
+  /** unggah file baru (bytes) ke folder tujuan */
+  upload(name: string, mimeType: string, bytes: Uint8Array, parentId?: string): Promise<UploadResult>;
   /** cari file berdasarkan NAMA (lintas folder, bukan hanya 1 folder) */
   search(query: string, max?: number): Promise<DriveSearchHit[]>;
   getText(fileId: string): Promise<string>;
