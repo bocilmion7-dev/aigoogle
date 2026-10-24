@@ -5,6 +5,9 @@ import { prisma } from "../db.js";
 import { asyncHandler } from "../asyncHandler.js";
 import { requireUser } from "../middleware/session.js";
 import { driveClientFor, engineMode } from "../drive/registry.js";
+import { ensureFolder, folderNameFor } from "../drive/folders.js";
+import { docFileName } from "../doc/naming.js";
+import { requirePerm } from "../permissions.js";
 import { buildPlan, executePlan, executeUndo } from "../drive/tidy.js";
 import type { TidyPlanItem, TidyResultItem, UndoTarget } from "../drive/types.js";
 import { classifyFile } from "../drive/classify.js";
@@ -14,6 +17,65 @@ import { writeAudit } from "../audit.js";
 
 export const driveRouter = Router();
 const cancelFlags = new Map<string, boolean>();
+
+const MAX_UPLOAD = 15 * 1024 * 1024;
+
+async function readRaw(req: Express.Request, limit = MAX_UPLOAD): Promise<Buffer | null> {
+  const chunks: Buffer[] = [];
+  let size = 0;
+  const stream = req as unknown as AsyncIterable<Buffer | string>;
+  for await (const c of stream) {
+    const buf = Buffer.isBuffer(c) ? c : Buffer.from(c as string);
+    size += buf.length;
+    if (size > limit) return null;
+    chunks.push(buf);
+  }
+  return Buffer.concat(chunks);
+}
+
+function extOf(fileName: string, mime: string): string {
+  const ext = fileName.split(".").pop()?.toLowerCase() ?? "";
+  if (["jpg", "jpeg", "png", "webp", "gif", "bmp", "tif", "tiff", "pdf"].includes(ext)) return ext === "jpeg" ? "jpg" : ext;
+  if (mime === "image/png") return "png";
+  if (mime === "image/webp") return "webp";
+  if (mime === "application/pdf") return "pdf";
+  return "jpg";
+}
+
+/**
+ * Unggah file ASLI (foto dokumen) ke Drive — folder otomatis sesuai JENIS DOKUMEN.
+ * Header: x-file-name, Content-Type. Query: docType, label (jenis kustom), party, date (dd/mm/yyyy).
+ */
+driveRouter.post(
+  "/drive/upload",
+  rateLimit({ name: "drive-upload", windowMs: 60_000, max: 30 }),
+  requirePerm("app:drive.tidy"),
+  asyncHandler(async (req, res) => {
+    const buffer = await readRaw(req);
+    if (!buffer) return res.status(413).json({ error: "file_too_large" });
+    if (!buffer.length) return res.status(400).json({ error: "empty_file" });
+    const client = await driveClientFor(req.user!.tenant.id);
+    if (!client) return res.status(409).json({ error: "belum_connect" });
+
+    const fileNameHeader = String(req.header("x-file-name") ?? "dokumen.jpg").slice(0, 200);
+    const mime = String(req.header("content-type") ?? "application/octet-stream").split(";")[0]!.trim();
+    const docType = String(req.query.docType ?? "lainnya").slice(0, 40);
+    const label = String(req.query.label ?? "").slice(0, 60);
+    const party = String(req.query.party ?? "").slice(0, 200);
+    const date = String(req.query.date ?? "").slice(0, 20);
+
+    const folderName = folderNameFor(docType, label);
+    const parentId = await ensureFolder(client, folderName);
+    const name = docFileName(docType, date, party, extOf(fileNameHeader, mime), label);
+    const up = await client.upload(name, mime || "application/octet-stream", buffer, parentId);
+    await writeAudit(req.user!.tenant.id, req.user!.id, "drive.upload", {
+      docType,
+      name: up.name,
+      folder: folderName,
+    });
+    res.json({ ok: true, id: up.id, name: up.name, folder: folderName, link: up.webViewLink ?? "" });
+  })
+);
 
 driveRouter.get(
   "/drive/status",

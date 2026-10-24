@@ -4,6 +4,7 @@ import { LlmHttpError } from "../ai/llm-error.js";
 import type { LLMContent, LLMPart } from "../ai/llm-types.js";
 import type { DocKind } from "./extract.js";
 import { extractPdfImages, VISION_KINDS } from "./extract.js";
+import { ocrUsable } from "./ocr.js";
 
 export type DocType = "faktur" | "nota" | "kwitansi" | "lainnya";
 export type ScanTarget =
@@ -205,15 +206,30 @@ async function generateText(
   );
 }
 
+export interface ScanHint {
+  /** jenis yang dipilih pengguna (faktur/nota/kwitansi/screenshot-pembayaran/jenis kustom) */
+  docType?: string;
+  /** arah dana utk screenshot pembayaran: masuk|keluar|antar */
+  direction?: string;
+  /** label jenis kustom */
+  label?: string;
+}
+
 async function aiFields(opts: {
   parts: LLMPart[];
   /** modul penentu model: gambar → vision, dokumen → teks/vision sesuai jenis */
   module: "uploadImage" | "uploadDocument";
+  hint?: ScanHint;
 }): Promise<Awaited<ReturnType<typeof coerce>> | null> {
   let text = "";
+  const hintLine = opts.hint
+    ? `\n\nPETUNJUK PENGGUNA (konteks kuat, tetap verifikasi dari isi dokumen): jenis dokumen = "${
+        opts.hint.label || opts.hint.docType || "tidak disebut"
+      }"${opts.hint.direction ? `, arah dana = "${opts.hint.direction}"` : ""}.`
+    : "";
   try {
     const preferred = await getModuleModel(opts.module);
-    text = await generateText(opts.parts, FIELD_PROMPT, true, preferred);
+    text = await generateText(opts.parts, FIELD_PROMPT + hintLine, true, preferred);
   } catch {
     return null; // semua model gagal → fallback ekstraksi lokal
   }
@@ -228,8 +244,11 @@ export async function scanDocument(opts: {
   mime: string;
   fileName: string;
   localText: string;
+  /** teks hasil OCR lokal (gambar) — dipakai lebih dulu, gagal → vision */
+  ocrText?: string;
+  hint?: ScanHint;
 }): Promise<ScanResult> {
-  const { buffer, kind, mime, fileName, localText } = opts;
+  const { buffer, kind, mime, fileName, localText, ocrText = "" } = opts;
   const parts: LLMPart[] = [];
   let useLocalText = false;
   if (kind === "pdf") {
@@ -246,6 +265,15 @@ export async function scanDocument(opts: {
       }
       parts.push({ text: `Dokumen: ${fileName}` });
     }
+  } else if (kind === "image") {
+    // OCR lokal dulu (murah & cepat); gagal/tak berarti → vision
+    if (ocrUsable(ocrText)) {
+      parts.push({ text: `Dokumen: ${fileName}\n\nHasil OCR:\n${ocrText.slice(0, 12_000)}` });
+      useLocalText = true;
+    } else {
+      parts.push({ inlineData: { mimeType: mime, data: buffer.toString("base64") } });
+      parts.push({ text: `Dokumen: ${fileName}` });
+    }
   } else if (VISION_KINDS.has(kind)) {
     parts.push({ inlineData: { mimeType: mime, data: buffer.toString("base64") } });
     parts.push({ text: `Dokumen: ${fileName}` });
@@ -256,9 +284,13 @@ export async function scanDocument(opts: {
   const out = await aiFields({
     parts,
     module: kind === "image" ? "uploadImage" : "uploadDocument",
+    hint: opts.hint,
   });
   if (out) {
-    if (useLocalText && localText.trim()) out.rawText = localText;
+    if (useLocalText) {
+      const src = kind === "image" ? ocrText : localText;
+      if (src.trim()) out.rawText = src;
+    }
     const modul = out.suggestedModule;
     const target: ScanTarget | null =
       modul && KNOWN_TARGETS.has(modul)

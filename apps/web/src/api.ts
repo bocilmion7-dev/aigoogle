@@ -143,6 +143,7 @@ export interface ScanResponse {
   aiModule?: string | null;
   aiReason?: string | null;
   aiConfidence?: number | null;
+  ocrText?: string;
   warning?: string;
 }
 
@@ -273,11 +274,60 @@ export async function getCustomers(keywords = ""): Promise<CustomerRow[]> {
   return res.json();
 }
 
-export async function uploadScan(file: File): Promise<ScanResponse> {
+export async function uploadScan(
+  file: File,
+  hint?: { docType?: string; direction?: string; label?: string }
+): Promise<ScanResponse> {
   const res = await fetch("/api/customers/scan", {
     method: "POST",
-    headers: { "x-file-name": file.name, "Content-Type": file.type || "application/octet-stream" },
+    headers: {
+      "x-file-name": file.name,
+      "Content-Type": file.type || "application/octet-stream",
+      ...(hint ? { "x-doc-hint": JSON.stringify(hint) } : {}),
+    },
     body: file,
+  });
+  if (!res.ok) throw await apiError(res);
+  return res.json();
+}
+
+// ── Jenis dokumen kustom (per perusahaan) ────────────────────────────────────
+export interface DocTypeRow {
+  key: string;
+  label: string;
+  target?: string;
+}
+export const getDocTypes = () => adminFetch<{ types: DocTypeRow[] }>("/api/doc/types");
+export const putDocTypes = (types: DocTypeRow[]) =>
+  adminFetch<{ ok: boolean; types: DocTypeRow[] }>("/api/doc/types", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ types }),
+  });
+
+// ── Unggah file asli (foto dokumen) ke Drive — folder per jenis ───────────────
+export interface DriveUploadResult {
+  ok: boolean;
+  id: string;
+  name: string;
+  folder: string;
+  link: string;
+}
+export async function uploadDocToDrive(
+  blob: Blob,
+  opts: { fileName: string; docType: string; label?: string; party?: string; date?: string }
+): Promise<DriveUploadResult> {
+  const qs = new URLSearchParams({ docType: opts.docType });
+  if (opts.label) qs.set("label", opts.label);
+  if (opts.party) qs.set("party", opts.party);
+  if (opts.date) qs.set("date", opts.date);
+  const res = await fetch(`/api/drive/upload?${qs.toString()}`, {
+    method: "POST",
+    headers: {
+      "x-file-name": opts.fileName,
+      "Content-Type": opts.fileName.toLowerCase().endsWith(".png") ? "image/png" : "image/jpeg",
+    },
+    body: blob,
   });
   if (!res.ok) throw await apiError(res);
   return res.json();

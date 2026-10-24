@@ -37,6 +37,8 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
+      - name: OCR lokal (tesseract)
+        run: sudo apt-get update && sudo apt-get install -y tesseract-ocr tesseract-ocr-ind
       - run: pnpm install --frozen-lockfile
       - name: Prisma migrate
         working-directory: apps/api

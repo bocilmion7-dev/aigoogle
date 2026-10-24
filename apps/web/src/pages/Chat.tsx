@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import type { MessageInfo, SessionInfo } from "../chat-api";
 import { CHAT_TIMEOUT_MS, isTimeoutError, listMessages, listSessions, streamChat } from "../chat-api";
 import { MentionInput } from "../customer-mention";
+import { DocCapture } from "../doc-capture";
+import { getMe } from "../api";
 import { renderRichText } from "../rich-text";
 import { VoiceMode } from "../voice-mode";
 
@@ -36,6 +38,8 @@ export function Chat() {
   const [error, setError] = useState<string | null>(null);
   const [voiceMode, setVoiceMode] = useState(false);
   const [loadErr, setLoadErr] = useState<string | null>(null);
+  const [captureOpen, setCaptureOpen] = useState(false);
+  const [perms, setPerms] = useState<string[]>([]);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   async function loadSessions() {
@@ -52,6 +56,9 @@ export function Chat() {
   }
 
   useEffect(() => {
+    void getMe()
+      .then((m) => setPerms(m?.permissions ?? []))
+      .catch(() => null);
     void loadSessions();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -166,6 +173,14 @@ export function Chat() {
       </aside>
 
       <section style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
+        {captureOpen ? (
+          <DocCapture
+            perms={perms}
+            onClose={() => setCaptureOpen(false)}
+            onDone={(text) => setMsgs((m) => [...m, { role: "ai", content: text }])}
+          />
+        ) : (
+          <>
         <div
           role="log"
           aria-live="polite"
@@ -244,6 +259,20 @@ export function Chat() {
           <span className="composer__mic">
             <button
               className="btn btn--2"
+              onClick={() => setCaptureOpen(true)}
+              disabled={busy}
+              aria-label="Ambil foto dokumen"
+              title="Ambil foto dokumen (faktur/nota/kwitansi)"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                <circle cx="12" cy="13" r="4" />
+              </svg>
+            </button>
+          </span>
+          <span className="composer__mic">
+            <button
+              className="btn btn--2"
               onClick={() => setVoiceMode(true)}
               disabled={busy}
               aria-label="Buka mode suara"
@@ -260,6 +289,8 @@ export function Chat() {
             {busy ? "…" : "Kirim"}
           </button>
         </div>
+          </>
+        )}
       </section>
     </div>
   );

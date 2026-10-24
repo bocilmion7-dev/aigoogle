@@ -18,6 +18,7 @@ import { customersRouter } from "./routes/customers.js";
 import { webhookAccurateRouter, webhookRootRouter } from "./routes/webhook-accurate.js";
 import { LlmHttpError } from "./ai/llm-error.js";
 import { opsRouter } from "./routes/ops.js";
+import { docTypesRouter } from "./routes/doc-types.js";
 import { observe } from "./middleware/observe.js";
 import { rateLimit } from "./middleware/rate-limit.js";
 
@@ -61,6 +62,7 @@ export function createApp() {
   app.use("/api", billingRouter);
   app.use("/api", waRouter);
   app.use("/api", customersRouter);
+  app.use("/api", docTypesRouter);
   app.use("/api", webhookAccurateRouter);
   // POST /webhook — target URL webhook yang terdaftar di Area Developer Accurate
   app.use(webhookRootRouter);

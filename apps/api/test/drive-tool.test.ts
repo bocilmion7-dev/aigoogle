@@ -104,6 +104,23 @@ describe("tool drive.createDoc", () => {
   });
 });
 
+describe("folder Drive sesuai jenis dokumen", () => {
+  it("createDoc tanpa folder eksplisit → folder jenis (Nota)", async () => {
+    const out = (await executeDriveTool(TENANT, DRIVE_CREATE, {
+      docType: "nota",
+      date: "24/10/2026",
+      partyName: "Toko Folder",
+      items: [{ name: "Jasa", qty: 1, price: 10000 }],
+    })) as { folder: string; fileName: string };
+    expect(out.folder).toBe("Nota");
+    expect(out.fileName).toBe("24-10-2026-NOTA-Toko Folder.pdf");
+    const found = (await executeDriveTool(TENANT, DRIVE_FIND, { keywords: "Toko Folder" })) as {
+      files: Array<{ folder: string }>;
+    };
+    expect(found.files[0]?.folder).toBe("Nota");
+  });
+});
+
 describe("penamaan file dd-MM-yyyy-JENIS-NAMA", () => {
   it("faktur pembelian → label FAKTUR PEMBELIAN + nama pemasok", async () => {
     const out = (await executeDriveTool(TENANT, DRIVE_CREATE, {

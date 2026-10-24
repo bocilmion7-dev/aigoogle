@@ -1,6 +1,8 @@
 import type { ToolSpec } from "../providers/accounting/types.js";
 import { driveClientFor } from "../drive/registry.js";
 import { indexDrive, searchIndex } from "../drive/indexer.js";
+import { ensureFolder, folderNameFor } from "../drive/folders.js";
+import { DOC_LABEL, docFileName } from "../doc/naming.js";
 import { buildInvoicePdf, type DocKind, type InvoiceItem } from "../doc/invoice-pdf.js";
 import { prisma } from "../db.js";
 
@@ -158,39 +160,6 @@ export async function executeDriveTool(
 
 /** buat PDF nota/faktur → unggah ke Drive (folder opsional, auto-dibuat) */
 const DOC_KINDS: DocKind[] = ["faktur", "nota", "faktur-pembelian", "nota-pembelian"];
-const DOC_LABEL: Record<DocKind, string> = {
-  faktur: "FAKTUR",
-  nota: "NOTA",
-  "faktur-pembelian": "FAKTUR PEMBELIAN",
-  "nota-pembelian": "NOTA PEMBELIAN",
-};
-
-/** dd/mm/yyyy (atau ISO) → { d, m, y }; kosong → hari ini */
-function splitDate(raw: string): { d: string; m: string; y: string } {
-  const s = raw.trim();
-  const m = s.match(/(\d{4})-(\d{2})-(\d{2})/) ?? null;
-  if (m) return { d: m[3]!, m: m[2]!, y: m[1]! };
-  const m2 = s.match(/(\d{1,2})[/-](\d{1,2})[/-](\d{4})/);
-  if (m2) return { d: m2[1]!.padStart(2, "0"), m: m2[2]!.padStart(2, "0"), y: m2[3]! };
-  const now = new Date();
-  return {
-    d: String(now.getDate()).padStart(2, "0"),
-    m: String(now.getMonth() + 1).padStart(2, "0"),
-    y: String(now.getFullYear()),
-  };
-}
-
-/** nama file: dd-MM-yyyy-JENIS-NAMA PELANGGAN/PEMASOK.pdf */
-function docFileName(kind: DocKind, date: string, party: string): string {
-  const { d, m, y } = splitDate(date);
-  const clean = party
-    .replace(/[\\/:*?"<>|]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, 60);
-  const who = clean || "Umum";
-  return `${d}-${m}-${y}-${DOC_LABEL[kind]}-${who}.pdf`;
-}
 
 async function createDoc(tenantId: string, args: Record<string, unknown>): Promise<unknown> {
   const kindRaw = String(args.docType ?? "");
@@ -232,16 +201,11 @@ async function createDoc(tenantId: string, args: Record<string, unknown>): Promi
     note,
   });
 
-  // folder tujuan: pakai yang ada (nama sama) atau buat baru
-  let parentId = "root";
-  const folderName = String(args.folder ?? "").trim();
-  if (folderName) {
-    const root = await client.list("root");
-    const existing = root.folders.find((f) => f.name.toLowerCase() === folderName.toLowerCase());
-    parentId = existing ? existing.id : (await client.createFolder(folderName, "root")).id;
-  }
+  // folder tujuan: SELALU folder sesuai jenis dokumen (atau nama folder eksplisit)
+  const folderName = String(args.folder ?? "").trim() || folderNameFor(docType);
+  const parentId = await ensureFolder(client, folderName);
 
-  const fileName = docFileName(docType, date, customerName);
+  const fileName = docFileName(docType, date, customerName, "pdf", DOC_LABEL[docType]);
   const up = await client.upload(fileName, "application/pdf", bytes, parentId);
   const total = items.reduce((a, it) => a + it.qty * it.price, 0);
   return {

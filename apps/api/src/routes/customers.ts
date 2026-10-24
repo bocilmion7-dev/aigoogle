@@ -10,7 +10,8 @@ import { accurateProvider } from "../providers/accounting/index.js";
 import { cache, CACHE_TTL, invalidateTenantCache } from "../cache.js";
 import { writeAudit } from "../audit.js";
 import { detectKind, extractText, VISION_KINDS } from "../doc/extract.js";
-import { scanDocument } from "../doc/scan.js";
+import { scanDocument, type ScanHint } from "../doc/scan.js";
+import { ocrImage, ocrUsable } from "../doc/ocr.js";
 
 export const customersRouter = Router();
 
@@ -27,6 +28,30 @@ async function readRaw(req: Express.Request, limit = MAX_UPLOAD): Promise<Buffer
     chunks.push(buf);
   }
   return Buffer.concat(chunks);
+}
+
+function extOf(fileName: string, mime: string): string {
+  const ext = fileName.split(".").pop()?.toLowerCase() ?? "";
+  if (["jpg", "jpeg", "png", "webp", "gif", "bmp", "tif", "tiff"].includes(ext)) return ext === "jpeg" ? "jpg" : ext;
+  if (mime === "image/png") return "png";
+  if (mime === "image/webp") return "webp";
+  return "jpg";
+}
+
+/** header x-doc-hint: {"docType":"kwitansi","direction":"masuk","label":"..."} */
+function parseHint(raw: string | undefined): ScanHint | undefined {
+  if (!raw) return undefined;
+  try {
+    const v = JSON.parse(raw) as Record<string, unknown>;
+    const hint: ScanHint = {
+      docType: typeof v.docType === "string" ? v.docType.slice(0, 60) : undefined,
+      direction: typeof v.direction === "string" ? v.direction.slice(0, 20) : undefined,
+      label: typeof v.label === "string" ? v.label.slice(0, 60) : undefined,
+    };
+    return hint.docType || hint.direction || hint.label ? hint : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 async function ocrMode(): Promise<"vision" | "text"> {
@@ -128,19 +153,24 @@ customersRouter.post(
 
     const mode = await ocrMode();
     const vision = VISION_KINDS.has(kind);
-    if (vision && mode !== "vision") return res.status(409).json({ error: "vision_ocr_nonaktif" });
-
     const localText = await extractText(buffer, kind);
+    // gambar: OCR lokal (tesseract) dulu — berhasil → tak perlu vision
+    const ocrText = kind === "image" ? await ocrImage(buffer, extOf(fileName, mime)) : "";
+    const ocrOk = kind === "image" && ocrUsable(ocrText);
+    if (vision && mode !== "vision" && !ocrOk) return res.status(409).json({ error: "vision_ocr_nonaktif" });
     if (!vision && !localText.trim()) return res.status(422).json({ error: "empty_text" });
 
     const out = await scanDocument({
       buffer, kind, mime, fileName,
       localText,
+      ocrText,
+      hint: parseHint(req.header("x-doc-hint")),
     });
     res.json({
       fileName,
       kind,
       rawText: out.rawText,
+      ocrText: ocrText || undefined,
       fields: out.fields,
       suggestedTarget: out.target,
       aiModule: out.aiModule ?? null,
