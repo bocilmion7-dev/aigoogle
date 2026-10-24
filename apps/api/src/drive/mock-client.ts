@@ -1,4 +1,4 @@
-import type { DriveClient, DriveFile, DriveFolder, ListResult } from "./types.js";
+import type { DriveClient, DriveFile, DriveFolder, DriveSearchHit, ListResult } from "./types.js";
 
 export interface MockSeed {
   folders: DriveFolder[];
@@ -21,6 +21,19 @@ export class MockDriveClient implements DriveClient {
       folders: this.folders.filter((f) => f.parents === folderId),
       files: this.files.filter((f) => f.parents === folderId),
     };
+  }
+  async search(query: string, max = 25): Promise<DriveSearchHit[]> {
+    const q = query.trim().toLowerCase();
+    return this.files
+      .filter((f) => !q || f.name.toLowerCase().includes(q))
+      .slice(0, max)
+      .map((f) => ({
+        id: f.id,
+        name: f.name,
+        parents: f.parents,
+        mimeType: f.mimeType,
+        folderName: this.folders.find((d) => d.id === f.parents)?.name ?? "",
+      }));
   }
   async getText(fileId: string): Promise<string> {
     return this.files.find((f) => f.id === fileId)?.text ?? "";

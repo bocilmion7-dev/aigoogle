@@ -1,4 +1,4 @@
-import type { DriveClient, DriveFile, DriveFolder, ListResult } from "./types.js";
+import type { DriveClient, DriveFile, DriveFolder, DriveSearchHit, ListResult } from "./types.js";
 
 const API = "https://www.googleapis.com/drive/v3";
 
@@ -33,8 +33,53 @@ export class GoogleDriveClient implements DriveClient {
     return { folders, files };
   }
 
-  async getText(fileId: string): Promise<string> {
-    const meta = await this.fetch(`${API}/files/${fileId}?fields=mimeType`, { headers: this.headers() });
+  /** cari file berdasarkan nama di SELURUH Drive (bukan per folder) */
+  async search(query: string, max = 25): Promise<DriveSearchHit[]> {
+    // escape kutip/titik-miring — query Drive memakai sintaks 'name contains "...'
+    const q = query.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+    const dq = encodeURIComponent(`trashed=false and name contains '${q}'`);
+    const url =
+      `${API}/files?q=${dq}` +
+      `&fields=${encodeURIComponent("files(id,name,parents,mimeType,webViewLink,modifiedTime)")}` +
+      `&pageSize=${max}&orderBy=${encodeURIComponent("modifiedTime desc")}`;
+    const res = await this.fetch(url, { headers: this.headers() });
+    if (!res.ok) throw new Error(`drive search gagal (${res.status})`);
+    const j = (await res.json()) as {
+      files?: Array<DriveFile & { webViewLink?: string; modifiedTime?: string }>;
+    };
+    const files = j.files ?? [];
+    const names = await this.folderNames(files.map((f) => f.parents?.[0]).filter((x): x is string => Boolean(x)));
+    return files.map((f) => ({
+      id: f.id,
+      name: f.name,
+      parents: f.parents?.[0] ?? "",
+      mimeType: f.mimeType,
+      webViewLink: f.webViewLink,
+      modifiedTime: f.modifiedTime,
+      folderName: names.get(f.parents?.[0] ?? "") ?? "",
+    }));
+  }
+
+  /** nama folder induk utk ditampilkan di hasil pencarian (maks 10 unik, paralel) */
+  private async folderNames(ids: string[]): Promise<Map<string, string>> {
+    const out = new Map<string, string>([["root", "Drive Saya"]]);
+    const uniq = [...new Set(ids)].filter((id) => id && id !== "root").slice(0, 10);
+    await Promise.all(
+      uniq.map(async (id) => {
+        try {
+          const res = await this.fetch(`${API}/files/${id}?fields=name`, { headers: this.headers() });
+          if (!res.ok) return;
+          const j = (await res.json()) as { name?: string };
+          if (j.name) out.set(id, j.name);
+        } catch {
+          // nama folder gagal diambil → tampil kosong, bukan menggagalkan pencarian
+        }
+      })
+    );
+    return out;
+  }
+
+  async getText(fileId: string): Promise<string> {    const meta = await this.fetch(`${API}/files/${fileId}?fields=mimeType`, { headers: this.headers() });
     if (!meta.ok) throw new Error(`drive meta gagal (${meta.status})`);
     const { mimeType } = (await meta.json()) as { mimeType: string };
     const url = mimeType.startsWith("application/vnd.google-apps.")

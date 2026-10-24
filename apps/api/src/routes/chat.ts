@@ -9,6 +9,7 @@ import { friendlyChatErrorMessage } from "../ai/chat-error-message.js";
 import { getModuleModel } from "../ai/module-model.js";
 import { runToolLoop } from "../ai/tool-loop.js";
 import { selectTools, toolStats } from "../ai/tool-selector.js";
+import { DRIVE_FIND, DRIVE_TOOLS, executeDriveTool } from "../ai/drive-tools.js";
 import { transformToRoute, formatAggregationResult } from "../ai/transformer.js";
 import type { LLMContent } from "../ai/llm-types.js";
 import { buildSystemPrompt } from "../ai/system-prompt.js";
@@ -119,7 +120,11 @@ chatRouter.post(
     ]);
     const provider = accurateProvider();
     // dynamic tool selection — hanya kirim tool relevan dgn pertanyaan (hemat ~90% input token)
-    const tools = selectTools(body.data.message, provider.capabilityCatalog());
+    // + tool Google Drive (khusus pemegang hak Rapikan Drive)
+    const tools = [
+      ...selectTools(body.data.message, provider.capabilityCatalog()),
+      ...(permissions.has("app:drive.tidy") ? DRIVE_TOOLS : []),
+    ];
     const stats = toolStats(tools);
     console.log(`[chat] tools: ${stats.count}/${provider.capabilityCatalog().length} (~${stats.approxTokens} tok) | msg: ${body.data.message.slice(0, 80)}`);
     // ctx bisa berubah setelah refresh session "Upsss..."
@@ -128,6 +133,8 @@ chatRouter.post(
 
     // providerExecute dipakai BOTH fast path (transformer) & tool loop penuh
     const providerExecute = async (tool: string, args: Record<string, unknown>) => {
+      // tool Google Drive tidak butuh sesi Accurate
+      if (tool === DRIVE_FIND) return executeDriveTool(user.tenant.id, tool, args);
       if (!liveCtx) return Promise.reject(new Error("koneksi Accurate belum aktif — hubungkan ulang di Pengaturan"));
       try {
         return await provider.execute(tool, args, liveCtx);
@@ -162,7 +169,9 @@ chatRouter.post(
         model: preferredModel || (await getDefaultModel()),
       });
       if (route) {
-        const spec = provider.capabilityCatalog().find((t) => t.name === route.tool);
+        const spec =
+          provider.capabilityCatalog().find((t) => t.name === route.tool) ??
+          DRIVE_TOOLS.find((t) => t.name === route.tool);
         const label = spec && "label" in spec ? (spec as { label?: string }).label : undefined;
         const perm = spec && "requiredPermission" in spec ? (spec as { requiredPermission?: string }).requiredPermission : undefined;
         if (!perm || permissions.has(perm)) {

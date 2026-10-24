@@ -24,6 +24,15 @@ describe("MockDriveClient", () => {
     expect(kids.files.map((f) => f.name).sort()).toEqual(["faktur-001.pdf", "kuitansi-sewa.pdf", "logo.png"]);
   });
 
+  it("search: cari nama file lintas folder (case-insensitive)", async () => {
+    const c = mock();
+    const hits = await c.search("FAKTUR");
+    expect(hits.map((h) => h.name)).toEqual(["faktur-001.pdf"]);
+    expect(hits[0]!.folderName).toBe("Scan Oktober");
+    // tanpa kata kunci → semua file (dibatasi max)
+    expect((await c.search("", 2)).length).toBe(2);
+  });
+
   it("get file text by id", async () => {
     const c = mock();
     expect(await c.getText("pdf1")).toContain("Faktur penjualan");

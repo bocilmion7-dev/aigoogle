@@ -80,6 +80,33 @@ function parseSegments(content: string): Seg[] {
   return out;
 }
 
+const LINK_RE = /\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g;
+
+/** tautan markdown [teks](https://…) → <a>; teks lain dibiarkan apa adanya */
+function renderInline(text: string): ReactNode {
+  if (!text.includes("](")) return text;
+  const out: ReactNode[] = [];
+  let last = 0;
+  for (const m of text.matchAll(LINK_RE)) {
+    const at = m.index ?? 0;
+    if (at > last) out.push(text.slice(last, at));
+    out.push(
+      <a
+        key={`${at}-${m[2]}`}
+        href={m[2]}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {m[1]}
+      </a>
+    );
+    last = at + m[0].length;
+  }
+  if (last < text.length) out.push(text.slice(last));
+  return out.length ? out : text;
+}
+
 function TableView({ tbl, big, onOpen }: { tbl: Tbl; big?: boolean; onOpen?: () => void }) {
   const table = (
     <table className={`dtable${big ? " dtable--lg" : ""}`}>
@@ -97,7 +124,7 @@ function TableView({ tbl, big, onOpen }: { tbl: Tbl; big?: boolean; onOpen?: () 
           <tr key={ri}>
             {row.map((cell, ci) => (
               <td key={ci} className={tbl.right[ci] ? "num" : undefined}>
-                {cell}
+                {renderInline(cell)}
               </td>
             ))}
           </tr>
@@ -107,29 +134,24 @@ function TableView({ tbl, big, onOpen }: { tbl: Tbl; big?: boolean; onOpen?: () 
   );
   if (!onOpen) return table;
   return (
-    <div
-      className="tbl-wrap"
-      role="button"
-      tabIndex={0}
-      aria-label="Perbesar tabel"
-      title="Klik untuk memperbesar"
-      onClick={onOpen}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onOpen();
-        }
-      }}
-    >
+    <div className="tbl-wrap" title="Klik untuk memperbesar" onClick={onOpen}>
       {table}
-      <span className="tbl-wrap__zoom" aria-hidden="true">
+      <button
+        type="button"
+        className="tbl-wrap__zoom"
+        aria-label="Perbesar tabel"
+        onClick={(e) => {
+          e.stopPropagation();
+          onOpen();
+        }}
+      >
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
           <path d="M15 3h6v6" />
           <path d="M9 21H3v-6" />
           <path d="M21 3l-7 7" />
           <path d="M3 21l7-7" />
         </svg>
-      </span>
+      </button>
     </div>
   );
 }
@@ -188,7 +210,7 @@ export function renderRichText(content: string): ReactNode[] {
   return parseSegments(content).map((s, i) =>
     s.type === "text" ? (
       <div key={i} className="rich-text">
-        {s.text}
+        {renderInline(s.text)}
       </div>
     ) : (
       <TableBlock key={i} tbl={s.tbl} />

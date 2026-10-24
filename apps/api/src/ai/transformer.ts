@@ -1,6 +1,7 @@
 import type { LLMClient } from "./llm-client.js";
 import type { LLMContent } from "./llm-types.js";
 import { AGGREGATION_TOOLS } from "../providers/accounting/aggregation.js";
+import { DRIVE_TOOLS } from "./drive-tools.js";
 
 
 /**
@@ -21,7 +22,7 @@ export interface Route {
 }
 
 /** katalog ringkas utk prompt router: nama + tujuan 1 kalimat + argumen */
-const ROUTER_CATALOG = AGGREGATION_TOOLS.map((t) => {
+const ROUTER_CATALOG = [...AGGREGATION_TOOLS, ...DRIVE_TOOLS].map((t) => {
   const schema = t.jsonSchema as { properties?: Record<string, unknown>; required?: string[] };
   const props = Object.keys(schema.properties ?? {});
   const required = schema.required ?? [];
@@ -78,6 +79,8 @@ const ROUTER_SYSTEM =
   '- "berapa total nilai seluruh job order / job order mana nilainya terbesar" → jobOrder.summary (tanpa argumen).\n' +
   '- "saldo di kartu pelanggan/pemasok paling besar (di kartu)" → party.cardBalance (side, limit) — BUKAN receivables.summary.\n' +
   '- Untuk pertanyaan lanjutan ("yang kedua siapa?", "bandingkan keduanya", "dari pelanggan itu"), gunakan riwayat untuk resolve referensi.\n' +
+  '- "cari/temukan/lacak faktur|file|dokumen|nota|kuitansi|PDF DI GOOGLE DRIVE" (pesan menyebut drive/google drive) → ' +
+  'drive.findInvoices(keywords) — file DOKUMEN di Drive, BUKAN faktur Accurate. Tanpa kata "drive" → tool Accurate biasa.\n' +
   "- Nama orang/barang boleh sebagian (\"Abadi\" → name:\"Abadi\").\n" +
   "- Tanggal format dd/mm/yyyy. Tanpa tanggal = semua periode.\n" +
   "- Bila ragu atau pertanyaan di luar cakupan tool, balas {\"tool\":null}.\n\n" +
@@ -1151,6 +1154,24 @@ const FORMATTERS: Record<string, Fmt> = {
       `• Kas masuk: ${fmtMoney(cashIn)}\n` +
       `• Kas keluar: ${fmtMoney(cashOut)}\n` +
       `• Selisih: ${fmtMoney(net)}`
+    );
+  },
+
+  "drive.findInvoices": (r) => {
+    const files = Array.isArray(r.files) ? (r.files as Array<Record<string, unknown>>) : [];
+    const kw = String(r.keywords ?? "");
+    if (files.length === 0) {
+      return `Tidak ada file di Google Drive yang cocok dengan "${kw}".`;
+    }
+    const rows = files.map((f) => [
+      String(f.name ?? ""),
+      String(f.folder ?? "") || "—",
+      fmtDate(f.modified),
+      f.link ? `[Buka](${String(f.link)})` : "—",
+    ]);
+    return (
+      `Ditemukan ${files.length} file di Google Drive untuk "${kw}":\n\n` +
+      mdTable(["Nama File", "Folder", "Terakhir Diubah", "Link"], rows)
     );
   },
 

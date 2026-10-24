@@ -13,8 +13,16 @@ export interface ListResult {
   folders: DriveFolder[];
   files: DriveFile[];
 }
+/** hasil pencarian file lintas folder (chat: "cari faktur di Google Drive") */
+export interface DriveSearchHit extends DriveFile {
+  folderName: string;
+  webViewLink?: string;
+  modifiedTime?: string;
+}
 export interface DriveClient {
   list(folderId: string): Promise<ListResult>;
+  /** cari file berdasarkan NAMA (lintas folder, bukan hanya 1 folder) */
+  search(query: string, max?: number): Promise<DriveSearchHit[]>;
   getText(fileId: string): Promise<string>;
   getBytes?(fileId: string): Promise<Uint8Array>;
   createFolder(name: string, parents: string): Promise<DriveFolder>;
