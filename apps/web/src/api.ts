@@ -340,3 +340,28 @@ export const putAiModuleModels = (body: Partial<Record<AiModuleKey, string>>) =>
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
+
+export interface UsagePayload {
+  today: { calls: number; tokens: number };
+  limit: number;
+  days: Array<{ day: string; calls: number; tokens: number }>;
+}
+export const getUsage = () => adminFetch<UsagePayload>("/api/usage");
+
+export interface PlatformAnalytics {
+  since: string;
+  totals: { tenants: number; calls: number; tokens: number };
+  tenants: Array<{
+    tenantId: string;
+    name: string;
+    alias: string;
+    calls: number;
+    tokens: number;
+    promptTokens: number;
+    completionTokens: number;
+    sessions: number;
+    users: number;
+    lastDay: string;
+  }>;
+}
+export const getPlatformAnalytics = () => adminFetch<PlatformAnalytics>("/api/platform/analytics");

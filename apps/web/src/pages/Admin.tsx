@@ -3,6 +3,8 @@ import {
   getAdminTenants,
   getAdminUsers,
   getAuditLogs,
+  getPlatformAnalytics,
+  getUsage,
   getConnections,
   getMe,
   getPrivileges,
@@ -13,12 +15,14 @@ import {
   type AdminUser,
   type AuditRow,
   type PrivilegesPayload,
+  type PlatformAnalytics,
+  type UsagePayload,
 } from "../api";
 import type { ConnectionInfo } from "@aigoogle/shared";
 import { AppHeader, PageLoader } from "../ui";
 import { ACCURATE_OAUTH_CTA } from "../oauth";
 
-type Tab = "users" | "roles" | "audit";
+type Tab = "users" | "roles" | "audit" | "usage";
 
 export function Admin() {
   const [tab, setTab] = useState<Tab>("users");
@@ -35,6 +39,8 @@ export function Admin() {
   const [selTenant, setSelTenant] = useState<string>(""); // Admin Platform: perusahaan yang sedang dikelola
   const [openUser, setOpenUser] = useState<string | null>(null); // baris detail mobile
   const [me, setMe] = useState<Awaited<ReturnType<typeof getMe>> | undefined>(undefined);
+  const [usage, setUsage] = useState<UsagePayload | null>(null);
+  const [platformUsage, setPlatformUsage] = useState<PlatformAnalytics | null>(null);
   const isAdmin = !!me?.permissions?.includes("app:users.manage");
   const canSettings = !!me?.permissions?.includes("app:settings.manage"); // Admin Platform saja
 
@@ -93,6 +99,11 @@ export function Admin() {
     if (tab === "audit") {
       setErr(null);
       void getAuditLogs(50, selTenant || undefined).then(setAudit).catch(onFetchErr);
+    }
+    if (tab === "usage") {
+      setErr(null);
+      void getUsage().then(setUsage).catch(onFetchErr);
+      if (canSettings) void getPlatformAnalytics().then(setPlatformUsage).catch(() => null);
     }
     if (tab === "roles" && selRole) {
       const role = roles.find((x) => x.id === selRole);
@@ -222,6 +233,9 @@ export function Admin() {
           </button>
           <button className="tab" aria-pressed={tab === "audit"} onClick={() => setTab("audit")}>
             Audit
+          </button>
+          <button className="tab" aria-pressed={tab === "usage"} onClick={() => setTab("usage")}>
+            Pemakaian AI
           </button>
         </div>
 
@@ -369,6 +383,73 @@ export function Admin() {
                 Simpan Hak Akses
               </button>
             </div>
+          </div>
+        )}
+
+        {tab === "usage" && (
+          <div>
+            <div className="card" style={{ marginBottom: "var(--space-m)" }}>
+              <strong>Pemakaian AI hari ini</strong>
+              <p style={{ color: "var(--ink-2)", margin: "var(--space-xs) 0 0" }}>
+                {usage
+                  ? `${usage.today.tokens.toLocaleString("id-ID")} token dari ${usage.today.calls.toLocaleString("id-ID")} panggilan` +
+                    (usage.limit > 0 ? ` · kuota harian ${usage.limit.toLocaleString("id-ID")} token` : " · tanpa kuota")
+                  : "Memuat…"}
+              </p>
+            </div>
+            {usage && usage.days.length > 0 && (
+              <div className="table-wrap">
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th scope="col">Tanggal</th>
+                      <th scope="col">Panggilan</th>
+                      <th scope="col">Token</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[...usage.days].reverse().map((d) => (
+                      <tr key={d.day}>
+                        <td>{d.day}</td>
+                        <td>{d.calls.toLocaleString("id-ID")}</td>
+                        <td>{d.tokens.toLocaleString("id-ID")}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            {platformUsage && (
+              <>
+                <h3 style={{ margin: "var(--space-l) 0 var(--space-s)" }}>Semua perusahaan (30 hari)</h3>
+                <div className="table-wrap">
+                  <table className="table">
+                    <thead>
+                      <tr>
+                        <th scope="col">Perusahaan</th>
+                        <th scope="col">Panggilan</th>
+                        <th scope="col">Token</th>
+                        <th scope="col">Sesi</th>
+                        <th scope="col">User</th>
+                        <th scope="col">Terakhir</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {platformUsage.tenants.map((t) => (
+                        <tr key={t.tenantId}>
+                          <td>{t.name}</td>
+                          <td>{t.calls.toLocaleString("id-ID")}</td>
+                          <td>{t.tokens.toLocaleString("id-ID")}</td>
+                          <td>{t.sessions}</td>
+                          <td>{t.users}</td>
+                          <td>{t.lastDay || "-"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
           </div>
         )}
 

@@ -1,0 +1,20 @@
+{
+  "name": "AI Asisten — Accurate Assistant",
+  "short_name": "AI Asisten",
+  "description": "Chat akuntansi AI, rapikan Google Drive, dan notifikasi WhatsApp untuk Accurate Online.",
+  "start_url": "/app",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#f7f4ee",
+  "theme_color": "#1a1a17",
+  "lang": "id",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
