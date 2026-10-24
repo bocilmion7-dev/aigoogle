@@ -23,8 +23,8 @@ function isTableLine(line: string): boolean {
 function parseCells(line: string): string[] {
   const t = line.trim();
   const inner = t.startsWith("|") ? t.slice(1) : t;
-  const end = inner.lastIndexOf("|");
-  const body = end > 0 ? inner.slice(0, end) : inner;
+  // buang pipa penutup (opsional dlm GFM) — kecuali bagian dari \| yang di-escape
+  const body = inner.endsWith("|") && !inner.endsWith("\\|") ? inner.slice(0, -1) : inner;
   return body.split(/(?<!\\)\|/).map((c) => c.trim().replace(/\\\|/g, "|"));
 }
 
