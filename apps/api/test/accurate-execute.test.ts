@@ -68,9 +68,9 @@ describe("AccurateAdapter execute/refresh/privilege", () => {
     expect(admin.allowViewModules).toEqual(expect.arrayContaining(["customer", "sales-invoice"]));
   });
 
-  it("capabilityCatalog → 366 tool cakupan penuh + 43 tool agregasi, teranotasi permission", () => {
+  it("capabilityCatalog → 366 tool cakupan penuh + 48 tool agregasi, teranotasi permission", () => {
     const cat = adapter.capabilityCatalog();
-    expect(cat).toHaveLength(409);
+    expect(cat).toHaveLength(414);
     expect(cat.map((t) => t.name)).toEqual(
       expect.arrayContaining([
         "customer.detail", "customer.list", "glaccount.list", "item.list",

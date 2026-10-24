@@ -20,9 +20,14 @@ process.on("uncaughtException", (err) => {
   process.exit(1);
 });
 
-createApp().listen(env.PORT, () => {
+const server = createApp().listen(env.PORT, () => {
   console.log(`api :${env.PORT}`);
 });
+// Koneksi keepalive dijaga jelas (standar pair utk proxy nginx):
+// Node menutup socket idle sendiri — tak ada koneksi setengah mati yg
+// menggantung di event loop menunggu klien yang sudah pergi.
+server.keepAliveTimeout = 65_000;
+server.headersTimeout = 70_000;
 
 // Scheduler WA — tiap 15 menit (produksi: cron eksternal)
 setInterval(

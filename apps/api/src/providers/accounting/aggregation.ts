@@ -291,15 +291,18 @@ export const AGGREGATION_TOOLS: AggToolSpec[] = [
     description:
       "Barang PALING LARIS pada satu periode (diurutkan dari jumlah terjual) — dalam SATU tool. " +
       "Langsung pakai tool ini utk \"barang apa yang paling laris / terlaris bulan ini\" — JANGAN pakai item.list / salesInvoice.list + detail satu per satu. " +
+      "\"sepanjang masa / selama ini / sejauh ini\" → isi fromDate 01/01/1950 & toDate 31/12/2100 (default tanpa tanggal = HANYA bulan berjalan). " +
       "Tiap baris: qty terjual, nilai total, dan avgUnitPrice (harga rata-rata terjual) → cukup utk \"barang mana yang paling besar nilainya\". " +
       "Harga jual terkini / stok SATU barang pakai item.byName. " +
-      "Argumen: fromDate & toDate (dd/mm/yyyy, default bulan berjalan), limit (jumlah baris, default 10).",
+      "Argumen: fromDate & toDate (dd/mm/yyyy, default bulan berjalan), limit (jumlah baris, default 10), " +
+      "years (array tahun, mis. [2016,2017] → barang terlaris PER TAHUN dalam satu panggilan).",
     jsonSchema: {
       type: "object",
       properties: {
-        fromDate: { type: "string", description: "Tanggal mulai (dd/mm/yyyy, cth: 01/10/2026)" },
-        toDate: { type: "string", description: "Tanggal akhir (dd/mm/yyyy, cth: 17/10/2026)" },
+        fromDate: { type: "string", description: "Tanggal mulai (dd/mm/yyyy; \"sepanjang masa\" → 01/01/1950; default bulan berjalan)" },
+        toDate: { type: "string", description: "Tanggal akhir (dd/mm/yyyy; \"sepanjang masa\" → 31/12/2100; default bulan berjalan)" },
         limit: { type: "number", description: "Jumlah barang teratas (default 10)" },
+        years: { type: "array", items: { type: "integer" }, description: "Beberapa tahun → terlaris per tahun (mis. [2016,2017])" },
       },
     },
     requiredPermission: "accurate:sales-invoice.view",
@@ -395,13 +398,15 @@ export const AGGREGATION_TOOLS: AggToolSpec[] = [
       "Langsung pakai tool ini utk \"berapa total piutang perusahaan\" / \"siapa yang paling banyak berutang\". " +
       "Untuk piutang SATU pelanggan pakai customer.unpaidByName; untuk daftar semua pelanggan pakai receivables.summary ini. " +
       "Bila user menanya piutang \"tahun/bulan X\" (periode faktur), isi fromDate & toDate — hasil hanya faktur periode itu yg belum dibayar. " +
-      "Argumen: limit (jumlah pelanggan teratas, default 10), fromDate & toDate opsional (dd/mm/yyyy, kosong = semua periode).",
+      "Utk DUA tahun sekaligus (\"piutang tahun 2016 dan 2017\") isi years: [2016,2017] — hasil per tahun dalam satu panggilan. " +
+      "Argumen: limit (jumlah pelanggan teratas, default 10), fromDate & toDate opsional (dd/mm/yyyy, kosong = semua periode), years opsional.",
     jsonSchema: {
       type: "object",
       properties: {
         limit: { type: "number", description: "Jumlah pelanggan teratas (default 10)" },
         fromDate: { type: "string", description: "Tanggal mulai faktur (dd/mm/yyyy, kosong = semua)" },
         toDate: { type: "string", description: "Tanggal akhir faktur (dd/mm/yyyy, kosong = semua)" },
+        years: { type: "array", items: { type: "integer" }, description: "Beberapa tahun → total piutang per tahun (mis. [2016,2017])" },
       },
     },
     requiredPermission: "accurate:sales-invoice.view",
@@ -663,11 +668,13 @@ export const AGGREGATION_TOOLS: AggToolSpec[] = [
     description:
       "Piutang usaha + utang usaha SEKALIGUS dalam SATU panggilan: total masing-masing, jumlah faktur tiap sisi, " +
       "serta mana yang lebih besar beserta selisihnya — semua DIHITUNG dari nilai asli (presisi). " +
-      "Utk \"berapa total piutang usaha dan total utang usaha\", \"mana yang lebih besar: piutang atau utang\". " +
-      "Bukan utk periode tahun/bulan tertentu (itu pakai receivables.summary + payables.summary terpisah).",
+      "Utk \"berapa total piutang usaha dan total utang usaha\", \"mana yang lebih besar: piutang atau utang\", " +
+      "\"piutang dan utang dari transaksi tahun 2016\" (isi fromDate 01/01/2016 & toDate 31/12/2016, dd/mm/yyyy).",
     jsonSchema: {
       type: "object",
       properties: {
+        fromDate: { type: "string", description: "Tanggal mulai periode transaksi (dd/mm/yyyy) — opsional" },
+        toDate: { type: "string", description: "Tanggal akhir periode transaksi (dd/mm/yyyy) — opsional" },
         limit: { type: "number", description: "Jumlah pelanggan/pemasok teratas tiap sisi (default 5)" },
       },
     },
@@ -792,9 +799,213 @@ export const AGGREGATION_TOOLS: AggToolSpec[] = [
     requires: ["accurate:item.view"],
     label: "Mengurutkan barang stok terbanyak…",
   },
+  {
+    name: "module.recordCount",
+    description:
+      "Hitung jumlah record SATU atau LEBIH modul daftar (non-faktur) dalam SATU panggilan — " +
+      "args: modules = array nama modul ATAU module = satu nama modul " +
+      "(customer, vendor, glaccount, warehouse, unit, tax, currency, department, project, branch, employee, " +
+      "paymentTerm, priceCategory, itemCategory, customerCategory, vendorCategory, salesOrder, purchaseOrder, " +
+      "salesQuotation, purchaseRequisition, salesReceipt, deliveryOrder, purchasePayment, bankTransfer, expense, " +
+      "receiveItem, otherDeposit, otherPayment, itemAdjustment, itemTransfer, journalVoucher, salesReturn, " +
+      "purchaseReturn, fixedAsset, jobOrder, accessPrivilege, fob, freeonboard, rollOver, stockOpnameOrder, " +
+      "stockOpnameResult, salesmanCommission, autoNumber, shipment, workOrder, billOfMaterial, exchangeInvoice, " +
+      "sellingpriceAdjustment, dataClassification, accountBudgetTarget, customerClaim, vendorClaim, vendorPrice, " +
+      "itemBrand, salesCheckin, manufactureOrder, materialAdjustment, materialSlip, finishedGoodSlip, " +
+      "standardProductCost, processStages, bomProcessCategory, woPic), " +
+      "year = 1 tahun, years = beberapa tahun terpisah, withNames = sertakan daftar nama, " +
+      "withLatest = transaksi paling baru, withByYear = jumlah per tahun, search = cari teks di nama/nomor/deskripsi, " +
+      "sum = jumlahkan kolom numerik (mis. quantity) — utk SEMUA pola \"ada berapa/banyak X tercatat/terdaftar\", " +
+      "\"apa saja X yang ada\", \"berapa A dan B (beberapa modul)\", \"X tahun Y\", \"transaksi terbaru\"; " +
+      "faktur penjualan/pembelian & barang pakai tool khusus (statusCounts / summary / stockOverview), " +
+      "JANGAN .list manual lalu hitung sendiri",
+    jsonSchema: {
+      type: "object",
+      properties: {
+        modules: { type: "array", items: { type: "string" }, description: "Nama modul (array), mis. [\"warehouse\",\"unit\"]" },
+        module: { type: "string", description: "Satu nama modul (alternatif dari modules)" },
+        year: { type: "integer", description: "Hanya transDate tahun ini (cth: 2016)" },
+        years: { type: "array", items: { type: "integer" }, description: "Beberapa tahun → hitung terpisah per tahun" },
+        withNames: { type: "boolean", description: "Sertakan daftar nama (utk \"apa saja X\")" },
+        withLatest: { type: "boolean", description: "Sertakan transaksi paling baru (nomor, tanggal, jumlah)" },
+        withByYear: { type: "boolean", description: "Sertakan jumlah record per tahun" },
+        search: { type: "string", description: "Cocokkan teks pada nama/nomor/deskripsi" },
+        sum: { type: "string", description: "Jumlahkan kolom numerik (mis. quantity)" },
+      },
+    },
+    oneOfRequired: ["modules", "module"],
+    requiredPermission: "accurate:customer.view",
+    requires: ["accurate:customer.view"],
+    label: "Menghitung record modul…",
+  },
+  {
+    name: "party.cardBalance",
+    description:
+      "Saldo KARTU (kolom balance master) pelanggan/pemasok TERBESAR dalam SATU panggilan — " +
+      "args: side = \"customer\"|\"vendor\" (default customer), limit = jumlah baris (default 5). " +
+      "Utk \"saldo di kartu pelanggan paling besar\", \"pemasok mana saldo kartunya terbesar\", \"kartu dengan piutang terbesar di kartu\" — " +
+      "INI bukan receivables/payables.summary (yg dihitung dari faktur); angka = kolom balance apa adanya",
+    jsonSchema: {
+      type: "object",
+      properties: {
+        side: { type: "string", description: "customer atau vendor" },
+        limit: { type: "integer", description: "Jumlah kartu teratas (default 5)" },
+      },
+    },
+    requiredPermission: "accurate:customer.view",
+    requires: ["accurate:customer.view", "accurate:vendor.view"],
+    label: "Membaca saldo kartu terbesar…",
+  },
+  {
+    name: "salePurchase.summaryBoth",
+    description:
+      "Total penjualan DAN total pembelian dalam SATU periode dalam SATU panggilan — " +
+      "args: fromDate?, toDate? (dd/mm/yyyy; tanpa tanggal = semua periode). " +
+      "Utk \"berapa total penjualan dan total pembelian tahun 2016\", \"nilai penjualan & pembelian bulan X\" — " +
+      "JANGAN salesInvoice.summary + purchaseInvoice.summary terpisah (2 putaran) dan JANGAN jumlahkan .list manual",
+    jsonSchema: {
+      type: "object",
+      properties: {
+        fromDate: { type: "string", description: "Tanggal mulai (dd/mm/yyyy) — opsional" },
+        toDate: { type: "string", description: "Tanggal akhir (dd/mm/yyyy) — opsional" },
+      },
+    },
+    requiredPermission: "accurate:sales-invoice.view",
+    requires: ["accurate:sales-invoice.view", "accurate:purchase-invoice.view"],
+    label: "Menjumlahkan penjualan & pembelian…",
+  },
+  {
+    name: "party.topByYears",
+    description:
+      "Pelanggan (penjualan) ATAU pemasok (pembelian) dengan nilai TERBESAR pada BEBERAPA tahun dalam SATU panggilan — " +
+      "args: side = \"customer\"|\"vendor\" (wajib), years = array tahun (mis. [2016,2017]), limit? (default 1). " +
+      "Utk \"siapa pelanggan penjualan terbesar tahun 2016 dan tahun 2017\", \"pemasok pembelian terbesar 2016 dan 2017\" — " +
+      "JANGANG salesInvoice.perCustomer / purchaseInvoice.perVendor 2 kali",
+    jsonSchema: {
+      type: "object",
+      properties: {
+        side: { type: "string", description: "customer atau vendor" },
+        years: { type: "array", items: { type: "integer" }, description: "Daftar tahun (mis. [2016,2017])" },
+        limit: { type: "integer", description: "Jumlah teratas tiap tahun (default 1)" },
+      },
+      required: ["side", "years"],
+    },
+    requiredPermission: "accurate:sales-invoice.view",
+    requires: ["accurate:sales-invoice.view", "accurate:purchase-invoice.view", "accurate:customer.view", "accurate:vendor.view"],
+    label: "Menghitung pihak terbesar per tahun…",
+  },
+  {
+    name: "jobOrder.summary",
+    description:
+      "Jumlah job order + TOTAL nilai semua job order + job order TERBESAR (nomor & nilainya) dalam SATU panggilan tanpa argumen — " +
+      "utk \"ada berapa job order yang tercatat\", \"berapa total nilai seluruh job order\", \"job order mana nilainya terbesar\"; " +
+      "JANGAN jobOrder.list lalu jumlahkan/urutkan manual",
+    jsonSchema: { type: "object", properties: {} },
+    requiredPermission: "accurate:job-order.view",
+    requires: ["accurate:job-order.view"],
+    label: "Meringkas job order…",
+  },
 ];
 
 export const AGGREGATION_NAMES = new Set(AGGREGATION_TOOLS.map((t) => t.name));
+
+/** modul daftar → label Indonesia utk jawaban (module.recordCount) */
+const MODULE_LABELS: Record<string, string> = {
+  customer: "pelanggan",
+  vendor: "pemasok",
+  glaccount: "akun perkiraan",
+  item: "barang",
+  warehouse: "gudang",
+  unit: "satuan barang",
+  tax: "pajak",
+  currency: "mata uang",
+  department: "departemen",
+  project: "proyek",
+  branch: "cabang",
+  employee: "karyawan",
+  paymentTerm: "termin pembayaran",
+  priceCategory: "kategori harga",
+  itemCategory: "kategori barang",
+  customerCategory: "kategori pelanggan",
+  vendorCategory: "kategori pemasok",
+  itemBrand: "merek barang",
+  salesOrder: "surat pesanan penjualan",
+  purchaseOrder: "surat pesanan pembelian",
+  salesQuotation: "penawaran penjualan",
+  purchaseRequisition: "permintaan pembelian",
+  purchaseQuotation: "penawaran pembelian",
+  salesReceipt: "bukti penerimaan penjualan",
+  deliveryOrder: "surat jalan",
+  purchasePayment: "pembayaran pemasok",
+  bankTransfer: "transfer bank",
+  expense: "biaya (expense)",
+  receiveItem: "penerimaan barang",
+  otherDeposit: "penerimaan lain",
+  otherPayment: "pembayaran lain",
+  itemAdjustment: "penyesuaian barang",
+  itemTransfer: "transfer barang",
+  journalVoucher: "jurnal umum",
+  salesReturn: "retur penjualan",
+  purchaseReturn: "retur pembelian",
+  salesCheckin: "check-in penjualan",
+  fixedAsset: "aset tetap",
+  jobOrder: "job order",
+  accessPrivilege: "hak akses",
+  fob: "free on board",
+  freeonboard: "free on board",
+  rollOver: "roll over",
+  stockOpnameOrder: "perintah stock opname",
+  stockOpnameResult: "hasil stock opname",
+  salesmanCommission: "komisi salesman",
+  salesman: "salesman",
+  autoNumber: "aturan penomoran otomatis",
+  shipment: "pengiriman",
+  workOrder: "perintah kerja",
+  manufactureOrder: "perintah produksi",
+  billOfMaterial: "daftar material",
+  exchangeInvoice: "faktur valas",
+  sellingpriceAdjustment: "penyesuaian harga jual",
+  dataClassification: "klasifikasi data",
+  accountBudgetTarget: "target anggaran akun",
+  customerClaim: "klaim pelanggan",
+  vendorClaim: "klaim pemasok",
+  vendorPrice: "harga pemasok",
+  materialAdjustment: "penyesuaian material",
+  materialSlip: "bon material",
+  finishedGoodSlip: "bon barang jadi",
+  standardProductCost: "harga pokok standar",
+  processStages: "tahap proses",
+  bomProcessCategory: "kategori proses BOM",
+  woPic: "penanggung jawab work order",
+  payment: "pembayaran",
+};
+
+/** normalize year / years args → daftar tahun terurut unik (1900–2200) */
+function normYears(args: Record<string, unknown>): number[] {
+  const single = Math.trunc(Number(args.year)) || 0;
+  const arr = Array.isArray(args.years) ? args.years : [];
+  const ys = arr.map((y) => Math.trunc(Number(y))).filter((y) => y >= 1900 && y <= 2200);
+  if (single >= 1900 && single <= 2200) ys.push(single);
+  return [...new Set(ys)].sort((a, b) => a - b);
+}
+
+/** group baris faktur per pihak (customer|vendor) → [{..., invoiceCount, total}] urut total desc */
+function groupPartyTotals(
+  rows: Array<Record<string, unknown>>,
+  party: "customer" | "vendor"
+): Array<{ name: string; code: string; invoiceCount: number; total: number }> {
+  const groups = new Map<string, { name: string; code: string; invoiceCount: number; total: number }>();
+  for (const r of rows) {
+    const obj = (r[party] ?? {}) as Record<string, unknown>;
+    const code = String(r[`${party}No`] ?? obj[`${party}No`] ?? "");
+    const key = code || String(obj.name ?? "") || "tanpa-kode";
+    const g = groups.get(key) ?? { name: String(obj.name ?? code), code, invoiceCount: 0, total: 0 };
+    g.invoiceCount += 1;
+    g.total += Number(r.totalAmount) || 0;
+    groups.set(key, g);
+  }
+  return [...groups.values()].sort((a, b) => b.total - a.total);
+}
 
 /** helper: ekstrak array dari hasil execute (d atau {items}) */
 function asArray(v: unknown): Array<Record<string, unknown>> {
@@ -1751,6 +1962,23 @@ export async function runAggregation(
       };
     }
     case "item.topSelling": {
+      // mode BEBERAPA TAHUN → barang terlaris per tahun dalam satu panggilan
+      const ysT = normYears(args);
+      if (ysT.length > 1) {
+        const limitT = Math.max(1, Math.min(10, Number(args.limit ?? 3) || 3));
+        const periods = await Promise.all(
+          ysT.map(async (y) => {
+            const inner = (await runAggregation(
+              "item.topSelling",
+              { fromDate: `01/01/${y}`, toDate: `31/12/${y}`, limit: limitT },
+              ctx,
+              execute
+            )) as Record<string, unknown>;
+            return { year: y, items: Array.isArray(inner.items) ? inner.items : [] };
+          })
+        );
+        return { years: ysT, periods };
+      }
       const { from, to } = periodOf(args);
       const limit = Math.max(1, Math.min(50, Number(args.limit ?? 10) || 10));
       const all = await listAllPages(execute, "salesInvoice.list", {
@@ -1806,6 +2034,27 @@ export async function runAggregation(
     }
     case "receivables.summary": {
       const limit = Math.max(1, Math.min(50, Number(args.limit ?? 10) || 10));
+      // mode BEBERAPA TAHUN → piutang per tahun dalam satu panggilan (utk "piutang tahun X dan tahun Y")
+      const ys = normYears(args);
+      if (ys.length > 1) {
+        const byYears = await Promise.all(
+          ys.map(async (y) => {
+            const all = await listAllPages(execute, "salesInvoice.list", {
+              filter: { outstanding: true, transDate: { op: "BETWEEN", value: [`01/01/${y}`, `31/12/${y}`] } },
+              sort: "id|desc",
+            });
+            const groups = groupPartyTotals(all.rows, "customer");
+            return {
+              year: y,
+              total: groups.reduce((s, g) => s + g.total, 0),
+              invoiceCount: all.rows.length,
+              customerCount: groups.length,
+              ...(all.truncated ? { truncated: true, totalOnServer: all.total } : {}),
+            };
+          })
+        );
+        return { side: "receivables", byYears };
+      }
       const all = await listAllPages(execute, "salesInvoice.list", {
         filter: outstandingPeriodFilter(args),
         sort: "id|desc",
@@ -1907,7 +2156,9 @@ export async function runAggregation(
       const totalReceivables = customers.reduce((s, g) => s + g.total, 0);
       const totalPayables = vendors.reduce((s, g) => s + g.total, 0);
       const diff = totalPayables - totalReceivables;
+      const period = periodEcho(args);
       return {
+        ...(period ? { period } : {}),
         receivables: {
           total: totalReceivables,
           invoiceCount: ar.rows.length,
@@ -2570,6 +2821,207 @@ export async function runAggregation(
         cashIn: inEntries.slice(0, 10),
         cashOut: [...outEntries].sort((a, b) => b.amount - a.amount).slice(0, 10),
         note: "Transfer antar rekening sendiri tidak dihitung sebagai kas masuk/keluar.",
+      };
+    }
+    case "module.recordCount": {
+      const modRaw = args.modules ?? args.module;
+      const mods = (Array.isArray(modRaw) ? modRaw : typeof modRaw === "string" ? modRaw.split(/[,;\s]+/) : [])
+        .map((m) => String(m).trim())
+        .filter(Boolean);
+      if (!mods.length) throw new Error("modules wajib diisi (nama modul, mis. [\"warehouse\"])");
+      const ys = normYears(args);
+      const withNames = args.withNames === true;
+      const withLatest = args.withLatest === true;
+      const withByYear = args.withByYear === true;
+      const search = String(args.search ?? "").trim().toLowerCase();
+      const sumCol = String(args.sum ?? "").trim();
+      const needScan = ys.length > 0 || withLatest || withByYear || search !== "" || sumCol !== "";
+      // minta kolom kandidat — server membuang kolom yg tak berlaku (aman dua arah)
+      const FIELDS =
+        "id,name,no,number,code,customerNo,vendorNo,transDate,dueDate,totalAmount,amount,paidAmount," +
+        "description,quantity,balance,approvalStatus,statusName,accountType,email";
+      const results: Array<Record<string, unknown>> = [];
+      for (const mod of mods) {
+        const label = MODULE_LABELS[mod];
+        if (!label) throw new Error(`modul tidak dikenal utk module.recordCount: ${mod}`);
+        const listTool = `${mod}.list`;
+        let rows: Array<Record<string, unknown>>;
+        let total: number;
+        let truncated = false;
+        if (needScan) {
+          const all = await listAllPages(execute, listTool, { fields: FIELDS });
+          rows = all.rows;
+          total = all.total || all.rows.length;
+          truncated = all.truncated;
+        } else {
+          const first = await execute(listTool, { fields: FIELDS, pageSize: 1000, page: 1 });
+          rows = asArray(first);
+          total = metaOf(first).total || rows.length;
+        }
+        if (search) {
+          rows = rows.filter((r) =>
+            ["name", "no", "code", "number", "customerNo", "vendorNo", "description"].some((k) =>
+              String(r[k] ?? "").toLowerCase().includes(search)
+            )
+          );
+          truncated = false;
+        }
+        const dated = rows.filter((r) => dmyNum(r.transDate) > 0);
+        const inYear = (r: Record<string, unknown>, y: number) => Math.trunc(dmyNum(r.transDate) / 10000) === y;
+        let count: number;
+        const counts: Record<string, number> = {};
+        if (ys.length) {
+          for (const y of ys) counts[y] = dated.length ? rows.filter((r) => inYear(r, y)).length : rows.length;
+          count = ys.length === 1 ? counts[ys[0]] : rows.length;
+        } else if (search) {
+          count = rows.length;
+        } else {
+          count = total;
+        }
+        const entry: Record<string, unknown> = { module: mod, label, count };
+        if (ys.length) entry.counts = counts;
+        if (withNames) {
+          entry.names = rows.slice(0, 60).map((r) => {
+            const nm = String(r.name ?? r.description ?? r.number ?? r.no ?? "").trim() || `#${r.id}`;
+            const code = [r.no, r.code, r.number, r.customerNo, r.vendorNo]
+              .map((x) => String(x ?? "").trim())
+              .find((x) => x && x !== nm);
+            return code ? `${nm} (${code})` : nm;
+          });
+          if (rows.length > 60) entry.namesMore = rows.length;
+        }
+        if (withByYear && !ys.length) {
+          const m = new Map<number, number>();
+          for (const r of dated) {
+            const y = Math.trunc(dmyNum(r.transDate) / 10000);
+            m.set(y, (m.get(y) ?? 0) + 1);
+          }
+          entry.byYear = [...m.entries()]
+            .map(([year, c]) => ({ year, count: c }))
+            .sort((a, b) => b.count - a.count || b.year - a.year)
+            .slice(0, 12);
+        }
+        if (withLatest && rows.length) {
+          let best = rows[0];
+          for (const r of rows) if (dmyNum(r.transDate) > dmyNum(best.transDate)) best = r;
+          entry.latest = {
+            number: best.number ?? best.no ?? null,
+            transDate: best.transDate ?? null,
+            totalAmount: Number(best.totalAmount ?? best.amount) || null,
+            name: best.name ?? null,
+          };
+        }
+        if (sumCol) {
+          const hasCol = rows.some((r) => r[sumCol] !== undefined && r[sumCol] !== null);
+          const sumAll = rows.reduce((s, r) => s + (Number(r[sumCol]) || 0), 0);
+          entry.sum = { column: sumCol, total: hasCol ? sumAll : null, ...(hasCol ? {} : { note: "kolom tidak tersedia di daftar" }) };
+        }
+        if (search) {
+          entry.matches = rows.slice(0, 20).map((r) => ({
+            name: r.name ?? r.description ?? null,
+            no: r.no ?? r.code ?? null,
+            number: r.number ?? null,
+            transDate: r.transDate ?? null,
+            quantity: r.quantity !== undefined && r.quantity !== null ? Number(r.quantity) || 0 : null,
+            description: r.description ?? null,
+          }));
+        }
+        if (truncated) {
+          entry.truncated = true;
+          entry.totalOnServer = total;
+        }
+        results.push(entry);
+      }
+      return { results };
+    }
+    case "party.cardBalance": {
+      const side = String(args.side ?? "customer") === "vendor" ? "vendor" : "customer";
+      const limit = Math.max(1, Math.min(50, Number(args.limit ?? 5) || 5));
+      const all = await listAllPages(execute, side === "vendor" ? "vendor.list" : "customer.list", { sort: "id|desc" });
+      const rows = all.rows
+        .map((r) => ({
+          name: r.name ?? null,
+          no: r[`${side}No`] ?? null,
+          balance: Number(r.balance) || 0,
+        }))
+        .sort((a, b) => b.balance - a.balance);
+      return {
+        side,
+        rows: rows.slice(0, limit),
+        totalCards: rows.length,
+        ...(all.truncated ? { truncated: true, totalOnServer: all.total } : {}),
+      };
+    }
+    case "salePurchase.summaryBoth": {
+      const period = optionalPeriod(args);
+      const base = period ? { filter: { transDate: { op: "BETWEEN", value: [period.from, period.to] } }, sort: "id|desc" } : { sort: "id|desc" };
+      const [sales, purchase] = await Promise.all([
+        listAllPages(execute, "salesInvoice.list", base),
+        listAllPages(execute, "purchaseInvoice.list", base),
+      ]);
+      const sum = (rows: Array<Record<string, unknown>>) => rows.reduce((s, r) => s + (Number(r.totalAmount) || 0), 0);
+      const salesTotal = sum(sales.rows);
+      const purchaseTotal = sum(purchase.rows);
+      return {
+        period: period ? { fromDate: period.from, toDate: period.to } : "semua periode",
+        sales: { invoiceCount: sales.rows.length, total: salesTotal, ...(sales.truncated ? { truncated: true, totalOnServer: sales.total } : {}) },
+        purchase: { invoiceCount: purchase.rows.length, total: purchaseTotal, ...(purchase.truncated ? { truncated: true, totalOnServer: purchase.total } : {}) },
+        combined: { total: salesTotal + purchaseTotal },
+      };
+    }
+    case "party.topByYears": {
+      const side = String(args.side ?? "") === "vendor" ? "vendor" : String(args.side ?? "") === "customer" ? "customer" : null;
+      if (!side) throw new Error("side wajib diisi: customer atau vendor");
+      const ys = normYears(args);
+      if (!ys.length) throw new Error("years wajib diisi (array tahun, mis. [2016,2017])");
+      const limit = Math.max(1, Math.min(20, Number(args.limit ?? 1) || 1));
+      const inner = side === "customer" ? "salesInvoice.perCustomer" : "purchaseInvoice.perVendor";
+      const key = side === "customer" ? "customers" : "vendors";
+      const periods = await Promise.all(
+        ys.map(async (y) => {
+          const res = (await runAggregation(
+            inner,
+            { fromDate: `01/01/${y}`, toDate: `31/12/${y}`, limit },
+            ctx,
+            execute
+          )) as Record<string, unknown>;
+          const rows = Array.isArray(res[key]) ? (res[key] as Array<Record<string, unknown>>) : [];
+          const summary = (res.summary ?? {}) as Record<string, unknown>;
+          return {
+            year: y,
+            top: rows.slice(0, limit).map((r) => ({
+              name: r.name ?? null,
+              code: side === "customer" ? r.customerNo ?? null : r.vendorNo ?? null,
+              total: Number(r.total) || 0,
+              invoiceCount: Number(r.invoiceCount) || 0,
+            })),
+            partyCount: Number(side === "customer" ? summary.customerCount : summary.vendorCount) || 0,
+            periodTotal: Number(side === "customer" ? summary.totalSales : summary.totalPurchase) || 0,
+          };
+        })
+      );
+      return { party: side, unit: side === "customer" ? "penjualan" : "pembelian", periods };
+    }
+    case "jobOrder.summary": {
+      const all = await listAllPages(execute, "jobOrder.list", {});
+      const amt = (r: Record<string, unknown>): number =>
+        Number(r.totalAmount ?? r.amount ?? r.price ?? r.value ?? r.total ?? 0) || 0;
+      let biggest: Record<string, unknown> | null = null;
+      let biggestAmt = -1;
+      let totalValue = 0;
+      for (const r of all.rows) {
+        const v = amt(r);
+        totalValue += v;
+        if (v > biggestAmt) {
+          biggestAmt = v;
+          biggest = { number: r.number ?? r.no ?? null, name: r.name ?? r.description ?? null, totalAmount: v, transDate: r.transDate ?? null };
+        }
+      }
+      return {
+        count: all.rows.length,
+        totalValue,
+        biggest,
+        ...(all.truncated ? { truncated: true, totalOnServer: all.total } : {}),
       };
     }
     default:
