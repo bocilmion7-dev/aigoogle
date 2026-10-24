@@ -1625,8 +1625,10 @@ pre.block {
 .composer textarea.input {
   resize: none;
   overflow-y: auto;
+  height: 40px; /* sama dengan tombol kirim/mic */
+  min-height: 40px;
   max-height: 168px;
-  line-height: 22px; /* 22 + 8 + 8 + 2 border = 40px (sama dgn tombol) */
+  line-height: 22px;
   padding-top: 8px;
   padding-bottom: 8px;
 }
@@ -1864,6 +1866,14 @@ pre.block {
 }
 
 @media (max-width: 640px) {
+  /* mobile: tombol 44px → textarea ikut 44px (24 + 9 + 9 + 2) */
+  .composer textarea.input {
+    height: 44px;
+    min-height: 44px;
+    line-height: 24px;
+    padding-top: 9px;
+    padding-bottom: 9px;
+  }
   .capture__form {
     grid-template-columns: 1fr;
   }

@@ -1,5 +1,5 @@
 /* Service worker sederhana: cache shell + aset ber-hash; API selalu jaringan. */
-const CACHE = "aigoogle-shell-v1";
+const CACHE = "aigoogle-shell-v2";
 const SHELL = ["/index.html", "/favicon.svg", "/manifest.webmanifest"];
 
 self.addEventListener("install", (event) => {

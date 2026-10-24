@@ -55,14 +55,18 @@ export function MentionInput({ value, onChange, onSubmit, onFocus, onBlur, class
   const [active, setActive] = useState(0);
   const loading = open && names === null;
 
-  // textarea: tinggi awal = tinggi tombol (40px); tumbuh saat isi > 1 baris
+  // textarea: tinggi awal = tinggi tombol (CSS 40px / 44px mobile).
+  // Placeholder TIDAK boleh menambah tinggi — tinggi hanya dihitung dari isi nyata.
   useEffect(() => {
     const el = inputRef.current;
     if (!el) return;
+    el.style.height = "";
+    if (!el.value) return; // kosong → pakai tinggi CSS (sama dgn tombol)
+    const baseH = el.offsetHeight; // tinggi CSS saat kosong (40/44)
     el.style.height = "auto";
-    const border = el.offsetHeight - el.clientHeight; // border vertikal (box-sizing: border-box)
+    const border = el.offsetHeight - el.clientHeight;
     const needed = el.scrollHeight + border;
-    el.style.height = `${Math.max(40, Math.min(needed, 168))}px`;
+    el.style.height = `${Math.min(Math.max(needed, baseH), 168)}px`;
   }, [value]);
 
   // karet mengikuti kursor (ketik/klik/panah) — basis deteksi token "@"
@@ -194,7 +198,8 @@ export function MentionInput({ value, onChange, onSubmit, onFocus, onBlur, class
           setOpen(false);
           onBlur?.();
         }}
-        placeholder="Tanya sesuatu… (Enter kirim · Shift+Enter baris baru · @ pilih pelanggan)"
+        placeholder="Tanya sesuatu…"
+        title="Enter kirim · Shift+Enter baris baru · @ pilih pelanggan"
       />
       {open && (
         <div className="mention" id={LISTBOX_ID} role="listbox" aria-label="Saran nama pelanggan">
