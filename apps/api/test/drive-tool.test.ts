@@ -1,5 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { executeDriveTool, DRIVE_FIND, DRIVE_CREATE } from "../src/ai/drive-tools.js";
+import { executeDriveTool, DRIVE_FIND, DRIVE_CREATE, DRIVE_INDEX } from "../src/ai/drive-tools.js";
+import { indexDrive, searchIndex } from "../src/drive/indexer.js";
+import { prisma } from "../src/db.js";
 import { buildInvoicePdf } from "../src/doc/invoice-pdf.js";
 import { setMockDriveSeed } from "../src/drive/registry.js";
 import { formatAggregationResult } from "../src/ai/transformer.js";
@@ -17,11 +19,13 @@ beforeAll(() => {
       { id: "d1", name: "faktur-001.pdf", parents: "scan", mimeType: "application/pdf", text: "Faktur 001" },
       { id: "d2", name: "faktur-002.pdf", parents: "scan", mimeType: "application/pdf", text: "Faktur 002" },
       { id: "d3", name: "kuitansi-sewa.pdf", parents: "root", mimeType: "application/pdf", text: "Kuitansi" },
+      { id: "d4", name: "catatan-oktober.txt", parents: "root", mimeType: "text/plain", text: "Catatan pembayaran sewa bulan Oktober untuk kios A" },
     ],
   });
 });
 
-afterAll(() => {
+afterAll(async () => {
+  await prisma.driveIndex.deleteMany({ where: { tenantId: TENANT } });
   delete process.env.MOCK_DRIVE;
 });
 
@@ -44,7 +48,7 @@ describe("tool drive.findInvoices", () => {
   it("format hasil → tabel GFM + kolom Link", async () => {
     const out = await executeDriveTool(TENANT, DRIVE_FIND, { keywords: "kuitansi" });
     const text = formatAggregationResult(DRIVE_FIND, out)!;
-    expect(text).toContain("| Nama File | Folder | Terakhir Diubah | Link |");
+    expect(text).toContain("| Nama File | Folder | Terakhir Diubah | Cocok | Link |");
     expect(text).toContain("kuitansi-sewa.pdf");
     expect(text).toContain("Drive Saya");
   });
@@ -120,5 +124,30 @@ describe("penamaan file dd-MM-yyyy-JENIS-NAMA", () => {
       items: [{ name: "Jasa", qty: 1, price: 1000 }],
     })) as { fileName: string };
     expect(out.fileName).toBe("01-01-2026-NOTA-Toko A B C.pdf");
+  });
+});
+
+describe("indeks isi Drive", () => {
+  it("indexDrive mencatat teks, searchIndex mencocokkan ISI", async () => {
+    const res = await indexDrive(TENANT, "root");
+    expect(res.indexed).toBeGreaterThan(0);
+    const hits = await searchIndex(TENANT, "kuitansi");
+    expect(hits.length).toBeGreaterThan(0);
+    expect(hits.some((h) => h.name === "kuitansi-sewa.pdf")).toBe(true);
+    const byContent = await searchIndex(TENANT, "kios A");
+    expect(byContent.some((h) => h.name === "catatan-oktober.txt" && h.matched === "isi")).toBe(true);
+  });
+
+  it("tool drive.index mengembalikan ringkasan", async () => {
+    const out = (await executeDriveTool(TENANT, DRIVE_INDEX, {})) as { scanned: number; indexed: number };
+    expect(out.scanned).toBeGreaterThan(0);
+    expect(out.indexed).toBeGreaterThanOrEqual(0);
+  });
+
+  it("drive.findInvoices memakai indeks (cocok isi) + kolom Cocok", async () => {
+    const out = (await executeDriveTool(TENANT, DRIVE_FIND, { keywords: "kuitansi" })) as {
+      files: Array<{ name: string; matched?: string }>;
+    };
+    expect(out.files.some((f) => f.name === "kuitansi-sewa.pdf")).toBe(true);
   });
 });

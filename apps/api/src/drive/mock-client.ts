@@ -44,6 +44,11 @@ export class MockDriveClient implements DriveClient {
   async getText(fileId: string): Promise<string> {
     return this.files.find((f) => f.id === fileId)?.text ?? "";
   }
+  async getBytes(fileId: string): Promise<Uint8Array> {
+    const f = this.files.find((x) => x.id === fileId);
+    if (!f) throw new Error("file tidak ditemukan");
+    return new TextEncoder().encode(f.text);
+  }
   async createFolder(name: string, parents: string): Promise<DriveFolder> {
     if (!this.hasFolder(parents)) throw new Error("parents di luar scope");
     const existing = this.folders.find((f) => f.parents === parents && f.name === name);

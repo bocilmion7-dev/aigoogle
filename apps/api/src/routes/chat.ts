@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { rateLimit } from "../middleware/rate-limit.js";
 import { z } from "zod";
 import { prisma } from "../db.js";
 import { asyncHandler } from "../asyncHandler.js";
@@ -10,7 +11,9 @@ import { getModuleModel } from "../ai/module-model.js";
 import { runToolLoop } from "../ai/tool-loop.js";
 import { selectTools, toolStats } from "../ai/tool-selector.js";
 import { DRIVE_TOOLS, executeDriveTool } from "../ai/drive-tools.js";
-import { transformToRoute, formatAggregationResult } from "../ai/transformer.js";
+import { STATS_TOOLS, executeStatsTool } from "../ai/stats-tools.js";
+import { transformToRoute, formatAggregationResult, ROUTER_PROMPT_CHARS } from "../ai/transformer.js";
+import { recordLlmUsage, usageToday, dailyLimit } from "../ai/usage.js";
 import type { LLMContent } from "../ai/llm-types.js";
 import { buildSystemPrompt } from "../ai/system-prompt.js";
 import { loadPermissionSet } from "../permissions.js";
@@ -53,6 +56,7 @@ chatRouter.get(
 
 chatRouter.post(
   "/chat/stream",
+  rateLimit({ name: "chat", windowMs: 5 * 60_000, max: 40 }),
   requireUser,
   asyncHandler(async (req, res) => {
     const body = z
@@ -82,6 +86,22 @@ chatRouter.post(
         console.warn(`[chat] stream ditutup di tengah jalan | bytes=${bytesSent} | writableEnded=${res.writableEnded}`);
       }
     });
+
+    // kuota harian AI per tenant (0 = tanpa batas) — cegah satu tenant menghabiskan kuota
+    {
+      const limit = await dailyLimit(user.tenant.id);
+      if (limit > 0) {
+        const used = await usageToday(user.tenant.id);
+        if (used.tokens >= limit) {
+          send({
+            type: "error",
+            message: `Kuota AI harian habis (${used.tokens.toLocaleString("id-ID")} dari ${limit.toLocaleString("id-ID")} token). Coba lagi besok atau hubungi admin.`,
+          });
+          res.end();
+          return;
+        }
+      }
+    }
 
     let session = body.data.sessionId
       ? await prisma.chatSession.findFirst({
@@ -124,6 +144,7 @@ chatRouter.post(
     const tools = [
       ...selectTools(body.data.message, provider.capabilityCatalog()),
       ...(permissions.has("app:drive.tidy") ? DRIVE_TOOLS : []),
+      ...STATS_TOOLS,
     ];
     const stats = toolStats(tools);
     console.log(`[chat] tools: ${stats.count}/${provider.capabilityCatalog().length} (~${stats.approxTokens} tok) | msg: ${body.data.message.slice(0, 80)}`);
@@ -132,9 +153,15 @@ chatRouter.post(
     const t0 = Date.now();
 
     // providerExecute dipakai BOTH fast path (transformer) & tool loop penuh
+    const systemPrompt = buildSystemPrompt({ tenantName: user.tenant.name, voice: body.data.voice === true });
+    const historyChars = history.reduce((a, h) => a + h.parts.reduce((b, p) => b + (p.text?.length ?? 0), 0), 0);
+    const toolsChars = JSON.stringify(tools.map((t) => ({ name: t.name, description: t.description, parameters: t.jsonSchema }))).length;
+    const basePromptChars = systemPrompt.length + body.data.message.length + historyChars + toolsChars;
+
     const providerExecute = async (tool: string, args: Record<string, unknown>) => {
       // tool Google Drive tidak butuh sesi Accurate
       if (DRIVE_TOOLS.some((t) => t.name === tool)) return executeDriveTool(user.tenant.id, tool, args);
+      if (STATS_TOOLS.some((t) => t.name === tool)) return executeStatsTool(user.tenant.id, tool, args);
       if (!liveCtx) return Promise.reject(new Error("koneksi Accurate belum aktif — hubungkan ulang di Pengaturan"));
       try {
         return await provider.execute(tool, args, liveCtx);
@@ -170,10 +197,18 @@ chatRouter.post(
         model: preferredModel || (await getDefaultModel()),
       });
       console.log(`[chat] router ${Date.now() - tRoute}ms → ${route ? route.tool : "null"}`);
+      void recordLlmUsage({
+        tenantId: user.tenant.id,
+        kind: body.data.voice === true ? "voice" : "router",
+        model: preferredModel || undefined,
+        promptChars: ROUTER_PROMPT_CHARS + body.data.message.length + historyChars,
+        completionChars: JSON.stringify(route ?? null).length,
+      });
       if (route) {
         const spec =
           provider.capabilityCatalog().find((t) => t.name === route.tool) ??
-          DRIVE_TOOLS.find((t) => t.name === route.tool);
+          DRIVE_TOOLS.find((t) => t.name === route.tool) ??
+          STATS_TOOLS.find((t) => t.name === route.tool);
         const label = spec && "label" in spec ? (spec as { label?: string }).label : undefined;
         const perm = spec && "requiredPermission" in spec ? (spec as { requiredPermission?: string }).requiredPermission : undefined;
         if (!perm || permissions.has(perm)) {
@@ -203,6 +238,13 @@ chatRouter.post(
                   idx += CHUNK;
                 }, INTERVAL);
               });
+              void recordLlmUsage({
+                tenantId: user.tenant.id,
+                kind: body.data.voice === true ? "voice" : "chat",
+                model: preferredModel || undefined,
+                promptChars: basePromptChars,
+                completionChars: answer.length + JSON.stringify(result).length,
+              });
               void writeAudit(user.tenant.id, user.id, "tool.call", { tool: route.tool, args: route.args, ok: true });
               const aiMsg = await prisma.chatMessage.create({
                 data: { sessionId: session.id, role: "ai", content: answer, toolTrace: JSON.stringify([{ tool: route.tool, args: route.args, ok: true }]) },
@@ -226,7 +268,7 @@ chatRouter.post(
         client: llmClient(),
         providerExecute,
         permissions,
-        system: buildSystemPrompt({ tenantName: user.tenant.name, voice: body.data.voice === true }),
+        system: systemPrompt,
         tools,
         userMessage: body.data.message,
         history,
@@ -236,6 +278,13 @@ chatRouter.post(
           send(e.type === "start" ? { ...ev, sessionId: session.id } : ev);
         },
         model: preferredModel || (await getDefaultModel()),
+      });
+      void recordLlmUsage({
+        tenantId: user.tenant.id,
+        kind: body.data.voice === true ? "voice" : "chat",
+        model: preferredModel || undefined,
+        promptChars: basePromptChars + JSON.stringify(out.trace).length,
+        completionChars: out.text.length + JSON.stringify(out.trace).length,
       });
       for (const t of out.trace) {
         if (t.tool) void writeAudit(user.tenant.id, user.id, "tool.call", t);

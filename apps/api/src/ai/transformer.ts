@@ -2,6 +2,7 @@ import type { LLMClient } from "./llm-client.js";
 import type { LLMContent } from "./llm-types.js";
 import { AGGREGATION_TOOLS } from "../providers/accounting/aggregation.js";
 import { DRIVE_TOOLS } from "./drive-tools.js";
+import { STATS_TOOLS } from "./stats-tools.js";
 
 
 /**
@@ -22,7 +23,7 @@ export interface Route {
 }
 
 /** katalog ringkas utk prompt router: nama + tujuan 1 kalimat + argumen */
-const ROUTER_CATALOG = [...AGGREGATION_TOOLS, ...DRIVE_TOOLS].map((t) => {
+const ROUTER_CATALOG = [...AGGREGATION_TOOLS, ...DRIVE_TOOLS, ...STATS_TOOLS].map((t) => {
   const schema = t.jsonSchema as { properties?: Record<string, unknown>; required?: string[] };
   const props = Object.keys(schema.properties ?? {});
   const required = schema.required ?? [];
@@ -86,6 +87,9 @@ const ROUTER_SYSTEM =
   'gl.plSummary(fromDate 01/01/X, toDate 31/12/X, monthly:true). "berapa laba/rugi tahun X" (tanpa kata "lama/bulan") → gl.plSummary tanpa monthly.\n' +
   '- "cari/temukan/lacak faktur|file|dokumen|nota|kuitansi|PDF DI GOOGLE DRIVE" (pesan menyebut drive/google drive) → ' +
   'drive.findInvoices(keywords) — file DOKUMEN di Drive, BUKAN faktur Accurate. Tanpa kata "drive" → tool Accurate biasa.\n' +
+  '- "tren penjualan/pembelian harian", "hari apa penjualan tertinggi", "grafik harian N bulan" → stats.dailyTrend(fromDate?, toDate?, limit?).\n' +
+  '- "sinkronkan/perbarui data dari Accurate", "tarik ulang data harian" → stats.sync(monthsBack?).\n' +
+  '- "indeks/index/scan ulang google drive" / "supaya bisa cari isi file" → drive.index(folderId?, maxFiles?).\n' +
   '- "buatkan/bikin/cetak nota|faktur (PDF) lalu simpan/unggah/upload ke google drive" → drive.createDoc(docType, no?, date?, customerName?, items:[{name,qty,price}], note?, folder?) — ' +
   'WAJIB isi items lengkap dari pesan/riwayat user. JANGAN null bila item disebut.\n' +
   "- Nama orang/barang boleh sebagian (\"Abadi\" → name:\"Abadi\").\n" +
@@ -93,6 +97,9 @@ const ROUTER_SYSTEM =
   "- Bila ragu atau pertanyaan di luar cakupan tool, balas {\"tool\":null}.\n\n" +
   "Daftar tool:\n" +
   ROUTER_CATALOG;
+
+/** ukuran prompt router (karakter) — utk estimasi pemakaian token */
+export const ROUTER_PROMPT_CHARS = ROUTER_SYSTEM.length;
 
 /** panggil router — kembalikan Route atau null (fallback ke tool loop penuh) */
 /** cache keputusan router — pesan identik tak perlu panggil LLM lagi (hemat 3-5 dtk/pesan) */
@@ -108,7 +115,7 @@ function routeKey(userMessage: string, history: Array<{ role: "user" | "model"; 
 /** validasi hasil router: tool harus dikenal + argumen wajib terisi */
 function validateRoute(parsed: { tool?: string | null; args?: Record<string, unknown> } | null): Route | null {
   if (!parsed || typeof parsed.tool !== "string" || !parsed.tool) return null;
-  const known = [...AGGREGATION_TOOLS, ...DRIVE_TOOLS].find((t) => t.name === parsed.tool);
+  const known = [...AGGREGATION_TOOLS, ...DRIVE_TOOLS, ...STATS_TOOLS].find((t) => t.name === parsed.tool);
   if (!known) return null;
   const schema = known.jsonSchema as { required?: string[] };
   for (const k of schema.required ?? []) {
@@ -1351,11 +1358,74 @@ const FORMATTERS: Record<string, Fmt> = {
       String(f.name ?? ""),
       String(f.folder ?? "") || "—",
       fmtDate(f.modified),
+      String(f.matched ?? "nama"),
       f.link ? `[Buka](${String(f.link)})` : "—",
     ]);
     return (
       `Ditemukan ${files.length} file di Google Drive untuk "${kw}":\n\n` +
-      mdTable(["Nama File", "Folder", "Terakhir Diubah", "Link"], rows)
+      mdTable(["Nama File", "Folder", "Terakhir Diubah", "Cocok", "Link"], rows)
+    );
+  },
+
+  "stats.dailyTrend": (r) => {
+    const rows = Array.isArray(r.rows) ? (r.rows as Array<Record<string, unknown>>) : [];
+    const period = r.period as Record<string, unknown> | undefined;
+    const from = nameOf(period, "fromDate");
+    const to = nameOf(period, "toDate");
+    if (rows.length === 0) {
+      return `Belum ada data tren ${from}–${to}. Jalankan sinkronisasi data (stats.sync) lebih dulu.`;
+    }
+    const t = (r.totals ?? {}) as Record<string, unknown>;
+    return (
+      `Tren harian ${from}–${to} (${rows.length} hari):\n\n` +
+      mdTable(
+        ["Tanggal", "Penjualan", "Faktur", "Pembelian", "Faktur"],
+        rows.map((x) => [
+          fmtDate(x.date),
+          fmtMoney(x.salesTotal),
+          String(x.salesCount ?? 0),
+          fmtMoney(x.purchaseTotal),
+          String(x.purchaseCount ?? 0),
+        ]),
+        [1, 2, 3, 4]
+      ) +
+      `\n\nTotal: penjualan ${fmtMoney(t.salesTotal)} (${Number(t.salesCount) || 0} faktur), pembelian ${fmtMoney(t.purchaseTotal)} (${Number(t.purchaseCount) || 0} faktur).`
+    );
+  },
+
+  "stats.sync": (r) => {
+    return (
+      `Sinkronisasi selesai:\n\n` +
+      mdTable(
+        ["Keterangan", "Nilai"],
+        [
+          ["Rentang", `${Number(r.months) || 0} bulan terakhir`],
+          ["Faktur penjualan", String(Number(r.salesInvoices) || 0)],
+          ["Faktur pembelian", String(Number(r.purchaseInvoices) || 0)],
+          ["Hari tersimpan", String(Number(r.days) || 0)],
+        ]
+      )
+    );
+  },
+
+  "drive.index": (r) => {
+    const scanned = Number(r.scanned) || 0;
+    const indexed = Number(r.indexed) || 0;
+    const skipped = Number(r.skipped) || 0;
+    const failed = Number(r.failed) || 0;
+    const truncated = r.truncated === true;
+    return (
+      `Indeks Google Drive selesai${truncated ? " (sebagian — batas file tercapai)" : ""}:\n\n` +
+      mdTable(
+        ["Keterangan", "Jumlah"],
+        [
+          ["File diperiksa", String(scanned)],
+          ["Berhasil diindeks", String(indexed)],
+          ["Dilewati (bukan dokumen)", String(skipped)],
+          ["Gagal", String(failed)],
+        ],
+        [1]
+      )
     );
   },
 

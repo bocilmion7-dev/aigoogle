@@ -1,11 +1,13 @@
 import type { ToolSpec } from "../providers/accounting/types.js";
 import { driveClientFor } from "../drive/registry.js";
+import { indexDrive, searchIndex } from "../drive/indexer.js";
 import { buildInvoicePdf, type DocKind, type InvoiceItem } from "../doc/invoice-pdf.js";
 import { prisma } from "../db.js";
 
 /** tool chat utk Google Drive — beda penyedia dari tool Accurate */
 export const DRIVE_FIND = "drive.findInvoices";
 export const DRIVE_CREATE = "drive.createDoc";
+export const DRIVE_INDEX = "drive.index";
 
 export const DRIVE_TOOLS: ToolSpec[] = [
   {
@@ -70,6 +72,22 @@ export const DRIVE_TOOLS: ToolSpec[] = [
       required: ["docType", "items"],
     },
   },
+  {
+    name: DRIVE_INDEX,
+    label: "Mengindeks isi Google Drive…",
+    description:
+      "Indeks ulang isi folder Google Drive (teks PDF disimpan ke database) agar pencarian berikutnya " +
+      "bisa mencocokkan ISI dokumen, bukan hanya nama file. Pakai bila pengguna minta 'indeks/scan drive', " +
+      "atau setelah banyak file baru masuk dan pencarian isi tidak menemukan apa pun.",
+    requiredPermission: "app:drive.tidy",
+    jsonSchema: {
+      type: "object",
+      properties: {
+        folderId: { type: "string", description: "ID folder awal (default root)" },
+        maxFiles: { type: "number", description: "batas jumlah file diproses (default 200, maks 500)" },
+      },
+    },
+  },
 ];
 
 export interface DriveFileRow {
@@ -77,6 +95,8 @@ export interface DriveFileRow {
   folder: string;
   modified: string;
   link: string;
+  /** "nama" = cocok di nama file, "isi" = cocok di isi dokumen (dari indeks) */
+  matched?: "nama" | "isi";
 }
 
 /** eksekusi tool Drive — error dikembalikan sebagai data (bukan throw) agar user dapat pesan jelas */
@@ -86,6 +106,19 @@ export async function executeDriveTool(
   args: Record<string, unknown>
 ): Promise<unknown> {
   if (tool === DRIVE_CREATE) return createDoc(tenantId, args);
+  if (tool === DRIVE_INDEX) {
+    try {
+      const res = await indexDrive(tenantId, String(args.folderId ?? "root"), {
+        maxFiles: Number(args.maxFiles) || undefined,
+      });
+      return res;
+    } catch (e) {
+      if (e instanceof Error && e.message === "belum_connect") {
+        return { error: "Google Drive belum terhubung", hint: "Sambungkan Google di halaman Pengaturan (/settings)." };
+      }
+      throw e;
+    }
+  }
   if (tool !== DRIVE_FIND) throw new Error(`tool drive tidak dikenal: ${tool}`);
   const keywords = String(args.keywords ?? "").trim();
   if (!keywords) {
@@ -100,13 +133,26 @@ export async function executeDriveTool(
       hint: "Sambungkan Google di halaman Pengaturan (/settings) lalu coba lagi.",
     };
   }
-  const hits = await client.search(keywords, limit);
-  const files: DriveFileRow[] = hits.map((h) => ({
-    name: h.name,
-    folder: h.folderName,
-    modified: h.modifiedTime ?? "",
-    link: h.webViewLink ?? "",
-  }));
+  const [hits, indexed] = await Promise.all([
+    client.search(keywords, limit).catch(() => []),
+    searchIndex(tenantId, keywords, limit).catch(() => []),
+  ]);
+  const merged = new Map<string, DriveFileRow>();
+  for (const i of indexed) {
+    merged.set(i.id, { name: i.name, folder: i.folder || "Drive Saya", modified: i.modified, link: i.link, matched: i.matched });
+  }
+  for (const h of hits) {
+    if (!merged.has(h.id)) {
+      merged.set(h.id, {
+        name: h.name,
+        folder: h.folderName || "Drive Saya",
+        modified: h.modifiedTime ?? "",
+        link: h.webViewLink ?? "",
+        matched: "nama",
+      });
+    }
+  }
+  const files = [...merged.values()].slice(0, limit);
   return { keywords, count: files.length, files };
 }
 
