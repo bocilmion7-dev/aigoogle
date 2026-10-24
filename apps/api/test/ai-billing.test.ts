@@ -9,6 +9,8 @@ import {
   computeCharge,
   finalizeAiTopup,
   getBalance,
+  rupiahToTokens,
+  tokensToRupiah,
   topupFee,
   walletSummary,
 } from "../src/ai/billing.js";
@@ -51,6 +53,12 @@ describe("hitung biaya AI", () => {
     // 1 USD input + 2 USD output = 3 USD → Rp30.000 modal, markup 2× → Rp60.000
     expect(cost).toBe(30_000);
     expect(charge).toBe(60_000);
+  });
+
+  it("konversi token: 1.000 token = harga setelan", () => {
+    expect(rupiahToTokens(40_000, 40)).toBe(1_000_000);
+    expect(rupiahToTokens(10_000, 40)).toBe(250_000);
+    expect(tokensToRupiah(250_000, 40)).toBe(10_000);
   });
 
   it("biaya top up = 2% (admin + service charge Midtrans)", () => {
@@ -136,6 +144,8 @@ describe("setelan billing", () => {
 
   it("walletSummary menghitung pemakaian 30 hari", async () => {
     const s = await walletSummary(USER, TENANT);
+    expect(s.balanceTokens).toBeGreaterThanOrEqual(0);
+    expect(s.rupiahPer1kTokens).toBeGreaterThan(0);
     expect(s.calls30d).toBeGreaterThan(0);
     expect(s.tokens30d).toBeGreaterThan(0);
     expect(s.spent30d).toBeGreaterThan(0);

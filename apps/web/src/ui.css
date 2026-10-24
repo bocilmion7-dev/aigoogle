@@ -130,6 +130,20 @@ a {
   letter-spacing: -0.01em;
 }
 
+/* logo gambar di kiri header */
+.app-header__brand--logo {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+}
+
+.app-header__logo {
+  display: block;
+  height: 28px;
+  width: auto;
+}
+}
+
 .app-header__user {
   margin-left: auto;
   min-width: 0;

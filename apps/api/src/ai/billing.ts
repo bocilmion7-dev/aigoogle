@@ -26,11 +26,15 @@ export interface AiBillingCfg {
   markup: number;
   signupBonus: number;
   minReserve: number;
+  /** harga jual 1.000 token (rupiah) — dasar tampilan saldo token */
+  rupiahPer1kTokens: number;
 }
 
 export async function billingSettings(): Promise<AiBillingCfg> {
   const rows = await prisma.appSetting.findMany({
-    where: { key: { in: ["ai:usd_idr", "ai:markup", "ai:signup_bonus", "ai:min_reserve"] } },
+    where: {
+      key: { in: ["ai:usd_idr", "ai:markup", "ai:signup_bonus", "ai:min_reserve", "ai:rupiah_per_1k_tokens"] },
+    },
   });
   const get = (k: string) => rows.find((r) => r.key === k)?.value;
   return {
@@ -38,7 +42,18 @@ export async function billingSettings(): Promise<AiBillingCfg> {
     markup: Math.max(1, num(get("ai:markup"), 1.5)),
     signupBonus: Math.max(0, Math.round(num(get("ai:signup_bonus"), 10000))),
     minReserve: Math.max(1, Math.round(num(get("ai:min_reserve"), 500))),
+    rupiahPer1kTokens: Math.max(0.001, num(get("ai:rupiah_per_1k_tokens"), 40)),
   };
+}
+
+/** rupiah → token (1.000 token = rupiahPer1kTokens) */
+export function rupiahToTokens(rupiah: number, rupiahPer1kTokens: number): number {
+  return Math.floor((Math.max(0, rupiah) / Math.max(0.001, rupiahPer1kTokens)) * 1000);
+}
+
+/** token → rupiah */
+export function tokensToRupiah(tokens: number, rupiahPer1kTokens: number): number {
+  return Math.round((Math.max(0, tokens) / 1000) * Math.max(0.001, rupiahPer1kTokens));
 }
 
 /** biaya admin + service charge Midtrans untuk top up saldo AI (2%) */
@@ -275,14 +290,22 @@ export async function walletSummary(userId: string, tenantId: string) {
   const rows = await prisma.aiLedger.findMany({ where: { userId, createdAt: { gte: since } } });
   const usage = rows.filter((r) => r.kind === "usage");
   return {
-    balance: w.balance,
-    minReserve: cfg.minReserve,
+    /** saldo dalam TOKEN (tampilan utama) */
+    balanceTokens: rupiahToTokens(w.balance, cfg.rupiahPer1kTokens),
+    rupiahPer1kTokens: cfg.rupiahPer1kTokens,
+    minReserveTokens: rupiahToTokens(cfg.minReserve, cfg.rupiahPer1kTokens),
     markup: cfg.markup,
     usdIdr: cfg.usdIdr,
+    /** token yang benar-benar dipakai (prompt+completion) 30 hari */
+    tokens30d: usage.reduce((a, r) => a + r.promptTokens + r.completionTokens, 0),
+    /** token setara biaya terpotong 30 hari */
+    spentTokens30d: usage.reduce((a, r) => a + rupiahToTokens(Math.abs(r.amount), cfg.rupiahPer1kTokens), 0),
+    calls30d: usage.length,
+    /** internal (rupiah) — untuk admin/laporan */
+    balance: w.balance,
     spent30d: usage.reduce((a, r) => a + Math.abs(r.amount), 0),
     cost30d: usage.reduce((a, r) => a + r.cost, 0),
-    tokens30d: usage.reduce((a, r) => a + r.promptTokens + r.completionTokens, 0),
-    calls30d: usage.length,
+    minReserve: cfg.minReserve,
   };
 }
 

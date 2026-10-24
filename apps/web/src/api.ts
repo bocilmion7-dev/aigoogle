@@ -418,18 +418,26 @@ export const getPlatformAnalytics = () => adminFetch<PlatformAnalytics>("/api/pl
 
 // ── Billing AI (saldo per member) ────────────────────────────────────────────
 export interface AiWalletSummary {
-  balance: number;
-  minReserve: number;
+  /** saldo dalam TOKEN (tampilan utama) */
+  balanceTokens: number;
+  rupiahPer1kTokens: number;
+  minReserveTokens: number;
   markup: number;
   usdIdr: number;
+  tokens30d: number;
+  spentTokens30d: number;
+  calls30d: number;
+  /** internal rupiah */
+  balance: number;
   spent30d: number;
   cost30d: number;
-  tokens30d: number;
-  calls30d: number;
+  minReserve: number;
 }
 export interface AiLedgerRow {
   id: string;
   kind: string;
+  /** jumlah token (pemakaian = token nyata, topup/bonus = konversi rupiah) */
+  tokens?: number;
   amount: number;
   cost: number;
   model: string;
@@ -444,6 +452,7 @@ export interface AiTopupResponse {
   amount: number;
   feeAmount: number;
   credits: number;
+  tokens?: number;
   provider?: string;
   qris?: { qrUrl: string; qrContent: string; contractId?: string; expiredAt: string };
 }

@@ -29,7 +29,7 @@ interface NavLink {
  */
 export function AppHeader({ me }: { me?: Me | null }) {
   const [own, setOwn] = useState<Me | null | undefined>(undefined);
-  const [balance, setBalance] = useState<number | null>(null);
+  const [tokens, setTokens] = useState<number | null>(null);
   useEffect(() => {
     if (me === undefined) void getMe().then(setOwn);
   }, [me]);
@@ -38,7 +38,7 @@ export function AppHeader({ me }: { me?: Me | null }) {
     if (!dataForBalance || dataForBalance.tenant.provider === "platform") return;
     const load = () => {
       void getAiWallet()
-        .then((w) => setBalance(w.balance))
+        .then((w) => setTokens(w.balanceTokens))
         .catch(() => null);
     };
     load();
@@ -85,17 +85,17 @@ export function AppHeader({ me }: { me?: Me | null }) {
     <>
       <header className="app-header">
         <div className="app-header__bar">
-          <a className="app-header__brand" href="/app">
-            {data.tenant.name}
+          <a className="app-header__brand app-header__brand--logo" href="/app" aria-label="AI Asisten — beranda">
+            <img src="/logo.png" alt="AI Asisten" className="app-header__logo" />
           </a>
           <span className="app-header__user">
             <span className="app-header__name">
               {data.name}
               <span className="app-header__role"> · {data.roleKey}</span>
             </span>
-            {balance !== null && data.tenant.provider !== "platform" && (
-              <a className="app-header__balance" href="/saldo" title="Saldo AI & pemakaian">
-                Saldo <strong>Rp{balance.toLocaleString("id-ID")}</strong>
+            {tokens !== null && data.tenant.provider !== "platform" && (
+              <a className="app-header__balance" href="/saldo" title="Saldo token AI & pemakaian">
+                <strong>{tokens.toLocaleString("id-ID")}</strong> token
               </a>
             )}
           </span>

@@ -15,6 +15,7 @@ import {
 import { AppHeader, PageLoader } from "../ui";
 
 const rp = (n: number): string => `Rp${Math.round(n).toLocaleString("id-ID")}`;
+const tok = (n: number): string => `${Math.round(n).toLocaleString("id-ID")} token`;
 const PRESETS = [10_000, 25_000, 50_000, 100_000];
 const KIND_LABEL: Record<string, string> = {
   bonus: "Saldo awal",
@@ -31,6 +32,7 @@ interface QrisState {
   qrUrl: string;
   qrContent: string;
   expiredAt: string;
+  tokens?: number;
 }
 
 export function Saldo() {
@@ -100,6 +102,7 @@ export function Saldo() {
           orderId: res.orderId,
           amount: res.amount,
           credits: res.credits,
+          tokens: res.tokens,
           qrUrl: res.qris.qrUrl,
           qrContent: res.qris.qrContent,
           expiredAt: res.qris.expiredAt,
@@ -138,7 +141,7 @@ export function Saldo() {
     setErr("");
     try {
       const out = await adjustAiWallet(adjUser, Number(adjAmount), adjNote);
-      setMsg(`Saldo member diperbarui — saldo sekarang ${rp(out.balance)}.`);
+      setMsg(`Saldo member diperbarui — saldo sekarang ${tok(Math.floor((out.balance / (wallet?.rupiahPer1kTokens ?? 40)) * 1000))}.`);
       setAdjAmount("");
       setAdjNote("");
       setMembers(await getAiWallets());
@@ -179,21 +182,26 @@ export function Saldo() {
 
         <section className="card saldo-card">
           <div>
-            <p className="saldo-card__label">Saldo tersedia</p>
-            <p className="saldo-card__value">{wallet ? rp(wallet.balance) : "…"}</p>
-            {wallet && wallet.balance < wallet.minReserve && (
+            <p className="saldo-card__label">Saldo token tersedia</p>
+            <p className="saldo-card__value">{wallet ? tok(wallet.balanceTokens) : "…"}</p>
+            {wallet && wallet.balanceTokens < wallet.minReserveTokens && (
               <p className="saldo-card__warn" role="alert">
-                Saldo di bawah minimum ({rp(wallet.minReserve)}) — AI diblokir sampai top up.
+                Saldo di bawah minimum ({tok(wallet.minReserveTokens)}) — AI diblokir sampai top up.
+              </p>
+            )}
+            {wallet && (
+              <p style={{ margin: "4px 0 0", color: "var(--ink-2)", fontSize: "var(--step--1)" }}>
+                1.000 token = {rp(wallet.rupiahPer1kTokens)}
               </p>
             )}
           </div>
           <dl className="saldo-card__stats">
             <div>
-              <dt>Pemakaian 30 hari</dt>
-              <dd>{wallet ? rp(wallet.spent30d) : "…"}</dd>
+              <dt>Token terpakai 30 hari</dt>
+              <dd>{wallet ? wallet.spentTokens30d.toLocaleString("id-ID") : "…"}</dd>
             </div>
             <div>
-              <dt>Token 30 hari</dt>
+              <dt>Token diproses model</dt>
               <dd>{wallet ? wallet.tokens30d.toLocaleString("id-ID") : "…"}</dd>
             </div>
             <div>
@@ -206,7 +214,7 @@ export function Saldo() {
         <section className="card" style={{ marginTop: "var(--space-m)" }}>
           <h2>Top up saldo</h2>
           <p style={{ color: "var(--ink-2)", fontSize: "var(--step--1)" }}>
-            Saldo tidak kedaluwarsa. Biaya admin + service charge Midtrans 2% ditambahkan ke total pembayaran QRIS.
+            Saldo tidak kedaluwarsa. Top up dibayar dengan QRIS; biaya admin + service charge Midtrans 2%.
           </p>
           <div className="saldo-presets" role="group" aria-label="Nominal top up">
             {PRESETS.map((p) => (
@@ -238,7 +246,8 @@ export function Saldo() {
           {qris && (
             <div className="qris-panel" role="status">
               <p>
-                Scan QRIS untuk membayar <strong>{rp(qris.amount)}</strong> — saldo masuk {rp(qris.credits)}.
+                Scan QRIS untuk membayar <strong>{rp(qris.amount)}</strong> — saldo masuk{" "}
+                <strong>{tok(qris.tokens ?? Math.floor(qris.credits / (wallet?.rupiahPer1kTokens ?? 40)) * 1000)}</strong>.
               </p>
               {qris.qrUrl ? (
                 <img src={qris.qrUrl} alt="QRIS pembayaran" className="qris-panel__img" />
@@ -267,7 +276,7 @@ export function Saldo() {
                 <tr>
                   <th scope="col">Waktu</th>
                   <th scope="col">Jenis</th>
-                  <th scope="col">Jumlah</th>
+                  <th scope="col">Jumlah (token)</th>
                   <th scope="col">Model / token</th>
                   <th scope="col">Keterangan</th>
                 </tr>
@@ -278,8 +287,9 @@ export function Saldo() {
                     <td>{new Date(r.createdAt).toLocaleString("id-ID")}</td>
                     <td>{KIND_LABEL[r.kind] ?? r.kind}</td>
                     <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
-                      {r.amount >= 0 ? "+" : "−"}
-                      {rp(Math.abs(r.amount))}
+                      {r.tokens === undefined || r.tokens === 0
+                        ? "—"
+                        : `${r.tokens > 0 ? "+" : "−"}${Math.abs(r.tokens).toLocaleString("id-ID")}`}
                     </td>
                     <td>
                       {r.model
@@ -319,7 +329,9 @@ export function Saldo() {
                       <td>{m.name}</td>
                       <td>{m.role}</td>
                       <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
-                        {m.balance === null ? "—" : rp(m.balance)}
+                        {m.balance === null
+                          ? "—"
+                          : tok(Math.floor((m.balance / (wallet?.rupiahPer1kTokens ?? 40)) * 1000))}
                       </td>
                     </tr>
                   ))}

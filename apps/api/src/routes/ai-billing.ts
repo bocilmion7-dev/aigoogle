@@ -14,6 +14,7 @@ import {
   finalizeAiTopup,
   ledgerFor,
   revenueReport,
+  rupiahToTokens,
   syncOpenRouterPricing,
   topupFee,
   walletSummary,
@@ -37,7 +38,17 @@ aiBillingRouter.get(
   asyncHandler(async (req, res) => {
     const take = Number(req.query.take ?? 50) || 50;
     const rows = await ledgerFor(req.user!.id, take);
-    res.json(rows);
+    const cfg = await billingSettings();
+    res.json(
+      rows.map((r) => ({
+        ...r,
+        /** jumlah token: pemakaian = token nyata; topup/bonus/adjust = konversi dari rupiah */
+        tokens:
+          r.kind === "usage"
+            ? r.promptTokens + r.completionTokens
+            : Math.sign(r.amount) * rupiahToTokens(Math.abs(r.amount), cfg.rupiahPer1kTokens),
+      }))
+    );
   })
 );
 
@@ -75,11 +86,13 @@ aiBillingRouter.post(
     try {
       const qr = await generateQrMpm(orderId, totalAmount);
       await prisma.aiTopup.update({ where: { id: topup.id }, data: { providerRef: qr.referenceNo } });
+      const cfg = await billingSettings();
       return res.json({
         orderId,
         amount: totalAmount,
         feeAmount,
         credits: baseAmount,
+        tokens: rupiahToTokens(baseAmount, cfg.rupiahPer1kTokens),
         provider: "midtrans",
         qris: qr,
       });
