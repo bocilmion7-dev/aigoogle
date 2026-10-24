@@ -203,10 +203,18 @@ const FORMATTERS: Record<string, Fmt> = {
     const name = nameOf(c, "name", "customerName");
     const last = r.lastOrder as Record<string, unknown> | null;
     if (!last) return `Pelanggan ${name} belum memiliki faktur penjualan.`;
-    const no = nameOf(last, "number", "invoiceNo");
-    const total = fmtMoney(last.totalAmount);
-    const date = fmtDate(last.transDate);
-    return `Pesanan terakhir dari pelanggan ${name}: faktur ${no} tanggal ${date} senilai ${total}.`;
+    return (
+      `Pesanan terakhir dari pelanggan ${name}:\n\n` +
+      mdTable(
+        ["Keterangan", "Nilai"],
+        [
+          ["Pelanggan", name],
+          ["Faktur", nameOf(last, "number", "invoiceNo")],
+          ["Tanggal", fmtDate(last.transDate)],
+          ["Nilai", fmtMoney(last.totalAmount)],
+        ]
+      )
+    );
   },
 
   "customer.unpaidByName": (r) => {
@@ -244,14 +252,18 @@ const FORMATTERS: Record<string, Fmt> = {
       ? ` Pesanan terakhir: faktur ${nameOf(last, "number")} tanggal ${fmtDate(last.transDate)} senilai ${fmtMoney(last.totalAmount)}.`
       : "";
     const custNo = nameOf(c, "customerNo");
-    const noLine = custNo && custNo !== "-" ? `\n• Nomor pelanggan: ${custNo}` : "";
-    return (
-      `Ringkasan pelanggan ${name}${periodStr}:\n` +
-      `• Total penjualan: ${fmtMoney(totalSales)} dari ${invCount} faktur\n` +
-      `• Piutang belum dibayar: ${fmtMoney(totalUnpaid)} dari ${unpaidCount} faktur` +
-      noLine +
-      lastStr
-    );
+    const rows: string[][] = [];
+    if (custNo && custNo !== "-") rows.push(["Nomor pelanggan", custNo]);
+    rows.push(["Total penjualan", `${fmtMoney(totalSales)} (${invCount} faktur)`]);
+    rows.push(["Piutang belum dibayar", `${fmtMoney(totalUnpaid)} (${unpaidCount} faktur)`]);
+    if (last) {
+      rows.push([
+        "Pesanan terakhir",
+        `faktur ${nameOf(last, "number")} · ${fmtDate(last.transDate)} · ${fmtMoney(last.totalAmount)}`,
+      ]);
+    }
+    void lastStr;
+    return `Ringkasan pelanggan ${name}${periodStr}:\n\n` + mdTable(["Keterangan", "Nilai"], rows);
   },
 
   "customer.salesByName": (r) => {
@@ -334,16 +346,21 @@ const FORMATTERS: Record<string, Fmt> = {
     const topCust = Array.isArray(r.topByCustomer)
       ? (r.topByCustomer as Record<string, unknown>[])[0]
       : undefined;
-    const topCustLine = topCust
-      ? `\n• Pelanggan terbesar: ${nameOf(topCust, "customerName", "name")} — ${fmtMoney(topCust.total)} dari ${topCust.invoiceCount ?? 0} faktur`
-      : "";
+    const rows: string[][] = [
+      ["Total", fmtMoney(total)],
+      ["Jumlah faktur", String(invCount)],
+      ["Rata-rata per faktur", fmtMoney(avg)],
+    ];
+    if (topCust) {
+      rows.push([
+        "Pelanggan terbesar",
+        `${nameOf(topCust, "customerName", "name")} · ${fmtMoney(topCust.total)} (${topCust.invoiceCount ?? 0} faktur)`,
+      ]);
+    }
     return (
-      `Ringkasan penjualan ${from}–${to}:\n` +
-      `• Total: ${fmtMoney(total)}\n` +
-      `• Jumlah faktur: ${invCount}\n` +
-      `• Rata-rata per faktur: ${fmtMoney(avg)}` +
-      topCustLine +
-      (top ? `\n\nFaktur terbesar:\n${top}` : "")
+      `Ringkasan penjualan ${from}–${to}:\n\n` +
+      mdTable(["Keterangan", "Nilai"], rows) +
+      (top ? `\n\nFaktur terbesar:\n\n${top}` : "")
     );
   },
 
@@ -353,16 +370,23 @@ const FORMATTERS: Record<string, Fmt> = {
     const [p1, p2p] = periods;
     const diff = (r.diff ?? {}) as Record<string, unknown>;
     const combined = (r.combined ?? {}) as Record<string, unknown>;
-    const line = (p: Record<string, unknown>) =>
-      `${nameOf(p, "label")}: total ${fmtMoney(p.totalSales)}, ${p.invoiceCount ?? 0} faktur, rata-rata ${fmtMoney(p.average)}/faktur, ${p.customerCount ?? 0} pelanggan aktif, ${p.paidCount ?? 0} lunas`;
+    const cell = (p: Record<string, unknown>) => [
+      nameOf(p, "label"),
+      fmtMoney(p.totalSales),
+      String(p.invoiceCount ?? 0),
+      fmtMoney(p.average),
+      String(p.customerCount ?? 0),
+      String(p.paidCount ?? 0),
+    ];
+    const rows = [
+      cell(p1),
+      cell(p2p),
+      ["Gabungan", fmtMoney(combined.totalSales), String(combined.invoiceCount ?? 0), "-", "-", "-"],
+      ["Selisih", fmtMoney(diff.totalSales), String(Number(diff.invoiceCount) || 0), fmtMoney(diff.average), "-", "-"],
+    ];
     return (
-      `Perbandingan penjualan:\n` +
-      `• ${line(p1)}\n` +
-      `• ${line(p2p)}\n` +
-      `• Gabungan kedua periode: ${fmtMoney(combined.totalSales)} dari ${combined.invoiceCount ?? 0} faktur\n` +
-      `• Selisih total: ${fmtMoney(diff.totalSales)}\n` +
-      `• Selisih rata-rata: ${fmtMoney(diff.average)}\n` +
-      `• Selisih jumlah faktur: ${Number(diff.invoiceCount) || 0}`
+      `Perbandingan penjualan:\n\n` +
+      mdTable(["Periode", "Total", "Faktur", "Rata-rata", "Pelanggan aktif", "Lunas"], rows, [1, 2, 3, 4, 5])
     );
   },
 
@@ -372,17 +396,19 @@ const FORMATTERS: Record<string, Fmt> = {
     const [p1, p2p] = periods;
     const diff = (r.diff ?? {}) as Record<string, unknown>;
     const combined = (r.combined ?? {}) as Record<string, unknown>;
-    const line = (p: Record<string, unknown>) =>
-      `${nameOf(p, "label")}: total ${fmtMoney(p.totalPurchase)}, ${p.invoiceCount ?? 0} faktur, rata-rata ${fmtMoney(p.average)}/faktur`;
-    return (
-      `Perbandingan pembelian:\n` +
-      `• ${line(p1)}\n` +
-      `• ${line(p2p)}\n` +
-      `• Gabungan kedua periode: ${fmtMoney(combined.totalPurchase)} dari ${combined.invoiceCount ?? 0} faktur\n` +
-      `• Selisih total: ${fmtMoney(diff.totalPurchase)}\n` +
-      `• Selisih rata-rata: ${fmtMoney(diff.average)}\n` +
-      `• Selisih jumlah faktur: ${Number(diff.invoiceCount) || 0}`
-    );
+    const cell = (p: Record<string, unknown>) => [
+      nameOf(p, "label"),
+      fmtMoney(p.totalPurchase),
+      String(p.invoiceCount ?? 0),
+      fmtMoney(p.average),
+    ];
+    const rows = [
+      cell(p1),
+      cell(p2p),
+      ["Gabungan", fmtMoney(combined.totalPurchase), String(combined.invoiceCount ?? 0), "-"],
+      ["Selisih", fmtMoney(diff.totalPurchase), String(Number(diff.invoiceCount) || 0), fmtMoney(diff.average)],
+    ];
+    return `Perbandingan pembelian:\n\n` + mdTable(["Periode", "Total", "Faktur", "Rata-rata"], rows, [1, 2, 3]);
   },
 
   "arap.summary": (r) => {
@@ -446,7 +472,18 @@ const FORMATTERS: Record<string, Fmt> = {
       typeof scope === "object" && scope
         ? ` pada periode ${nameOf(scope as Record<string, unknown>, "fromDate")}–${nameOf(scope as Record<string, unknown>, "toDate")}`
         : "";
-    return `Dari total ${total} faktur ${side}${periodStr}: ${paid} lunas dan ${unpaid} belum lunas.`;
+    return (
+      `Status faktur ${side}${periodStr}:\n\n` +
+      mdTable(
+        ["Status", "Jumlah"],
+        [
+          ["Lunas", String(paid)],
+          ["Belum lunas", String(unpaid)],
+          ["Total", String(total)],
+        ],
+        [1]
+      )
+    );
   },
 
   "party.yoySummary": (r) => {
@@ -483,9 +520,16 @@ const FORMATTERS: Record<string, Fmt> = {
         ? "Keduanya sama besar."
         : `Yang lebih besar: retur ${larger === "salesReturn" ? "penjualan" : "pembelian"} (selisih ${fmtMoney(diff)}).`;
     return (
-      `Total retur penjualan: ${fmtMoney(sr.totalAmount)} dari ${sr.returnCount ?? 0} dokumen.\n` +
-      `Total retur pembelian: ${fmtMoney(pr.totalAmount)} dari ${pr.returnCount ?? 0} dokumen.\n` +
-      largerLine
+      `Ringkasan retur:\n\n` +
+      mdTable(
+        ["Jenis retur", "Total", "Dokumen"],
+        [
+          ["Penjualan", fmtMoney(sr.totalAmount), String(sr.returnCount ?? 0)],
+          ["Pembelian", fmtMoney(pr.totalAmount), String(pr.returnCount ?? 0)],
+        ],
+        [1, 2]
+      ) +
+      `\n\n${largerLine}`
     );
   },
 
@@ -517,22 +561,32 @@ const FORMATTERS: Record<string, Fmt> = {
   },
 
   "invoice.biggestBoth": (r) => {
-    const one = (o: Record<string, unknown> | null | undefined, label: string) => {
-      if (!o) return `${label}: tidak ada faktur.`;
+    const row = (o: Record<string, unknown> | null | undefined, label: string) => {
+      if (!o) return [label, "-", "-", "-", "tidak ada faktur"];
       const party = nameOf(o, "partyName");
-      return `${label}: ${nameOf(o, "number")} (${fmtDate(o.transDate)})${party && party !== "-" ? ` dari ${party}` : ""} — ${fmtMoney(o.totalAmount)}`;
+      return [
+        label,
+        nameOf(o, "number"),
+        fmtDate(o.transDate),
+        party && party !== "-" ? party : "-",
+        fmtMoney(o.totalAmount),
+      ];
     };
     return (
-      one(r.sales as Record<string, unknown>, "Faktur penjualan terbesar") +
-      "\n" +
-      one(r.purchase as Record<string, unknown>, "Faktur pembelian terbesar")
+      `Faktur terbesar:\n\n` +
+      mdTable(
+        ["Jenis", "Faktur", "Tanggal", "Pihak", "Nilai"],
+        [row(r.sales as Record<string, unknown>, "Penjualan"), row(r.purchase as Record<string, unknown>, "Pembelian")],
+        [4]
+      )
     );
   },
 
   "fixedAsset.summary": (r) => {
     const count = Number(r.count) || 0;
     const year = Number(r.year) || 0;
-    if (!count) return `Tidak ada aset tetap yang dibeli tahun ${year}.`;
+    const yearStr = year > 0 ? ` tahun ${year}` : "";
+    if (!count) return `Tidak ada aset tetap yang tercatat${yearStr}.`;
     const items = Array.isArray(r.items) ? (r.items as Record<string, unknown>[]) : [];
     const tbl = items.length
       ? mdTable(
@@ -540,7 +594,7 @@ const FORMATTERS: Record<string, Fmt> = {
           items.slice(0, 5).map((it, i) => [String(i + 1), nameOf(it, "number"), nameOf(it, "transDate"), nameOf(it, "description")])
         )
       : "";
-    return `Ada ${count} aset tetap yang dibeli tahun ${year}.` + (tbl ? `\n\nSebagian contoh:\n\n${tbl}` : "");
+    return `Ada ${count} aset tetap yang dibeli${yearStr}.` + (tbl ? `\n\nSebagian contoh:\n\n${tbl}` : "");
   },
 
   "journalVoucher.yearSummary": (r) => {
@@ -586,19 +640,23 @@ const FORMATTERS: Record<string, Fmt> = {
     const totalQuantity = Number(r.totalQuantity) || 0;
     const warehouseCount = Number(r.warehouseCount) || 0;
     const warehouses = Array.isArray(r.warehouses) ? (r.warehouses as unknown[]).map(String) : [];
-    const wList = warehouses.length ? `\nGudang: ${warehouses.join(", ")}.` : "";
-    return (
-      `Ringkasan persediaan: ${itemCount} jenis barang, total seluruh stok ${totalQuantity.toLocaleString("id-ID")} unit, ` +
-      `tersebar di ${warehouseCount} gudang.${wList}`
-    );
+    const rows: string[][] = [
+      ["Jenis barang", `${itemCount.toLocaleString("id-ID")} jenis`],
+      ["Total stok", `${totalQuantity.toLocaleString("id-ID")} unit`],
+      ["Jumlah gudang", `${warehouseCount} gudang`],
+    ];
+    if (warehouses.length) rows.push(["Daftar gudang", warehouses.join(" · ")]);
+    return `Ringkasan persediaan:\n\n` + mdTable(["Keterangan", "Nilai"], rows);
   },
 
   "autoNumber.summary": (r) => {
     const count = Number(r.count) || 0;
     const items = Array.isArray(r.items) ? (r.items as Record<string, unknown>[]) : [];
     const names = items.map((it) => nameOf(it, "name")).filter((n) => n && n !== "-");
-    const contoh = names.length ? `\nContoh: ${names.join(", ")}.` : "";
-    return `Ada ${count} aturan penomoran otomatis (auto number) yang terdaftar.${contoh}`;
+    const tbl = names.length
+      ? "\n\n" + mdTable(["No", "Nama aturan"], names.slice(0, 10).map((n, i) => [String(i + 1), n]), [0])
+      : "";
+    return `Ada ${count} aturan penomoran otomatis (auto number) yang terdaftar.${tbl}`;
   },
 
   "journalVoucher.summary": (r) => {
@@ -612,9 +670,8 @@ const FORMATTERS: Record<string, Fmt> = {
         ? `periode ${nameOf(period as Record<string, unknown>, "fromDate")}–${nameOf(period as Record<string, unknown>, "toDate")}`
         : "seluruh masa";
     return (
-      `Ringkasan jurnal umum (${periodStr}):\n` +
-      `• Jumlah transaksi: ${count}\n` +
-      `• Total nilai: ${fmtMoney(total)}`
+      `Ringkasan jurnal umum (${periodStr}):\n\n` +
+      mdTable(["Keterangan", "Nilai"], [["Jumlah transaksi", String(count)], ["Total nilai", fmtMoney(total)]], [1])
     );
   },
 
@@ -628,7 +685,10 @@ const FORMATTERS: Record<string, Fmt> = {
       typeof period === "object" && period
         ? `periode ${nameOf(period as Record<string, unknown>, "fromDate")}–${nameOf(period as Record<string, unknown>, "toDate")}`
         : "seluruh masa";
-    return `Retur penjualan (${periodStr}): ${count} transaksi, total ${fmtMoney(total)}.`;
+    return (
+      `Retur penjualan (${periodStr}):\n\n` +
+      mdTable(["Keterangan", "Nilai"], [["Jumlah transaksi", String(count)], ["Total nilai", fmtMoney(total)]], [1])
+    );
   },
 
   "purchaseReturn.summary": (r) => {
@@ -641,7 +701,10 @@ const FORMATTERS: Record<string, Fmt> = {
       typeof period === "object" && period
         ? `periode ${nameOf(period as Record<string, unknown>, "fromDate")}–${nameOf(period as Record<string, unknown>, "toDate")}`
         : "seluruh masa";
-    return `Retur pembelian (${periodStr}): ${count} transaksi, total ${fmtMoney(total)}.`;
+    return (
+      `Retur pembelian (${periodStr}):\n\n` +
+      mdTable(["Keterangan", "Nilai"], [["Jumlah transaksi", String(count)], ["Total nilai", fmtMoney(total)]], [1])
+    );
   },
 
   "purchaseInvoice.summary": (r) => {
@@ -664,15 +727,15 @@ const FORMATTERS: Record<string, Fmt> = {
       const topAmt = fmtMoney(top.totalAmount);
       const topDate = fmtDate(top.transDate);
       const topVendor = nameOf(top, "vendorName") !== "-" ? nameOf(top, "vendorName") : nameOf((top.vendor ?? {}) as Record<string, unknown>, "name", "vendorName");
-      topLine = `\n• Faktur terbesar: ${topNo} (${topDate})${topVendor && topVendor !== "-" ? ` dari ${topVendor}` : ""} — ${topAmt}`;
+      topLine = `${topNo} · ${topDate}${topVendor && topVendor !== "-" ? ` · ${topVendor}` : ""} · ${topAmt}`;
     }
-    return (
-      `Ringkasan pembelian ${from}–${to}:\n` +
-      `• Total: ${fmtMoney(total)}\n` +
-      `• Jumlah faktur: ${invCount}\n` +
-      `• Rata-rata per faktur: ${fmtMoney(avg)}` +
-      topLine
-    );
+    const rows: string[][] = [
+      ["Total", fmtMoney(total)],
+      ["Jumlah faktur", String(invCount)],
+      ["Rata-rata per faktur", fmtMoney(avg)],
+    ];
+    if (topLine) rows.push(["Faktur terbesar", topLine]);
+    return `Ringkasan pembelian ${from}–${to}:\n\n` + mdTable(["Keterangan", "Nilai"], rows);
   },
 
   "vendor.lastPurchaseByName": (r) => {
@@ -681,10 +744,18 @@ const FORMATTERS: Record<string, Fmt> = {
     const name = nameOf(v, "name", "vendorName");
     const last = r.lastPurchase as Record<string, unknown> | null;
     if (!last) return `Pemasok ${name} belum memiliki faktur pembelian.`;
-    const no = nameOf(last, "number", "invoiceNo");
-    const total = fmtMoney(last.totalAmount);
-    const date = fmtDate(last.transDate);
-    return `Pembelian terakhir dari pemasok ${name}: faktur ${no} tanggal ${date} senilai ${total}.`;
+    return (
+      `Pembelian terakhir dari pemasok ${name}:\n\n` +
+      mdTable(
+        ["Keterangan", "Nilai"],
+        [
+          ["Pemasok", name],
+          ["Faktur", nameOf(last, "number", "invoiceNo")],
+          ["Tanggal", fmtDate(last.transDate)],
+          ["Nilai", fmtMoney(last.totalAmount)],
+        ]
+      )
+    );
   },
 
   "vendor.purchasesByName": (r) => {
@@ -776,12 +847,18 @@ const FORMATTERS: Record<string, Fmt> = {
     const lastStr = last
       ? ` Pembelian terakhir: faktur ${nameOf(last, "number")} tanggal ${fmtDate(last.transDate)} senilai ${fmtMoney(last.totalAmount)}.`
       : "";
-    return (
-      `Ringkasan pemasok ${name}${periodStr}:\n` +
-      `• Total pembelian: ${fmtMoney(totalPurchase)} dari ${invCount} faktur\n` +
-      `• Utang belum dibayar: ${fmtMoney(totalUnpaid)} dari ${unpaidCount} faktur` +
-      lastStr
-    );
+    const rows: string[][] = [
+      ["Total pembelian", `${fmtMoney(totalPurchase)} (${invCount} faktur)`],
+      ["Utang belum dibayar", `${fmtMoney(totalUnpaid)} (${unpaidCount} faktur)`],
+    ];
+    if (last) {
+      rows.push([
+        "Pembelian terakhir",
+        `faktur ${nameOf(last, "number")} · ${fmtDate(last.transDate)} · ${fmtMoney(last.totalAmount)}`,
+      ]);
+    }
+    void lastStr;
+    return `Ringkasan pemasok ${name}${periodStr}:\n\n` + mdTable(["Keterangan", "Nilai"], rows);
   },
 
   "salesInvoice.perCustomer": (r) => {
@@ -911,10 +988,11 @@ const FORMATTERS: Record<string, Fmt> = {
     const no = nameOf(it, "no");
     const price = r.sellingPrice ?? it.price ?? it.sellingPrice;
     const stock = r.stock ?? it.stock ?? it.quantity;
-    const lines = [`Barang: ${name} (kode: ${no})`];
-    if (price !== undefined && price !== null) lines.push(`Harga jual: ${fmtMoney(price)}`);
-    if (stock !== undefined && stock !== null) lines.push(`Stok: ${Number(stock)}`);
-    return lines.join("\n");
+    const rows: string[][] = [["Nama barang", name]];
+    if (no && no !== "-") rows.push(["Kode", no]);
+    if (price !== undefined && price !== null) rows.push(["Harga jual", fmtMoney(price)]);
+    if (stock !== undefined && stock !== null) rows.push(["Stok", String(Number(stock))]);
+    return mdTable(["Keterangan", "Nilai"], rows);
   },
 
   "item.buyers": (r) => {
@@ -1149,10 +1227,16 @@ const FORMATTERS: Record<string, Fmt> = {
     const liabilities = Number(s?.totalLiabilities) || 0;
     const equity = Number(s?.totalEquity) || 0;
     return (
-      `Posisi keuangan per ${asOf}:\n` +
-      `• Total aset: ${fmtMoney(assets)}\n` +
-      `• Total kewajiban (utang): ${fmtMoney(liabilities)}\n` +
-      `• Modal: ${fmtMoney(equity)}`
+      `Posisi keuangan per ${asOf}:\n\n` +
+      mdTable(
+        ["Komponen", "Jumlah"],
+        [
+          ["Total aset", fmtMoney(assets)],
+          ["Total kewajiban (utang)", fmtMoney(liabilities)],
+          ["Modal", fmtMoney(equity)],
+        ],
+        [1]
+      )
     );
   },
 
@@ -1164,22 +1248,40 @@ const FORMATTERS: Record<string, Fmt> = {
     const bs = r.posisiKeuangan as Record<string, unknown> | undefined;
     const sales = r.penjualan as Record<string, unknown> | undefined;
     const purchase = r.pembelian as Record<string, unknown> | undefined;
-    const lines = [`Laporan keuangan ${from}–${to}:`];
+    const lines: string[] = [`Laporan keuangan ${from}–${to}:`];
     if (pl) {
-      lines.push(`\nLaba rugi:`);
-      lines.push(`• Pendapatan: ${fmtMoney(pl.revenue)}`);
-      lines.push(`• Laba kotor: ${fmtMoney(pl.grossProfit)}`);
-      lines.push(`• Laba bersih: ${fmtMoney(pl.netProfit)}`);
+      lines.push(
+        "Laba rugi:\n\n" +
+          mdTable(
+            ["Komponen", "Jumlah"],
+            [
+              ["Pendapatan", fmtMoney(pl.revenue)],
+              ["Laba kotor", fmtMoney(pl.grossProfit)],
+              ["Laba bersih", fmtMoney(pl.netProfit)],
+            ],
+            [1]
+          )
+      );
     }
     if (bs) {
-      lines.push(`\nPosisi keuangan:`);
-      lines.push(`• Total aset: ${fmtMoney(bs.totalAssets)}`);
-      lines.push(`• Total utang: ${fmtMoney(bs.totalLiabilities)}`);
-      lines.push(`• Modal: ${fmtMoney(bs.totalEquity)}`);
+      lines.push(
+        "Posisi keuangan:\n\n" +
+          mdTable(
+            ["Komponen", "Jumlah"],
+            [
+              ["Total aset", fmtMoney(bs.totalAssets)],
+              ["Total utang", fmtMoney(bs.totalLiabilities)],
+              ["Modal", fmtMoney(bs.totalEquity)],
+            ],
+            [1]
+          )
+      );
     }
-    if (sales) lines.push(`\nPenjualan: ${fmtMoney(sales.totalSales)} dari ${sales.invoiceCount ?? 0} faktur`);
-    if (purchase) lines.push(`Pembelian: ${fmtMoney(purchase.totalPurchase)} dari ${purchase.invoiceCount ?? 0} faktur`);
-    return lines.length > 1 ? lines.join("\n") : null;
+    const act: string[][] = [];
+    if (sales) act.push(["Penjualan", fmtMoney(sales.totalSales), `${sales.invoiceCount ?? 0} faktur`]);
+    if (purchase) act.push(["Pembelian", fmtMoney(purchase.totalPurchase), `${purchase.invoiceCount ?? 0} faktur`]);
+    if (act.length) lines.push("Aktivitas:\n\n" + mdTable(["Keterangan", "Nilai", "Jumlah"], act, [1]));
+    return lines.length > 1 ? lines.join("\n\n") : null;
   },
 
   "cashflow.summary": (r) => {
@@ -1191,10 +1293,16 @@ const FORMATTERS: Record<string, Fmt> = {
     const cashOut = Number(s?.totalCashOut) || 0;
     const net = cashIn - cashOut;
     return (
-      `Arus kas ${from}–${to}:\n` +
-      `• Kas masuk: ${fmtMoney(cashIn)}\n` +
-      `• Kas keluar: ${fmtMoney(cashOut)}\n` +
-      `• Selisih: ${fmtMoney(net)}`
+      `Arus kas ${from}–${to}:\n\n` +
+      mdTable(
+        ["Komponen", "Jumlah"],
+        [
+          ["Kas masuk", fmtMoney(cashIn)],
+          ["Kas keluar", fmtMoney(cashOut)],
+          ["Selisih", fmtMoney(net)],
+        ],
+        [1]
+      )
     );
   },
 
@@ -1238,13 +1346,21 @@ const FORMATTERS: Record<string, Fmt> = {
       if (counts && Object.keys(counts).length > 0) {
         const entries = Object.entries(counts);
         if (entries.length === 1) out.push(`Ada ${entries[0][1]} ${label} tahun ${entries[0][0]}.`);
-        else out.push(`${label} per tahun: ${entries.map(([y, n]) => `${y} = ${n}`).join(", ")}.`);
+        else {
+          out.push(
+            `${label} per tahun:\n\n` +
+              mdTable(["Tahun", "Jumlah"], entries.map(([y, n]) => [y, String(n)]), [1])
+          );
+        }
       } else if (!matches) {
         out.push(`Ada ${Number(e.count) || 0} ${label} tercatat.`);
       }
       if (Array.isArray(e.names) && (e.names as unknown[]).length > 0) {
         const names = (e.names as unknown[]).map((n) => String(n));
-        out.push(`Daftar ${label} (${names.length}): ${names.join(", ")}.`);
+        out.push(
+          `Daftar ${label} (${names.length}):\n\n` +
+            mdTable(["No", "Nama"], names.map((n, i) => [String(i + 1), n]), [0])
+        );
       }
       const latest = e.latest as Record<string, unknown> | undefined;
       if (latest && typeof latest === "object") {
@@ -1257,8 +1373,8 @@ const FORMATTERS: Record<string, Fmt> = {
         const by = e.byYear as Array<Record<string, unknown>>;
         const top = by[0];
         out.push(
-          `Tahun dengan record terbanyak: ${nameOf(top, "year")} (${Number(top.count) || 0}). ` +
-            `Rincian: ${by.map((b) => `${nameOf(b, "year")}: ${Number(b.count) || 0}`).join(", ")}.`
+          `Tahun dengan record terbanyak: ${nameOf(top, "year")} (${Number(top.count) || 0}).\n\n` +
+            mdTable(["Tahun", "Jumlah"], by.map((b) => [nameOf(b, "year"), String(Number(b.count) || 0)]), [1])
         );
       }
       const sum = e.sum as Record<string, unknown> | undefined;
@@ -1327,12 +1443,12 @@ const FORMATTERS: Record<string, Fmt> = {
         ? `${nameOf(period as Record<string, unknown>, "fromDate")}–${nameOf(period as Record<string, unknown>, "toDate")}`
         : "seluruh periode";
     const combined = (r.combined as Record<string, unknown> | undefined)?.total;
-    return (
-      `Penjualan & pembelian ${periodStr}:\n` +
-      `• Penjualan: ${fmtMoney(s.total)} dari ${s.invoiceCount ?? 0} faktur\n` +
-      `• Pembelian: ${fmtMoney(p.total)} dari ${p.invoiceCount ?? 0} faktur` +
-      (combined !== undefined ? `\n• Gabungan: ${fmtMoney(combined)}` : "")
-    );
+    const rows: string[][] = [
+      ["Penjualan", fmtMoney(s.total), `${s.invoiceCount ?? 0} faktur`],
+      ["Pembelian", fmtMoney(p.total), `${p.invoiceCount ?? 0} faktur`],
+    ];
+    if (combined !== undefined) rows.push(["Gabungan", fmtMoney(combined), "-"]);
+    return `Penjualan & pembelian ${periodStr}:\n\n` + mdTable(["Keterangan", "Nilai", "Jumlah"], rows, [1]);
   },
 
   "party.topByYears": (r) => {
@@ -1378,14 +1494,18 @@ const FORMATTERS: Record<string, Fmt> = {
     if (!count) return "Tidak ada job order tercatat.";
     const total = Number(r.totalValue) || 0;
     const big = r.biggest as Record<string, unknown> | null | undefined;
-    const lines = [`Ada ${count} job order tercatat dengan total nilai ${fmtMoney(total)}.`];
+    const rows: string[][] = [
+      ["Jumlah job order", String(count)],
+      ["Total nilai", fmtMoney(total)],
+    ];
     if (big) {
       const nm = nameOf(big, "name");
-      lines.push(
-        `Job order dengan nilai terbesar: ${nameOf(big, "number")}${nm && nm !== "-" ? ` (${nm})` : ""} — ${fmtMoney(big.totalAmount)}.`
-      );
+      rows.push([
+        "Nilai terbesar",
+        `${nameOf(big, "number")}${nm && nm !== "-" ? ` (${nm})` : ""} · ${fmtMoney(big.totalAmount)}`,
+      ]);
     }
-    return lines.join("\n");
+    return `Ringkasan job order:\n\n` + mdTable(["Keterangan", "Nilai"], rows);
   },
 };
 
