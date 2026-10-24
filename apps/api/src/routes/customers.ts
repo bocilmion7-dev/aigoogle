@@ -78,6 +78,39 @@ customersRouter.get(
   })
 );
 
+/** daftar nama pelanggan utk autocomplete "@" di chat — ringan (customer.list saja,
+ *  tanpa agregat faktur), cache per tenant, ikut dibuang saat webhook CUSTOMER masuk. */
+customersRouter.get(
+  "/customers/names",
+  requirePerm("accurate:customer.view"),
+  asyncHandler(async (req, res) => {
+    const tenantId = req.user!.tenant.id;
+    const key = `${tenantId}:accurate:customer:names`;
+    const hit = cache.get<Array<{ name: string; customerNo: string }>>(key);
+    if (hit) return res.json(hit);
+    const ctx = await accurateCtxFor(tenantId);
+    if (!ctx) return res.status(409).json({ error: "belum_connect" });
+    const provider = accurateProvider();
+    const out: Array<{ name: string; customerNo: string }> = [];
+    for (let page = 1; page <= 5; page++) {
+      const listed = (await provider.execute("customer.list", { pageSize: 100, page }, ctx)) as {
+        items?: Array<Record<string, unknown>>;
+        pageCount?: number;
+      };
+      const items = Array.isArray(listed) ? listed : listed.items ?? [];
+      for (const c of items) {
+        const name = String(c.name ?? "").trim();
+        if (name) out.push({ name, customerNo: String(c.customerNo ?? "") });
+      }
+      const pageCount = Number(listed.pageCount ?? (items.length < 100 ? page : page + 1));
+      if (page >= pageCount) break;
+    }
+    out.sort((a, b) => a.name.localeCompare(b.name, "id"));
+    cache.set(key, out, CACHE_TTL);
+    res.json(out);
+  })
+);
+
 customersRouter.post(
   "/customers/scan",
   requireUser,

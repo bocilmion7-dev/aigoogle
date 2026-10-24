@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { MessageInfo, SessionInfo } from "../chat-api";
 import { CHAT_TIMEOUT_MS, isTimeoutError, listMessages, listSessions, streamChat } from "../chat-api";
+import { MentionInput } from "../customer-mention";
 import { renderRichText } from "../rich-text";
 import { VoiceMode } from "../voice-mode";
 
@@ -174,8 +175,9 @@ export function Chat() {
           {msgs.length === 0 && (
             <div className="empty" style={{ padding: "var(--space-l) 0" }}>
               <p style={{ color: "var(--ink-2)", fontSize: "var(--step-0)" }}>
-                Tanya data akuntansi Anda — ketik atau pakai mic. Ketik{" "}
-                <code>/contoh</code> untuk melihat contoh pertanyaan.
+              Tanya data akuntansi Anda — ketik atau pakai mic. Ketik{" "}
+              <code>/contoh</code> untuk melihat contoh pertanyaan, atau <code>@</code> untuk memilih
+              nama pelanggan.
               </p>
             </div>
           )}
@@ -231,19 +233,13 @@ export function Chat() {
           </div>
         )}
         <div className={`composer${composerFocused ? " composer--focus" : ""}`}>
-          <input
+          <MentionInput
             className="input"
-            aria-label="Tanya data akuntansi"
             value={input}
-            onChange={(e) => setInput(e.target.value)}
+            onChange={setInput}
+            onSubmit={(t) => void send(t)}
             onFocus={() => setComposerFocused(true)}
             onBlur={() => setComposerFocused(false)}
-            onKeyDown={(e) => {
-              if (e.key !== "Enter" || !input.trim()) return;
-              void send(input);
-              (e.target as HTMLInputElement).blur(); // Enter-kirim: composer kembali ke ukuran semula
-            }}
-            placeholder="Tanya sesuatu…"
           />
           <span className="composer__mic">
             <button

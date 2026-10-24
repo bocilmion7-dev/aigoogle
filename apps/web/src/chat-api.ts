@@ -48,6 +48,23 @@ export async function listMessages(sessionId: string): Promise<MessageInfo[]> {
   return res.ok ? res.json() : [];
 }
 
+export interface CustomerName {
+  name: string;
+  customerNo: string;
+}
+
+/** nama pelanggan utk autocomplete "@" — gagal senyap → [] (chat tetap jalan tanpa saran) */
+export async function listCustomerNames(): Promise<CustomerName[]> {
+  try {
+    const res = await fetch("/api/customers/names", { signal: AbortSignal.timeout(BOOT_TIMEOUT_MS) });
+    if (!res.ok) return [];
+    const rows: unknown = await res.json();
+    return Array.isArray(rows) ? (rows as CustomerName[]) : [];
+  } catch {
+    return [];
+  }
+}
+
 export async function streamChat(
   message: string,
   sessionId: string | null,

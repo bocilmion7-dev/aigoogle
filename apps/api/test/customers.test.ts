@@ -150,6 +150,24 @@ describe("GET /api/customers", () => {
   });
 });
 
+describe("GET /api/customers/names", () => {
+  it("tanpa login → 401; tanpa hak customer.view → 403", async () => {
+    expect((await request(api).get("/api/customers/names")).status).toBe(401);
+    expect((await request(api).get("/api/customers/names").set("Cookie", bareCookie)).status).toBe(403);
+  });
+
+  it("login → nama terurut + customerNo utk autocomplete @", async () => {
+    const res = await request(api).get("/api/customers/names").set("Cookie", cookie);
+    expect(res.status).toBe(200);
+    const rows = res.body as Array<{ name: string; customerNo: string }>;
+    expect(rows.map((r) => r.name)).toContain("Budi Santoso");
+    expect(rows.find((r) => r.name === "Budi Santoso")!.customerNo).toBe("CSBY-0001");
+    const names = rows.map((r) => r.name);
+    expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b, "id")));
+    expect(rows.every((r) => r.name.length > 0)).toBe(true);
+  });
+});
+
 describe("POST /api/customers/entries", () => {
   it("tanpa login → 401; body ngawur → 400", async () => {
     expect((await request(api).post("/api/customers/entries").send({ target: "salesInvoice", customerName: "X" })).status).toBe(401);

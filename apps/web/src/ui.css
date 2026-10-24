@@ -1645,6 +1645,73 @@ pre.block {
   pointer-events: none;
 }
 
+/* autocomplete nama pelanggan saat mengetik "@" */
+.composer__field {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-width: 0;
+}
+
+.composer__field .input {
+  flex: 1;
+  min-width: 0;
+}
+
+.mention {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 40;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-2);
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.mention__item {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-xs);
+  padding: 10px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-size: var(--step-0);
+  color: var(--ink);
+}
+
+.mention__item[aria-selected="true"] {
+  background: var(--surface-2);
+}
+
+.mention__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mention__no {
+  flex: 0 0 auto;
+  color: var(--ink-2);
+  font-size: var(--step--1);
+  font-variant-numeric: tabular-nums;
+}
+
+.mention__hint {
+  margin: 0;
+  padding: 7px 10px;
+  color: var(--ink-2);
+  font-size: var(--step--1);
+}
+
 /* ---------- aksesibilitas ---------- */
 
 .sr-only {
