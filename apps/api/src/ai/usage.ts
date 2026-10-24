@@ -1,5 +1,6 @@
 import { prisma } from "../db.js";
 import { recordLlm } from "../metrics.js";
+import { chargeAi } from "./billing.js";
 
 /**
  * Pencatatan pemakaian LLM per tenant (estimasi token = karakter/4).
@@ -16,11 +17,23 @@ export async function recordLlmUsage(opts: {
   model?: string;
   promptChars: number;
   completionChars: number;
+  /** bila diisi → pemakaian dipotong dari saldo AI member ini */
+  userId?: string;
 }): Promise<void> {
   const promptTokens = estTokens(opts.promptChars);
   const completionTokens = estTokens(opts.completionChars);
   recordLlm(opts.kind, promptTokens, completionTokens);
   const model = (opts.model ?? "").slice(0, 80);
+  if (opts.userId) {
+    void chargeAi({
+      userId: opts.userId,
+      tenantId: opts.tenantId,
+      kind: opts.kind,
+      model: model || "unknown",
+      promptTokens,
+      completionTokens,
+    }).catch((e) => console.warn("[billing] charge gagal:", e instanceof Error ? e.message.slice(0, 120) : e));
+  }
   try {
     await prisma.llmUsage.upsert({
       where: {

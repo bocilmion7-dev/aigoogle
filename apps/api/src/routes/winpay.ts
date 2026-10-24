@@ -2,6 +2,7 @@ import { Router } from "express";
 import { asyncHandler } from "../asyncHandler.js";
 import { paymentSettings, verifyWinpayCallback } from "../billing/winpay.js";
 import { finalizeWaTopup } from "../wa/service.js";
+import { finalizeAiTopup } from "../ai/billing.js";
 
 export const winpayNotifyRouter = Router();
 
@@ -26,7 +27,11 @@ winpayNotifyRouter.post(
 
     const paid = trx === "00";
     const failed = ["04", "05", "06"].includes(trx);
-    if (paid || failed) await finalizeWaTopup(ref, paid, paid ? "settlement" : "cancel", "winpay");
+    if (paid || failed) {
+      const status = paid ? "settlement" : "cancel";
+      if (ref.startsWith("ai-")) await finalizeAiTopup(ref, paid, status, "winpay");
+      else await finalizeWaTopup(ref, paid, status, "winpay");
+    }
     res.json({ responseCode: "2005200", responseMessage: "Successful" });
   })
 );

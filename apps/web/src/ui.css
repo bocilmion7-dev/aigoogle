@@ -133,9 +133,10 @@ a {
 .app-header__user {
   margin-left: auto;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
   font-size: var(--step--1);
   color: var(--ink-3);
 }
@@ -2741,4 +2742,110 @@ table.dtable {
   .modal__x {
     transition: none;
   }
+}
+
+/* ---------- saldo AI ---------- */
+.app-header__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 46vw;
+}
+
+.app-header__balance {
+  color: var(--accent);
+  text-decoration: none;
+  font-size: var(--step--1);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.app-header__balance:hover,
+.app-header__balance:focus-visible {
+  text-decoration: underline;
+}
+
+.saldo-card {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-m);
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.saldo-card__label {
+  margin: 0;
+  color: var(--ink-2);
+  font-size: var(--step--1);
+}
+
+.saldo-card__value {
+  margin: 2px 0 0;
+  font-family: var(--font-display);
+  font-size: var(--step-3);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.saldo-card__warn {
+  margin: var(--space-2xs) 0 0;
+  color: var(--danger, #b3261e);
+  font-size: var(--step--1);
+}
+
+.saldo-card__stats {
+  display: flex;
+  gap: var(--space-m);
+  margin: 0;
+}
+
+.saldo-card__stats dt {
+  color: var(--ink-2);
+  font-size: var(--step--1);
+}
+
+.saldo-card__stats dd {
+  margin: 2px 0 0;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.saldo-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  margin: var(--space-s) 0;
+}
+
+.saldo-topup-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-s);
+}
+
+.saldo-topup-row label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: var(--step--1);
+  color: var(--ink-2);
+}
+
+.qris-panel {
+  margin-top: var(--space-s);
+  padding: var(--space-s);
+  border: var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+
+.qris-panel__img {
+  display: block;
+  max-width: 260px;
+  width: 100%;
+  margin: var(--space-xs) 0;
+  border-radius: var(--radius);
+  background: #fff;
 }

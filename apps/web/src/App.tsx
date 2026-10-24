@@ -11,6 +11,7 @@ import { Aktivitas } from "./pages/Aktivitas";
 import { PlatformLogin } from "./pages/PlatformLogin";
 import { AiProviders } from "./pages/AiProviders";
 import { AiModels } from "./pages/AiModels";
+import { Saldo } from "./pages/Saldo";
 
 export function App() {
   const path = window.location.pathname;
@@ -20,6 +21,7 @@ export function App() {
   if (path === "/explore") return <Explore />;
   if (path === "/admin") return <Admin />;
   if (path === "/app") return <Shell />;
+  if (path === "/saldo") return <Saldo />;
   if (path === "/login") return <Login />;
   if (path === "/platform") return <PlatformLogin />;
   if (path === "/set-password") return <SetPassword />;

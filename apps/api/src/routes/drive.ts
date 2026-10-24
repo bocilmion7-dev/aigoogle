@@ -8,6 +8,7 @@ import { driveClientFor, engineMode } from "../drive/registry.js";
 import { ensureFolder, folderNameFor } from "../drive/folders.js";
 import { docFileName } from "../doc/naming.js";
 import { requirePerm } from "../permissions.js";
+import { AiSaldoHabis, assertCanUseAi, chargeAi } from "../ai/billing.js";
 import { buildPlan, executePlan, executeUndo } from "../drive/tidy.js";
 import type { TidyPlanItem, TidyResultItem, UndoTarget } from "../drive/types.js";
 import { classifyFile } from "../drive/classify.js";
@@ -132,8 +133,29 @@ driveRouter.post(
       send = (e) => res.write(JSON.stringify(e) + "\n");
       send({ type: "start", total: totalPdfs, folderName });
     }
+    // saldo AI member — blokir total bila tidak cukup
+    try {
+      await assertCanUseAi(user.id, user.tenant.id);
+    } catch (e) {
+      if (e instanceof AiSaldoHabis) return res.status(402).json({ error: "saldo_ai_habis", balance: e.balance, need: e.need });
+      throw e;
+    }
     const driveModel = await getModuleModel("drive");
     const preferred = driveModel || undefined;
+    // klasifikasi memakai AI → potong saldo member per file
+    const classify = async (text: string, mime: string, name: string, b64?: string) => {
+      const out = await classifyFile(text, mime, name, b64, preferred);
+      void chargeAi({
+        userId: user.id,
+        tenantId: user.tenant.id,
+        kind: "drive",
+        model: preferred || "unknown",
+        promptTokens: Math.round((text.length || (b64 ? 1_200 : 0)) / 4) + 80,
+        completionTokens: 8,
+        refId: name,
+      }).catch(() => null);
+      return out;
+    };
     const items = await buildPlan(
       client,
       body.data.folderId,
@@ -144,10 +166,10 @@ driveRouter.post(
             const bytes = Buffer.from(await client.getBytes(f.id));
             if (bytes.byteLength > 0 && bytes.byteLength <= 6_000_000) {
               const text = await extractText(bytes, "pdf").catch(() => "");
-              if (text.trim()) return classifyFile(text, f.mimeType, f.name, undefined, preferred);
+              if (text.trim()) return classify(text, f.mimeType, f.name);
               const images = extractPdfImages(bytes, 1);
               if (images.length) {
-                return classifyFile("", "image/jpeg", f.name, images[0].toString("base64"), preferred);
+                return classify("", "image/jpeg", f.name, images[0].toString("base64"));
               }
             }
           } catch {
@@ -159,19 +181,13 @@ driveRouter.post(
           try {
             const bytes = await client.getBytes(f.id);
             if (bytes.byteLength > 0 && bytes.byteLength <= 6_000_000) {
-              return classifyFile("", f.mimeType, f.name, Buffer.from(bytes).toString("base64"), preferred);
+              return classify("", f.mimeType, f.name, Buffer.from(bytes).toString("base64"));
             }
           } catch {
             /* jatuh ke jalur teks */
           }
         }
-        return classifyFile(
-          await client.getText(f.id).catch(() => ""),
-          f.mimeType,
-          f.name,
-          undefined,
-          preferred
-        );
+        return classify(await client.getText(f.id).catch(() => ""), f.mimeType, f.name);
       },
       (done, total, fileName, category) => {
         send({ type: "classify", done, total, fileName, category });

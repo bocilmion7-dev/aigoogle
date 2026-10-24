@@ -349,3 +349,65 @@ model DriveIndex {
   @@unique([tenantId, fileId])
   @@index([tenantId, name])
 }
+
+// ── Billing AI per member (saldo rupiah, harga basis OpenRouter + markup) ──
+model AiWallet {
+  userId    String   @id
+  tenantId  String
+  /// saldo dalam rupiah (integer)
+  balance   Int      @default(0)
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+model AiLedger {
+  id               String   @id @default(cuid())
+  userId           String
+  tenantId         String
+  /// bonus|topup|usage|adjust|refund
+  kind             String
+  /// + kredit / − tagihan (rupiah)
+  amount           Int
+  /// modal (rupiah) utk kind=usage — dasar laporan margin
+  cost             Int      @default(0)
+  model            String   @default("")
+  promptTokens     Int      @default(0)
+  completionTokens Int      @default(0)
+  refId            String   @default("")
+  meta             String   @default("")
+  createdAt        DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([tenantId, createdAt])
+}
+
+model AiTopup {
+  id            String   @id @default(cuid())
+  orderId       String   @unique
+  userId        String
+  tenantId      String
+  /// rupiah dibayar (termasuk biaya admin)
+  amount        Int
+  /// rupiah masuk saldo
+  credits       Int
+  status        String   @default("pending") // pending|settlement|cancel|expire
+  paymentMethod String   @default("qris")
+  providerRef   String   @default("")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([userId])
+  @@index([tenantId])
+}
+
+model AiModelPrice {
+  id             String   @id @default(cuid())
+  model          String   @unique
+  openrouterId   String   @default("")
+  inputUsdPer1M  Float    @default(0.3)
+  outputUsdPer1M Float    @default(1.2)
+  markup         Float    @default(1.5)
+  source         String   @default("manual") // openrouter|manual
+  updatedAt      DateTime @updatedAt
+}

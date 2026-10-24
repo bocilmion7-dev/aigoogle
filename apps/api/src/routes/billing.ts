@@ -9,6 +9,7 @@ import { isEntitled } from "../billing/entitlement.js";
 import { generateQrMpm, midtransSnapReady, verifyMidtransNotification } from "../billing/midtrans-snap.js";
 import { paymentSettings, verifyWinpayCallback } from "../billing/winpay.js";
 import { finalizeWaTopup } from "../wa/service.js";
+import { finalizeAiTopup } from "../ai/billing.js";
 import { writeAudit } from "../audit.js";
 
 export const billingRouter = Router();
@@ -159,6 +160,12 @@ snapNotifyRouter.post(
 
     const paid = trx === "00";
     const failed = ["04", "05", "06", "08", "09"].includes(trx);
+
+    // ── Topup saldo AI via Midtrans ──
+    if (ref.startsWith("ai-")) {
+      if (paid || failed) await finalizeAiTopup(ref, paid, paid ? "settlement" : "cancel", "midtrans");
+      return res.json({ responseCode: "2005200", responseMessage: "Request has been processed successfully" });
+    }
 
     // ── Topup WA via Midtrans ──
     if (ref.startsWith("mt-")) {

@@ -14,6 +14,7 @@ import { DRIVE_TOOLS, executeDriveTool } from "../ai/drive-tools.js";
 import { STATS_TOOLS, executeStatsTool } from "../ai/stats-tools.js";
 import { transformToRoute, formatAggregationResult, ROUTER_PROMPT_CHARS } from "../ai/transformer.js";
 import { recordLlmUsage, usageToday, dailyLimit } from "../ai/usage.js";
+import { AiSaldoHabis, assertCanUseAi } from "../ai/billing.js";
 import type { LLMContent } from "../ai/llm-types.js";
 import { buildSystemPrompt } from "../ai/system-prompt.js";
 import { loadPermissionSet } from "../permissions.js";
@@ -101,6 +102,23 @@ chatRouter.post(
           return;
         }
       }
+    }
+
+    // saldo AI per member — blokir total bila di bawah reserve
+    try {
+      await assertCanUseAi(user.id, user.tenant.id);
+    } catch (e) {
+      if (e instanceof AiSaldoHabis) {
+        send({
+          type: "error",
+          message: `Saldo AI Anda Rp${e.balance.toLocaleString("id-ID")} — tidak cukup (minimum Rp${e.need.toLocaleString(
+            "id-ID"
+          )}). Top up di halaman Saldo.`,
+        });
+        res.end();
+        return;
+      }
+      throw e;
     }
 
     let session = body.data.sessionId
@@ -201,6 +219,7 @@ chatRouter.post(
         tenantId: user.tenant.id,
         kind: body.data.voice === true ? "voice" : "router",
         model: preferredModel || undefined,
+        userId: user.id,
         promptChars: ROUTER_PROMPT_CHARS + body.data.message.length + historyChars,
         completionChars: JSON.stringify(route ?? null).length,
       });
@@ -242,6 +261,7 @@ chatRouter.post(
                 tenantId: user.tenant.id,
                 kind: body.data.voice === true ? "voice" : "chat",
                 model: preferredModel || undefined,
+                userId: user.id,
                 promptChars: basePromptChars,
                 completionChars: answer.length + JSON.stringify(result).length,
               });
@@ -283,6 +303,7 @@ chatRouter.post(
         tenantId: user.tenant.id,
         kind: body.data.voice === true ? "voice" : "chat",
         model: preferredModel || undefined,
+        userId: user.id,
         promptChars: basePromptChars + JSON.stringify(out.trace).length,
         completionChars: out.text.length + JSON.stringify(out.trace).length,
       });

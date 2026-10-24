@@ -415,3 +415,62 @@ export interface PlatformAnalytics {
   }>;
 }
 export const getPlatformAnalytics = () => adminFetch<PlatformAnalytics>("/api/platform/analytics");
+
+// ── Billing AI (saldo per member) ────────────────────────────────────────────
+export interface AiWalletSummary {
+  balance: number;
+  minReserve: number;
+  markup: number;
+  usdIdr: number;
+  spent30d: number;
+  cost30d: number;
+  tokens30d: number;
+  calls30d: number;
+}
+export interface AiLedgerRow {
+  id: string;
+  kind: string;
+  amount: number;
+  cost: number;
+  model: string;
+  promptTokens: number;
+  completionTokens: number;
+  refId: string;
+  meta: string;
+  createdAt: string;
+}
+export interface AiTopupResponse {
+  orderId: string;
+  amount: number;
+  feeAmount: number;
+  credits: number;
+  provider?: string;
+  qris?: { qrUrl: string; qrContent: string; contractId?: string; expiredAt: string };
+}
+export interface AiMemberWallet {
+  userId: string;
+  name: string;
+  email: string;
+  role: string;
+  balance: number | null;
+}
+
+export const getAiWallet = () => adminFetch<AiWalletSummary>("/api/ai/wallet");
+export const getAiLedger = (take = 50) => adminFetch<AiLedgerRow[]>(`/api/ai/ledger?take=${take}`);
+export const postAiTopup = (amount: number) =>
+  adminFetch<AiTopupResponse>("/api/ai/topup", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ amount }),
+  });
+export const getAiTopup = (orderId: string) =>
+  adminFetch<{ orderId: string; status: string; credits: number; amount: number }>(`/api/ai/topup/${orderId}`);
+export const mockSettleAiTopup = (orderId: string) =>
+  adminFetch<{ ok: boolean }>(`/api/ai/topup/${orderId}/mock-settle`, { method: "POST" });
+export const getAiWallets = () => adminFetch<AiMemberWallet[]>("/api/admin/ai/wallets");
+export const adjustAiWallet = (userId: string, amount: number, note: string) =>
+  adminFetch<{ ok: boolean; balance: number }>(`/api/admin/ai/wallets/${userId}/adjust`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ amount, note }),
+  });

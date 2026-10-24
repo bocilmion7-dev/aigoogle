@@ -12,6 +12,8 @@ import { writeAudit } from "../audit.js";
 import { detectKind, extractText, VISION_KINDS } from "../doc/extract.js";
 import { scanDocument, type ScanHint } from "../doc/scan.js";
 import { ocrImage, ocrUsable } from "../doc/ocr.js";
+import { AiSaldoHabis, assertCanUseAi, chargeAi } from "../ai/billing.js";
+import { getModuleModel } from "../ai/module-model.js";
 
 export const customersRouter = Router();
 
@@ -151,6 +153,19 @@ customersRouter.post(
     const kind = detectKind(fileName, mime);
     if (kind === "unknown") return res.status(415).json({ error: "unsupported_type" });
 
+    // saldo AI member — blokir total bila tidak cukup
+    try {
+      await assertCanUseAi(req.user!.id, req.user!.tenant.id);
+    } catch (e) {
+      if (e instanceof AiSaldoHabis) {
+        return res.status(402).json({
+          error: "saldo_ai_habis",
+          balance: e.balance,
+          need: e.need,
+        });
+      }
+      throw e;
+    }
     const mode = await ocrMode();
     const vision = VISION_KINDS.has(kind);
     const localText = await extractText(buffer, kind);
@@ -166,6 +181,21 @@ customersRouter.post(
       ocrText,
       hint: parseHint(req.header("x-doc-hint")),
     });
+    // potong saldo (estimasi token: prompt teks/gambar + prompt aturan, output JSON)
+    {
+      const model = (await getModuleModel(kind === "image" ? "uploadImage" : "uploadDocument")) || "unknown";
+      const promptChars = 2_000 + (ocrText.length || localText.length) + fileName.length;
+      const completionChars = 500 + out.rawText.length + JSON.stringify(out.fields).length;
+      void chargeAi({
+        userId: req.user!.id,
+        tenantId: req.user!.tenant.id,
+        kind: "doc",
+        model,
+        promptTokens: Math.round(promptChars / 4),
+        completionTokens: Math.round(completionChars / 4),
+        refId: fileName,
+      }).catch(() => null);
+    }
     res.json({
       fileName,
       kind,

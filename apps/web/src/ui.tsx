@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { ComponentType } from "react";
 import type { Me } from "@aigoogle/shared";
-import { getMe } from "./api";
+import { getAiWallet, getMe } from "./api";
 import {
   IconActivity,
   IconChat,
@@ -29,9 +29,22 @@ interface NavLink {
  */
 export function AppHeader({ me }: { me?: Me | null }) {
   const [own, setOwn] = useState<Me | null | undefined>(undefined);
+  const [balance, setBalance] = useState<number | null>(null);
   useEffect(() => {
     if (me === undefined) void getMe().then(setOwn);
   }, [me]);
+  const dataForBalance = me !== undefined ? me : own;
+  useEffect(() => {
+    if (!dataForBalance || dataForBalance.tenant.provider === "platform") return;
+    const load = () => {
+      void getAiWallet()
+        .then((w) => setBalance(w.balance))
+        .catch(() => null);
+    };
+    load();
+    window.addEventListener("focus", load);
+    return () => window.removeEventListener("focus", load);
+  }, [dataForBalance]);
 
   const data = me !== undefined ? me : own;
   if (data === undefined || data === null) return null;
@@ -76,8 +89,15 @@ export function AppHeader({ me }: { me?: Me | null }) {
             {data.tenant.name}
           </a>
           <span className="app-header__user">
-            {data.name}
-            <span className="app-header__role"> · {data.roleKey}</span>
+            <span className="app-header__name">
+              {data.name}
+              <span className="app-header__role"> · {data.roleKey}</span>
+            </span>
+            {balance !== null && data.tenant.provider !== "platform" && (
+              <a className="app-header__balance" href="/saldo" title="Saldo AI & pemakaian">
+                Saldo <strong>Rp{balance.toLocaleString("id-ID")}</strong>
+              </a>
+            )}
           </span>
           <button
             type="button"
