@@ -285,8 +285,36 @@ export function Chat() {
               </svg>
             </button>
           </span>
-          <button className="btn" onClick={() => void send(input)} disabled={busy}>
-            {busy ? "…" : "Kirim"}
+          <button
+            className="btn composer__send"
+            onClick={() => void send(input)}
+            disabled={busy}
+            aria-label="Kirim pesan"
+            aria-busy={busy}
+            title="Kirim (Enter) · Shift+Enter baris baru"
+          >
+            {busy ? (
+              <span className="composer__send-dots" aria-hidden="true">
+                <span className="thinking__dot" />
+                <span className="thinking__dot" />
+                <span className="thinking__dot" />
+              </span>
+            ) : (
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M22 2 11 13" />
+                <path d="M22 2 15 22 11 13 2 9z" />
+              </svg>
+            )}
           </button>
         </div>
           </>

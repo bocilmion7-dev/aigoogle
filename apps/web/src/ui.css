@@ -1611,6 +1611,7 @@ pre.block {
 
 .composer {
   display: flex;
+  align-items: flex-end;
   gap: 6px;
   margin-top: var(--space-xs);
 }
@@ -1618,6 +1619,42 @@ pre.block {
 .composer .input {
   flex: 1;
   min-width: 0;
+}
+
+/* multi-baris: textarea tumbuh (maks 8 baris), tanpa handle resize */
+.composer textarea.input {
+  resize: none;
+  overflow-y: auto;
+  max-height: 168px;
+  line-height: 1.45;
+  padding-top: 9px;
+  padding-bottom: 9px;
+}
+
+/* tombol kirim ikon */
+.composer__send {
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.composer__send[aria-busy="true"] {
+  opacity: 0.75;
+}
+
+.composer__send-dots {
+  display: inline-flex;
+  gap: 3px;
+  align-items: center;
+}
+
+.composer__send-dots .thinking__dot {
+  width: 4px;
+  height: 4px;
 }
 
 /* fokus input: mic menyusut halus → input melebar; blur/kirim: kembali */

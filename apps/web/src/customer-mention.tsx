@@ -12,7 +12,7 @@ function findMention(value: string, caret: number): { at: number; query: string 
   if (at < 0) return null;
   if (at > 0 && !/[\s(]/.test(value[at - 1]!)) return null;
   const query = value.slice(at + 1, caret);
-  if (query.includes("@")) return null;
+  if (query.includes("@") || query.includes("\n")) return null;
   return { at, query };
 }
 
@@ -45,7 +45,7 @@ interface Props {
  * Pilihan menyisipkan NAMA POLOS (tanpa "@") persis seperti di daftar.
  */
 export function MentionInput({ value, onChange, onSubmit, onFocus, onBlur, className }: Props) {
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const caretRef = useRef(0);
   const fetchingRef = useRef(false);
   const pendingCaret = useRef<number | null>(null);
@@ -55,8 +55,16 @@ export function MentionInput({ value, onChange, onSubmit, onFocus, onBlur, class
   const [active, setActive] = useState(0);
   const loading = open && names === null;
 
+  // textarea tumbuh mengikuti isi (maks 8 baris)
+  useEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 168)}px`;
+  }, [value]);
+
   // karet mengikuti kursor (ketik/klik/panah) — basis deteksi token "@"
-  function trackCaret(el: HTMLInputElement) {
+  function trackCaret(el: HTMLTextAreaElement) {
     caretRef.current = el.selectionStart ?? el.value.length;
   }
 
@@ -118,7 +126,7 @@ export function MentionInput({ value, onChange, onSubmit, onFocus, onBlur, class
     setOpen(false);
   }
 
-  function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+  function onKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.nativeEvent.isComposing) return;
     if (open) {
       if (e.key === "Escape") {
@@ -144,15 +152,16 @@ export function MentionInput({ value, onChange, onSubmit, onFocus, onBlur, class
         return;
       }
     }
-    if (e.key === "Enter" && value.trim()) {
+    if (e.key === "Enter" && !e.shiftKey && value.trim()) {
+      e.preventDefault();
       onSubmit(value);
-      (e.target as HTMLInputElement).blur();
+      (e.target as HTMLTextAreaElement).blur();
     }
   }
 
   return (
     <div className="composer__field">
-      <input
+      <textarea
         ref={inputRef}
         className={className}
         aria-label="Tanya data akuntansi"
@@ -161,13 +170,15 @@ export function MentionInput({ value, onChange, onSubmit, onFocus, onBlur, class
         aria-controls={LISTBOX_ID}
         aria-autocomplete="list"
         aria-activedescendant={open && items.length > 0 ? `mention-opt-${active}` : undefined}
+        aria-multiline="true"
+        rows={1}
         value={value}
         onChange={(e) => {
           trackCaret(e.target);
           onChange(e.target.value);
           refresh(e.target.value, caretRef.current);
         }}
-        onSelect={(e) => trackCaret(e.target as HTMLInputElement)}
+        onSelect={(e) => trackCaret(e.target as HTMLTextAreaElement)}
         onClick={(e) => {
           trackCaret(e.currentTarget);
           refresh(e.currentTarget.value, caretRef.current);
@@ -181,7 +192,7 @@ export function MentionInput({ value, onChange, onSubmit, onFocus, onBlur, class
           setOpen(false);
           onBlur?.();
         }}
-        placeholder="Tanya sesuatu… (ketik @ utk pilih pelanggan)"
+        placeholder="Tanya sesuatu… (Enter kirim · Shift+Enter baris baru · @ pilih pelanggan)"
       />
       {open && (
         <div className="mention" id={LISTBOX_ID} role="listbox" aria-label="Saran nama pelanggan">
