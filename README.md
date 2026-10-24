@@ -40,3 +40,27 @@ GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET (menyusul)
 **Status:** seluruh fase spek (§18) + fase 6 selesai; suite offline mock/api hijau (drive-tidy/mock 16/16, offline-api 34/34); suite DB-dependent butuh Neon. Rilis produksi ikuti `docs/release-checklist.md`.
 - Catatan model Gemini: default `gemini-3.6-flash` (free tier 20 req/hari/model — `gemini-3.8-flash` habis kuota harian saat pengembangan); TTS `gemini-3.8-flash-tts`; STT `gemini-3.5-transcribe`.
 
+
+## Operasional (produksi)
+
+- **Health**: `GET /api/health` (shallow, utk uptime monitor) · `GET /api/health?deep=1` (cek DB, provider AI, koneksi Google & Accurate → 503 bila ada yang gagal).
+- **Metrik**: `GET /api/metrics` (admin, permission `app:audit.view`) — latensi p50/p95, error per rute, panggilan & token LLM.
+- **Pemakaian AI**: `GET /api/usage` (tenant) · `GET /api/platform/analytics` (operator platform) · UI: **Admin → Pemakaian AI**.
+- **Kuota AI harian** (opsional): setelan `llm:daily_token_limit` (global) atau `llm:daily_token_limit:<tenantId>`; `0`/kosong = tanpa batas. Lewat kuota → chat menjawab dengan pesan kuota habis.
+- **Rate limit**: login 10×/15 mnt per IP, chat 40×/5 mnt, endpoint Accurate 60×/mnt, global 600×/mnt.
+- **Backup/restore**: `scripts/backup-db.sh` (retensi 14 hari, butuh `pg_dump`) · `scripts/restore-db.sh <file.sql.gz>`.
+- **CI**: `.github/workflows/ci.yml` — Postgres service, `prisma migrate deploy`, typecheck, test, build web.
+
+## Fitur AI tambahan
+
+- **Cari file di Drive** (`drive.findInvoices`): cocokkan **nama** (Drive API) **dan isi dokumen** (indeks lokal `DriveIndex`).
+- **Indeks Drive** (`drive.index`): ekstrak teks PDF (pdf-parse, tanpa biaya AI) agar isi bisa dicari.
+- **Buat nota/faktur PDF** (`drive.createDoc`): penamaan `dd-MM-yyyy-JENIS-NAMA PELANGGAN/PEMASOK.pdf`, unggah ke Drive.
+- **Tren harian** (`stats.dailyTrend`) dari snapshot `DailyMetric` + **sinkronisasi** (`stats.sync`) — scheduler juga menyinkronkan tiap 6 jam.
+- **Proaktif WA**: digest harian (penjualan/pembelian hari ini, piutang+jatuh tempo, utang, stok habis) — opt-in via `wa:proactive_enabled:<tenantId>=1` + `wa:owner_phone:<tenantId>`; jam kirim `wa:digest_hour` (default 18).
+- **PWA**: `manifest.webmanifest` + service worker (cache shell & aset; API selalu jaringan) → bisa "Install app" di HP.
+
+## Eval akurasi
+
+`pnpm eval` menjalankan bench 509 soal (`eval/questions500.json`), hasil di `eval/results/`.
+Detail: `eval/README.md`. Jalankan bertahap (`LIMIT=50`) agar kuota LLM tidak habis.

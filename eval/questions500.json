@@ -1,0 +1,4266 @@
+[
+ {
+  "tier": 1,
+  "q": "Ada berapa faktur penjualan yang sudah lunas?",
+  "must": [
+   "(?<![\\d/.,-])1[.,\\s]?0[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 1,
+  "q": "Ada berapa faktur penjualan yang belum lunas?",
+  "must": [
+   "(?<![\\d/.,-])4[.,\\s]?6[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 1,
+  "q": "Ada berapa faktur pembelian yang lunas?",
+  "must": [
+   "(?<![\\d/.,-])1[.,\\s]?0[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 1,
+  "q": "Ada berapa pelanggan terdaftar?",
+  "must": [
+   "(?<![\\d/.,-])2[.,\\s]?4[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "customer"
+ },
+ {
+  "tier": 1,
+  "q": "Ada berapa pemasok terdaftar?",
+  "must": [
+   "(?<![\\d/.,-])1[.,\\s]?9[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "vendor"
+ },
+ {
+  "tier": 1,
+  "q": "Ada berapa jenis barang terdaftar?",
+  "must": [
+   "(?<![\\d/.,-])6[.,\\s]?4[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "item"
+ },
+ {
+  "tier": 1,
+  "q": "Ada berapa akun perkiraan yang tercatat di sistem?",
+  "must": [
+   "(?<![\\d/.,-])3[.,\\s]?1[.,\\s]?5[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "glaccount"
+ },
+ {
+  "tier": 1,
+  "q": "Ada berapa aset tetap yang tercatat di sistem?",
+  "must": [
+   "(?<![\\d/.,-])7[.,\\s]?4[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "fixed-asset"
+ },
+ {
+  "tier": 1,
+  "q": "Ada berapa jurnal umum yang tercatat di sistem?",
+  "must": [
+   "(?<![\\d/.,-])5[.,\\s]?1[.,\\s]?8[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "journal-voucher"
+ },
+ {
+  "tier": 1,
+  "q": "Ada berapa penyesuaian barang yang tercatat di sistem?",
+  "must": [
+   "(?<![\\d/.,-])1[.,\\s]?1[.,\\s]?6[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "item-adjustment"
+ },
+ {
+  "tier": 1,
+  "q": "Ada berapa pembayaran lain yang tercatat di sistem?",
+  "must": [
+   "(?<![\\d/.,-])3[.,\\s]?2[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "other-payment"
+ },
+ {
+  "tier": 1,
+  "q": "Ada berapa transfer barang yang tercatat di sistem?",
+  "must": [
+   "(?<![\\d/.,-])2[.,\\s]?2[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "item-transfer"
+ },
+ {
+  "tier": 1,
+  "q": "Ada berapa surat pesanan penjualan yang tercatat di sistem?",
+  "must": [
+   "(?<![\\d/.,-])1[.,\\s]?2[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-order"
+ },
+ {
+  "tier": 1,
+  "q": "Ada berapa surat pesanan pembelian yang tercatat di sistem?",
+  "must": [
+   "(?<![\\d/.,-])1[.,\\s]?1[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "purchase-order"
+ },
+ {
+  "tier": 1,
+  "q": "Ada berapa penerimaan penjualan yang tercatat di sistem?",
+  "must": [
+   "(?<![\\d/.,-])1[.,\\s]?0[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-receipt"
+ },
+ {
+  "tier": 1,
+  "q": "Ada berapa retur penjualan yang tercatat di sistem?",
+  "must": [
+   "(?<![\\d/.,-])1[.,\\s]?7[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-return"
+ },
+ {
+  "tier": 1,
+  "q": "Ada berapa retur pembelian yang tercatat di sistem?",
+  "must": [
+   "(?<![\\d/.,-])1[.,\\s]?8[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "purchase-return"
+ },
+ {
+  "tier": 1,
+  "q": "Ada berapa surat jalan yang tercatat di sistem?",
+  "must": [
+   "(?<![\\d/.,-])9[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "delivery-order"
+ },
+ {
+  "tier": 1,
+  "q": "Ada berapa pembayaran pemasok yang tercatat di sistem?",
+  "must": [
+   "(?<![\\d/.,-])9[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "purchase-payment"
+ },
+ {
+  "tier": 1,
+  "q": "Ada berapa transfer bank yang tercatat di sistem?",
+  "must": [
+   "(?<![\\d/.,-])9[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "bank-transfer"
+ },
+ {
+  "tier": 1,
+  "q": "Ada berapa biaya yang tercatat di sistem?",
+  "must": [
+   "(?<![\\d/.,-])1[.,\\s]?1[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "expense"
+ },
+ {
+  "tier": 1,
+  "q": "Ada berapa karyawan yang tercatat di sistem?",
+  "must": [
+   "(?<![\\d/.,-])1[.,\\s]?1[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "employee"
+ },
+ {
+  "tier": 1,
+  "q": "Ada berapa penerimaan barang yang tercatat di sistem?",
+  "must": [
+   "(?<![\\d/.,-])6[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "receive-item"
+ },
+ {
+  "tier": 1,
+  "q": "Ada berapa penerimaan lain yang tercatat di sistem?",
+  "must": [
+   "(?<![\\d/.,-])6[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "other-deposit"
+ },
+ {
+  "tier": 1,
+  "q": "Ada berapa jenis pajak yang tercatat di sistem?",
+  "must": [
+   "(?<![\\d/.,-])6[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "tax"
+ },
+ {
+  "tier": 1,
+  "q": "Ada berapa satuan barang yang tercatat di sistem?",
+  "must": [
+   "(?<![\\d/.,-])9[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "unit"
+ },
+ {
+  "tier": 1,
+  "q": "Ada berapa gudang yang tercatat di sistem?",
+  "must": [
+   "(?<![\\d/.,-])5[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "warehouse"
+ },
+ {
+  "tier": 1,
+  "q": "Ada berapa kategori barang yang tercatat di sistem?",
+  "must": [
+   "(?<![\\d/.,-])5[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "item-category"
+ },
+ {
+  "tier": 1,
+  "q": "Ada berapa kategori pemasok yang tercatat di sistem?",
+  "must": [
+   "(?<![\\d/.,-])4[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "vendor-category"
+ },
+ {
+  "tier": 1,
+  "q": "Ada berapa kategori pelanggan yang tercatat di sistem?",
+  "must": [
+   "(?<![\\d/.,-])3[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "customer-category"
+ },
+ {
+  "tier": 1,
+  "q": "Ada berapa mata uang yang tercatat di sistem?",
+  "must": [
+   "(?<![\\d/.,-])3[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "currency"
+ },
+ {
+  "tier": 1,
+  "q": "Ada berapa departemen yang tercatat di sistem?",
+  "must": [
+   "(?<![\\d/.,-])3[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "department"
+ },
+ {
+  "tier": 1,
+  "q": "Ada berapa proyek yang tercatat di sistem?",
+  "must": [
+   "(?<![\\d/.,-])3[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "project"
+ },
+ {
+  "tier": 1,
+  "q": "Ada berapa termin pembayaran yang tercatat di sistem?",
+  "must": [
+   "(?<![\\d/.,-])7[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "payment-term"
+ },
+ {
+  "tier": 1,
+  "q": "Ada berapa penawaran penjualan yang tercatat di sistem?",
+  "must": [
+   "(?<![\\d/.,-])3[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-quotation"
+ },
+ {
+  "tier": 1,
+  "q": "Ada berapa permintaan pembelian yang tercatat di sistem?",
+  "must": [
+   "(?<![\\d/.,-])3[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "purchase-requisition"
+ },
+ {
+  "tier": 1,
+  "q": "Ada berapa cabang yang tercatat di sistem?",
+  "must": [
+   "(?<![\\d/.,-])2[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "branch"
+ },
+ {
+  "tier": 1,
+  "q": "Ada berapa FOB yang tercatat di sistem?",
+  "must": [
+   "(?<![\\d/.,-])2[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "fob"
+ },
+ {
+  "tier": 1,
+  "q": "Ada berapa roll over yang tercatat di sistem?",
+  "must": [
+   "(?<![\\d/.,-])2[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "roll-over"
+ },
+ {
+  "tier": 1,
+  "q": "Ada berapa kategori harga yang tercatat di sistem?",
+  "must": [
+   "(?<![\\d/.,-])1[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "price-category"
+ },
+ {
+  "tier": 1,
+  "q": "Ada berapa komisi salesman yang tercatat di sistem?",
+  "must": [
+   "(?<![\\d/.,-])1[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "salesman-commission"
+ },
+ {
+  "tier": 1,
+  "q": "Ada berapa perintah stock opname yang tercatat di sistem?",
+  "must": [
+   "(?<![\\d/.,-])1[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "stock-opname-order"
+ },
+ {
+  "tier": 1,
+  "q": "Ada berapa hasil stock opname yang tercatat di sistem?",
+  "must": [
+   "(?<![\\d/.,-])1[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "stock-opname-result"
+ },
+ {
+  "tier": 1,
+  "q": "Satuan barang apa saja yang terdaftar di sistem?",
+  "must": [
+   "Box",
+   "Dus",
+   "Lusin",
+   "PCS",
+   "U029937",
+   "U121830"
+  ],
+  "module": "unit"
+ },
+ {
+  "tier": 1,
+  "q": "Gudang apa saja yang ada di sistem?",
+  "must": [
+   "GD\\. JAKARTA",
+   "GD\\. SURABAYA",
+   "W121830",
+   "W614162",
+   "W766488"
+  ],
+  "module": "warehouse"
+ },
+ {
+  "tier": 1,
+  "q": "Mata uang apa saja yang terdaftar di sistem?",
+  "must": [
+   "Indonesian Rupiah",
+   "US Dollar",
+   "Singapore Dollar"
+  ],
+  "module": "currency"
+ },
+ {
+  "tier": 1,
+  "q": "Kategori pelanggan apa saja yang ada?",
+  "must": [
+   "Agen Lokal",
+   "Ekspor",
+   "Umum"
+  ],
+  "module": "customer-category"
+ },
+ {
+  "tier": 1,
+  "q": "Kategori pemasok apa saja yang ada?",
+  "must": [
+   "ACCESSORIES",
+   "HANDPHONE",
+   "SPAREPART",
+   "Umum"
+  ],
+  "module": "vendor-category"
+ },
+ {
+  "tier": 1,
+  "q": "Kategori barang apa saja yang ada?",
+  "must": [
+   "Accessories",
+   "Handphone",
+   "Jasa",
+   "Sparepart",
+   "Umum"
+  ],
+  "module": "item-category"
+ },
+ {
+  "tier": 1,
+  "q": "Cabang apa saja yang ada di perusahaan ini?",
+  "must": [
+   "JAKARTA",
+   "SURABAYA"
+  ],
+  "module": "branch"
+ },
+ {
+  "tier": 1,
+  "q": "Departemen apa saja yang ada di perusahaan ini?",
+  "must": [
+   "Accounting",
+   "Head Office",
+   "Opersional"
+  ],
+  "module": "department"
+ },
+ {
+  "tier": 1,
+  "q": "Berapa persen tarif pajak PPN yang terdaftar?",
+  "must": [
+   "(?<![\\d/.,-])1[.,\\s]?0[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "tax"
+ },
+ {
+  "tier": 1,
+  "q": "Barang apa yang paling banyak terjual sepanjang masa (berdasarkan unit)?",
+  "must": [
+   "Hard Case"
+  ],
+  "module": "item"
+ },
+ {
+  "tier": 1,
+  "q": "Berapa total piutang usaha saat ini?",
+  "must": [
+   "8[.,\\s]?[.,\\s]?3[.,\\s]?5[.,\\s]?1[.,\\s]?[.,\\s]?3[.,\\s]?9[.,\\s]?8[.,\\s]?[.,\\s]?7[.,\\s]?6[.,\\s]?5[.,\\s]?(?!\\d)",
+   "(?<![\\d/.,-])4[.,\\s]?6[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 1,
+  "q": "Berapa total utang usaha saat ini?",
+  "must": [
+   "9[.,\\s]?[.,\\s]?4[.,\\s]?1[.,\\s]?5[.,\\s]?[.,\\s]?5[.,\\s]?7[.,\\s]?7[.,\\s]?[.,\\s]?7[.,\\s]?9[.,\\s]?4[.,\\s]?(?!\\d)",
+   "(?<![\\d/.,-])5[.,\\s]?1[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 1,
+  "q": "Ada berapa pelanggan yang bertransaksi penjualan tahun 2016?",
+  "must": [
+   "(?<![\\d/.,-])2[.,\\s]?1[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 1,
+  "q": "Ada berapa pemasok yang bertransaksi pembelian tahun 2016?",
+  "must": [
+   "(?<![\\d/.,-])1[.,\\s]?5[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 1,
+  "q": "Ada berapa pelanggan yang bertransaksi penjualan tahun 2017?",
+  "must": [
+   "(?<![\\d/.,-])9[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 1,
+  "q": "Ada berapa pemasok yang bertransaksi pembelian tahun 2017?",
+  "must": [
+   "(?<![\\d/.,-])6[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Siapa pelanggan dengan penjualan terbesar selama ini?",
+  "must": [
+   "Abadi Phone Center"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Siapa saja tiga pelanggan dengan penjualan terbesar selama ini?",
+  "must": [
+   "Abadi Phone Center",
+   "Nasional Phone Jaya",
+   "Global Phone Jaya"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Berapa total penjualan dari pelanggan Abadi Phone Center selama ini?",
+  "must": [
+   "4[.,\\s]?[.,\\s]?9[.,\\s]?7[.,\\s]?1[.,\\s]?[.,\\s]?2[.,\\s]?4[.,\\s]?5[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Siapa pelanggan dengan penjualan TERKECIL selama ini?",
+  "must": [
+   "National Earth Accessories"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Pelanggan mana yang fakturnya paling banyak selama ini?",
+  "must": [
+   "Abadi Phone Center"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Siapa pelanggan dengan penjualan terbesar tahun 2016?",
+  "must": [
+   "Abadi Phone Center"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Siapa saja tiga pelanggan dengan penjualan terbesar tahun 2016?",
+  "must": [
+   "Abadi Phone Center",
+   "Nasional Phone Jaya",
+   "Global Phone Jaya"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Berapa total penjualan dari pelanggan Abadi Phone Center tahun 2016?",
+  "must": [
+   "2[.,\\s]?[.,\\s]?7[.,\\s]?6[.,\\s]?4[.,\\s]?[.,\\s]?5[.,\\s]?8[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Siapa pelanggan dengan penjualan TERKECIL tahun 2016?",
+  "must": [
+   "National Earth Accessories"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Pelanggan mana yang fakturnya paling banyak tahun 2016?",
+  "must": [
+   "Abadi Phone Center"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Siapa pelanggan dengan penjualan terbesar tahun 2017?",
+  "must": [
+   "Abadi Phone Center"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Siapa saja tiga pelanggan dengan penjualan terbesar tahun 2017?",
+  "must": [
+   "Abadi Phone Center",
+   "PT Emas Sentosa",
+   "Global Phone Jaya"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Berapa total penjualan dari pelanggan Abadi Phone Center tahun 2017?",
+  "must": [
+   "2[.,\\s]?[.,\\s]?2[.,\\s]?0[.,\\s]?6[.,\\s]?[.,\\s]?6[.,\\s]?6[.,\\s]?5[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Siapa pelanggan dengan penjualan TERKECIL tahun 2017?",
+  "must": [
+   "PT CIRCLE PHONE"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Pelanggan mana yang fakturnya paling banyak tahun 2017?",
+  "must": [
+   "Abadi Phone Center"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Siapa pemasok dengan pembelian terbesar selama ini?",
+  "must": [
+   "Toko Mega Mendung"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Siapa saja tiga pemasok dengan pembelian terbesar selama ini?",
+  "must": [
+   "Toko Mega Mendung",
+   "CV Ganda Putra",
+   "Toko Yan Gadget"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Berapa total pembelian dari pemasok Toko Mega Mendung selama ini?",
+  "must": [
+   "4[.,\\s]?[.,\\s]?1[.,\\s]?8[.,\\s]?4[.,\\s]?[.,\\s]?7[.,\\s]?9[.,\\s]?7[.,\\s]?[.,\\s]?5[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Siapa pemasok dengan pembelian terbesar tahun 2016?",
+  "must": [
+   "Toko Mega Mendung"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Siapa saja tiga pemasok dengan pembelian terbesar tahun 2016?",
+  "must": [
+   "Toko Mega Mendung",
+   "Toko Yan Gadget",
+   "CV Indra Part"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Berapa total pembelian dari pemasok Toko Mega Mendung tahun 2016?",
+  "must": [
+   "4[.,\\s]?[.,\\s]?1[.,\\s]?8[.,\\s]?4[.,\\s]?[.,\\s]?7[.,\\s]?9[.,\\s]?7[.,\\s]?[.,\\s]?5[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Siapa pemasok dengan pembelian terbesar tahun 2017?",
+  "must": [
+   "CV Ganda Putra"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Siapa saja tiga pemasok dengan pembelian terbesar tahun 2017?",
+  "must": [
+   "CV Ganda Putra",
+   "Beautiful Cellular",
+   "PT Bersih Selalu"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Berapa total pembelian dari pemasok CV Ganda Putra tahun 2017?",
+  "must": [
+   "3[.,\\s]?[.,\\s]?2[.,\\s]?0[.,\\s]?0[.,\\s]?[.,\\s]?9[.,\\s]?3[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Faktur penjualan mana yang nilainya terbesar?",
+  "must": [
+   "SI[.\\s]?2016[.\\s]?10[.\\s]?00006",
+   "2[.,\\s]?[.,\\s]?4[.,\\s]?8[.,\\s]?4[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Faktur pembelian mana yang nilainya terbesar?",
+  "must": [
+   "PI[.\\s]?2016[.\\s]?11[.\\s]?00011",
+   "4[.,\\s]?[.,\\s]?1[.,\\s]?6[.,\\s]?5[.,\\s]?[.,\\s]?4[.,\\s]?1[.,\\s]?7[.,\\s]?[.,\\s]?5[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Faktur penjualan mana yang jatuh temponya paling dekat di antara yang belum lunas?",
+  "must": [
+   "30[\\s./-]?09[\\s./-]?2016"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Berapa total penjualan sepanjang masa untuk pelanggan Abadi Phone Center?",
+  "must": [
+   "4[.,\\s]?[.,\\s]?9[.,\\s]?7[.,\\s]?1[.,\\s]?[.,\\s]?2[.,\\s]?4[.,\\s]?5[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Ada berapa faktur penjualan untuk pelanggan Abadi Phone Center?",
+  "must": [
+   "(?<![\\d/.,-])1[.,\\s]?1[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Berapa piutang belum dibayar dari pelanggan Abadi Phone Center?",
+  "must": [
+   "2[.,\\s]?[.,\\s]?4[.,\\s]?5[.,\\s]?1[.,\\s]?[.,\\s]?8[.,\\s]?2[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)",
+   "(?<![\\d/.,-])8[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Kapan faktur penjualan terakhir dari pelanggan Abadi Phone Center?",
+  "must": [
+   "(?<!\\d)0?10[\\s./-]?(?:0?2|februari|feb)[\\s./-]?2017"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Berapa total penjualan sepanjang masa untuk pelanggan Nasional Phone Jaya?",
+  "must": [
+   "2[.,\\s]?[.,\\s]?4[.,\\s]?2[.,\\s]?1[.,\\s]?[.,\\s]?1[.,\\s]?4[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Ada berapa faktur penjualan untuk pelanggan Nasional Phone Jaya?",
+  "must": [
+   "(?<![\\d/.,-])3[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Berapa piutang belum dibayar dari pelanggan Nasional Phone Jaya?",
+  "must": [
+   "2[.,\\s]?[.,\\s]?4[.,\\s]?2[.,\\s]?1[.,\\s]?[.,\\s]?1[.,\\s]?4[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)",
+   "(?<![\\d/.,-])3[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Kapan faktur penjualan terakhir dari pelanggan Nasional Phone Jaya?",
+  "must": [
+   "(?<!\\d)0?8[\\s./-]?(?:0?11|november|nov)[\\s./-]?2016"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Berapa total penjualan sepanjang masa untuk pelanggan Global Phone Jaya?",
+  "must": [
+   "7[.,\\s]?8[.,\\s]?2[.,\\s]?[.,\\s]?8[.,\\s]?9[.,\\s]?3[.,\\s]?[.,\\s]?7[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Ada berapa faktur penjualan untuk pelanggan Global Phone Jaya?",
+  "must": [
+   "(?<![\\d/.,-])5[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Berapa piutang belum dibayar dari pelanggan Global Phone Jaya?",
+  "must": [
+   "7[.,\\s]?8[.,\\s]?2[.,\\s]?[.,\\s]?8[.,\\s]?9[.,\\s]?3[.,\\s]?[.,\\s]?7[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)",
+   "(?<![\\d/.,-])5[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Kapan faktur penjualan terakhir dari pelanggan Global Phone Jaya?",
+  "must": [
+   "(?<!\\d)0?15[\\s./-]?(?:0?1|januari|jan)[\\s./-]?2017"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Berapa total penjualan sepanjang masa untuk pelanggan PT Emas Sentosa?",
+  "must": [
+   "5[.,\\s]?9[.,\\s]?5[.,\\s]?[.,\\s]?8[.,\\s]?0[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Ada berapa faktur penjualan untuk pelanggan PT Emas Sentosa?",
+  "must": [
+   "(?<![\\d/.,-])3[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Berapa piutang belum dibayar dari pelanggan PT Emas Sentosa?",
+  "must": [
+   "5[.,\\s]?9[.,\\s]?5[.,\\s]?[.,\\s]?8[.,\\s]?0[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)",
+   "(?<![\\d/.,-])3[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Kapan faktur penjualan terakhir dari pelanggan PT Emas Sentosa?",
+  "must": [
+   "(?<!\\d)0?15[\\s./-]?(?:0?1|januari|jan)[\\s./-]?2017"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Berapa total penjualan sepanjang masa untuk pelanggan Water Phone Center?",
+  "must": [
+   "4[.,\\s]?8[.,\\s]?7[.,\\s]?[.,\\s]?2[.,\\s]?2[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Ada berapa faktur penjualan untuk pelanggan Water Phone Center?",
+  "must": [
+   "(?<![\\d/.,-])2[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Berapa piutang belum dibayar dari pelanggan Water Phone Center?",
+  "must": [
+   "4[.,\\s]?8[.,\\s]?7[.,\\s]?[.,\\s]?2[.,\\s]?2[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)",
+   "(?<![\\d/.,-])2[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Kapan faktur penjualan terakhir dari pelanggan Water Phone Center?",
+  "must": [
+   "(?<!\\d)0?30[\\s./-]?(?:0?9|september|sep)[\\s./-]?2016"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Berapa total penjualan sepanjang masa untuk pelanggan PT Sinar Bumi?",
+  "must": [
+   "4[.,\\s]?2[.,\\s]?3[.,\\s]?[.,\\s]?2[.,\\s]?0[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Ada berapa faktur penjualan untuk pelanggan PT Sinar Bumi?",
+  "must": [
+   "(?<![\\d/.,-])1[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Berapa piutang belum dibayar dari pelanggan PT Sinar Bumi?",
+  "must": [
+   "4[.,\\s]?2[.,\\s]?3[.,\\s]?[.,\\s]?2[.,\\s]?0[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)",
+   "(?<![\\d/.,-])1[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Kapan faktur penjualan terakhir dari pelanggan PT Sinar Bumi?",
+  "must": [
+   "(?<!\\d)0?30[\\s./-]?(?:0?9|september|sep)[\\s./-]?2016"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Berapa total pembelian sepanjang masa dari pemasok Toko Mega Mendung?",
+  "must": [
+   "4[.,\\s]?[.,\\s]?1[.,\\s]?8[.,\\s]?4[.,\\s]?[.,\\s]?7[.,\\s]?9[.,\\s]?7[.,\\s]?[.,\\s]?5[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Ada berapa faktur pembelian dari pemasok Toko Mega Mendung?",
+  "must": [
+   "(?<![\\d/.,-])4[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Berapa utang belum dibayar ke pemasok Toko Mega Mendung?",
+  "must": [
+   "4[.,\\s]?[.,\\s]?1[.,\\s]?6[.,\\s]?8[.,\\s]?[.,\\s]?0[.,\\s]?7[.,\\s]?7[.,\\s]?[.,\\s]?5[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)",
+   "(?<![\\d/.,-])2[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Berapa total pembelian sepanjang masa dari pemasok CV Ganda Putra?",
+  "must": [
+   "3[.,\\s]?[.,\\s]?4[.,\\s]?7[.,\\s]?6[.,\\s]?[.,\\s]?5[.,\\s]?3[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Ada berapa faktur pembelian dari pemasok CV Ganda Putra?",
+  "must": [
+   "(?<![\\d/.,-])4[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Berapa utang belum dibayar ke pemasok CV Ganda Putra?",
+  "must": [
+   "3[.,\\s]?[.,\\s]?4[.,\\s]?7[.,\\s]?6[.,\\s]?[.,\\s]?5[.,\\s]?3[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)",
+   "(?<![\\d/.,-])4[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Berapa total pembelian sepanjang masa dari pemasok Toko Yan Gadget?",
+  "must": [
+   "6[.,\\s]?0[.,\\s]?8[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Ada berapa faktur pembelian dari pemasok Toko Yan Gadget?",
+  "must": [
+   "(?<![\\d/.,-])2[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Berapa utang belum dibayar ke pemasok Toko Yan Gadget?",
+  "must": [
+   "6[.,\\s]?0[.,\\s]?8[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)",
+   "(?<![\\d/.,-])2[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Berapa total pembelian sepanjang masa dari pemasok CV Indra Part?",
+  "must": [
+   "3[.,\\s]?2[.,\\s]?9[.,\\s]?[.,\\s]?2[.,\\s]?3[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Ada berapa faktur pembelian dari pemasok CV Indra Part?",
+  "must": [
+   "(?<![\\d/.,-])2[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Berapa utang belum dibayar ke pemasok CV Indra Part?",
+  "must": [
+   "2[.,\\s]?8[.,\\s]?7[.,\\s]?[.,\\s]?4[.,\\s]?3[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)",
+   "(?<![\\d/.,-])1[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Berapa total pembelian sepanjang masa dari pemasok Pandawa Accessories?",
+  "must": [
+   "2[.,\\s]?7[.,\\s]?3[.,\\s]?[.,\\s]?2[.,\\s]?5[.,\\s]?4[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Ada berapa faktur pembelian dari pemasok Pandawa Accessories?",
+  "must": [
+   "(?<![\\d/.,-])1[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Berapa utang belum dibayar ke pemasok Pandawa Accessories?",
+  "must": [
+   "2[.,\\s]?7[.,\\s]?3[.,\\s]?[.,\\s]?2[.,\\s]?5[.,\\s]?4[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)",
+   "(?<![\\d/.,-])1[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Barang mana yang stoknya paling banyak?",
+  "must": [
+   "Connecter",
+   "(?<![\\d/.,-])6[.,\\s]?1[.,\\s]?0[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "item"
+ },
+ {
+  "tier": 2,
+  "q": "Barang mana yang stoknya paling sedikit?",
+  "must": [
+   "Jasa Perbaikan LCD"
+  ],
+  "module": "item"
+ },
+ {
+  "tier": 2,
+  "q": "Apa saja tiga barang dengan stok terbanyak?",
+  "must": [
+   "Connecter",
+   "Oppo R7S",
+   "Anti Gores Iphone 6"
+  ],
+  "module": "item"
+ },
+ {
+  "tier": 2,
+  "q": "Barang apa yang paling banyak terjual tahun 2016 berdasarkan unit?",
+  "must": [
+   "Anti Gores Iphone 5",
+   "(?<![\\d/.,-])4[.,\\s]?7[.,\\s]?0[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "item"
+ },
+ {
+  "tier": 2,
+  "q": "Barang apa yang penjualannya paling besar nilai tahun 2016?",
+  "must": [
+   "Iphone 6 S 128 GB",
+   "4[.,\\s]?[.,\\s]?5[.,\\s]?5[.,\\s]?4[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "item"
+ },
+ {
+  "tier": 2,
+  "q": "Barang apa yang paling banyak terjual tahun 2017 berdasarkan unit?",
+  "must": [
+   "Hard Case",
+   "(?<![\\d/.,-])4[.,\\s]?6[.,\\s]?2[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "item"
+ },
+ {
+  "tier": 2,
+  "q": "Barang apa yang penjualannya paling besar nilai tahun 2017?",
+  "must": [
+   "Iphone 6  32 GB",
+   "1[.,\\s]?[.,\\s]?8[.,\\s]?7[.,\\s]?2[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "item"
+ },
+ {
+  "tier": 2,
+  "q": "Pelanggan mana yang memiliki saldo (piutang) paling besar di kartu pelanggan?",
+  "must": [
+   "Nasional Phone Jaya",
+   "2[.,\\s]?[.,\\s]?4[.,\\s]?2[.,\\s]?1[.,\\s]?[.,\\s]?1[.,\\s]?4[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "customer"
+ },
+ {
+  "tier": 2,
+  "q": "Pemasok mana yang memiliki saldo (utang) paling besar di kartu pemasok?",
+  "must": [
+   "Toko Mega Mendung",
+   "4[.,\\s]?[.,\\s]?0[.,\\s]?8[.,\\s]?8[.,\\s]?[.,\\s]?7[.,\\s]?5[.,\\s]?2[.,\\s]?[.,\\s]?5[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "vendor"
+ },
+ {
+  "tier": 2,
+  "q": "Berapa rata-rata nilai penjualan per faktur tahun 2016?",
+  "must": [
+   "2[.,\\s]?1[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?4[.,\\s]?3[.,\\s]?[.,\\s]?3[.,\\s]?0[.,\\s]?9[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Berapa rata-rata nilai penjualan per faktur tahun 2017?",
+  "must": [
+   "1[.,\\s]?6[.,\\s]?1[.,\\s]?[.,\\s]?3[.,\\s]?4[.,\\s]?5[.,\\s]?[.,\\s]?2[.,\\s]?6[.,\\s]?1[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Siapa saja pelanggan yang pernah membeli barang Hard Case?",
+  "must": [
+   "Nasional Phone Jaya",
+   "Pelanggan Umum - Jakarta",
+   "Pelanggan Umum - Surabaya",
+   "PT Kassakki Indo Baja"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Berapa total unit Hard Case yang terjual sepanjang masa?",
+  "must": [
+   "(?<![\\d/.,-])6[.,\\s]?1[.,\\s]?2[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Pelanggan mana yang paling sering membeli Hard Case?",
+  "must": [
+   "Pelanggan Umum - Surabaya"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Siapa saja pelanggan yang pernah membeli barang Anti Gores Iphone 5?",
+  "must": [
+   "Abadi Phone Center",
+   "Global Phone Jaya"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Berapa total unit Anti Gores Iphone 5 yang terjual sepanjang masa?",
+  "must": [
+   "(?<![\\d/.,-])5[.,\\s]?0[.,\\s]?5[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Pelanggan mana yang paling sering membeli Anti Gores Iphone 5?",
+  "must": [
+   "Abadi Phone Center"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Siapa saja pelanggan yang pernah membeli barang Anti Gores Iphone 6?",
+  "must": [
+   "Abadi Phone Center",
+   "Global Phone Jaya"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Berapa total unit Anti Gores Iphone 6 yang terjual sepanjang masa?",
+  "must": [
+   "(?<![\\d/.,-])4[.,\\s]?4[.,\\s]?0[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Pelanggan mana yang paling sering membeli Anti Gores Iphone 6?",
+  "must": [
+   "Abadi Phone Center"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Siapa saja pelanggan yang pernah membeli barang Charger Iphone 5/5S?",
+  "must": [
+   "Pelanggan Umum - Jakarta",
+   "Pelanggan Umum - Surabaya"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Berapa total unit Charger Iphone 5/5S yang terjual sepanjang masa?",
+  "must": [
+   "(?<![\\d/.,-])2[.,\\s]?7[.,\\s]?0[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Pelanggan mana yang paling sering membeli Charger Iphone 5/5S?",
+  "must": [
+   "Pelanggan Umum - Jakarta"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Siapa saja pelanggan yang pernah membeli barang Data Cable?",
+  "must": [
+   "Dimas seraya Accessories"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Berapa total unit Data Cable yang terjual sepanjang masa?",
+  "must": [
+   "(?<![\\d/.,-])2[.,\\s]?5[.,\\s]?0[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Pelanggan mana yang paling sering membeli Data Cable?",
+  "must": [
+   "Dimas seraya Accessories"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Siapa saja pelanggan yang pernah membeli barang Iphone 6 S 128 GB?",
+  "must": [
+   "Abadi Phone Center",
+   "Nasional Phone Jaya"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Berapa total unit Iphone 6 S 128 GB yang terjual sepanjang masa?",
+  "must": [
+   "(?<![\\d/.,-])2[.,\\s]?2[.,\\s]?0[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Pelanggan mana yang paling sering membeli Iphone 6 S 128 GB?",
+  "must": [
+   "Nasional Phone Jaya"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Siapa saja pelanggan yang pernah membeli barang Samsung S7?",
+  "must": [
+   "PT CIRCLE PHONE",
+   "Abadi Phone Center",
+   "Cinema Phone Cellular",
+   "PT Emas Sentosa",
+   "PT Galaxy Phone"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Berapa total unit Samsung S7 yang terjual sepanjang masa?",
+  "must": [
+   "(?<![\\d/.,-])1[.,\\s]?9[.,\\s]?5[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Pelanggan mana yang paling sering membeli Samsung S7?",
+  "must": [
+   "PT CIRCLE PHONE"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Siapa saja pelanggan yang pernah membeli barang Iphone 6  32 GB?",
+  "must": [
+   "Abadi Phone Center"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Berapa total unit Iphone 6  32 GB yang terjual sepanjang masa?",
+  "must": [
+   "(?<![\\d/.,-])1[.,\\s]?2[.,\\s]?0[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Pelanggan mana yang paling sering membeli Iphone 6  32 GB?",
+  "must": [
+   "Abadi Phone Center"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Siapa saja pelanggan yang pernah membeli barang Anti Gores Iphone 6S Plus?",
+  "must": [
+   "Abadi Phone Center"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Berapa total unit Anti Gores Iphone 6S Plus yang terjual sepanjang masa?",
+  "must": [
+   "(?<![\\d/.,-])5[.,\\s]?0[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Pelanggan mana yang paling sering membeli Anti Gores Iphone 6S Plus?",
+  "must": [
+   "Abadi Phone Center"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Siapa saja pelanggan yang pernah membeli barang Iphone 6  128 GB?",
+  "must": [
+   "Global Phone Jaya",
+   "PT Nusantara Indah"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Berapa total unit Iphone 6  128 GB yang terjual sepanjang masa?",
+  "must": [
+   "(?<![\\d/.,-])2[.,\\s]?2[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Pelanggan mana yang paling sering membeli Iphone 6  128 GB?",
+  "must": [
+   "Global Phone Jaya"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Siapa saja pelanggan yang pernah membeli barang Charger Iphone 6S Plus?",
+  "must": [
+   "Pelanggan Umum - Jakarta"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Berapa total unit Charger Iphone 6S Plus yang terjual sepanjang masa?",
+  "must": [
+   "(?<![\\d/.,-])2[.,\\s]?0[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Pelanggan mana yang paling sering membeli Charger Iphone 6S Plus?",
+  "must": [
+   "Pelanggan Umum - Jakarta"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Siapa saja pelanggan yang pernah membeli barang Anti Gores Iphone 5S?",
+  "must": [
+   "Cinema Phone Cellular",
+   "Pelanggan Umum - Jakarta"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Berapa total unit Anti Gores Iphone 5S yang terjual sepanjang masa?",
+  "must": [
+   "(?<![\\d/.,-])2[.,\\s]?0[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Pelanggan mana yang paling sering membeli Anti Gores Iphone 5S?",
+  "must": [
+   "Pelanggan Umum - Jakarta"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Siapa saja pelanggan yang pernah membeli barang Iphone 6 S Plus 128 GB?",
+  "must": [
+   "Global Phone Jaya",
+   "PT Global Makmur"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Berapa total unit Iphone 6 S Plus 128 GB yang terjual sepanjang masa?",
+  "must": [
+   "(?<![\\d/.,-])1[.,\\s]?7[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Pelanggan mana yang paling sering membeli Iphone 6 S Plus 128 GB?",
+  "must": [
+   "Global Phone Jaya"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Siapa saja pelanggan yang pernah membeli barang Iphone 5 S 32 GB?",
+  "must": [
+   "Pelanggan Umum - Jakarta"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Berapa total unit Iphone 5 S 32 GB yang terjual sepanjang masa?",
+  "must": [
+   "(?<![\\d/.,-])1[.,\\s]?0[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Pelanggan mana yang paling sering membeli Iphone 5 S 32 GB?",
+  "must": [
+   "Pelanggan Umum - Jakarta"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Siapa saja pelanggan yang pernah membeli barang Iphone 5 16 GB?",
+  "must": [
+   "Abadi Phone Center"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Berapa total unit Iphone 5 16 GB yang terjual sepanjang masa?",
+  "must": [
+   "(?<![\\d/.,-])5[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Pelanggan mana yang paling sering membeli Iphone 5 16 GB?",
+  "must": [
+   "Abadi Phone Center"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Siapa saja pelanggan yang pernah membeli barang Iphone 5 64 GB?",
+  "must": [
+   "Pelanggan Umum - Jakarta"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Berapa total unit Iphone 5 64 GB yang terjual sepanjang masa?",
+  "must": [
+   "(?<![\\d/.,-])4[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Pelanggan mana yang paling sering membeli Iphone 5 64 GB?",
+  "must": [
+   "Pelanggan Umum - Jakarta"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Siapa saja pelanggan yang pernah membeli barang Iphone 5 S 64 GB?",
+  "must": [
+   "Cinema Phone Cellular"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Berapa total unit Iphone 5 S 64 GB yang terjual sepanjang masa?",
+  "must": [
+   "(?<![\\d/.,-])4[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Pelanggan mana yang paling sering membeli Iphone 5 S 64 GB?",
+  "must": [
+   "Cinema Phone Cellular"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Siapa saja pelanggan yang pernah membeli barang Jasa Perbaikan HP?",
+  "must": [
+   "Pelanggan Umum - Surabaya",
+   "PT Kassakki Indo Baja"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Berapa total unit Jasa Perbaikan HP yang terjual sepanjang masa?",
+  "must": [
+   "(?<![\\d/.,-])2[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Pelanggan mana yang paling sering membeli Jasa Perbaikan HP?",
+  "must": [
+   "PT Kassakki Indo Baja"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Siapa saja pelanggan yang pernah membeli barang Iphone 5 64 GB + Antigores?",
+  "must": [
+   "PT Emas Sentosa"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Berapa total unit Iphone 5 64 GB + Antigores yang terjual sepanjang masa?",
+  "must": [
+   "(?<![\\d/.,-])1[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Pelanggan mana yang paling sering membeli Iphone 5 64 GB + Antigores?",
+  "must": [
+   "PT Emas Sentosa"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Pemasok mana yang memasok barang Oppo R7S?",
+  "must": [
+   "Toko Mega Mendung"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Berapa total unit pembelian barang Oppo R7S sepanjang masa?",
+  "must": [
+   "(?<![\\d/.,-])3[.,\\s]?4[.,\\s]?0[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Pemasok mana yang memasok barang Oppo A30?",
+  "must": [
+   "Toko Mega Mendung"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Berapa total unit pembelian barang Oppo A30 sepanjang masa?",
+  "must": [
+   "(?<![\\d/.,-])2[.,\\s]?3[.,\\s]?1[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Pemasok mana yang memasok barang Iphone 5 S 32 GB?",
+  "must": [
+   "CV Ganda Putra"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Berapa total unit pembelian barang Iphone 5 S 32 GB sepanjang masa?",
+  "must": [
+   "(?<![\\d/.,-])1[.,\\s]?7[.,\\s]?6[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Pemasok mana yang memasok barang Oppo F1?",
+  "must": [
+   "Toko Mega Mendung"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Berapa total unit pembelian barang Oppo F1 sepanjang masa?",
+  "must": [
+   "(?<![\\d/.,-])3[.,\\s]?0[.,\\s]?5[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Pemasok mana yang memasok barang Xiaomi Mi5?",
+  "must": [
+   "CV Ganda Putra"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Berapa total unit pembelian barang Xiaomi Mi5 sepanjang masa?",
+  "must": [
+   "(?<![\\d/.,-])1[.,\\s]?7[.,\\s]?0[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Pemasok mana yang memasok barang Xiaomi Note Pro?",
+  "must": [
+   "CV Ganda Putra"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Berapa total unit pembelian barang Xiaomi Note Pro sepanjang masa?",
+  "must": [
+   "(?<![\\d/.,-])1[.,\\s]?0[.,\\s]?6[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Pemasok mana yang memasok barang Iphone 5 S 16 GB?",
+  "must": [
+   "Toko Yan Gadget"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Berapa total unit pembelian barang Iphone 5 S 16 GB sepanjang masa?",
+  "must": [
+   "(?<![\\d/.,-])1[.,\\s]?2[.,\\s]?0[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Pemasok mana yang memasok barang Xiaomi Mi4s?",
+  "must": [
+   "CV Ganda Putra"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Berapa total unit pembelian barang Xiaomi Mi4s sepanjang masa?",
+  "must": [
+   "(?<![\\d/.,-])1[.,\\s]?5[.,\\s]?9[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Pemasok mana yang memasok barang Oppo R7 Plus?",
+  "must": [
+   "Toko Mega Mendung"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Berapa total unit pembelian barang Oppo R7 Plus sepanjang masa?",
+  "must": [
+   "(?<![\\d/.,-])1[.,\\s]?8[.,\\s]?6[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Pemasok mana yang memasok barang Xiaomi Redmi Note 3?",
+  "must": [
+   "CV Ganda Putra"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Berapa total unit pembelian barang Xiaomi Redmi Note 3 sepanjang masa?",
+  "must": [
+   "(?<![\\d/.,-])1[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Pemasok mana yang memasok barang Xiaomi Redmi 3?",
+  "must": [
+   "CV Ganda Putra"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Berapa total unit pembelian barang Xiaomi Redmi 3 sepanjang masa?",
+  "must": [
+   "(?<![\\d/.,-])1[.,\\s]?1[.,\\s]?8[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Pemasok mana yang memasok barang Custom Clearance?",
+  "must": [
+   "PT\\. SGI"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Berapa total unit pembelian barang Custom Clearance sepanjang masa?",
+  "must": [
+   "(?<![\\d/.,-])1[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Pemasok mana yang memasok barang Connecter?",
+  "must": [
+   "Toko Yan Gadget"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Berapa total unit pembelian barang Connecter sepanjang masa?",
+  "must": [
+   "(?<![\\d/.,-])4[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Pemasok mana yang memasok barang Anti Gores Iphone 6?",
+  "must": [
+   "Beautiful Cellular"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Berapa total unit pembelian barang Anti Gores Iphone 6 sepanjang masa?",
+  "must": [
+   "(?<![\\d/.,-])6[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Pemasok mana yang memasok barang Charger Iphone 5/5S?",
+  "must": [
+   "CV Alam Lestari"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Berapa total unit pembelian barang Charger Iphone 5/5S sepanjang masa?",
+  "must": [
+   "(?<![\\d/.,-])2[.,\\s]?4[.,\\s]?2[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Pemasok mana yang memasok barang Hard Case?",
+  "must": [
+   "Beautiful Cellular"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Berapa total unit pembelian barang Hard Case sepanjang masa?",
+  "must": [
+   "(?<![\\d/.,-])3[.,\\s]?7[.,\\s]?0[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Faktur penjualan tanggal 02/11/2016 mana yang memuat barang Hard Case?",
+  "must": [
+   "SI[.\\s]?2016[.\\s]?11[.\\s]?00001"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Faktur penjualan tanggal 21/11/2016 mana yang memuat barang Anti Gores Iphone 5?",
+  "must": [
+   "SI[.\\s]?2016[.\\s]?11[.\\s]?00004"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Faktur penjualan tanggal 13/12/2016 mana yang memuat barang Anti Gores Iphone 6?",
+  "must": [
+   "SI[.\\s]?2016[.\\s]?12[.\\s]?00001"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Faktur penjualan tanggal 15/10/2016 mana yang memuat barang Charger Iphone 5/5S?",
+  "must": [
+   "SI[.\\s]?2016[.\\s]?10[.\\s]?00005"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Faktur penjualan tanggal 18/11/2016 mana yang memuat barang Data Cable?",
+  "must": [
+   "SI[.\\s]?2016[.\\s]?11[.\\s]?00007"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Faktur penjualan tanggal 08/11/2016 mana yang memuat barang Iphone 6 S 128 GB?",
+  "must": [
+   "SI[.\\s]?2016[.\\s]?11[.\\s]?00006"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Faktur penjualan tanggal 08/12/2016 mana yang memuat barang Samsung S7?",
+  "must": [
+   "SI[.\\s]?2016[.\\s]?12[.\\s]?00004"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Faktur penjualan tanggal 13/12/2016 mana yang memuat barang Anti Gores Iphone 6S Plus?",
+  "must": [
+   "SI[.\\s]?2016[.\\s]?12[.\\s]?00001"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Faktur penjualan tanggal 20/12/2016 mana yang memuat barang Iphone 6  128 GB?",
+  "must": [
+   "SI[.\\s]?2017[.\\s]?02[.\\s]?00006"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Faktur penjualan tanggal 12/11/2016 mana yang memuat barang Iphone 6 S Plus 128 GB?",
+  "must": [
+   "SI[.\\s]?2016[.\\s]?11[.\\s]?00002"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Faktur penjualan tanggal 01/10/2016 mana yang memuat barang Iphone 5 16 GB?",
+  "must": [
+   "SI[.\\s]?2017[.\\s]?10[.\\s]?00001"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Faktur penjualan tanggal 13/12/2016 mana yang memuat barang Iphone 5 S 64 GB?",
+  "must": [
+   "SI[.\\s]?2016[.\\s]?12[.\\s]?00003"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Faktur penjualan tanggal 15/10/2016 mana yang memuat barang Jasa Perbaikan HP?",
+  "must": [
+   "SI[.\\s]?2016[.\\s]?10[.\\s]?00002"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Faktur penjualan tanggal 02/10/2016 mana yang memuat barang Iphone 5 64 GB + Antigores?",
+  "must": [
+   "SI[.\\s]?2016[.\\s]?10[.\\s]?00001"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Faktur pembelian mana dari pemasok Toko Mega Mendung yang isinya barang Oppo R7S?",
+  "must": [
+   "PI[.\\s]?2016[.\\s]?11[.\\s]?00011"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Faktur pembelian mana dari pemasok Toko Mega Mendung yang isinya barang Data Cable?",
+  "must": [
+   "PI[.\\s]?2016[.\\s]?11[.\\s]?00002"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Faktur pembelian mana dari pemasok Toko Mega Mendung yang isinya barang Speaker?",
+  "must": [
+   "PI[.\\s]?2016[.\\s]?10[.\\s]?00004"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Faktur pembelian mana dari pemasok CV Ganda Putra yang isinya barang Xiaomi Note Pro?",
+  "must": [
+   "PI[.\\s]?2017[.\\s]?01[.\\s]?00016"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Faktur pembelian mana dari pemasok CV Ganda Putra yang isinya barang Iphone 5 S 32 GB?",
+  "must": [
+   "PI[.\\s]?2017[.\\s]?01[.\\s]?00009"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Faktur pembelian mana dari pemasok CV Ganda Putra yang isinya barang Anti Gores Iphone 5?",
+  "must": [
+   "PI[.\\s]?2017[.\\s]?01[.\\s]?00007"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Faktur pembelian mana dari pemasok Toko Yan Gadget yang isinya barang Iphone 5 S 16 GB?",
+  "must": [
+   "PI[.\\s]?2016[.\\s]?12[.\\s]?00002"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Faktur pembelian mana dari pemasok Toko Yan Gadget yang isinya barang Connecter?",
+  "must": [
+   "PI[.\\s]?2017[.\\s]?02[.\\s]?00002"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Faktur pembelian mana dari pemasok CV Indra Part yang isinya barang Connecter?",
+  "must": [
+   "PI[.\\s]?2016[.\\s]?10[.\\s]?00008"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Barang apa saja yang dibeli dari pelanggan Abadi Phone Center selama ini?",
+  "must": [
+   "Iphone 6  32 GB",
+   "Anti Gores Iphone 5",
+   "Samsung S7",
+   "Anti Gores Iphone 6S Plus",
+   "Anti Gores Iphone 6"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Barang apa saja yang dibeli dari pelanggan Global Phone Jaya selama ini?",
+  "must": [
+   "Iphone 6 S Plus 128 GB",
+   "Iphone 6  128 GB",
+   "Anti Gores Iphone 5",
+   "Anti Gores Iphone 6"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Barang apa saja yang disuplai pemasok Toko Mega Mendung ke kita?",
+  "must": [
+   "Oppo A30",
+   "Oppo F1",
+   "Oppo R7 Plus",
+   "Oppo R7S",
+   "Data Cable"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Barang apa saja yang disuplai pemasok CV Ganda Putra ke kita?",
+  "must": [
+   "Xiaomi Mi4s",
+   "Xiaomi Mi5",
+   "Xiaomi Note Pro",
+   "Xiaomi Redmi 3",
+   "Xiaomi Redmi Note 3"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Berapa unit Hard Case yang dibeli Pelanggan Umum - Surabaya sepanjang masa?",
+  "must": [
+   "(?<![\\d/.,-])2[.,\\s]?8[.,\\s]?0[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Berapa nilai penjualan total barang Hard Case sepanjang masa?",
+  "must": [
+   "7[.,\\s]?7[.,\\s]?[.,\\s]?9[.,\\s]?4[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Berapa unit Anti Gores Iphone 5 yang dibeli Abadi Phone Center sepanjang masa?",
+  "must": [
+   "(?<![\\d/.,-])2[.,\\s]?8[.,\\s]?5[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Berapa nilai penjualan total barang Anti Gores Iphone 5 sepanjang masa?",
+  "must": [
+   "2[.,\\s]?5[.,\\s]?[.,\\s]?7[.,\\s]?5[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Berapa unit Anti Gores Iphone 6 yang dibeli Abadi Phone Center sepanjang masa?",
+  "must": [
+   "(?<![\\d/.,-])2[.,\\s]?6[.,\\s]?0[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Berapa nilai penjualan total barang Anti Gores Iphone 6 sepanjang masa?",
+  "must": [
+   "4[.,\\s]?4[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Berapa unit Charger Iphone 5/5S yang dibeli Pelanggan Umum - Jakarta sepanjang masa?",
+  "must": [
+   "(?<![\\d/.,-])1[.,\\s]?4[.,\\s]?0[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Berapa nilai penjualan total barang Charger Iphone 5/5S sepanjang masa?",
+  "must": [
+   "5[.,\\s]?4[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Berapa unit Data Cable yang dibeli Dimas seraya Accessories sepanjang masa?",
+  "must": [
+   "(?<![\\d/.,-])2[.,\\s]?5[.,\\s]?0[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Berapa nilai penjualan total barang Data Cable sepanjang masa?",
+  "must": [
+   "5[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Berapa unit Iphone 6 S 128 GB yang dibeli Abadi Phone Center sepanjang masa?",
+  "must": [
+   "(?<![\\d/.,-])1[.,\\s]?2[.,\\s]?0[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Berapa nilai penjualan total barang Iphone 6 S 128 GB sepanjang masa?",
+  "must": [
+   "4[.,\\s]?[.,\\s]?5[.,\\s]?5[.,\\s]?4[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Berapa unit Samsung S7 yang dibeli PT Galaxy Phone sepanjang masa?",
+  "must": [
+   "(?<![\\d/.,-])7[.,\\s]?5[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Berapa nilai penjualan total barang Samsung S7 sepanjang masa?",
+  "must": [
+   "3[.,\\s]?0[.,\\s]?2[.,\\s]?[.,\\s]?6[.,\\s]?2[.,\\s]?4[.,\\s]?[.,\\s]?0[.,\\s]?5[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Berapa unit Iphone 6  32 GB yang dibeli Abadi Phone Center sepanjang masa?",
+  "must": [
+   "(?<![\\d/.,-])1[.,\\s]?2[.,\\s]?0[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Berapa nilai penjualan total barang Iphone 6  32 GB sepanjang masa?",
+  "must": [
+   "1[.,\\s]?[.,\\s]?8[.,\\s]?7[.,\\s]?2[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Berapa unit Anti Gores Iphone 6S Plus yang dibeli Abadi Phone Center sepanjang masa?",
+  "must": [
+   "(?<![\\d/.,-])5[.,\\s]?0[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Berapa nilai penjualan total barang Anti Gores Iphone 6S Plus sepanjang masa?",
+  "must": [
+   "7[.,\\s]?[.,\\s]?5[.,\\s]?0[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Berapa unit Iphone 6  128 GB yang dibeli Global Phone Jaya sepanjang masa?",
+  "must": [
+   "(?<![\\d/.,-])1[.,\\s]?2[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Berapa nilai penjualan total barang Iphone 6  128 GB sepanjang masa?",
+  "must": [
+   "1[.,\\s]?8[.,\\s]?9[.,\\s]?[.,\\s]?5[.,\\s]?8[.,\\s]?3[.,\\s]?[.,\\s]?7[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Berapa harga rata-rata satuan pembelian barang Oppo R7S sepanjang masa?",
+  "must": [
+   "5[.,\\s]?[.,\\s]?7[.,\\s]?0[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Berapa harga rata-rata satuan pembelian barang Oppo A30 sepanjang masa?",
+  "must": [
+   "4[.,\\s]?[.,\\s]?0[.,\\s]?8[.,\\s]?5[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Berapa harga rata-rata satuan pembelian barang Iphone 5 S 32 GB sepanjang masa?",
+  "must": [
+   "5[.,\\s]?[.,\\s]?3[.,\\s]?2[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Berapa harga rata-rata satuan pembelian barang Oppo F1 sepanjang masa?",
+  "must": [
+   "2[.,\\s]?[.,\\s]?9[.,\\s]?9[.,\\s]?2[.,\\s]?[.,\\s]?5[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Berapa harga rata-rata satuan pembelian barang Xiaomi Mi5 sepanjang masa?",
+  "must": [
+   "3[.,\\s]?[.,\\s]?8[.,\\s]?9[.,\\s]?5[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Berapa harga rata-rata satuan pembelian barang Xiaomi Note Pro sepanjang masa?",
+  "must": [
+   "6[.,\\s]?[.,\\s]?1[.,\\s]?7[.,\\s]?5[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Berapa harga rata-rata satuan pembelian barang Iphone 5 S 16 GB sepanjang masa?",
+  "must": [
+   "4[.,\\s]?[.,\\s]?7[.,\\s]?5[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Berapa harga rata-rata satuan pembelian barang Xiaomi Mi4s sepanjang masa?",
+  "must": [
+   "3[.,\\s]?[.,\\s]?0[.,\\s]?8[.,\\s]?7[.,\\s]?[.,\\s]?5[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Berapa harga rata-rata satuan pembelian barang Oppo R7 Plus sepanjang masa?",
+  "must": [
+   "1[.,\\s]?[.,\\s]?9[.,\\s]?9[.,\\s]?5[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Berapa harga rata-rata satuan pembelian barang Xiaomi Redmi Note 3 sepanjang masa?",
+  "must": [
+   "3[.,\\s]?[.,\\s]?2[.,\\s]?3[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 3,
+  "q": "Ada berapa surat jalan pengiriman yang tercatat?",
+  "must": [
+   "(?<![\\d/.,-])9[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "delivery-order"
+ },
+ {
+  "tier": 3,
+  "q": "Ada berapa bukti penerimaan penjualan (sales receipt) yang tercatat?",
+  "must": [
+   "(?<![\\d/.,-])1[.,\\s]?0[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-receipt"
+ },
+ {
+  "tier": 3,
+  "q": "Ada berapa retur penjualan yang tercatat?",
+  "must": [
+   "(?<![\\d/.,-])1[.,\\s]?7[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-return"
+ },
+ {
+  "tier": 3,
+  "q": "Berapa total nilai retur penjualan?",
+  "must": [
+   "1[.,\\s]?9[.,\\s]?2[.,\\s]?[.,\\s]?5[.,\\s]?3[.,\\s]?7[.,\\s]?[.,\\s]?4[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-return"
+ },
+ {
+  "tier": 3,
+  "q": "Ada berapa retur pembelian yang tercatat?",
+  "must": [
+   "(?<![\\d/.,-])1[.,\\s]?8[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "purchase-return"
+ },
+ {
+  "tier": 3,
+  "q": "Berapa total nilai retur pembelian?",
+  "must": [
+   "9[.,\\s]?5[.,\\s]?[.,\\s]?3[.,\\s]?8[.,\\s]?7[.,\\s]?[.,\\s]?1[.,\\s]?0[.,\\s]?8[.,\\s]?(?!\\d)"
+  ],
+  "module": "purchase-return"
+ },
+ {
+  "tier": 3,
+  "q": "Ada berapa jurnal umum tahun 2015?",
+  "must": [
+   "(?<![\\d/.,-])6[.,\\s]?4[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "journal-voucher"
+ },
+ {
+  "tier": 3,
+  "q": "Berapa total nilai jurnal umum tahun 2015?",
+  "must": [
+   "7[.,\\s]?[.,\\s]?3[.,\\s]?9[.,\\s]?7[.,\\s]?[.,\\s]?2[.,\\s]?4[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "journal-voucher"
+ },
+ {
+  "tier": 3,
+  "q": "Ada berapa jurnal umum tahun 2016?",
+  "must": [
+   "(?<![\\d/.,-])3[.,\\s]?6[.,\\s]?7[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "journal-voucher"
+ },
+ {
+  "tier": 3,
+  "q": "Berapa total nilai jurnal umum tahun 2016?",
+  "must": [
+   "1[.,\\s]?8[.,\\s]?9[.,\\s]?[.,\\s]?0[.,\\s]?8[.,\\s]?0[.,\\s]?[.,\\s]?1[.,\\s]?7[.,\\s]?3[.,\\s]?[.,\\s]?4[.,\\s]?7[.,\\s]?4[.,\\s]?(?!\\d)"
+  ],
+  "module": "journal-voucher"
+ },
+ {
+  "tier": 3,
+  "q": "Ada berapa jurnal umum tahun 2017?",
+  "must": [
+   "(?<![\\d/.,-])7[.,\\s]?2[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "journal-voucher"
+ },
+ {
+  "tier": 3,
+  "q": "Berapa total nilai jurnal umum tahun 2017?",
+  "must": [
+   "6[.,\\s]?2[.,\\s]?[.,\\s]?4[.,\\s]?2[.,\\s]?3[.,\\s]?[.,\\s]?5[.,\\s]?1[.,\\s]?2[.,\\s]?[.,\\s]?7[.,\\s]?4[.,\\s]?2[.,\\s]?(?!\\d)"
+  ],
+  "module": "journal-voucher"
+ },
+ {
+  "tier": 3,
+  "q": "Ada berapa jurnal umum tahun 2026?",
+  "must": [
+   "(?<![\\d/.,-])1[.,\\s]?1[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "journal-voucher"
+ },
+ {
+  "tier": 3,
+  "q": "Berapa total nilai jurnal umum tahun 2026?",
+  "must": [
+   "1[.,\\s]?0[.,\\s]?3[.,\\s]?[.,\\s]?3[.,\\s]?5[.,\\s]?7[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "journal-voucher"
+ },
+ {
+  "tier": 3,
+  "q": "Ada berapa aset tetap yang tercatat?",
+  "must": [
+   "(?<![\\d/.,-])7[.,\\s]?4[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "fixed-asset"
+ },
+ {
+  "tier": 3,
+  "q": "Berapa total jumlah unit seluruh aset tetap?",
+  "must": [
+   "(?<![\\d/.,-])7[.,\\s]?4[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "fixed-asset"
+ },
+ {
+  "tier": 3,
+  "q": "Ada berapa transaksi biaya (expense) yang tercatat?",
+  "must": [
+   "(?<![\\d/.,-])1[.,\\s]?1[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "expense"
+ },
+ {
+  "tier": 3,
+  "q": "Kapan transaksi biaya yang paling baru?",
+  "must": [
+   "(?<!\\d)0?14[\\s./-]?(?:0?10|oktober|okt)[\\s./-]?2026"
+  ],
+  "module": "expense"
+ },
+ {
+  "tier": 4,
+  "q": "Berapa total penjualan tahun 2016 dan tahun 2017?",
+  "must": [
+   "8[.,\\s]?[.,\\s]?1[.,\\s]?9[.,\\s]?1[.,\\s]?[.,\\s]?6[.,\\s]?8[.,\\s]?9[.,\\s]?[.,\\s]?0[.,\\s]?5[.,\\s]?5[.,\\s]?(?!\\d)",
+   "2[.,\\s]?[.,\\s]?7[.,\\s]?4[.,\\s]?2[.,\\s]?[.,\\s]?8[.,\\s]?6[.,\\s]?9[.,\\s]?[.,\\s]?4[.,\\s]?4[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 4,
+  "q": "Berapa selisih total penjualan tahun 2016 dengan tahun 2017?",
+  "must": [
+   "5[.,\\s]?[.,\\s]?4[.,\\s]?4[.,\\s]?8[.,\\s]?[.,\\s]?8[.,\\s]?1[.,\\s]?9[.,\\s]?[.,\\s]?6[.,\\s]?1[.,\\s]?5[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 4,
+  "q": "Penjualan tahun 2016 lebih besar atau tahun 2017? Sebutkan kedua angkanya.",
+  "must": [
+   "8[.,\\s]?[.,\\s]?1[.,\\s]?9[.,\\s]?1[.,\\s]?[.,\\s]?6[.,\\s]?8[.,\\s]?9[.,\\s]?[.,\\s]?0[.,\\s]?5[.,\\s]?5[.,\\s]?(?!\\d)",
+   "2[.,\\s]?[.,\\s]?7[.,\\s]?4[.,\\s]?2[.,\\s]?[.,\\s]?8[.,\\s]?6[.,\\s]?9[.,\\s]?[.,\\s]?4[.,\\s]?4[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 4,
+  "q": "Ada berapa faktur penjualan tahun 2016 berbanding tahun 2017?",
+  "must": [
+   "(?<![\\d/.,-])3[.,\\s]?9[.,\\s]?(?!\\d)(?![.,/-]\\d)",
+   "(?<![\\d/.,-])1[.,\\s]?7[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 4,
+  "q": "Berapa total pembelian tahun 2016 dan tahun 2017?",
+  "must": [
+   "6[.,\\s]?[.,\\s]?4[.,\\s]?9[.,\\s]?0[.,\\s]?[.,\\s]?3[.,\\s]?5[.,\\s]?5[.,\\s]?[.,\\s]?6[.,\\s]?7[.,\\s]?9[.,\\s]?(?!\\d)",
+   "3[.,\\s]?[.,\\s]?2[.,\\s]?5[.,\\s]?6[.,\\s]?[.,\\s]?6[.,\\s]?3[.,\\s]?8[.,\\s]?[.,\\s]?4[.,\\s]?1[.,\\s]?3[.,\\s]?(?!\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 4,
+  "q": "Berapa selisih total pembelian tahun 2016 dengan tahun 2017?",
+  "must": [
+   "3[.,\\s]?[.,\\s]?2[.,\\s]?3[.,\\s]?3[.,\\s]?[.,\\s]?7[.,\\s]?1[.,\\s]?7[.,\\s]?[.,\\s]?2[.,\\s]?6[.,\\s]?5[.,\\s]?(?!\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 4,
+  "q": "Penjualan pelanggan Abadi Phone Center turun dari tahun 2016 ke 2017? Sebutkan angkanya.",
+  "must": [
+   "2[.,\\s]?[.,\\s]?7[.,\\s]?6[.,\\s]?4[.,\\s]?[.,\\s]?5[.,\\s]?8[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)",
+   "2[.,\\s]?[.,\\s]?2[.,\\s]?0[.,\\s]?6[.,\\s]?[.,\\s]?6[.,\\s]?6[.,\\s]?5[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 4,
+  "q": "Penjualan pelanggan Nasional Phone Jaya turun dari tahun 2016 ke 2017? Sebutkan angkanya.",
+  "must": [
+   "2[.,\\s]?[.,\\s]?4[.,\\s]?2[.,\\s]?1[.,\\s]?[.,\\s]?1[.,\\s]?4[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)",
+   "0[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 4,
+  "q": "Penjualan pelanggan Global Phone Jaya turun dari tahun 2016 ke 2017? Sebutkan angkanya.",
+  "must": [
+   "6[.,\\s]?0[.,\\s]?7[.,\\s]?[.,\\s]?8[.,\\s]?8[.,\\s]?3[.,\\s]?[.,\\s]?7[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)",
+   "1[.,\\s]?7[.,\\s]?5[.,\\s]?[.,\\s]?0[.,\\s]?1[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 4,
+  "q": "Penjualan pelanggan Pelanggan Umum - Surabaya naik dari tahun 2016 ke 2017? Sebutkan angkanya.",
+  "must": [
+   "2[.,\\s]?8[.,\\s]?[.,\\s]?7[.,\\s]?5[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)",
+   "3[.,\\s]?3[.,\\s]?[.,\\s]?6[.,\\s]?0[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 4,
+  "q": "Penjualan pelanggan Pelanggan Umum - Jakarta naik dari tahun 2016 ke 2017? Sebutkan angkanya.",
+  "must": [
+   "2[.,\\s]?6[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)",
+   "1[.,\\s]?1[.,\\s]?0[.,\\s]?[.,\\s]?1[.,\\s]?5[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 4,
+  "q": "Berapa total pembelian tahun 2017 dan tahun 2026?",
+  "must": [
+   "3[.,\\s]?[.,\\s]?2[.,\\s]?5[.,\\s]?6[.,\\s]?[.,\\s]?6[.,\\s]?3[.,\\s]?8[.,\\s]?[.,\\s]?4[.,\\s]?1[.,\\s]?3[.,\\s]?(?!\\d)",
+   "1[.,\\s]?2[.,\\s]?1[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 4,
+  "q": "Berapa selisih total pembelian tahun 2017 dengan tahun 2026?",
+  "must": [
+   "3[.,\\s]?[.,\\s]?2[.,\\s]?5[.,\\s]?6[.,\\s]?[.,\\s]?5[.,\\s]?1[.,\\s]?7[.,\\s]?[.,\\s]?4[.,\\s]?1[.,\\s]?3[.,\\s]?(?!\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 4,
+  "q": "Penjualan pelanggan Abadi Phone Center turun dari tahun 2017 ke 2026? Sebutkan angkanya.",
+  "must": [
+   "2[.,\\s]?[.,\\s]?2[.,\\s]?0[.,\\s]?6[.,\\s]?[.,\\s]?6[.,\\s]?6[.,\\s]?5[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)",
+   "0[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 4,
+  "q": "Penjualan pelanggan PT Emas Sentosa turun dari tahun 2017 ke 2026? Sebutkan angkanya.",
+  "must": [
+   "2[.,\\s]?1[.,\\s]?6[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)",
+   "0[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 4,
+  "q": "Penjualan pelanggan Global Phone Jaya turun dari tahun 2017 ke 2026? Sebutkan angkanya.",
+  "must": [
+   "1[.,\\s]?7[.,\\s]?5[.,\\s]?[.,\\s]?0[.,\\s]?1[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)",
+   "0[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 4,
+  "q": "Mana yang lebih besar: piutang usaha atau utang usaha? Sebutkan kedua angkanya dan selisihnya.",
+  "must": [
+   "8[.,\\s]?[.,\\s]?3[.,\\s]?5[.,\\s]?1[.,\\s]?[.,\\s]?3[.,\\s]?9[.,\\s]?8[.,\\s]?[.,\\s]?7[.,\\s]?6[.,\\s]?5[.,\\s]?(?!\\d)",
+   "9[.,\\s]?[.,\\s]?4[.,\\s]?1[.,\\s]?5[.,\\s]?[.,\\s]?5[.,\\s]?7[.,\\s]?7[.,\\s]?[.,\\s]?7[.,\\s]?9[.,\\s]?4[.,\\s]?(?!\\d)",
+   "1[.,\\s]?[.,\\s]?0[.,\\s]?6[.,\\s]?4[.,\\s]?[.,\\s]?1[.,\\s]?7[.,\\s]?9[.,\\s]?[.,\\s]?0[.,\\s]?2[.,\\s]?9[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 4,
+  "q": "Mana yang lebih banyak: pelanggan atau pemasok? Sebutkan kedua jumlahnya.",
+  "must": [
+   "(?<![\\d/.,-])2[.,\\s]?4[.,\\s]?(?!\\d)(?![.,/-]\\d)",
+   "(?<![\\d/.,-])1[.,\\s]?9[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "customer"
+ },
+ {
+  "tier": 5,
+  "q": "Siapa pelanggan penjualan terbesar tahun 2016 dan siapa pelanggan terbesar tahun 2017?",
+  "must": [
+   "Abadi Phone Center",
+   "Abadi Phone Center"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 5,
+  "q": "Berapa penjualan pelanggan terbesar tahun 2016 dan berapa penjualan pelanggan terbesar tahun 2017?",
+  "must": [
+   "2[.,\\s]?[.,\\s]?7[.,\\s]?6[.,\\s]?4[.,\\s]?[.,\\s]?5[.,\\s]?8[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)",
+   "2[.,\\s]?[.,\\s]?2[.,\\s]?0[.,\\s]?6[.,\\s]?[.,\\s]?6[.,\\s]?6[.,\\s]?5[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 5,
+  "q": "Siapa pemasok pembelian terbesar tahun 2016 dan siapa pemasok terbesar tahun 2017?",
+  "must": [
+   "Toko Mega Mendung",
+   "CV Ganda Putra"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 5,
+  "q": "Berapa jumlah faktur penjualan tahun 2016 dan tahun 2017?",
+  "must": [
+   "(?<![\\d/.,-])3[.,\\s]?9[.,\\s]?(?!\\d)(?![.,/-]\\d)",
+   "(?<![\\d/.,-])1[.,\\s]?7[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 5,
+  "q": "Berapa total penjualan tahun 2016, siapa pelanggan terbesarnya, dan berapa nilainya?",
+  "must": [
+   "8[.,\\s]?[.,\\s]?1[.,\\s]?9[.,\\s]?1[.,\\s]?[.,\\s]?6[.,\\s]?8[.,\\s]?9[.,\\s]?[.,\\s]?0[.,\\s]?5[.,\\s]?5[.,\\s]?(?!\\d)",
+   "Abadi Phone Center",
+   "2[.,\\s]?[.,\\s]?7[.,\\s]?6[.,\\s]?4[.,\\s]?[.,\\s]?5[.,\\s]?8[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 5,
+  "q": "Berapa total piutang usaha, berapa total utang usaha, dan mana yang lebih besar?",
+  "must": [
+   "8[.,\\s]?[.,\\s]?3[.,\\s]?5[.,\\s]?1[.,\\s]?[.,\\s]?3[.,\\s]?9[.,\\s]?8[.,\\s]?[.,\\s]?7[.,\\s]?6[.,\\s]?5[.,\\s]?(?!\\d)",
+   "9[.,\\s]?[.,\\s]?4[.,\\s]?1[.,\\s]?5[.,\\s]?[.,\\s]?5[.,\\s]?7[.,\\s]?7[.,\\s]?[.,\\s]?7[.,\\s]?9[.,\\s]?4[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 5,
+  "q": "Barang apa yang paling laris tahun 2016, berapa unit terjual, dan berapa nilainya?",
+  "must": [
+   "Anti Gores Iphone 5",
+   "(?<![\\d/.,-])4[.,\\s]?7[.,\\s]?0[.,\\s]?(?!\\d)(?![.,/-]\\d)",
+   "2[.,\\s]?3[.,\\s]?[.,\\s]?5[.,\\s]?0[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "item"
+ },
+ {
+  "tier": 5,
+  "q": "Barang apa yang paling laris tahun 2017, berapa unit terjual, dan berapa nilainya?",
+  "must": [
+   "Hard Case",
+   "(?<![\\d/.,-])4[.,\\s]?6[.,\\s]?2[.,\\s]?(?!\\d)(?![.,/-]\\d)",
+   "5[.,\\s]?5[.,\\s]?[.,\\s]?4[.,\\s]?4[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "item"
+ },
+ {
+  "tier": 5,
+  "q": "Faktur penjualan terbesar dan faktur pembelian terbesar — sebutkan nomor dan nilainya.",
+  "must": [
+   "SI[.\\s]?2016[.\\s]?10[.\\s]?00006",
+   "2[.,\\s]?[.,\\s]?4[.,\\s]?8[.,\\s]?4[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)",
+   "PI[.\\s]?2016[.\\s]?11[.\\s]?00011",
+   "4[.,\\s]?[.,\\s]?1[.,\\s]?6[.,\\s]?5[.,\\s]?[.,\\s]?4[.,\\s]?1[.,\\s]?7[.,\\s]?[.,\\s]?5[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 5,
+  "q": "Faktur penjualan terbesar berasal dari pelanggan mana dan bernilai berapa?",
+  "must": [
+   "Abadi Phone Center",
+   "2[.,\\s]?[.,\\s]?4[.,\\s]?8[.,\\s]?4[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 5,
+  "q": "Faktur pembelian terbesar dari pemasok mana dan bernilai berapa?",
+  "must": [
+   "Toko Mega Mendung",
+   "4[.,\\s]?[.,\\s]?1[.,\\s]?6[.,\\s]?5[.,\\s]?[.,\\s]?4[.,\\s]?1[.,\\s]?7[.,\\s]?[.,\\s]?5[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 5,
+  "q": "Pelanggan Abadi Phone Center: berapa total penjualan, ada berapa faktur, dan berapa piutangnya?",
+  "must": [
+   "4[.,\\s]?[.,\\s]?9[.,\\s]?7[.,\\s]?1[.,\\s]?[.,\\s]?2[.,\\s]?4[.,\\s]?5[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)",
+   "(?<![\\d/.,-])1[.,\\s]?1[.,\\s]?(?!\\d)(?![.,/-]\\d)",
+   "2[.,\\s]?[.,\\s]?4[.,\\s]?5[.,\\s]?1[.,\\s]?[.,\\s]?8[.,\\s]?2[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 5,
+  "q": "Ada berapa jenis barang, berapa total seluruh stok, dan berapa gudang?",
+  "must": [
+   "(?<![\\d/.,-])6[.,\\s]?4[.,\\s]?(?!\\d)(?![.,/-]\\d)",
+   "(?<![\\d/.,-])1[.,\\s]?1[.,\\s]?[.,\\s]?7[.,\\s]?8[.,\\s]?4[.,\\s]?(?!\\d)(?![.,/-]\\d)",
+   "(?<![\\d/.,-])5[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "item"
+ },
+ {
+  "tier": 5,
+  "q": "Berapa total penjualan dan total pembelian tahun 2016?",
+  "must": [
+   "8[.,\\s]?[.,\\s]?1[.,\\s]?9[.,\\s]?1[.,\\s]?[.,\\s]?6[.,\\s]?8[.,\\s]?9[.,\\s]?[.,\\s]?0[.,\\s]?5[.,\\s]?5[.,\\s]?(?!\\d)",
+   "6[.,\\s]?[.,\\s]?4[.,\\s]?9[.,\\s]?0[.,\\s]?[.,\\s]?3[.,\\s]?5[.,\\s]?5[.,\\s]?[.,\\s]?6[.,\\s]?7[.,\\s]?9[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 5,
+  "q": "Berapa total penjualan dan total pembelian tahun 2017?",
+  "must": [
+   "2[.,\\s]?[.,\\s]?7[.,\\s]?4[.,\\s]?2[.,\\s]?[.,\\s]?8[.,\\s]?6[.,\\s]?9[.,\\s]?[.,\\s]?4[.,\\s]?4[.,\\s]?0[.,\\s]?(?!\\d)",
+   "3[.,\\s]?[.,\\s]?2[.,\\s]?5[.,\\s]?6[.,\\s]?[.,\\s]?6[.,\\s]?3[.,\\s]?8[.,\\s]?[.,\\s]?4[.,\\s]?1[.,\\s]?3[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 1,
+  "q": "Berapa total penjualan bulan Januari 2017?",
+  "must": [
+   "6[.,\\s]?0[.,\\s]?7[.,\\s]?[.,\\s]?5[.,\\s]?2[.,\\s]?8[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 1,
+  "q": "Ada berapa faktur penjualan bulan Januari 2017?",
+  "must": [
+   "(?<![\\d/.,-])1[.,\\s]?1[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 1,
+  "q": "Berapa total pembelian bulan Januari 2017?",
+  "must": [
+   "3[.,\\s]?[.,\\s]?2[.,\\s]?5[.,\\s]?6[.,\\s]?[.,\\s]?6[.,\\s]?3[.,\\s]?8[.,\\s]?[.,\\s]?4[.,\\s]?1[.,\\s]?3[.,\\s]?(?!\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 1,
+  "q": "Ada berapa faktur pembelian bulan Januari 2017?",
+  "must": [
+   "(?<![\\d/.,-])1[.,\\s]?6[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 1,
+  "q": "Berapa total penjualan bulan Februari 2017?",
+  "must": [
+   "2[.,\\s]?[.,\\s]?1[.,\\s]?3[.,\\s]?5[.,\\s]?[.,\\s]?3[.,\\s]?4[.,\\s]?1[.,\\s]?[.,\\s]?4[.,\\s]?4[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 1,
+  "q": "Ada berapa faktur penjualan bulan Februari 2017?",
+  "must": [
+   "(?<![\\d/.,-])6[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 1,
+  "q": "Berapa total piutang usaha dari transaksi tahun 2016?",
+  "must": [
+   "5[.,\\s]?[.,\\s]?6[.,\\s]?3[.,\\s]?5[.,\\s]?[.,\\s]?4[.,\\s]?6[.,\\s]?8[.,\\s]?[.,\\s]?3[.,\\s]?2[.,\\s]?5[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 1,
+  "q": "Ada berapa faktur penjualan tahun 2016 yang belum lunas?",
+  "must": [
+   "(?<![\\d/.,-])3[.,\\s]?3[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 1,
+  "q": "Berapa total utang usaha dari transaksi tahun 2016?",
+  "must": [
+   "6[.,\\s]?[.,\\s]?1[.,\\s]?5[.,\\s]?8[.,\\s]?[.,\\s]?8[.,\\s]?1[.,\\s]?8[.,\\s]?[.,\\s]?3[.,\\s]?8[.,\\s]?1[.,\\s]?(?!\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 1,
+  "q": "Ada berapa faktur pembelian tahun 2016 yang belum lunas?",
+  "must": [
+   "(?<![\\d/.,-])3[.,\\s]?1[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 1,
+  "q": "Berapa rata-rata nilai pembelian per faktur tahun 2016?",
+  "must": [
+   "1[.,\\s]?5[.,\\s]?8[.,\\s]?[.,\\s]?3[.,\\s]?0[.,\\s]?1[.,\\s]?[.,\\s]?3[.,\\s]?5[.,\\s]?8[.,\\s]?(?!\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 1,
+  "q": "Ada berapa faktur penjualan lunas pada tahun 2016?",
+  "must": [
+   "(?<![\\d/.,-])6[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 1,
+  "q": "Berapa total piutang usaha dari transaksi tahun 2017?",
+  "must": [
+   "2[.,\\s]?[.,\\s]?7[.,\\s]?1[.,\\s]?5[.,\\s]?[.,\\s]?9[.,\\s]?3[.,\\s]?0[.,\\s]?[.,\\s]?4[.,\\s]?4[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 1,
+  "q": "Ada berapa faktur penjualan tahun 2017 yang belum lunas?",
+  "must": [
+   "(?<![\\d/.,-])1[.,\\s]?3[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 1,
+  "q": "Berapa total utang usaha dari transaksi tahun 2017?",
+  "must": [
+   "3[.,\\s]?[.,\\s]?2[.,\\s]?5[.,\\s]?6[.,\\s]?[.,\\s]?6[.,\\s]?3[.,\\s]?8[.,\\s]?[.,\\s]?4[.,\\s]?1[.,\\s]?3[.,\\s]?(?!\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 1,
+  "q": "Ada berapa faktur pembelian tahun 2017 yang belum lunas?",
+  "must": [
+   "(?<![\\d/.,-])1[.,\\s]?6[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 1,
+  "q": "Berapa rata-rata nilai pembelian per faktur tahun 2017?",
+  "must": [
+   "2[.,\\s]?0[.,\\s]?3[.,\\s]?[.,\\s]?5[.,\\s]?3[.,\\s]?9[.,\\s]?[.,\\s]?9[.,\\s]?0[.,\\s]?1[.,\\s]?(?!\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 1,
+  "q": "Ada berapa faktur penjualan lunas pada tahun 2017?",
+  "must": [
+   "(?<![\\d/.,-])4[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 1,
+  "q": "Berapa total utang usaha dari transaksi tahun 2026?",
+  "must": [
+   "1[.,\\s]?2[.,\\s]?1[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 1,
+  "q": "Ada berapa faktur pembelian tahun 2026 yang belum lunas?",
+  "must": [
+   "(?<![\\d/.,-])4[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 1,
+  "q": "Berapa rata-rata nilai pembelian per faktur tahun 2026?",
+  "must": [
+   "3[.,\\s]?0[.,\\s]?[.,\\s]?2[.,\\s]?5[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 1,
+  "q": "Ada berapa transaksi retur penjualan tahun 2017?",
+  "must": [
+   "(?<![\\d/.,-])5[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-return"
+ },
+ {
+  "tier": 1,
+  "q": "Berapa total nilai retur penjualan tahun 2017?",
+  "must": [
+   "4[.,\\s]?8[.,\\s]?[.,\\s]?7[.,\\s]?7[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-return"
+ },
+ {
+  "tier": 1,
+  "q": "Ada berapa transaksi retur penjualan tahun 2016?",
+  "must": [
+   "(?<![\\d/.,-])1[.,\\s]?2[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-return"
+ },
+ {
+  "tier": 1,
+  "q": "Berapa total nilai retur penjualan tahun 2016?",
+  "must": [
+   "1[.,\\s]?4[.,\\s]?3[.,\\s]?[.,\\s]?7[.,\\s]?6[.,\\s]?7[.,\\s]?[.,\\s]?4[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-return"
+ },
+ {
+  "tier": 1,
+  "q": "Ada berapa transaksi retur pembelian tahun 2017?",
+  "must": [
+   "(?<![\\d/.,-])3[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "purchase-return"
+ },
+ {
+  "tier": 1,
+  "q": "Berapa total nilai retur pembelian tahun 2017?",
+  "must": [
+   "1[.,\\s]?9[.,\\s]?8[.,\\s]?[.,\\s]?2[.,\\s]?8[.,\\s]?6[.,\\s]?(?!\\d)"
+  ],
+  "module": "purchase-return"
+ },
+ {
+  "tier": 1,
+  "q": "Ada berapa transaksi retur pembelian tahun 2016?",
+  "must": [
+   "(?<![\\d/.,-])1[.,\\s]?5[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "purchase-return"
+ },
+ {
+  "tier": 1,
+  "q": "Berapa total nilai retur pembelian tahun 2016?",
+  "must": [
+   "9[.,\\s]?5[.,\\s]?[.,\\s]?1[.,\\s]?8[.,\\s]?8[.,\\s]?[.,\\s]?8[.,\\s]?2[.,\\s]?2[.,\\s]?(?!\\d)"
+  ],
+  "module": "purchase-return"
+ },
+ {
+  "tier": 1,
+  "q": "Ada berapa transaksi biaya tahun 2026?",
+  "must": [
+   "(?<![\\d/.,-])4[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "expense"
+ },
+ {
+  "tier": 1,
+  "q": "Ada berapa transaksi biaya tahun 2016?",
+  "must": [
+   "(?<![\\d/.,-])6[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "expense"
+ },
+ {
+  "tier": 1,
+  "q": "Ada berapa aset tetap yang dibeli tahun 2016?",
+  "must": [
+   "(?<![\\d/.,-])7[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "fixed-asset"
+ },
+ {
+  "tier": 1,
+  "q": "Ada berapa aset tetap yang dibeli tahun 2015?",
+  "must": [
+   "(?<![\\d/.,-])6[.,\\s]?4[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "fixed-asset"
+ },
+ {
+  "tier": 1,
+  "q": "Ada berapa surat pesanan penjualan tahun 2017?",
+  "must": [
+   "(?<![\\d/.,-])5[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-order"
+ },
+ {
+  "tier": 1,
+  "q": "Ada berapa surat pesanan penjualan tahun 2016?",
+  "must": [
+   "(?<![\\d/.,-])7[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-order"
+ },
+ {
+  "tier": 1,
+  "q": "Ada berapa bukti penerimaan penjualan tahun 2017?",
+  "must": [
+   "(?<![\\d/.,-])3[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-receipt"
+ },
+ {
+  "tier": 1,
+  "q": "Ada berapa bukti penerimaan penjualan tahun 2016?",
+  "must": [
+   "(?<![\\d/.,-])7[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-receipt"
+ },
+ {
+  "tier": 1,
+  "q": "Ada berapa surat jalan tahun 2017?",
+  "must": [
+   "(?<![\\d/.,-])3[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "delivery-order"
+ },
+ {
+  "tier": 1,
+  "q": "Ada berapa surat jalan tahun 2016?",
+  "must": [
+   "(?<![\\d/.,-])6[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "delivery-order"
+ },
+ {
+  "tier": 1,
+  "q": "Ada berapa surat pesanan pembelian tahun 2017?",
+  "must": [
+   "(?<![\\d/.,-])3[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "purchase-order"
+ },
+ {
+  "tier": 1,
+  "q": "Ada berapa surat pesanan pembelian tahun 2016?",
+  "must": [
+   "(?<![\\d/.,-])8[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "purchase-order"
+ },
+ {
+  "tier": 2,
+  "q": "Berapa total penjualan sepanjang masa untuk pelanggan PT Titik Terang?",
+  "must": [
+   "3[.,\\s]?7[.,\\s]?6[.,\\s]?[.,\\s]?8[.,\\s]?5[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Ada berapa faktur penjualan untuk pelanggan PT Titik Terang?",
+  "must": [
+   "(?<![\\d/.,-])1[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Berapa piutang belum dibayar dari pelanggan PT Titik Terang?",
+  "must": [
+   "3[.,\\s]?7[.,\\s]?6[.,\\s]?[.,\\s]?8[.,\\s]?5[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Berapa total penjualan sepanjang masa untuk pelanggan PT Kapuk Kartika?",
+  "must": [
+   "2[.,\\s]?7[.,\\s]?7[.,\\s]?[.,\\s]?4[.,\\s]?6[.,\\s]?5[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Ada berapa faktur penjualan untuk pelanggan PT Kapuk Kartika?",
+  "must": [
+   "(?<![\\d/.,-])1[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Berapa piutang belum dibayar dari pelanggan PT Kapuk Kartika?",
+  "must": [
+   "2[.,\\s]?7[.,\\s]?7[.,\\s]?[.,\\s]?4[.,\\s]?6[.,\\s]?5[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Berapa total penjualan sepanjang masa untuk pelanggan PT Global Makmur?",
+  "must": [
+   "1[.,\\s]?8[.,\\s]?7[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Ada berapa faktur penjualan untuk pelanggan PT Global Makmur?",
+  "must": [
+   "(?<![\\d/.,-])1[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Berapa piutang belum dibayar dari pelanggan PT Global Makmur?",
+  "must": [
+   "1[.,\\s]?8[.,\\s]?7[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Berapa total penjualan sepanjang masa untuk pelanggan PT Nusantara Indah?",
+  "must": [
+   "1[.,\\s]?7[.,\\s]?0[.,\\s]?[.,\\s]?5[.,\\s]?0[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Ada berapa faktur penjualan untuk pelanggan PT Nusantara Indah?",
+  "must": [
+   "(?<![\\d/.,-])1[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Berapa piutang belum dibayar dari pelanggan PT Nusantara Indah?",
+  "must": [
+   "1[.,\\s]?7[.,\\s]?0[.,\\s]?[.,\\s]?5[.,\\s]?0[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Berapa total penjualan sepanjang masa untuk pelanggan Pelanggan Umum - Jakarta?",
+  "must": [
+   "1[.,\\s]?3[.,\\s]?6[.,\\s]?[.,\\s]?1[.,\\s]?5[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Ada berapa faktur penjualan untuk pelanggan Pelanggan Umum - Jakarta?",
+  "must": [
+   "(?<![\\d/.,-])5[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Berapa piutang belum dibayar dari pelanggan Pelanggan Umum - Jakarta?",
+  "must": [
+   "1[.,\\s]?1[.,\\s]?1[.,\\s]?[.,\\s]?9[.,\\s]?5[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Berapa total penjualan sepanjang masa untuk pelanggan Pelanggan Umum - Surabaya?",
+  "must": [
+   "6[.,\\s]?2[.,\\s]?[.,\\s]?3[.,\\s]?5[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Ada berapa faktur penjualan untuk pelanggan Pelanggan Umum - Surabaya?",
+  "must": [
+   "(?<![\\d/.,-])3[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Berapa piutang belum dibayar dari pelanggan Pelanggan Umum - Surabaya?",
+  "must": [
+   "5[.,\\s]?9[.,\\s]?[.,\\s]?6[.,\\s]?0[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Berapa total penjualan sepanjang masa untuk pelanggan Cinema Phone Cellular?",
+  "must": [
+   "3[.,\\s]?6[.,\\s]?[.,\\s]?5[.,\\s]?5[.,\\s]?0[.,\\s]?[.,\\s]?4[.,\\s]?9[.,\\s]?5[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Ada berapa faktur penjualan untuk pelanggan Cinema Phone Cellular?",
+  "must": [
+   "(?<![\\d/.,-])5[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Berapa piutang belum dibayar dari pelanggan Cinema Phone Cellular?",
+  "must": [
+   "5[.,\\s]?9[.,\\s]?0[.,\\s]?[.,\\s]?4[.,\\s]?9[.,\\s]?5[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Berapa total penjualan sepanjang masa untuk pelanggan Dimas seraya Accessories?",
+  "must": [
+   "5[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Ada berapa faktur penjualan untuk pelanggan Dimas seraya Accessories?",
+  "must": [
+   "(?<![\\d/.,-])1[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Berapa piutang belum dibayar dari pelanggan Dimas seraya Accessories?",
+  "must": [
+   "5[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Berapa total pembelian sepanjang masa dari pemasok Mentari Accessories?",
+  "must": [
+   "2[.,\\s]?4[.,\\s]?3[.,\\s]?[.,\\s]?5[.,\\s]?2[.,\\s]?5[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Ada berapa faktur pembelian dari pemasok Mentari Accessories?",
+  "must": [
+   "(?<![\\d/.,-])2[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Kapan pembelian terakhir dari pemasok Mentari Accessories?",
+  "must": [
+   "(?<!\\d)0?11[\\s./-]?(?:0?11|november|nov)[\\s./-]?2016"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Berapa total pembelian sepanjang masa dari pemasok Toko Berkat Cell?",
+  "must": [
+   "1[.,\\s]?6[.,\\s]?9[.,\\s]?[.,\\s]?5[.,\\s]?9[.,\\s]?5[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Ada berapa faktur pembelian dari pemasok Toko Berkat Cell?",
+  "must": [
+   "(?<![\\d/.,-])2[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Kapan pembelian terakhir dari pemasok Toko Berkat Cell?",
+  "must": [
+   "(?<!\\d)0?21[\\s./-]?(?:0?10|oktober|okt)[\\s./-]?2016"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Berapa total pembelian sepanjang masa dari pemasok PT. SGI?",
+  "must": [
+   "1[.,\\s]?5[.,\\s]?1[.,\\s]?[.,\\s]?0[.,\\s]?3[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Ada berapa faktur pembelian dari pemasok PT. SGI?",
+  "must": [
+   "(?<![\\d/.,-])3[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Kapan pembelian terakhir dari pemasok PT. SGI?",
+  "must": [
+   "(?<!\\d)0?19[\\s./-]?(?:0?12|desember|des)[\\s./-]?2016"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Berapa total pembelian sepanjang masa dari pemasok PT Selaras Inti?",
+  "must": [
+   "1[.,\\s]?3[.,\\s]?2[.,\\s]?[.,\\s]?9[.,\\s]?2[.,\\s]?3[.,\\s]?[.,\\s]?7[.,\\s]?5[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Ada berapa faktur pembelian dari pemasok PT Selaras Inti?",
+  "must": [
+   "(?<![\\d/.,-])2[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Kapan pembelian terakhir dari pemasok PT Selaras Inti?",
+  "must": [
+   "(?<!\\d)0?7[\\s./-]?(?:0?10|oktober|okt)[\\s./-]?2016"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Berapa total pembelian sepanjang masa dari pemasok Beautiful Cellular?",
+  "must": [
+   "1[.,\\s]?2[.,\\s]?8[.,\\s]?[.,\\s]?6[.,\\s]?2[.,\\s]?4[.,\\s]?[.,\\s]?1[.,\\s]?4[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Ada berapa faktur pembelian dari pemasok Beautiful Cellular?",
+  "must": [
+   "(?<![\\d/.,-])4[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Kapan pembelian terakhir dari pemasok Beautiful Cellular?",
+  "must": [
+   "(?<!\\d)0?5[\\s./-]?(?:0?1|januari|jan)[\\s./-]?2017"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Siapa pelanggan dengan penjualan terbesar bulan September 2016?",
+  "must": [
+   "Global Phone Jaya"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Berapa total penjualan pelanggan Global Phone Jaya bulan September 2016?",
+  "must": [
+   "5[.,\\s]?7[.,\\s]?8[.,\\s]?[.,\\s]?8[.,\\s]?0[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Siapa pelanggan dengan penjualan terbesar bulan Oktober 2016?",
+  "must": [
+   "Abadi Phone Center"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Berapa total penjualan pelanggan Abadi Phone Center bulan Oktober 2016?",
+  "must": [
+   "2[.,\\s]?[.,\\s]?5[.,\\s]?0[.,\\s]?4[.,\\s]?[.,\\s]?3[.,\\s]?5[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Siapa pelanggan dengan penjualan terbesar bulan November 2016?",
+  "must": [
+   "Nasional Phone Jaya"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Berapa total penjualan pelanggan Nasional Phone Jaya bulan November 2016?",
+  "must": [
+   "2[.,\\s]?[.,\\s]?0[.,\\s]?9[.,\\s]?2[.,\\s]?[.,\\s]?5[.,\\s]?0[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Siapa pelanggan dengan penjualan terbesar bulan Desember 2016?",
+  "must": [
+   "Cinema Phone Cellular"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Berapa total penjualan pelanggan Cinema Phone Cellular bulan Desember 2016?",
+  "must": [
+   "3[.,\\s]?5[.,\\s]?[.,\\s]?9[.,\\s]?6[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Siapa pelanggan dengan penjualan terbesar bulan Januari 2017?",
+  "must": [
+   "PT Emas Sentosa"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Berapa total penjualan pelanggan PT Emas Sentosa bulan Januari 2017?",
+  "must": [
+   "2[.,\\s]?1[.,\\s]?6[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Siapa pelanggan dengan penjualan terbesar bulan Februari 2017?",
+  "must": [
+   "Abadi Phone Center"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Berapa total penjualan pelanggan Abadi Phone Center bulan Februari 2017?",
+  "must": [
+   "2[.,\\s]?[.,\\s]?1[.,\\s]?1[.,\\s]?1[.,\\s]?[.,\\s]?1[.,\\s]?2[.,\\s]?5[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Siapa pemasok dengan pembelian terbesar bulan Oktober 2016?",
+  "must": [
+   "PT Selaras Inti"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Berapa total pembelian dari pemasok PT Selaras Inti bulan Oktober 2016?",
+  "must": [
+   "5[.,\\s]?5[.,\\s]?[.,\\s]?1[.,\\s]?2[.,\\s]?3[.,\\s]?[.,\\s]?7[.,\\s]?5[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Siapa pemasok dengan pembelian terbesar bulan November 2016?",
+  "must": [
+   "Toko Mega Mendung"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Berapa total pembelian dari pemasok Toko Mega Mendung bulan November 2016?",
+  "must": [
+   "4[.,\\s]?[.,\\s]?1[.,\\s]?6[.,\\s]?8[.,\\s]?[.,\\s]?0[.,\\s]?7[.,\\s]?7[.,\\s]?[.,\\s]?5[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Siapa pemasok dengan pembelian terbesar bulan Januari 2017?",
+  "must": [
+   "CV Ganda Putra"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Berapa total pembelian dari pemasok CV Ganda Putra bulan Januari 2017?",
+  "must": [
+   "3[.,\\s]?[.,\\s]?2[.,\\s]?0[.,\\s]?0[.,\\s]?[.,\\s]?9[.,\\s]?3[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Siapa saja tiga pelanggan penjualan terbesar tahun 2016?",
+  "must": [
+   "Abadi Phone Center",
+   "Nasional Phone Jaya",
+   "Global Phone Jaya"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Berapa penjualan pelanggan Abadi Phone Center tahun 2016?",
+  "must": [
+   "2[.,\\s]?[.,\\s]?7[.,\\s]?6[.,\\s]?4[.,\\s]?[.,\\s]?5[.,\\s]?8[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Siapa saja tiga pelanggan penjualan terbesar tahun 2017?",
+  "must": [
+   "Abadi Phone Center",
+   "PT Emas Sentosa",
+   "Global Phone Jaya"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Berapa penjualan pelanggan Abadi Phone Center tahun 2017?",
+  "must": [
+   "2[.,\\s]?[.,\\s]?2[.,\\s]?0[.,\\s]?6[.,\\s]?[.,\\s]?6[.,\\s]?6[.,\\s]?5[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Berapa saldo piutang pelanggan Nasional Phone Jaya di kartu pelanggan?",
+  "must": [
+   "2[.,\\s]?[.,\\s]?4[.,\\s]?2[.,\\s]?1[.,\\s]?[.,\\s]?1[.,\\s]?4[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "customer"
+ },
+ {
+  "tier": 2,
+  "q": "Berapa saldo piutang pelanggan Abadi Phone Center di kartu pelanggan?",
+  "must": [
+   "2[.,\\s]?[.,\\s]?3[.,\\s]?7[.,\\s]?8[.,\\s]?[.,\\s]?7[.,\\s]?3[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "customer"
+ },
+ {
+  "tier": 2,
+  "q": "Berapa saldo piutang pelanggan Global Phone Jaya di kartu pelanggan?",
+  "must": [
+   "7[.,\\s]?4[.,\\s]?1[.,\\s]?[.,\\s]?7[.,\\s]?0[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "customer"
+ },
+ {
+  "tier": 2,
+  "q": "Berapa saldo piutang pelanggan PT Emas Sentosa di kartu pelanggan?",
+  "must": [
+   "5[.,\\s]?9[.,\\s]?5[.,\\s]?[.,\\s]?8[.,\\s]?0[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "customer"
+ },
+ {
+  "tier": 2,
+  "q": "Berapa saldo piutang pelanggan Water Phone Center di kartu pelanggan?",
+  "must": [
+   "4[.,\\s]?8[.,\\s]?7[.,\\s]?[.,\\s]?2[.,\\s]?2[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "customer"
+ },
+ {
+  "tier": 2,
+  "q": "Berapa saldo utang pemasok Toko Mega Mendung di kartu pemasok?",
+  "must": [
+   "4[.,\\s]?[.,\\s]?0[.,\\s]?8[.,\\s]?8[.,\\s]?[.,\\s]?7[.,\\s]?5[.,\\s]?2[.,\\s]?[.,\\s]?5[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "vendor"
+ },
+ {
+  "tier": 2,
+  "q": "Berapa saldo utang pemasok CV Ganda Putra di kartu pemasok?",
+  "must": [
+   "3[.,\\s]?[.,\\s]?4[.,\\s]?7[.,\\s]?6[.,\\s]?[.,\\s]?5[.,\\s]?3[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "vendor"
+ },
+ {
+  "tier": 2,
+  "q": "Berapa saldo utang pemasok Toko Yan Gadget di kartu pemasok?",
+  "must": [
+   "6[.,\\s]?0[.,\\s]?5[.,\\s]?[.,\\s]?3[.,\\s]?4[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "vendor"
+ },
+ {
+  "tier": 2,
+  "q": "Berapa saldo utang pemasok CV Indra Part di kartu pemasok?",
+  "must": [
+   "2[.,\\s]?8[.,\\s]?7[.,\\s]?[.,\\s]?4[.,\\s]?3[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "vendor"
+ },
+ {
+  "tier": 2,
+  "q": "Kapan faktur penjualan pertama dari pelanggan Abadi Phone Center?",
+  "must": [
+   "(?<!\\d)0?30[\\s./-]?(?:0?9|september|sep)[\\s./-]?2016"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Berapa nilai faktur penjualan pertama pelanggan Abadi Phone Center?",
+  "must": [
+   "(?:7[.,\\s]?8[.,\\s]?[.,\\s]?4[.,\\s]?5[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)|1[.,\\s]?3[.,\\s]?4[.,\\s]?[.,\\s]?5[.,\\s]?3[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d))"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Kapan faktur penjualan pertama dari pelanggan Nasional Phone Jaya?",
+  "must": [
+   "(?<!\\d)0?30[\\s./-]?(?:0?9|september|sep)[\\s./-]?2016"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Berapa nilai faktur penjualan pertama pelanggan Nasional Phone Jaya?",
+  "must": [
+   "3[.,\\s]?2[.,\\s]?8[.,\\s]?[.,\\s]?6[.,\\s]?4[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Kapan faktur penjualan pertama dari pelanggan Global Phone Jaya?",
+  "must": [
+   "(?<!\\d)0?30[\\s./-]?(?:0?9|september|sep)[\\s./-]?2016"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Berapa nilai faktur penjualan pertama pelanggan Global Phone Jaya?",
+  "must": [
+   "5[.,\\s]?7[.,\\s]?8[.,\\s]?[.,\\s]?8[.,\\s]?0[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Kapan faktur penjualan pertama dari pelanggan PT Emas Sentosa?",
+  "must": [
+   "(?<!\\d)0?30[\\s./-]?(?:0?9|september|sep)[\\s./-]?2016"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 2,
+  "q": "Berapa nilai faktur penjualan pertama pelanggan PT Emas Sentosa?",
+  "must": [
+   "3[.,\\s]?7[.,\\s]?5[.,\\s]?[.,\\s]?6[.,\\s]?0[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 4,
+  "q": "Berapa total penjualan bulan November 2016 dan bulan Desember 2016?",
+  "must": [
+   "2[.,\\s]?[.,\\s]?3[.,\\s]?4[.,\\s]?7[.,\\s]?[.,\\s]?0[.,\\s]?7[.,\\s]?6[.,\\s]?[.,\\s]?8[.,\\s]?9[.,\\s]?5[.,\\s]?(?!\\d)",
+   "4[.,\\s]?9[.,\\s]?[.,\\s]?8[.,\\s]?0[.,\\s]?5[.,\\s]?[.,\\s]?7[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 4,
+  "q": "Berapa selisih total penjualan bulan November 2016 dengan bulan Desember 2016?",
+  "must": [
+   "2[.,\\s]?[.,\\s]?2[.,\\s]?9[.,\\s]?7[.,\\s]?[.,\\s]?2[.,\\s]?7[.,\\s]?1[.,\\s]?[.,\\s]?1[.,\\s]?9[.,\\s]?5[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 4,
+  "q": "Ada berapa faktur penjualan bulan November 2016 berbanding bulan Desember 2016?",
+  "must": [
+   "(?<![\\d/.,-])8[.,\\s]?(?!\\d)(?![.,/-]\\d)",
+   "(?<![\\d/.,-])5[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 4,
+  "q": "Berapa total penjualan bulan Oktober 2016 dan bulan November 2016?",
+  "must": [
+   "2[.,\\s]?[.,\\s]?7[.,\\s]?3[.,\\s]?3[.,\\s]?[.,\\s]?8[.,\\s]?1[.,\\s]?0[.,\\s]?[.,\\s]?7[.,\\s]?3[.,\\s]?0[.,\\s]?(?!\\d)",
+   "2[.,\\s]?[.,\\s]?3[.,\\s]?4[.,\\s]?7[.,\\s]?[.,\\s]?0[.,\\s]?7[.,\\s]?6[.,\\s]?[.,\\s]?8[.,\\s]?9[.,\\s]?5[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 4,
+  "q": "Berapa selisih total penjualan bulan Oktober 2016 dengan bulan November 2016?",
+  "must": [
+   "3[.,\\s]?8[.,\\s]?6[.,\\s]?[.,\\s]?7[.,\\s]?3[.,\\s]?3[.,\\s]?[.,\\s]?8[.,\\s]?3[.,\\s]?5[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 4,
+  "q": "Ada berapa faktur penjualan bulan Oktober 2016 berbanding bulan November 2016?",
+  "must": [
+   "(?<![\\d/.,-])8[.,\\s]?(?!\\d)(?![.,/-]\\d)",
+   "(?<![\\d/.,-])8[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 4,
+  "q": "Berapa total penjualan bulan September 2016 dan bulan Oktober 2016?",
+  "must": [
+   "3[.,\\s]?[.,\\s]?0[.,\\s]?6[.,\\s]?0[.,\\s]?[.,\\s]?9[.,\\s]?9[.,\\s]?5[.,\\s]?[.,\\s]?7[.,\\s]?3[.,\\s]?0[.,\\s]?(?!\\d)",
+   "2[.,\\s]?[.,\\s]?7[.,\\s]?3[.,\\s]?3[.,\\s]?[.,\\s]?8[.,\\s]?1[.,\\s]?0[.,\\s]?[.,\\s]?7[.,\\s]?3[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 4,
+  "q": "Berapa selisih total penjualan bulan September 2016 dengan bulan Oktober 2016?",
+  "must": [
+   "3[.,\\s]?2[.,\\s]?7[.,\\s]?[.,\\s]?1[.,\\s]?8[.,\\s]?5[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 4,
+  "q": "Ada berapa faktur penjualan bulan September 2016 berbanding bulan Oktober 2016?",
+  "must": [
+   "(?<![\\d/.,-])1[.,\\s]?8[.,\\s]?(?!\\d)(?![.,/-]\\d)",
+   "(?<![\\d/.,-])8[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 4,
+  "q": "Berapa total penjualan bulan Januari 2017 dan bulan Februari 2017?",
+  "must": [
+   "6[.,\\s]?0[.,\\s]?7[.,\\s]?[.,\\s]?5[.,\\s]?2[.,\\s]?8[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)",
+   "2[.,\\s]?[.,\\s]?1[.,\\s]?3[.,\\s]?5[.,\\s]?[.,\\s]?3[.,\\s]?4[.,\\s]?1[.,\\s]?[.,\\s]?4[.,\\s]?4[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 4,
+  "q": "Berapa selisih total penjualan bulan Januari 2017 dengan bulan Februari 2017?",
+  "must": [
+   "1[.,\\s]?[.,\\s]?5[.,\\s]?2[.,\\s]?7[.,\\s]?[.,\\s]?8[.,\\s]?1[.,\\s]?3[.,\\s]?[.,\\s]?4[.,\\s]?4[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 4,
+  "q": "Ada berapa faktur penjualan bulan Januari 2017 berbanding bulan Februari 2017?",
+  "must": [
+   "(?<![\\d/.,-])1[.,\\s]?1[.,\\s]?(?!\\d)(?![.,/-]\\d)",
+   "(?<![\\d/.,-])6[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 4,
+  "q": "Berapa total penjualan bulan Desember 2016 dan bulan Januari 2017?",
+  "must": [
+   "4[.,\\s]?9[.,\\s]?[.,\\s]?8[.,\\s]?0[.,\\s]?5[.,\\s]?[.,\\s]?7[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)",
+   "6[.,\\s]?0[.,\\s]?7[.,\\s]?[.,\\s]?5[.,\\s]?2[.,\\s]?8[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 4,
+  "q": "Berapa selisih total penjualan bulan Desember 2016 dengan bulan Januari 2017?",
+  "must": [
+   "5[.,\\s]?5[.,\\s]?7[.,\\s]?[.,\\s]?7[.,\\s]?2[.,\\s]?2[.,\\s]?[.,\\s]?3[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 4,
+  "q": "Ada berapa faktur penjualan bulan Desember 2016 berbanding bulan Januari 2017?",
+  "must": [
+   "(?<![\\d/.,-])5[.,\\s]?(?!\\d)(?![.,/-]\\d)",
+   "(?<![\\d/.,-])1[.,\\s]?1[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 4,
+  "q": "Ada berapa pelanggan aktif penjualan tahun 2016 dan tahun 2017?",
+  "must": [
+   "(?<![\\d/.,-])2[.,\\s]?1[.,\\s]?(?!\\d)(?![.,/-]\\d)",
+   "(?<![\\d/.,-])9[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 4,
+  "q": "Berapa rata-rata penjualan per faktur tahun 2016 dan tahun 2017? Sebutkan juga selisihnya.",
+  "must": [
+   "2[.,\\s]?1[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?4[.,\\s]?3[.,\\s]?[.,\\s]?3[.,\\s]?0[.,\\s]?9[.,\\s]?(?!\\d)",
+   "1[.,\\s]?6[.,\\s]?1[.,\\s]?[.,\\s]?3[.,\\s]?4[.,\\s]?5[.,\\s]?[.,\\s]?2[.,\\s]?6[.,\\s]?1[.,\\s]?(?!\\d)",
+   "4[.,\\s]?8[.,\\s]?[.,\\s]?6[.,\\s]?9[.,\\s]?8[.,\\s]?[.,\\s]?0[.,\\s]?4[.,\\s]?8[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 4,
+  "q": "Ada berapa faktur penjualan lunas tahun 2016 dan tahun 2017?",
+  "must": [
+   "(?<![\\d/.,-])6[.,\\s]?(?!\\d)(?![.,/-]\\d)",
+   "(?<![\\d/.,-])4[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 4,
+  "q": "Berapa piutang dari transaksi tahun 2016 dan tahun 2017?",
+  "must": [
+   "5[.,\\s]?[.,\\s]?6[.,\\s]?3[.,\\s]?5[.,\\s]?[.,\\s]?4[.,\\s]?6[.,\\s]?8[.,\\s]?[.,\\s]?3[.,\\s]?2[.,\\s]?5[.,\\s]?(?!\\d)",
+   "2[.,\\s]?[.,\\s]?7[.,\\s]?1[.,\\s]?5[.,\\s]?[.,\\s]?9[.,\\s]?3[.,\\s]?0[.,\\s]?[.,\\s]?4[.,\\s]?4[.,\\s]?0[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 4,
+  "q": "Barang terlaris tahun 2016 dan tahun 2017 menurut unit — apakah sama? Sebutkan keduanya.",
+  "must": [
+   "Anti Gores Iphone 5",
+   "Hard Case"
+  ],
+  "module": "item"
+ },
+ {
+  "tier": 4,
+  "q": "Ada berapa retur penjualan tahun 2016 dan tahun 2017?",
+  "must": [
+   "(?<![\\d/.,-])1[.,\\s]?2[.,\\s]?(?!\\d)(?![.,/-]\\d)",
+   "(?<![\\d/.,-])5[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-return"
+ },
+ {
+  "tier": 4,
+  "q": "Ada berapa pelanggan aktif penjualan tahun 2017 dan tahun 2026?",
+  "must": [
+   "(?<![\\d/.,-])9[.,\\s]?(?!\\d)(?![.,/-]\\d)",
+   "(?<![\\d/.,-])0[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 4,
+  "q": "Siapa pemasok pembelian terbesar tahun 2017 dan siapa pemasok terbesar tahun 2026?",
+  "must": [
+   "CV Ganda Putra",
+   "CV Alam Lestari"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 5,
+  "q": "Berapa total penjualan bulan September 2016, ada berapa faktur, dan siapa pelanggan terbesarnya?",
+  "must": [
+   "3[.,\\s]?[.,\\s]?0[.,\\s]?6[.,\\s]?0[.,\\s]?[.,\\s]?9[.,\\s]?9[.,\\s]?5[.,\\s]?[.,\\s]?7[.,\\s]?3[.,\\s]?0[.,\\s]?(?!\\d)",
+   "(?<![\\d/.,-])1[.,\\s]?8[.,\\s]?(?!\\d)(?![.,/-]\\d)",
+   "Global Phone Jaya"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 5,
+  "q": "Berapa total penjualan bulan November 2016, ada berapa faktur, dan siapa pelanggan terbesarnya?",
+  "must": [
+   "2[.,\\s]?[.,\\s]?3[.,\\s]?4[.,\\s]?7[.,\\s]?[.,\\s]?0[.,\\s]?7[.,\\s]?6[.,\\s]?[.,\\s]?8[.,\\s]?9[.,\\s]?5[.,\\s]?(?!\\d)",
+   "(?<![\\d/.,-])8[.,\\s]?(?!\\d)(?![.,/-]\\d)",
+   "Nasional Phone Jaya"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 5,
+  "q": "Berapa total penjualan bulan Januari 2017, ada berapa faktur, dan siapa pelanggan terbesarnya?",
+  "must": [
+   "6[.,\\s]?0[.,\\s]?7[.,\\s]?[.,\\s]?5[.,\\s]?2[.,\\s]?8[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)",
+   "(?<![\\d/.,-])1[.,\\s]?1[.,\\s]?(?!\\d)(?![.,/-]\\d)",
+   "PT Emas Sentosa"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 5,
+  "q": "Berapa total penjualan bulan Oktober 2016, ada berapa faktur, dan siapa pelanggan terbesarnya?",
+  "must": [
+   "2[.,\\s]?[.,\\s]?7[.,\\s]?3[.,\\s]?3[.,\\s]?[.,\\s]?8[.,\\s]?1[.,\\s]?0[.,\\s]?[.,\\s]?7[.,\\s]?3[.,\\s]?0[.,\\s]?(?!\\d)",
+   "(?<![\\d/.,-])8[.,\\s]?(?!\\d)(?![.,/-]\\d)",
+   "Abadi Phone Center"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 5,
+  "q": "Berapa piutang dan utang dari transaksi tahun 2016?",
+  "must": [
+   "5[.,\\s]?[.,\\s]?6[.,\\s]?3[.,\\s]?5[.,\\s]?[.,\\s]?4[.,\\s]?6[.,\\s]?8[.,\\s]?[.,\\s]?3[.,\\s]?2[.,\\s]?5[.,\\s]?(?!\\d)",
+   "6[.,\\s]?[.,\\s]?1[.,\\s]?5[.,\\s]?8[.,\\s]?[.,\\s]?8[.,\\s]?1[.,\\s]?8[.,\\s]?[.,\\s]?3[.,\\s]?8[.,\\s]?1[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 5,
+  "q": "Pelanggan penjualan terbesar tahun 2016: siapa, berapa nilainya, dan ada berapa fakturnya?",
+  "must": [
+   "Abadi Phone Center",
+   "2[.,\\s]?[.,\\s]?7[.,\\s]?6[.,\\s]?4[.,\\s]?[.,\\s]?5[.,\\s]?8[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)",
+   "(?<![\\d/.,-])6[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 5,
+  "q": "Pemasok pembelian terbesar tahun 2016: siapa, berapa nilainya, dan ada berapa fakturnya?",
+  "must": [
+   "Toko Mega Mendung",
+   "4[.,\\s]?[.,\\s]?1[.,\\s]?8[.,\\s]?4[.,\\s]?[.,\\s]?7[.,\\s]?9[.,\\s]?7[.,\\s]?[.,\\s]?5[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)",
+   "(?<![\\d/.,-])4[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 5,
+  "q": "Berapa piutang dan utang dari transaksi tahun 2017?",
+  "must": [
+   "2[.,\\s]?[.,\\s]?7[.,\\s]?1[.,\\s]?5[.,\\s]?[.,\\s]?9[.,\\s]?3[.,\\s]?0[.,\\s]?[.,\\s]?4[.,\\s]?4[.,\\s]?0[.,\\s]?(?!\\d)",
+   "3[.,\\s]?[.,\\s]?2[.,\\s]?5[.,\\s]?6[.,\\s]?[.,\\s]?6[.,\\s]?3[.,\\s]?8[.,\\s]?[.,\\s]?4[.,\\s]?1[.,\\s]?3[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 5,
+  "q": "Pelanggan penjualan terbesar tahun 2017: siapa, berapa nilainya, dan ada berapa fakturnya?",
+  "must": [
+   "Abadi Phone Center",
+   "2[.,\\s]?[.,\\s]?2[.,\\s]?0[.,\\s]?6[.,\\s]?[.,\\s]?6[.,\\s]?6[.,\\s]?5[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)",
+   "(?<![\\d/.,-])5[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 5,
+  "q": "Pemasok pembelian terbesar tahun 2017: siapa, berapa nilainya, dan ada berapa fakturnya?",
+  "must": [
+   "CV Ganda Putra",
+   "3[.,\\s]?[.,\\s]?2[.,\\s]?0[.,\\s]?0[.,\\s]?[.,\\s]?9[.,\\s]?3[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)",
+   "(?<![\\d/.,-])3[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 5,
+  "q": "Gabungan piutang tiga pelanggan terbesar (dari yang belum lunas): berapa totalnya dan berapa jumlah fakturnya?",
+  "must": [
+   "5[.,\\s]?[.,\\s]?6[.,\\s]?5[.,\\s]?5[.,\\s]?[.,\\s]?8[.,\\s]?5[.,\\s]?3[.,\\s]?[.,\\s]?7[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)",
+   "(?<![\\d/.,-])1[.,\\s]?6[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 5,
+  "q": "Siapa saja tiga pelanggan dengan piutang belum lunas terbesar beserta totalnya?",
+  "must": [
+   "Abadi Phone Center",
+   "Nasional Phone Jaya",
+   "Global Phone Jaya"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 5,
+  "q": "Gabungan utang tiga pemasok terbesar (yang belum lunas): berapa totalnya dan berapa jumlah fakturnya?",
+  "must": [
+   "8[.,\\s]?[.,\\s]?2[.,\\s]?5[.,\\s]?2[.,\\s]?[.,\\s]?6[.,\\s]?0[.,\\s]?7[.,\\s]?[.,\\s]?5[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)",
+   "(?<![\\d/.,-])8[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "purchase-invoice"
+ },
+ {
+  "tier": 5,
+  "q": "Faktur penjualan mana yang jatuh temponya paling dekat (belum lunas)? Sebutkan nomornya, nilainya, dan pelanggannya.",
+  "must": [
+   "(?<!\\d)0?30[\\s./-]?(?:0?9|september|sep)[\\s./-]?2016"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 5,
+  "q": "Berapa total retur penjualan dan total retur pembelian? Mana yang lebih besar?",
+  "must": [
+   "1[.,\\s]?9[.,\\s]?2[.,\\s]?[.,\\s]?5[.,\\s]?3[.,\\s]?7[.,\\s]?[.,\\s]?4[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)",
+   "9[.,\\s]?5[.,\\s]?[.,\\s]?3[.,\\s]?8[.,\\s]?7[.,\\s]?[.,\\s]?1[.,\\s]?0[.,\\s]?8[.,\\s]?(?!\\d)"
+  ],
+  "module": "sales-return"
+ },
+ {
+  "tier": 5,
+  "q": "Ada berapa retur penjualan dan berapa retur pembelian?",
+  "must": [
+   "(?<![\\d/.,-])1[.,\\s]?7[.,\\s]?(?!\\d)(?![.,/-]\\d)",
+   "(?<![\\d/.,-])1[.,\\s]?8[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-return"
+ },
+ {
+  "tier": 5,
+  "q": "Ada berapa surat pesanan penjualan dan berapa surat pesanan pembelian?",
+  "must": [
+   "(?<![\\d/.,-])1[.,\\s]?2[.,\\s]?(?!\\d)(?![.,/-]\\d)",
+   "(?<![\\d/.,-])1[.,\\s]?1[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "sales-order"
+ },
+ {
+  "tier": 5,
+  "q": "Ada berapa surat jalan dan berapa bukti penerimaan penjualan?",
+  "must": [
+   "(?<![\\d/.,-])9[.,\\s]?(?!\\d)(?![.,/-]\\d)",
+   "(?<![\\d/.,-])1[.,\\s]?0[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "delivery-order"
+ },
+ {
+  "tier": 5,
+  "q": "Kapan transaksi biaya paling baru dan berapa jumlahnya? (sebutkan tanggal dan nomor)",
+  "must": [
+   "(?<!\\d)0?14[\\s./-]?(?:0?10|oktober|okt)[\\s./-]?2026",
+   "(?:EXP\\.2026\\.10\\.00004|EXP\\.2026\\.10\\.00003|EXP\\.2026\\.10\\.00002|EXP\\.2026\\.10\\.00001)"
+  ],
+  "module": "expense"
+ },
+ {
+  "tier": 5,
+  "q": "Ada berapa transaksi biaya sama sekali dan tahun mana yang paling banyak?",
+  "must": [
+   "(?<![\\d/.,-])1[.,\\s]?1[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "expense"
+ },
+ {
+  "tier": 5,
+  "q": "Ada berapa aset tetap dan berapa total unitnya?",
+  "must": [
+   "(?<![\\d/.,-])7[.,\\s]?4[.,\\s]?(?!\\d)(?![.,/-]\\d)",
+   "(?<![\\d/.,-])7[.,\\s]?4[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "fixed-asset"
+ },
+ {
+  "tier": 5,
+  "q": "Sebutkan nomor aset tetap yang berdeskripsi 'Komputer 09' dan kapan dicatat?",
+  "must": [
+   "0502009",
+   "(?<!\\d)0?17[\\s./-]?(?:0?3|maret|mar)[\\s./-]?2016"
+  ],
+  "module": "fixed-asset"
+ },
+ {
+  "tier": 5,
+  "q": "Ada berapa akun perkiraan, berapa gudang, dan berapa satuan barang?",
+  "must": [
+   "(?<![\\d/.,-])3[.,\\s]?1[.,\\s]?5[.,\\s]?(?!\\d)(?![.,/-]\\d)",
+   "(?<![\\d/.,-])5[.,\\s]?(?!\\d)(?![.,/-]\\d)",
+   "(?<![\\d/.,-])9[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "glaccount"
+ },
+ {
+  "tier": 5,
+  "q": "Tahun berapa yang paling banyak memiliki jurnal umum dan berapa jumlahnya?",
+  "must": [
+   "(?<![\\d/.,-])3[.,\\s]?6[.,\\s]?7[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "journal-voucher"
+ },
+ {
+  "tier": 5,
+  "q": "Pelanggan Nasional Phone Jaya: berapa total penjualan, kapan faktur terakhirnya, dan siapa nomor pelanggannya?",
+  "must": [
+   "2[.,\\s]?[.,\\s]?4[.,\\s]?2[.,\\s]?1[.,\\s]?[.,\\s]?1[.,\\s]?4[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)",
+   "(?<!\\d)0?8[\\s./-]?(?:0?11|november|nov)[\\s./-]?2016",
+   "CSBY-0006"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 5,
+  "q": "Pelanggan Global Phone Jaya: berapa total penjualan, kapan faktur terakhirnya, dan siapa nomor pelanggannya?",
+  "must": [
+   "7[.,\\s]?8[.,\\s]?2[.,\\s]?[.,\\s]?8[.,\\s]?9[.,\\s]?3[.,\\s]?[.,\\s]?7[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)",
+   "(?<!\\d)0?15[\\s./-]?(?:0?1|januari|jan)[\\s./-]?2017",
+   "CJKT-0006"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 5,
+  "q": "Pelanggan PT Emas Sentosa: berapa total penjualan, kapan faktur terakhirnya, dan siapa nomor pelanggannya?",
+  "must": [
+   "5[.,\\s]?9[.,\\s]?5[.,\\s]?[.,\\s]?8[.,\\s]?0[.,\\s]?0[.,\\s]?[.,\\s]?0[.,\\s]?0[.,\\s]?0[.,\\s]?(?!\\d)",
+   "(?<!\\d)0?15[\\s./-]?(?:0?1|januari|jan)[\\s./-]?2017",
+   "CSBY-0010"
+  ],
+  "module": "sales-invoice"
+ },
+ {
+  "tier": 1,
+  "q": "Ada berapa hak akses (access privilege) yang terdaftar?",
+  "must": [
+   "(?<![\\d/.,-])4[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "access-privilege"
+ },
+ {
+  "tier": 1,
+  "q": "Hak akses apa saja yang terdaftar di sistem?",
+  "must": [
+   "TEAM SURABAYA",
+   "SURABAYA",
+   "TEAM JAKARTA",
+   "JAKARTA"
+  ],
+  "module": "access-privilege"
+ },
+ {
+  "tier": 1,
+  "q": "Ada berapa aturan penomoran otomatis (auto number) yang terdaftar?",
+  "must": [
+   "(?<![\\d/.,-])8[.,\\s]?6[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "auto-number"
+ },
+ {
+  "tier": 1,
+  "q": "Opsi free on board apa saja yang terdaftar?",
+  "must": [
+   "Destination",
+   "Shipping Point"
+  ],
+  "module": "freeonboard"
+ },
+ {
+  "tier": 1,
+  "q": "Ada berapa job order yang tercatat?",
+  "must": [
+   "(?<![\\d/.,-])2[.,\\s]?(?!\\d)(?![.,/-]\\d)"
+  ],
+  "module": "job-order"
+ },
+ {
+  "tier": 1,
+  "q": "Berapa total nilai seluruh job order?",
+  "must": [
+   "(?:6[.,\\s]?4[.,\\s]?2[.,\\s]?[.,\\s]?2[.,\\s]?0[.,\\s]?7[.,\\s]?[.,\\s]?7[.,\\s]?6[.,\\s]?3[.,\\s]?(?!\\d)|6[.,\\s]?4[.,\\s]?2[.,\\s]?[.,\\s]?2[.,\\s]?0[.,\\s]?7[.,\\s]?[.,\\s]?7[.,\\s]?6[.,\\s]?4[.,\\s]?(?!\\d))"
+  ],
+  "module": "job-order"
+ },
+ {
+  "tier": 3,
+  "q": "Job order mana yang nilainya terbesar? Sebutkan nomor dan nilainya.",
+  "must": [
+   "JC[.\\s]?2017[.\\s]?01[.\\s]?00001",
+   "(?:6[.,\\s]?3[.,\\s]?5[.,\\s]?[.,\\s]?7[.,\\s]?2[.,\\s]?0[.,\\s]?[.,\\s]?8[.,\\s]?1[.,\\s]?6[.,\\s]?(?!\\d)|6[.,\\s]?3[.,\\s]?5[.,\\s]?[.,\\s]?7[.,\\s]?2[.,\\s]?0[.,\\s]?[.,\\s]?8[.,\\s]?1[.,\\s]?7[.,\\s]?(?!\\d))"
+  ],
+  "module": "job-order"
+ }
+]

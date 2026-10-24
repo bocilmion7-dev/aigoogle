@@ -1,4 +1,6 @@
 import { Router } from "express";
+import { env } from "../env.js";
+import { rateLimit } from "../middleware/rate-limit.js";
 import { randomBytes } from "node:crypto";
 import { z } from "zod";
 import { prisma } from "../db.js";
@@ -20,6 +22,7 @@ const SetPasswordBody = z.object({
 
 authRouter.post(
   "/auth/login",
+  rateLimit({ name: "login", windowMs: 15 * 60_000, max: 10 }),
   asyncHandler(async (req, res) => {
     const body = LoginBody.safeParse(req.body);
     if (!body.success) return res.status(400).json({ error: "bad_request" });
@@ -42,7 +45,12 @@ authRouter.post(
     await prisma.session.create({
       data: { id: sid, userId: user.id, expiresAt: new Date(Date.now() + 7 * 86400_000) },
     });
-    res.cookie("sid", sid, { httpOnly: true, sameSite: "lax", maxAge: 7 * 86400_000 });
+    res.cookie("sid", sid, {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: env.APP_ORIGIN.startsWith("https://"),
+      maxAge: 7 * 86400_000,
+    });
     res.clearCookie("psid"); // sesi platform tidak boleh menumpuk di browser yg sama
     await writeAudit(user.tenantId, user.id, "auth.login", { via: "password" });
     res.json({ ok: true });
@@ -57,6 +65,7 @@ const PlatformLoginBody = z.object({
 
 authRouter.post(
   "/platform/login",
+  rateLimit({ name: "platform-login", windowMs: 15 * 60_000, max: 10 }),
   asyncHandler(async (req, res) => {
     const body = PlatformLoginBody.safeParse(req.body);
     if (!body.success) return res.status(400).json({ error: "bad_request" });
@@ -68,7 +77,12 @@ authRouter.post(
     await prisma.platformSession.create({
       data: { id: sid, platformUserId: u.id, expiresAt: new Date(Date.now() + 7 * 86400_000) },
     });
-    res.cookie("psid", sid, { httpOnly: true, sameSite: "lax", maxAge: 7 * 86400_000 });
+    res.cookie("psid", sid, {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: env.APP_ORIGIN.startsWith("https://"),
+      maxAge: 7 * 86400_000,
+    });
     res.clearCookie("sid"); // sesi perusahaan tidak boleh menumpuk di browser yg sama
     res.json({ ok: true });
   })

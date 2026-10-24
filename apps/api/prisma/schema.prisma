@@ -302,3 +302,50 @@ model AccurateWebhookEvent {
 
   @@index([tenantId, event, createdAt])
 }
+
+// Pemakaian LLM per tenant per hari (estimasi token — utk kuota & analytics)
+model LlmUsage {
+  id               String   @id @default(cuid())
+  tenantId         String
+  day              String // yyyy-mm-dd (UTC)
+  kind             String // chat|voice|router|doc
+  model            String   @default("")
+  calls            Int      @default(0)
+  promptTokens     Int      @default(0)
+  completionTokens Int      @default(0)
+  updatedAt        DateTime @updatedAt
+
+  @@unique([tenantId, day, kind, model])
+  @@index([tenantId, day])
+}
+
+// Snapshot metrik harian hasil sync Accurate (penjualan/pembelian per tanggal)
+model DailyMetric {
+  id            String   @id @default(cuid())
+  tenantId      String
+  date          String // yyyy-mm-dd
+  salesTotal    Float    @default(0)
+  salesCount    Int      @default(0)
+  purchaseTotal Float    @default(0)
+  purchaseCount Int      @default(0)
+  updatedAt     DateTime @updatedAt
+
+  @@unique([tenantId, date])
+  @@index([tenantId, date])
+}
+
+// Indeks isi file Google Drive (nama + teks PDF) — pencarian nama ATAU isi
+model DriveIndex {
+  id           String   @id @default(cuid())
+  tenantId     String
+  fileId       String
+  name         String
+  folder       String   @default("")
+  mimeType     String   @default("")
+  text         String   @default("")
+  modifiedTime String   @default("")
+  indexedAt    DateTime @default(now())
+
+  @@unique([tenantId, fileId])
+  @@index([tenantId, name])
+}

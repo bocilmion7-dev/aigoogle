@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { rateLimit } from "../middleware/rate-limit.js";
 import { z } from "zod";
 import { prisma } from "../db.js";
 import { asyncHandler } from "../asyncHandler.js";
@@ -35,6 +36,7 @@ async function ocrMode(): Promise<"vision" | "text"> {
 
 customersRouter.get(
   "/customers",
+  rateLimit({ name: "customers", windowMs: 60_000, max: 60 }),
   requirePerm("accurate:customer.view"),
   asyncHandler(async (req, res) => {
     const ctx = await accurateCtxFor(req.user!.tenant.id);
@@ -82,6 +84,7 @@ customersRouter.get(
  *  tanpa agregat faktur), cache per tenant, ikut dibuang saat webhook CUSTOMER masuk. */
 customersRouter.get(
   "/customers/names",
+  rateLimit({ name: "customers-names", windowMs: 60_000, max: 60 }),
   requirePerm("accurate:customer.view"),
   asyncHandler(async (req, res) => {
     const tenantId = req.user!.tenant.id;
@@ -181,6 +184,7 @@ const EntryBody = z.object({
 
 customersRouter.post(
   "/customers/entries",
+  rateLimit({ name: "customers-entries", windowMs: 60_000, max: 20 }),
   requireUser,
   asyncHandler(async (req, res) => {
     const targetRaw = (req.body as { target?: unknown } | undefined)?.target;

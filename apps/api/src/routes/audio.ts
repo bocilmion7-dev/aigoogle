@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { rateLimit } from "../middleware/rate-limit.js";
 import { MsEdgeTTS, OUTPUT_FORMAT } from "msedge-tts";
 import { asyncHandler } from "../asyncHandler.js";
 import { requireUser } from "../middleware/session.js";
@@ -88,6 +89,7 @@ async function googleTts(text: string): Promise<Buffer> {
  */
 audioRouter.post(
   "/tts",
+  rateLimit({ name: "audio", windowMs: 60_000, max: 30 }),
   requireUser,
   asyncHandler(async (req, res) => {
     const body = req.body as { text?: string };

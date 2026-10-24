@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { rateLimit } from "../middleware/rate-limit.js";
 import { z } from "zod";
 import { prisma } from "../db.js";
 import { asyncHandler } from "../asyncHandler.js";
@@ -16,6 +17,7 @@ const cancelFlags = new Map<string, boolean>();
 
 driveRouter.get(
   "/drive/status",
+  rateLimit({ name: "drive", windowMs: 60_000, max: 120 }),
   requireUser,
   asyncHandler(async (req, res) => {
     const client = await driveClientFor(req.user!.tenant.id);

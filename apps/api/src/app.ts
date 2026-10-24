@@ -17,6 +17,9 @@ import { waRouter } from "./routes/wa.js";
 import { customersRouter } from "./routes/customers.js";
 import { webhookAccurateRouter, webhookRootRouter } from "./routes/webhook-accurate.js";
 import { LlmHttpError } from "./ai/llm-error.js";
+import { opsRouter } from "./routes/ops.js";
+import { observe } from "./middleware/observe.js";
+import { rateLimit } from "./middleware/rate-limit.js";
 
 export function createApp() {
   const app = express();
@@ -37,7 +40,10 @@ export function createApp() {
   app.use(cookieParser());
   app.use(loadSession);
   app.use(loadPlatformSession);
-  app.get("/api/health", (_req, res) => res.json({ ok: true }));
+  app.use(observe());
+  // batas umum per IP — mencegah penyalahgunaan kasar (login & chat punya limit lebih ketat)
+  app.use("/api", rateLimit({ name: "global", windowMs: 60_000, max: 600 }));
+  app.use("/api", opsRouter);
   // Notifikasi QRIS Winpay — pasang paling awal agar tak tertangkap router lain
   // (ada router dengan .use(middleware) tanpa path yang menangkap semua request)
   app.use("/api", snapNotifyRouter);
