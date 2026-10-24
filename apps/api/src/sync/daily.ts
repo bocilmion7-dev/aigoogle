@@ -89,16 +89,38 @@ export async function syncTenantDaily(tenantId: string, opts?: { monthsBack?: nu
   return { months, salesInvoices: sales.length, purchaseInvoices: purchases.length, days: byDay.size };
 }
 
-export async function syncAllTenants(monthsBack = 3): Promise<Array<{ tenantId: string; ok: boolean; detail: string }>> {
-  const conns = await prisma.connection.findMany({ where: { provider: "accurate" }, select: { tenantId: true } });
-  const out: Array<{ tenantId: string; ok: boolean; detail: string }> = [];
-  for (const c of conns) {
-    try {
-      const r = await syncTenantDaily(c.tenantId, { monthsBack });
-      out.push({ tenantId: c.tenantId, ok: true, detail: `${r.days} hari, ${r.salesInvoices + r.purchaseInvoices} faktur` });
-    } catch (e) {
-      out.push({ tenantId: c.tenantId, ok: false, detail: e instanceof Error ? e.message.slice(0, 120) : "error" });
+/**
+ * Sinkron semua tenant — dibatasi agar tidak membanjiri API Accurate:
+ * hanya koneksi berstatus connected, diurutkan dari yang paling baru dipakai,
+ * maksimal `limit` tenant per putaran, konkurensi 2.
+ */
+export async function syncAllTenants(
+  monthsBack = 3,
+  opts?: { limit?: number; concurrency?: number }
+): Promise<Array<{ tenantId: string; ok: boolean; detail: string }>> {
+  const limit = Math.min(Math.max(opts?.limit ?? 50, 1), 200);
+  const concurrency = Math.min(Math.max(opts?.concurrency ?? 2, 1), 5);
+  const conns = await prisma.connection.findMany({
+    where: { provider: "accurate", status: "connected" },
+    select: { tenantId: true },
+    orderBy: { updatedAt: "desc" },
+    take: limit,
+  });
+  const out: Array<{ tenantId: string; ok: boolean; detail: string }> = new Array(conns.length);
+  let next = 0;
+  const worker = async () => {
+    for (;;) {
+      const i = next++;
+      if (i >= conns.length) return;
+      const tenantId = conns[i]!.tenantId;
+      try {
+        const r = await syncTenantDaily(tenantId, { monthsBack });
+        out[i] = { tenantId, ok: true, detail: `${r.days} hari, ${r.salesInvoices + r.purchaseInvoices} faktur` };
+      } catch (e) {
+        out[i] = { tenantId, ok: false, detail: e instanceof Error ? e.message.slice(0, 120) : "error" };
+      }
     }
-  }
+  };
+  await Promise.all(Array.from({ length: Math.min(concurrency, conns.length) }, worker));
   return out;
 }

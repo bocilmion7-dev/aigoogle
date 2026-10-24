@@ -97,7 +97,12 @@ export interface ProactiveResult {
 }
 
 export async function runProactiveJobs(now = new Date()): Promise<ProactiveResult[]> {
-  const conns = await prisma.connection.findMany({ where: { provider: "accurate" }, select: { tenantId: true } });
+  const conns = await prisma.connection.findMany({
+    where: { provider: "accurate", status: "connected" },
+    select: { tenantId: true },
+    orderBy: { updatedAt: "desc" },
+    take: 100,
+  });
   const out: ProactiveResult[] = [];
   for (const c of conns) {
     const cfg = await settings(c.tenantId);
