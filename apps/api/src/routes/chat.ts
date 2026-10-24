@@ -157,6 +157,7 @@ chatRouter.post(
       // ─── FAST PATH: transformer → agregasi adapter ───
       // Router ringan (~1rb token) pilih 1 tool → eksekusi → format (0 token LLM).
       // Bila router gagal/ragu → jatuh ke runToolLoop penuh (aman, inkremental).
+      const tRoute = Date.now();
       const route = await transformToRoute({
         userMessage: body.data.message,
         history: history
@@ -168,6 +169,7 @@ chatRouter.post(
         client: llmClient(),
         model: preferredModel || (await getDefaultModel()),
       });
+      console.log(`[chat] router ${Date.now() - tRoute}ms → ${route ? route.tool : "null"}`);
       if (route) {
         const spec =
           provider.capabilityCatalog().find((t) => t.name === route.tool) ??
@@ -180,6 +182,11 @@ chatRouter.post(
           send({ type: "tool_call", tool: route.tool, label });
           try {
             const result = await providerExecute(route.tool, route.args);
+            // hasil error (mis. nama tak ketemu di sisi yg salah) → jangan sajikan mentah;
+            // jatuh ke tool loop yang bisa mencari & mencoba tool lain
+            if (result && typeof result === "object" && typeof (result as { error?: unknown }).error === "string") {
+              throw new Error(String((result as { error: string }).error));
+            }
             send({ type: "tool_result", tool: route.tool, ok: true });
             const answer = formatAggregationResult(route.tool, result);
             if (answer) {

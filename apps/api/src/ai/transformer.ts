@@ -55,6 +55,9 @@ const ROUTER_SYSTEM =
   'salesInvoice.summary(fromDate, toDate) — SUDAH memuat total, jumlah faktur, dan pelanggan terbesar dalam SATU hasil; ' +
   'pembelian sebaliknya → purchaseInvoice.summary. JANGAN {"tool":null} utk pertanyaan ringkasan 1-periode ini.\n' +
   '- "kapan faktur pertama/paling awal pelanggan X" → customer.salesByName(name) (daftar semua faktur — ambil tanggal terkecil) — BUKAN customer.summaryByName (itu hanya memuat pesanan TERAKHIR).\n' +
+  '- "piutang/tagihan/hutang BELUM DIBAYAR pelanggan X" / "rincikan piutang X" / "hutang dari <nama>" (pihak = pelanggan) → ' +
+  'customer.unpaidByName(name). "utang ke pemasok/vendor X" / "utang dari pemasok X" → vendor.unpaidByName(name). ' +
+  'Bila pesan hanya menyebut NAMA tanpa kata pemasok/vendor → anggap PELANGGAN (customer.unpaidByName).\n' +
   '- "siapa pembeli / pernah membeli barang X / pelanggan pembeli X" → item.buyers(name, fromDate?, toDate?).\n' +
   '- "berapa nilai penjualan total barang X" / "berapa total penjualan barang X" / "berapa unit X yang terjual" / "berapa uang dari penjualan barang X" → item.buyers(name) — ambil summary.totalAmount (atau totalQuantity utk unit). BUKAN item.byName (itu info stok/harga).\n' +
   '- "pemasok/supplier/suplier mana yang memasok/mensupply barang X / siapa pemasok X / total pembelian barang X dari semua pemasok" → item.suppliers(name, fromDate?, toDate?).\n' +
@@ -92,12 +95,50 @@ const ROUTER_SYSTEM =
   ROUTER_CATALOG;
 
 /** panggil router — kembalikan Route atau null (fallback ke tool loop penuh) */
+/** cache keputusan router — pesan identik tak perlu panggil LLM lagi (hemat 3-5 dtk/pesan) */
+const ROUTE_CACHE = new Map<string, { route: Route | null; at: number }>();
+const ROUTE_TTL_MS = 10 * 60_000;
+const ROUTE_MAX = 300;
+
+function routeKey(userMessage: string, history: Array<{ role: "user" | "model"; text: string }>): string {
+  const h = history.slice(-2).map((x) => `${x.role}:${x.text.slice(0, 200)}`).join("|");
+  return `${h}::${userMessage}`.toLowerCase().replace(/\s+/g, " ").trim().slice(0, 600);
+}
+
+/** validasi hasil router: tool harus dikenal + argumen wajib terisi */
+function validateRoute(parsed: { tool?: string | null; args?: Record<string, unknown> } | null): Route | null {
+  if (!parsed || typeof parsed.tool !== "string" || !parsed.tool) return null;
+  const known = [...AGGREGATION_TOOLS, ...DRIVE_TOOLS].find((t) => t.name === parsed.tool);
+  if (!known) return null;
+  const schema = known.jsonSchema as { required?: string[] };
+  for (const k of schema.required ?? []) {
+    const v = parsed.args?.[k];
+    if (v === undefined || v === null || v === "") return null;
+  }
+  return { tool: parsed.tool, args: parsed.args ?? {} };
+}
+
+function cacheRoute(key: string, route: Route | null): void {
+  if (ROUTE_CACHE.size >= ROUTE_MAX) {
+    const oldest = [...ROUTE_CACHE.entries()].sort((a, b) => a[1].at - b[1].at)[0];
+    if (oldest) ROUTE_CACHE.delete(oldest[0]);
+  }
+  ROUTE_CACHE.set(key, { route, at: Date.now() });
+}
+
 export async function transformToRoute(opts: {
   userMessage: string;
   history: Array<{ role: "user" | "model"; text: string }>;
   client: LLMClient;
   model: string;
 }): Promise<Route | null> {
+  const key = routeKey(opts.userMessage, opts.history);
+  const hit = ROUTE_CACHE.get(key);
+  if (hit && Date.now() - hit.at < ROUTE_TTL_MS) {
+    console.log("[transformer] cache hit");
+    return hit.route ? { tool: hit.route.tool, args: { ...hit.route.args } } : null;
+  }
+
   const recent = opts.history.slice(-4);
   const contents: LLMContent[] = [
     ...recent.map((h) => ({ role: h.role, parts: [{ text: h.text.slice(0, 500) }] })),
@@ -139,16 +180,10 @@ export async function transformToRoute(opts: {
       console.warn(`[transformer] JSON gagal. raw: ${jsonStr.slice(0, 300)}`);
       return null;
     }
-    if (!parsed.tool) return null;
-    const known = AGGREGATION_TOOLS.find((t) => t.name === parsed.tool);
-    if (!known) return null;
-    // validasi argumen wajib — bila kosong, jatuh ke tool loop (lebih baik error jelas)
-    const schema = known.jsonSchema as { required?: string[] };
-    for (const k of schema.required ?? []) {
-      const v = parsed.args?.[k];
-      if (v === undefined || v === null || v === "") return null;
-    }
-    return { tool: parsed.tool, args: parsed.args ?? {} };
+    const route = validateRoute(parsed);
+    if (!route) console.warn(`[transformer] route tidak valid: ${jsonStr.slice(0, 120)}`);
+    cacheRoute(key, route);
+    return route;
   } catch (e) {
     console.warn(`[transformer] gagal (${e instanceof Error ? e.message : e}) — jatuh ke tool loop`);
     return null;
