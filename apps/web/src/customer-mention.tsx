@@ -55,12 +55,14 @@ export function MentionInput({ value, onChange, onSubmit, onFocus, onBlur, class
   const [active, setActive] = useState(0);
   const loading = open && names === null;
 
-  // textarea tumbuh mengikuti isi (maks 8 baris)
+  // textarea: tinggi awal = tinggi tombol (40px); tumbuh saat isi > 1 baris
   useEffect(() => {
     const el = inputRef.current;
     if (!el) return;
     el.style.height = "auto";
-    el.style.height = `${Math.min(el.scrollHeight, 168)}px`;
+    const border = el.offsetHeight - el.clientHeight; // border vertikal (box-sizing: border-box)
+    const needed = el.scrollHeight + border;
+    el.style.height = `${Math.max(40, Math.min(needed, 168))}px`;
   }, [value]);
 
   // karet mengikuti kursor (ketik/klik/panah) — basis deteksi token "@"
