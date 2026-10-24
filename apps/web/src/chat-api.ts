@@ -27,18 +27,24 @@ export interface MessageInfo {
  */
 export const CHAT_TIMEOUT_MS = 125_000;
 
+/** Boot/riwayat: timeout 10 dtk — koneksi half-open setelah idle panjang
+ *  jangan menggantung selamanya (PageLoader/spinner macet). */
+const BOOT_TIMEOUT_MS = 10_000;
+
 /** Abort/timeout dr klien sendiri — bedakan dgn putus koneksi beneran. */
 export function isTimeoutError(e: unknown): boolean {
   return e instanceof Error && (e.name === "TimeoutError" || e.name === "AbortError");
 }
 
 export async function listSessions(): Promise<SessionInfo[]> {
-  const res = await fetch("/api/chat/sessions");
+  const res = await fetch("/api/chat/sessions", { signal: AbortSignal.timeout(BOOT_TIMEOUT_MS) });
   return res.ok ? res.json() : [];
 }
 
 export async function listMessages(sessionId: string): Promise<MessageInfo[]> {
-  const res = await fetch(`/api/chat/sessions/${sessionId}/messages`);
+  const res = await fetch(`/api/chat/sessions/${sessionId}/messages`, {
+    signal: AbortSignal.timeout(BOOT_TIMEOUT_MS),
+  });
   return res.ok ? res.json() : [];
 }
 

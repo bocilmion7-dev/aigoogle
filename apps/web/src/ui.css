@@ -2327,3 +2327,171 @@ pre.block {
   .voice-mode__orb, .voice-mode__orb--listening, .voice-mode__orb--speaking,
   .voice-mode__mic--live, .voice-mode__core { animation: none !important; }
 }
+
+/* ---------- tabel data (rich-text) — klik → modal ---------- */
+
+.rich-text {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.tbl-wrap {
+  position: relative;
+  margin: var(--space-xs) 0;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  background: var(--surface);
+  border: var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.tbl-wrap:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.tbl-wrap:hover .tbl-wrap__zoom,
+.tbl-wrap:focus-visible .tbl-wrap__zoom {
+  opacity: 1;
+}
+
+.tbl-wrap__zoom {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  color: var(--ink-2);
+  background: var(--surface-2);
+  border: var(--border);
+  border-radius: 999px;
+  opacity: 0.65;
+  transition: opacity var(--dur-fast) var(--ease);
+  pointer-events: none;
+}
+
+table.dtable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--step--1);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.45;
+}
+
+.dtable th,
+.dtable td {
+  padding: 6px 10px;
+  text-align: left;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--line);
+}
+
+.dtable th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  background: var(--surface-2);
+}
+
+.dtable tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.dtable tbody tr:nth-child(even) td {
+  background: var(--surface-2);
+}
+
+.dtable tbody tr:hover td {
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+}
+
+.dtable .num {
+  text-align: right;
+}
+
+.dtable--lg {
+  font-size: var(--step-0);
+}
+
+.dtable--lg th,
+.dtable--lg td {
+  padding: 9px 14px;
+}
+
+/* modal khusus tabel — lebih lebar & tinggi dari modal proses */
+.modal--data {
+  width: min(720px, 100%);
+  max-height: min(85dvh, 85vh);
+}
+
+.modal__title {
+  font-size: var(--step-0);
+}
+
+.modal__x {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  margin-left: auto;
+  color: var(--ink-2);
+  background: var(--surface-2);
+  border: var(--border);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background var(--dur-fast), color var(--dur-fast);
+}
+
+.modal__x:hover {
+  color: var(--ink);
+  background: var(--line);
+}
+
+.modal__x:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.modal__scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  border: var(--border);
+  border-radius: var(--radius);
+}
+
+/* mobile: sheet dari bawah */
+@media (max-width: 560px) {
+  .modal-overlay:has(.modal--data) {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .modal--data {
+    width: 100%;
+    max-height: 85dvh;
+    border-radius: var(--radius) var(--radius) 0 0;
+  }
+
+  .dtable th,
+  .dtable td {
+    padding: 6px 8px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tbl-wrap__zoom,
+  .modal__x {
+    transition: none;
+  }
+}

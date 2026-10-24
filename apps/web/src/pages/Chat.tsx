@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { MessageInfo, SessionInfo } from "../chat-api";
 import { CHAT_TIMEOUT_MS, isTimeoutError, listMessages, listSessions, streamChat } from "../chat-api";
+import { renderRichText } from "../rich-text";
 import { VoiceMode } from "../voice-mode";
 
 interface UiMsg {
@@ -33,10 +34,25 @@ export function Chat() {
   const [composerFocused, setComposerFocused] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [voiceMode, setVoiceMode] = useState(false);
+  const [loadErr, setLoadErr] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
+  async function loadSessions() {
+    try {
+      setSessions(await listSessions());
+    } catch (e) {
+      setLoadErr(isTimeoutError(e) ? "Koneksi lambat — daftar sesi gagal dimuat." : "Gagal memuat daftar sesi.");
+    }
+  }
+  function retryLoads() {
+    setLoadErr(null);
+    void loadSessions();
+    if (sessionId) void openSession(sessionId);
+  }
+
   useEffect(() => {
-    void listSessions().then(setSessions);
+    void loadSessions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -45,8 +61,13 @@ export function Chat() {
   async function openSession(id: string) {
     setSessionId(id);
     setError(null);
-    const history = await listMessages(id);
-    setMsgs(history.map((m) => ({ role: m.role as "user" | "ai", content: m.content })));
+    setLoadErr(null);
+    try {
+      const history = await listMessages(id);
+      setMsgs(history.map((m) => ({ role: m.role as "user" | "ai", content: m.content })));
+    } catch (e) {
+      setLoadErr(isTimeoutError(e) ? "Koneksi lambat — riwayat percakapan gagal dimuat." : "Gagal memuat riwayat percakapan.");
+    }
   }
 
   async function send(text: string) {
@@ -98,7 +119,7 @@ export function Chat() {
           });
           if (e.type === "done") {
             setBusy(false);
-            void listSessions().then(setSessions);
+            void loadSessions();
           }
         },
         AbortSignal.timeout(CHAT_TIMEOUT_MS)
@@ -162,7 +183,7 @@ export function Chat() {
             <div key={i} className={`msg ${m.role === "ai" ? "msg--ai" : ""}`}>
               <strong className="msg__who">{m.role === "user" ? "Anda" : "AI"}</strong>
               <div className="msg__body">
-                {m.content}
+                {renderRichText(m.content)}
                 {busy && i === msgs.length - 1 && !m.content && (
                   <span className="thinking" role="status" aria-label={m.process ?? "AI sedang berpikir"}>
                     <span className="thinking__dot" aria-hidden="true" />
@@ -195,6 +216,17 @@ export function Chat() {
               onClick={() => void send(input || msgs[msgs.length - 2]?.content || "")}
             >
               Coba lagi
+            </button>
+          </div>
+        )}
+        {loadErr && (
+          <div role="alert" className="banner banner--err" style={{ marginTop: "var(--space-xs)", marginBottom: 0 }}>
+            {loadErr} —{" "}
+            <button className="btn btn--ghost btn--sm" onClick={retryLoads}>
+              Coba lagi
+            </button>
+            <button className="btn btn--ghost btn--sm" onClick={() => window.location.reload()}>
+              Muat ulang
             </button>
           </div>
         )}
