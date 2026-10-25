@@ -1,0 +1,506 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<title>Demo WhatsApp → Resi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --cream: #f7f3ec;
+    --cream-2: #efe7da;
+    --ink: #17150f;
+    --ink-2: #55504a;
+    --accent: #ea580c;
+    --accent-strong: #c2410c;
+    --wa-header: #075e54;
+    --wa-bg: #efeae2;
+    --wa-out: #d9fdd3;
+    --wa-in: #ffffff;
+    --wa-meta: #667781;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1080px; height: 1920px; overflow: hidden; }
+  body {
+    font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+    background:
+      radial-gradient(900px 620px at 8% 2%, #ffe6d2 0%, transparent 62%),
+      radial-gradient(820px 620px at 96% 100%, #dff3e6 0%, transparent 60%),
+      var(--cream);
+    color: var(--ink);
+    position: relative;
+  }
+  .stage { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+
+  /* ---------- header kecil di atas ponsel ---------- */
+  .brandbar {
+    position: absolute; top: 64px; left: 72px; right: 72px;
+    display: flex; align-items: center; justify-content: space-between;
+    opacity: 0; transform: translateY(-14px);
+    transition: opacity .6s ease, transform .6s ease;
+  }
+  .brandbar.on { opacity: 1; transform: none; }
+  .brand { display: flex; align-items: center; gap: 16px; }
+  .brand img { width: 56px; height: 56px; border-radius: 14px; }
+  .brand b { font-family: Fraunces, Georgia, serif; font-size: 32px; letter-spacing: -.2px; }
+  .step {
+    display: inline-flex; align-items: center; gap: 12px;
+    padding: 12px 22px; border-radius: 999px;
+    background: #fff; border: 1px solid #e7ded1;
+    font-size: 24px; color: var(--ink-2);
+    box-shadow: 0 10px 26px rgba(23, 21, 15, .06);
+  }
+  .step i { width: 12px; height: 12px; border-radius: 50%; background: var(--accent); display: inline-block; }
+
+  /* ---------- ponsel ---------- */
+  .phone {
+    position: relative;
+    width: 920px; height: 1620px;
+    margin-top: 92px;
+    background: #101418;
+    border-radius: 74px;
+    padding: 16px;
+    box-shadow: 0 60px 120px rgba(23, 21, 15, .28), 0 0 0 1px rgba(255,255,255,.28) inset;
+    opacity: 0; transform: translateY(80px) scale(.97);
+    transition: opacity .9s cubic-bezier(.2,.7,.2,1), transform .9s cubic-bezier(.2,.7,.2,1);
+  }
+  .phone.on { opacity: 1; transform: none; }
+  .screen {
+    position: relative; width: 100%; height: 100%;
+    border-radius: 60px; overflow: hidden; background: var(--wa-bg);
+    display: flex; flex-direction: column;
+  }
+  .notch {
+    position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
+    width: 190px; height: 30px; border-radius: 999px; background: #0b0e11; z-index: 6;
+  }
+
+  /* ---------- header WhatsApp ---------- */
+  .wa-head {
+    flex: none; display: flex; align-items: center; gap: 18px;
+    padding: 58px 28px 18px;
+    background: var(--wa-header); color: #fff;
+  }
+  .wa-ava {
+    width: 76px; height: 76px; border-radius: 50%;
+    background: linear-gradient(160deg, #34b7f1, #0a7cff);
+    display: grid; place-items: center; font-weight: 700; font-size: 34px; flex: none;
+  }
+  .wa-who { flex: 1; min-width: 0; }
+  .wa-who b { display: block; font-size: 32px; font-weight: 600; }
+  .wa-who span { display: block; font-size: 22px; opacity: .82; margin-top: 2px; }
+  .wa-icons { display: flex; gap: 26px; opacity: .92; font-size: 30px; }
+
+  /* ---------- isi chat ---------- */
+  .chat {
+    position: relative; flex: 1; overflow-y: auto; scrollbar-width: none;
+    padding: 26px 26px 30px; display: flex; flex-direction: column; gap: 18px;
+    background-image:
+      radial-gradient(rgba(120, 104, 82, .10) 1.6px, transparent 1.6px),
+      radial-gradient(rgba(120, 104, 82, .08) 1.6px, transparent 1.6px);
+    background-size: 74px 74px, 74px 74px;
+    background-position: 0 0, 37px 37px;
+  }
+  .chat::-webkit-scrollbar { display: none; }
+
+  .daychip { align-self: center; background: #fff8e7; color: #5a5348; font-size: 20px; padding: 7px 18px; border-radius: 10px; box-shadow: 0 1px 1px rgba(0,0,0,.06); }
+  .sys { align-self: center; background: #fff; color: #5a6b74; font-size: 21px; padding: 9px 18px; border-radius: 12px; box-shadow: 0 1px 2px rgba(0,0,0,.06); text-align: center; max-width: 82%; }
+
+  .row { display: flex; width: 100%; }
+  .row.in { justify-content: flex-start; }
+  .row.out { justify-content: flex-end; }
+  .bubble {
+    max-width: 80%; padding: 16px 20px 12px; border-radius: 20px;
+    font-size: 29px; line-height: 1.42; position: relative;
+    box-shadow: 0 1px 2px rgba(11, 20, 26, .10);
+    opacity: 0; transform: translateY(16px) scale(.98);
+    transition: opacity .38s ease, transform .38s cubic-bezier(.2,.8,.2,1);
+    word-wrap: break-word;
+  }
+  .bubble.on { opacity: 1; transform: none; }
+  .row.in .bubble { background: var(--wa-in); color: #111b21; border-top-left-radius: 6px; }
+  .row.out .bubble { background: var(--wa-out); color: #111b21; border-top-right-radius: 6px; }
+  .bubble .t { display: block; font-size: 19px; color: var(--wa-meta); text-align: right; margin-top: 6px; }
+  .bubble b { font-weight: 600; }
+  .muted { color: var(--wa-meta); font-size: 24px; }
+
+  .typing { display: flex; gap: 9px; align-items: center; padding: 20px 22px; }
+  .typing i { width: 12px; height: 12px; border-radius: 50%; background: #9aa7ad; animation: blink 1.1s infinite; }
+  .typing i:nth-child(2) { animation-delay: .18s; }
+  .typing i:nth-child(3) { animation-delay: .36s; }
+  @keyframes blink { 0%, 60%, 100% { opacity: .35; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-3px); } }
+
+  /* kartu produk */
+  .prod { display: flex; flex-direction: column; gap: 6px; }
+  .prod .name { font-weight: 600; font-size: 31px; }
+  .prod .code { font-size: 22px; color: var(--wa-meta); }
+  .prod .price { font-size: 34px; font-weight: 700; color: #0b6b4f; margin-top: 4px; }
+  .prod .stock { font-size: 23px; color: #3b4a52; }
+
+  /* opsi ongkir */
+  .ship { display: flex; flex-direction: column; gap: 10px; margin-top: 6px; }
+  .ship .opt {
+    display: flex; align-items: center; justify-content: space-between; gap: 14px;
+    padding: 12px 14px; border: 1px solid #e3e7e5; border-radius: 12px; background: #f8fbf9;
+  }
+  .ship .opt.sel { border-color: #1f9d63; background: #e9f8ef; box-shadow: 0 0 0 2px rgba(31,157,99,.16); }
+  .ship .opt .l { font-size: 26px; }
+  .ship .opt .r { font-size: 26px; font-weight: 600; color: #0b6b4f; white-space: nowrap; }
+
+  /* kartu QRIS */
+  .qris {
+    display: flex; gap: 18px; align-items: center; margin-top: 8px;
+    padding: 16px; background: #fff; border: 1px solid #e6e0d4; border-radius: 16px;
+  }
+  .qris svg { width: 168px; height: 168px; flex: none; border-radius: 8px; }
+  .qris .meta { font-size: 24px; color: #43525b; display: flex; flex-direction: column; gap: 4px; }
+  .qris .meta b { font-size: 30px; color: #111b21; }
+  .qris .meta .big { font-size: 34px; font-weight: 700; color: #0b6b4f; }
+  .paid { display: inline-flex; align-items: center; gap: 8px; color: #0b6b4f; font-weight: 600; }
+
+  /* kartu resi */
+  .resi { margin-top: 8px; padding: 14px 16px; background: #fff; border: 1px solid #e6e0d4; border-radius: 14px; }
+  .resi .k { font-size: 21px; color: var(--wa-meta); text-transform: uppercase; letter-spacing: .08em; }
+  .resi .v { font-size: 29px; font-weight: 700; letter-spacing: .02em; margin-top: 2px; }
+  .resi a { display: inline-block; margin-top: 8px; color: #0a7cff; font-size: 24px; text-decoration: none; word-break: break-all; }
+
+  /* input bar */
+  .wa-input {
+    flex: none; display: flex; align-items: center; gap: 14px;
+    padding: 14px 20px 26px; background: #f0f2f5;
+  }
+  .wa-input .box { flex: 1; height: 74px; border-radius: 999px; background: #fff; display: flex; align-items: center; padding: 0 24px; color: #9aa7ad; font-size: 26px; }
+  .wa-input .send { width: 74px; height: 74px; border-radius: 50%; background: #00a884; display: grid; place-items: center; color: #fff; font-size: 30px; flex: none; }
+
+  /* ---------- overlay ---------- */
+  .veil { position: absolute; inset: 0; background: rgba(8, 20, 16, .46); opacity: 0; transition: opacity .45s ease; z-index: 8; display: grid; place-items: center; }
+  .veil.on { opacity: 1; }
+  .paycard {
+    background: #fff; border-radius: 28px; padding: 46px 54px; text-align: center;
+    box-shadow: 0 30px 80px rgba(0,0,0,.3); transform: scale(.9); opacity: 0; transition: all .5s cubic-bezier(.2,.8,.2,1);
+    width: 620px;
+  }
+  .paycard.on { transform: none; opacity: 1; }
+  .tick { width: 132px; height: 132px; border-radius: 50%; background: #e7f8ee; display: grid; place-items: center; margin: 0 auto 20px; }
+  .tick svg { width: 76px; height: 76px; }
+  .paycard h3 { font-family: Fraunces, Georgia, serif; font-size: 46px; margin-bottom: 6px; }
+  .paycard p { font-size: 27px; color: var(--ink-2); }
+  .paycard .amt { font-size: 50px; font-weight: 700; color: #0b6b4f; margin-top: 10px; }
+
+  /* kartu "di belakang layar" */
+  .behind {
+    position: absolute; right: 54px; bottom: 210px; width: 380px;
+    background: #fff; border: 1px solid #e7ded1; border-radius: 22px; padding: 22px 24px;
+    box-shadow: 0 24px 60px rgba(23,21,15,.18);
+    opacity: 0; transform: translateY(24px); transition: all .55s cubic-bezier(.2,.8,.2,1); z-index: 7;
+  }
+  .behind.on { opacity: 1; transform: none; }
+  .behind h4 { font-size: 22px; color: var(--accent-strong); letter-spacing: .06em; text-transform: uppercase; margin-bottom: 10px; }
+  .behind ul { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+  .behind li { display: flex; justify-content: space-between; gap: 12px; font-size: 23px; color: var(--ink-2); }
+  .behind li b { color: var(--ink); font-weight: 600; }
+
+  /* kartu tracking */
+  .track {
+    position: absolute; left: 50%; bottom: 120px; transform: translate(-50%, 40px);
+    width: 760px; background: #fff; border-radius: 26px; padding: 28px 32px;
+    border: 1px solid #e7ded1; box-shadow: 0 34px 90px rgba(23,21,15,.26);
+    opacity: 0; transition: all .6s cubic-bezier(.2,.8,.2,1); z-index: 9;
+  }
+  .track.on { opacity: 1; transform: translate(-50%, 0); }
+  .track .top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+  .track .top b { font-family: Fraunces, Georgia, serif; font-size: 34px; }
+  .track .top span { font-size: 20px; color: #fff; background: #0b6b4f; padding: 5px 12px; border-radius: 999px; }
+  .track .url { font-size: 21px; color: #0a7cff; margin-bottom: 18px; word-break: break-all; }
+  .tl { display: flex; flex-direction: column; gap: 0; }
+  .tl .s { display: flex; gap: 18px; }
+  .tl .dotcol { display: flex; flex-direction: column; align-items: center; }
+  .tl .dot { width: 26px; height: 26px; border-radius: 50%; background: #d6e7dd; border: 3px solid #fff; box-shadow: 0 0 0 2px #d6e7dd; flex: none; margin-top: 6px; }
+  .tl .s.done .dot { background: #1f9d63; box-shadow: 0 0 0 2px #1f9d63; }
+  .tl .s.now .dot { background: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+  .tl .line { width: 4px; flex: 1; min-height: 26px; background: #e3ece7; margin: 4px 0; }
+  .tl .s.done .line { background: #9ad4b8; }
+  .tl .txt { padding-bottom: 18px; }
+  .tl .txt b { display: block; font-size: 25px; }
+  .tl .txt span { font-size: 21px; color: var(--ink-2); }
+
+  /* ---------- intro/outro ---------- */
+  .scene {
+    position: absolute; inset: 0; display: grid; place-items: center; text-align: center;
+    opacity: 0; transition: opacity .7s ease; z-index: 20;
+  }
+  .scene.on { opacity: 1; }
+  .scene .inner { transform: translateY(18px); transition: transform .8s cubic-bezier(.2,.8,.2,1); }
+  .scene.on .inner { transform: none; }
+  .scene img { width: 150px; height: 150px; border-radius: 34px; box-shadow: 0 24px 60px rgba(23,21,15,.18); }
+  .scene h1 { font-family: Fraunces, Georgia, serif; font-size: 92px; line-height: 1.04; margin: 34px 0 18px; letter-spacing: -.02em; }
+  .scene h1 em { color: var(--accent-strong); font-style: normal; }
+  .scene p { font-size: 34px; color: var(--ink-2); max-width: 820px; margin: 0 auto; line-height: 1.4; }
+  .scene .pill { display: inline-flex; gap: 10px; align-items: center; margin-top: 34px; padding: 12px 22px; border-radius: 999px; background: #fff; border: 1px solid #e7ded1; font-size: 25px; color: var(--ink-2); }
+  .scene .foot { margin-top: 26px; font-size: 26px; color: var(--ink-2); }
+  .scene .foot b { color: var(--ink); }
+</style>
+</head>
+<body>
+  <div class="stage">
+    <div class="brandbar" id="brandbar">
+      <div class="brand"><img src="logo.png" alt="" /><b>AI Asisten</b></div>
+      <div class="step" id="step"><i></i><span>Demo: pesan lewat WhatsApp</span></div>
+    </div>
+
+    <div class="phone" id="phone">
+      <div class="screen">
+        <div class="notch"></div>
+        <div class="wa-head">
+          <div class="wa-ava">R</div>
+          <div class="wa-who">
+            <b>Retail Demo</b>
+            <span>online · dibalas AI otomatis</span>
+          </div>
+          <div class="wa-icons"><span>📞</span><span>⋮</span></div>
+        </div>
+
+        <div class="chat" id="chat">
+          <div class="daychip">Hari ini</div>
+        </div>
+
+        <div class="wa-input">
+          <div class="box">Tulis pesan…</div>
+          <div class="send">➤</div>
+        </div>
+
+        <div class="veil" id="veil">
+          <div class="paycard" id="paycard">
+            <div class="tick">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M4 12.5l5 5L20 6.5" stroke="#1f9d63" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <h3>Pembayaran diterima</h3>
+            <p>QRIS terverifikasi otomatis</p>
+            <div class="amt">Rp108.000</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="behind" id="behind">
+      <h4>Otomatis di belakang layar</h4>
+      <ul>
+        <li><span>Pesanan (SO)</span><b>SO.2026.10.00001</b></li>
+        <li><span>Faktur penjualan</span><b>SI.2026.10.00011</b></li>
+        <li><span>Penerimaan kas</span><b>SR.2026.10.00009</b></li>
+      </ul>
+    </div>
+
+    <div class="track" id="track">
+      <div class="top"><b>Lacak paket</b><span>Dalam perjalanan</span></div>
+      <div class="url">track.biteship.com/SD16yksCJCE58hDb0jpRYxoG</div>
+      <div class="tl">
+        <div class="s done"><div class="dotcol"><div class="dot"></div><div class="line"></div></div><div class="txt"><b>Pesanan dikonfirmasi</b><span>Kurir Pos Indonesia ditugaskan</span></div></div>
+        <div class="s done"><div class="dotcol"><div class="dot"></div><div class="line"></div></div><div class="txt"><b>Paket dijemput kurir</b><span>Resi WYB-1792907342161</span></div></div>
+        <div class="s now"><div class="dotcol"><div class="dot"></div><div class="line"></div></div><div class="txt"><b>Dalam perjalanan</b><span>Menuju Jakarta Selatan</span></div></div>
+        <div class="s"><div class="dotcol"><div class="dot"></div></div><div class="txt"><b>Diterima</b><span>Menunggu konfirmasi kurir</span></div></div>
+      </div>
+    </div>
+
+    <div class="scene" id="intro">
+      <div class="inner">
+        <img src="logo.png" alt="AI Asisten" />
+        <h1>Dari chat WhatsApp<br />sampai <em>link tracking</em></h1>
+        <p>Pembeli memesan, AI cek stok &amp; ongkir, QRIS dibayar, lalu resi dan link pelacakan dikirim otomatis.</p>
+        <div class="pill">● Demo alur nyata · data simulasi</div>
+      </div>
+    </div>
+
+    <div class="scene" id="outro">
+      <div class="inner">
+        <img src="logo.png" alt="AI Asisten" />
+        <h1>Jualan lewat WhatsApp,<br /><em>otomatis sampai resi</em></h1>
+        <p>AI penjaga toko · QRIS · Accurate · Biteship tracking</p>
+        <div class="foot"><b>ai-asisten.my.id</b></div>
+      </div>
+    </div>
+  </div>
+
+<script>
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const $ = (id) => document.getElementById(id);
+const chat = $("chat");
+
+function setStep(text) {
+  const el = $("step");
+  el.style.opacity = 0;
+  setTimeout(() => { el.querySelector("span").textContent = text; el.style.opacity = 1; }, 220);
+}
+
+function append(html, cls = "row in") {
+  const row = document.createElement("div");
+  row.className = cls;
+  row.innerHTML = html;
+  chat.appendChild(row);
+  chat.scrollTop = chat.scrollHeight;
+  const bubble = row.querySelector(".bubble") ?? row;
+  requestAnimationFrame(() => bubble.classList.add("on"));
+  return row;
+}
+
+const now = () => new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
+
+function bubbleIn(text) {
+  return `<div class="bubble">${text}<span class="t">${now()}</span></div>`;
+}
+
+async function typing(ms) {
+  const row = append(`<div class="bubble typing"><i></i><i></i><i></i></div>`);
+  await sleep(ms);
+  row.remove();
+}
+
+function pseudoQr(seed) {
+  let h = 2166136261;
+  for (const ch of seed) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }
+  let a = h >>> 0;
+  const rnd = () => { a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  const N = 21, cell = 8, pad = 0, size = N * cell;
+  const on = Array.from({ length: N }, () => Array(N).fill(false));
+  const reserved = (r, c) => (r < 8 && c < 8) || (r < 8 && c >= N - 8) || (r >= N - 8 && c < 8);
+  for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) if (!reserved(r, c) && rnd() < 0.46) on[r][c] = true;
+  const finder = (r0, c0) => {
+    for (let r = 0; r < 7; r++) for (let c = 0; c < 7; c++) {
+      const edge = r === 0 || r === 6 || c === 0 || c === 6;
+      const core = r >= 2 && r <= 4 && c >= 2 && c <= 4;
+      on[r0 + r][c0 + c] = edge || core;
+    }
+  };
+  finder(0, 0); finder(0, N - 7); finder(N - 7, 0);
+  for (let i = 8; i < N - 8; i++) { on[6][i] = i % 2 === 0; on[i][6] = i % 2 === 0; }
+  let rects = "";
+  for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) if (on[r][c]) rects += `<rect x="${pad + c * cell}" y="${pad + r * cell}" width="${cell}" height="${cell}"/>`;
+  return `<svg viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg"><rect width="${size}" height="${size}" fill="#fff"/><g fill="#0b1a12">${rects}</g></svg>`;
+}
+
+async function run() {
+  await document.fonts.ready;
+  await sleep(500);
+
+  // Intro
+  $("intro").classList.add("on");
+  await sleep(3400);
+  $("intro").classList.remove("on");
+  await sleep(500);
+
+  $("brandbar").classList.add("on");
+  $("phone").classList.add("on");
+  await sleep(900);
+
+  // 1. Pembeli bertanya
+  setStep("1 · Pembeli memesan lewat WhatsApp");
+  await typing(900);
+  append(bubbleIn("Halo, ada Anti Gores iPhone 5?"));
+  await sleep(1200);
+
+  // 2. AI cek stok (Accurate)
+  setStep("2 · AI cek stok & harga di Accurate");
+  await typing(1300);
+  append(bubbleIn(`
+    <div class="prod">
+      <div class="name">Anti Gores Iphone 5</div>
+      <div class="code">Kode 9900012 · stok 148 pcs</div>
+      <div class="price">Rp50.000</div>
+      <div class="stock">Mau berapa kak? Dikirim lewat kurir atau ambil sendiri di toko?</div>
+    </div>
+  `));
+  await sleep(1500);
+
+  append(bubbleIn("Mau 2, kirim kurir ke Jakarta Selatan, kode pos 12950"), "row out");
+  await sleep(1100);
+
+  // 3. Ongkir Biteship
+  setStep("3 · Ongkir real-time via Biteship");
+  await typing(1500);
+  append(bubbleIn(`
+    <div>Oke kak, ini ongkir termurah ke <b>12950</b>:</div>
+    <div class="ship">
+      <div class="opt"><span class="l">Pos Indonesia · Reguler</span><span class="r">Rp8.000</span></div>
+      <div class="opt"><span class="l">SiCepat · Reguler</span><span class="r">Rp8.000</span></div>
+      <div class="opt"><span class="l">Ninja · Reguler</span><span class="r">Rp8.800</span></div>
+    </div>
+    <div class="muted" style="margin-top:8px">Pilih yang mana kak?</div>
+  `));
+  await sleep(2100);
+  append(bubbleIn("Pilih Pos Indonesia Reguler"), "row out");
+  await sleep(1000);
+
+  // 4. QRIS
+  setStep("4 · Pesanan dibuat + QRIS");
+  await typing(1400);
+  append(bubbleIn(`
+    <div>Total <b>Rp108.000</b> ya kak<br /><span class="muted">barang Rp100.000 + ongkir Rp8.000</span></div>
+    <div class="qris">
+      ${pseudoQr("shop-108000")}
+      <div class="meta">
+        <span>Pesanan</span>
+        <b>shop-6add984e</b>
+        <span class="big">Rp108.000</span>
+        <span class="muted">Pindai untuk membayar</span>
+      </div>
+    </div>
+  `));
+  await sleep(2600);
+
+  // 5. Pembayaran
+  setStep("5 · QRIS dibayar — terverifikasi otomatis");
+  $("veil").classList.add("on");
+  await sleep(160);
+  $("paycard").classList.add("on");
+  await sleep(2200);
+  $("paycard").classList.remove("on");
+  $("veil").classList.remove("on");
+  await sleep(350);
+  append(`<div class="sys paid">✓ Pembayaran berhasil — Rp108.000</div>`);
+  await sleep(900);
+  await typing(1200);
+  append(bubbleIn("Pembayaran diterima 🙏 Pesanan dikirim via <b>Pos Indonesia Reguler</b> (estimasi 2 hari). Resi & link pelacakan dikirim otomatis setelah paket dijemput kurir."));
+  await sleep(1800);
+
+  // 6. Back office
+  setStep("6 · Tercatat otomatis di Accurate");
+  $("behind").classList.add("on");
+  await sleep(2600);
+  $("behind").classList.remove("on");
+  await sleep(400);
+
+  // 7. Resi + link
+  setStep("7 · Resi & link tracking dikirim ke pembeli");
+  await typing(1400);
+  append(bubbleIn(`
+    <div>Pesanan sudah diserahkan ke kurir 🚚</div>
+    <div class="resi">
+      <div class="k">Nomor resi</div>
+      <div class="v">WYB-1792907342161</div>
+      <a href="#">https://track.biteship.com/SD16yksCJCE58hDb0jpRYxoG</a>
+    </div>
+    <div class="muted" style="margin-top:8px">Klik link untuk melacak paket real-time.</div>
+  `));
+  await sleep(2600);
+
+  // 8. Tracking page
+  setStep("8 · Pembeli melacak paketnya sendiri");
+  $("track").classList.add("on");
+  await sleep(3600);
+  $("track").classList.remove("on");
+  await sleep(400);
+
+  // Outro
+  $("brandbar").classList.remove("on");
+  $("phone").classList.remove("on");
+  await sleep(450);
+  $("outro").classList.add("on");
+  await sleep(3400);
+  window.__done = true;
+}
+
+run().catch((e) => { console.error(e); window.__done = true; });
+</script>
+</body>
+</html>

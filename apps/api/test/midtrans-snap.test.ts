@@ -70,6 +70,8 @@ afterAll(async () => {
   await prisma.subscription.deleteMany({ where: { tenantId } });
   await prisma.waTopup.deleteMany({ where: { tenantId } });
   await prisma.waBalance.deleteMany({ where: { tenantId } });
+  await prisma.aiLedger.deleteMany({ where: { tenantId } });
+  await prisma.aiWallet.deleteMany({ where: { tenantId } });
   for (const k of ENV_KEYS) {
     const v = ENV_BACKUP[k];
     if (v === undefined) delete process.env[k];
@@ -205,6 +207,86 @@ describe("subscribe & notifikasi QRIS Midtrans", () => {
     expect(subs.length).toBe(1);
   });
 
+  it("notifikasi ke URL terdaftar /api/billing/webhook/... → diproses (path signature canonical & lengkap)", async () => {
+    const ts = "2026-10-15T12:30:00+07:00";
+    for (const signedPath of ["/v1.0/qr/qr-mpm-notify", "/api/billing/webhook/v1.0/qr/qr-mpm-notify"]) {
+      const payment = await prisma.payment.create({
+        data: { tenantId, orderId: `sub-${randomBytes(8).toString("hex")}`, amount: 49000, status: "pending" },
+      });
+      const payload = {
+        originalReferenceNo: "999",
+        originalPartnerReferenceNo: payment.orderId,
+        latestTransactionStatus: "00",
+        amount: { value: "49000.00", currency: "IDR" },
+      };
+      const raw = JSON.stringify(payload);
+      const hash = createHash("sha256").update(raw, "utf8").digest("hex").toLowerCase();
+      const s = createSign("RSA-SHA256");
+      s.update(`POST:${signedPath}:${hash}:${ts}`);
+      const sig = s.sign(privPem, "base64");
+
+      const r = await request(api)
+        .post("/api/billing/webhook/v1.0/qr/qr-mpm-notify")
+        .set("Content-Type", "application/json")
+        .set("X-Timestamp", ts)
+        .set("X-Signature", sig)
+        .send(payload);
+      expect(r.status).toBe(200);
+      expect(r.body.responseCode).toBe("2005200");
+      const row = await prisma.payment.findUnique({ where: { id: payment.id } });
+      expect(row?.status).toBe("settlement");
+    }
+  });
+
+  it("pesanan toko shop-: settlement → order paid + audit", async () => {
+    const orderId = `shop-${randomBytes(4).toString("hex")}`;
+    await prisma.payment.create({ data: { tenantId, orderId, amount: 25000, status: "pending" } });
+    const order = {
+      orderId,
+      tenantId,
+      buyerPhone: "",
+      buyerName: "Pembeli Uji",
+      items: [{ name: "Barang Uji", no: "I1", qty: 1, price: 25000, subtotal: 25000, stock: 5 }],
+      total: 25000,
+      status: "pending",
+      qrUrl: "https://example.test/qr",
+      qrContent: "000201",
+      expiresAt: new Date(Date.now() + 900_000).toISOString(),
+      createdAt: new Date().toISOString(),
+    };
+    await prisma.appSetting.upsert({
+      where: { key: `wa:shop_order:${orderId}` },
+      create: { key: `wa:shop_order:${orderId}`, value: JSON.stringify(order) },
+      update: { value: JSON.stringify(order) },
+    });
+    const payload = {
+      originalReferenceNo: "999",
+      originalPartnerReferenceNo: orderId,
+      latestTransactionStatus: "00",
+      amount: { value: "25000.00", currency: "IDR" },
+    };
+    const raw = JSON.stringify(payload);
+    const ts = "2026-10-15T15:00:00+07:00";
+    const hash = createHash("sha256").update(raw, "utf8").digest("hex").toLowerCase();
+    const s = createSign("RSA-SHA256");
+    s.update(`POST:/v1.0/qr/qr-mpm-notify:${hash}:${ts}`);
+    const sig = s.sign(privPem, "base64");
+    const r = await request(api)
+      .post("/v1.0/qr/qr-mpm-notify")
+      .set("Content-Type", "application/json")
+      .set("X-Timestamp", ts)
+      .set("X-Signature", sig)
+      .send(payload);
+    expect(r.status).toBe(200);
+    const pay = await prisma.payment.findUnique({ where: { orderId } });
+    expect(pay?.status).toBe("settlement");
+    const row = await prisma.appSetting.findUnique({ where: { key: `wa:shop_order:${orderId}` } });
+    expect(JSON.parse(row!.value).status).toBe("paid");
+    const audit = await prisma.auditLog.findFirst({ where: { tenantId, action: "wa.shop_order_paid" } });
+    expect(audit).toBeTruthy();
+    await prisma.appSetting.deleteMany({ where: { key: `wa:shop_order:${orderId}` } });
+  });
+
   it("notifikasi signature salah → 401 & payment tetap pending", async () => {
     const payment = await prisma.payment.create({
       data: { tenantId, orderId: `sub-${randomBytes(8).toString("hex")}`, amount: 49000, status: "pending" },
@@ -263,6 +345,80 @@ describe("subscribe & notifikasi QRIS Midtrans", () => {
     expect(row?.paymentMethod).toBe("midtrans");
     expect(row?.providerRef).toBe("MTREF-123");
     await prisma.waTopup.delete({ where: { orderId: r.body.orderId } });
+  });
+
+  it("langganan AI: GET paket, buat QRIS, notifikasi settlement → langganan aktif + token masuk", async () => {
+    const g = await request(api).get("/api/ai/subscription").set("Cookie", cookie);
+    expect(g.status).toBe(200);
+    expect(g.body.plans).toHaveLength(3);
+
+    const fetchMock = vi.fn(async (url: string | URL | Request) => {
+      const u = String(url);
+      if (u.includes("/access-token/b2b")) {
+        return new Response(
+          JSON.stringify({ responseCode: "2007300", accessToken: "tok-sub", tokenType: "Bearer", expiresIn: "900" }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        );
+      }
+      return new Response(
+        JSON.stringify({
+          responseCode: "2004700",
+          responseMessage: "Request has been processed successfully",
+          referenceNo: "SUBREF-123",
+          qrUrl: "https://merchants.sbx.midtrans.com/qr/sub.png",
+          qrContent: "000201SUB",
+          additionalInfo: { isStatic: false },
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const r = await request(api).post("/api/ai/subscription").set("Cookie", cookie).send({ planId: "pro" });
+    expect(r.status).toBe(200);
+    expect(r.body.orderId).toMatch(/^subl-pro-1m-5000000-/);
+    expect(r.body.plan.name).toBe("Pro");
+    const orderId = r.body.orderId as string;
+
+    const payload = {
+      originalReferenceNo: "999",
+      originalPartnerReferenceNo: orderId,
+      latestTransactionStatus: "00",
+      amount: { value: "149000.00", currency: "IDR" },
+    };
+    const raw = JSON.stringify(payload);
+    const ts = "2026-10-15T14:00:00+07:00";
+    const hash = createHash("sha256").update(raw, "utf8").digest("hex").toLowerCase();
+    const s = createSign("RSA-SHA256");
+    s.update(`POST:/v1.0/qr/qr-mpm-notify:${hash}:${ts}`);
+    const sig = s.sign(privPem, "base64");
+
+    const n1 = await request(api)
+      .post("/v1.0/qr/qr-mpm-notify")
+      .set("Content-Type", "application/json")
+      .set("X-Timestamp", ts)
+      .set("X-Signature", sig)
+      .send(payload);
+    expect(n1.status).toBe(200);
+
+    const pay = await prisma.payment.findUnique({ where: { orderId } });
+    expect(pay?.status).toBe("settlement");
+    const sub = await prisma.subscription.findFirst({ where: { tenantId, plan: "ai:pro" } });
+    expect(sub?.status).toBe("active");
+    expect(sub?.expiresAt!.getTime()).toBeGreaterThan(Date.now());
+    const ledger = await prisma.aiLedger.findMany({ where: { tenantId, refId: orderId } });
+    expect(ledger).toHaveLength(1);
+    expect(ledger[0]!.amount).toBeGreaterThan(0);
+
+    // notifikasi berulang → tidak menambah token lagi
+    const n2 = await request(api)
+      .post("/v1.0/qr/qr-mpm-notify")
+      .set("Content-Type", "application/json")
+      .set("X-Timestamp", ts)
+      .set("X-Signature", sig)
+      .send(payload);
+    expect(n2.status).toBe(200);
+    expect(await prisma.aiLedger.count({ where: { tenantId, refId: orderId } })).toBe(1);
   });
 
   it("notifikasi Midtrans utk order mt- → waTopup settlement + saldo bertambah (idempoten)", async () => {

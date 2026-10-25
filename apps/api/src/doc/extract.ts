@@ -44,18 +44,32 @@ function xmlToText(xml: string): string {
     .trim();
 }
 
+/** Batas anti zip-bomb: XML tidak boleh mengembang tanpa kendali (DoS memori). */
+const MAX_XML_BYTES = 8 * 1024 * 1024;
+const MAX_TOTAL_XML_BYTES = 24 * 1024 * 1024;
+const MAX_ZIP_ENTRIES = 500;
+
 async function zipXmlText(buffer: Buffer, filter: (name: string) => boolean): Promise<string> {
   const zip = await JSZip.loadAsync(buffer);
-  const names = Object.keys(zip.files)
+  let names = Object.keys(zip.files)
     .filter((n) => !zip.files[n].dir && filter(n))
     .sort((a, b) => {
       const na = Number(a.match(/(\d+)/)?.[1] ?? 0);
       const nb = Number(b.match(/(\d+)/)?.[1] ?? 0);
       return na - nb;
     });
+  if (names.length > MAX_ZIP_ENTRIES) names = names.slice(0, MAX_ZIP_ENTRIES);
   const parts: string[] = [];
+  let total = 0;
   for (const name of names) {
-    const xml = await zip.files[name].async("string");
+    const entry = zip.files[name] as typeof zip.files[string] & { _data?: { uncompressedSize?: number } };
+    const declared = entry._data?.uncompressedSize;
+    if (typeof declared === "number" && declared > MAX_XML_BYTES) continue;
+    if (typeof declared === "number" && total + declared > MAX_TOTAL_XML_BYTES) break;
+    const xml = await entry.async("string");
+    if (xml.length > MAX_XML_BYTES) continue;
+    if (total + xml.length > MAX_TOTAL_XML_BYTES) break;
+    total += xml.length;
     const text = xmlToText(xml);
     if (text) parts.push(text);
   }

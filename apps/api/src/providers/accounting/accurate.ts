@@ -45,6 +45,8 @@ export function listFieldsFor(tool: string): string {
 import type {
   AccountingProvider,
   BankTransferInput,
+  CustomerLookupInput,
+  CustomerRef,
   ExpenseInput,
   OpenDbResult,
   PrivilegeGroup,
@@ -54,7 +56,9 @@ import type {
   ProviderUser,
   PurchaseInvoiceInput,
   SalesInvoiceInput,
+  SalesOrderInput,
   SalesReceiptInput,
+  SavedDoc,
   ToolSpec,
 } from "./types.js";
 import { ACCURATE_CATALOG } from "./catalog.js";
@@ -399,34 +403,278 @@ export class AccurateAdapter implements AccountingProvider {
     return this.parseEnvelope(txt);
   }
 
-  async createSalesInvoice(ctx: ProviderCtx, data: SalesInvoiceInput): Promise<{ id: string }> {
-    const j = await this.modulePost(
-      "/accurate/api/sales-invoice/add.do",
-      {
-        customerName: data.customerName,
-        date: data.date || new Date().toISOString().slice(0, 10),
-        total: data.total ?? 0,
-        description: data.description ?? "",
-        ...(data.no ? { no: data.no } : {}),
-      },
-      ctx
-    );
-    return { id: String(j.d ?? "") };
+  /** Lengkapi {id,number} dari balasan save; ambil detail bila nomor tidak ikut. */
+  private async savedDoc(j: Envelope<unknown>, detailPath?: string, ctx?: ProviderCtx): Promise<SavedDoc> {
+    const r = (j.r ?? {}) as { id?: unknown; number?: unknown; totalAmount?: unknown; total?: unknown };
+    let id = String(r.id ?? "");
+    let number = String(r.number ?? "");
+    const rawTotal = Number(r.totalAmount ?? r.total ?? NaN);
+    if ((!id || !number) && detailPath && ctx) {
+      try {
+        const q = id ? `id=${encodeURIComponent(id)}` : `number=${encodeURIComponent(number)}`;
+        const d = await this.moduleGet(`${detailPath}?${q}`, ctx);
+        const row = (Array.isArray(d.d) ? d.d[0] : d.d) as Record<string, unknown> | undefined;
+        if (row) {
+          id = id || String(row.id ?? "");
+          number = number || String(row.number ?? "");
+        }
+      } catch {
+        /* biarkan fallback id/number */
+      }
+    }
+    if (!id) id = number;
+    if (!number) number = id;
+    return { id, number, ...(Number.isFinite(rawTotal) && rawTotal > 0 ? { total: rawTotal } : {}) };
   }
 
-  async createSalesReceipt(ctx: ProviderCtx, data: SalesReceiptInput): Promise<{ id: string }> {
+  /** Pesanan penjualan (SO) — item WAJIB memakai kode barang Accurate (itemNo). */
+  async createSalesOrder(ctx: ProviderCtx, data: SalesOrderInput): Promise<SavedDoc> {
+    if (!data.customerNo.trim()) throw new Error("pelanggan Accurate (customerNo) wajib diisi");
+    const raw = (data.items ?? []).slice(0, 50);
+    if (!raw.length) throw new Error("pesanan penjualan butuh minimal 1 item");
+    const detailItem = raw.map((it) => {
+      const itemNo = String(it.itemNo ?? "").trim();
+      if (!itemNo) throw new Error("kode barang (itemNo) wajib diisi untuk pesanan penjualan");
+      const unitPrice = Number(it.price);
+      if (!Number.isFinite(unitPrice) || unitPrice <= 0) {
+        throw new Error(`harga item "${itemNo}" belum terbaca — lengkapi harga item`);
+      }
+      return { itemNo, quantity: it.qty ?? 1, unitPrice };
+    });
+    const branch = await this.resolveBranchName(ctx);
     const j = await this.modulePost(
-      "/accurate/api/sales-receipt/add.do",
+      "/accurate/api/sales-order/save.do",
       {
-        customerName: data.customerName,
-        date: data.date || new Date().toISOString().slice(0, 10),
-        amount: data.amount ?? 0,
+        customerNo: data.customerNo.trim(),
+        transDate: this.toAccurateDate(data.date),
+        ...(branch ? { branchName: branch } : {}),
+        ...(data.no ? { number: data.no } : {}),
         description: data.description ?? "",
-        ...(data.no ? { no: data.no } : {}),
+        taxable: data.taxable === true,
+        detailItem,
+        detailExpense: [],
       },
       ctx
     );
-    return { id: String(j.d ?? "") };
+    return this.savedDoc(j, "/accurate/api/sales-order/detail.do", ctx);
+  }
+
+  /** Tutup pesanan penjualan (manual-close-order). */
+  async closeSalesOrder(ctx: ProviderCtx, data: { number: string }): Promise<void> {
+    const number = data.number.trim();
+    if (!number) throw new Error("nomor pesanan penjualan wajib diisi");
+    await this.modulePost("/accurate/api/sales-order/manual-close-order.do", { number, orderClosed: true }, ctx);
+  }
+
+  /** Cari pelanggan berdasarkan nomor HP lalu nama (exact) — tanpa menebak. */
+  private async searchCustomer(ctx: ProviderCtx, name: string, phone: string): Promise<CustomerRef | null> {
+    const digits = (s: unknown) => String(s ?? "").replace(/\D/g, "");
+    const wantPhone = digits(phone);
+    const queries = [...new Set([phone, name].map((q) => q.trim()).filter(Boolean))];
+    for (const q of queries) {
+      const j = await this.moduleGet(
+        `/accurate/api/customer/list.do?sp.pageSize=20&fields=customerNo,name,mobilePhone&keywords=${encodeURIComponent(q)}`,
+        ctx
+      );
+      const arr = (j.d as Array<Record<string, unknown>>) ?? [];
+      const byPhone = wantPhone
+        ? arr.find((c) => digits(c.mobilePhone) && digits(c.mobilePhone) === wantPhone)
+        : undefined;
+      const hit = byPhone ?? (name ? arr.find((c) => String(c.name ?? "").trim().toLowerCase() === name.trim().toLowerCase()) : undefined);
+      if (hit?.customerNo) {
+        return {
+          customerNo: String(hit.customerNo),
+          name: String(hit.name ?? name),
+          mobilePhone: hit.mobilePhone ? String(hit.mobilePhone) : undefined,
+        };
+      }
+    }
+    return null;
+  }
+
+  async listCustomers(ctx: ProviderCtx, opts: { keywords?: string; limit?: number }): Promise<CustomerRef[]> {
+    const pageSize = Math.min(50, Math.max(1, opts.limit ?? 20));
+    const kw = (opts.keywords ?? "").trim();
+    const j = await this.moduleGet(
+      `/accurate/api/customer/list.do?sp.pageSize=${pageSize}&fields=customerNo,name,mobilePhone${
+        kw ? `&keywords=${encodeURIComponent(kw)}` : ""
+      }`,
+      ctx
+    );
+    return ((j.d as Array<Record<string, unknown>>) ?? [])
+      .map((c) => ({
+        customerNo: String(c.customerNo ?? ""),
+        name: String(c.name ?? ""),
+        mobilePhone: c.mobilePhone ? String(c.mobilePhone) : undefined,
+      }))
+      .filter((c) => c.customerNo && c.name);
+  }
+
+  /**
+   * Cari pelanggan by HP/nama; bila tidak ada dan `createName` diisi, buat baru
+   * dengan penanda WhatsApp/Online (description + notes) supaya mudah difilter di Accurate.
+   */
+  async findOrCreateCustomer(ctx: ProviderCtx, data: CustomerLookupInput): Promise<CustomerRef | null> {
+    const name = (data.name ?? "").trim();
+    const phone = (data.phone ?? "").trim();
+    const found = await this.searchCustomer(ctx, name, phone);
+    if (found) return found;
+    const createName = (data.createName ?? "").trim();
+    if (!createName) return null;
+    const branch = await this.resolveBranchName(ctx);
+    const j = await this.modulePost(
+      "/accurate/api/customer/save.do",
+      {
+        name: createName,
+        transDate: this.toAccurateDate(),
+        ...(branch ? { branchName: branch } : {}),
+        ...(phone ? { mobilePhone: phone } : {}),
+        ...(data.categoryName ? { categoryName: data.categoryName } : {}),
+        description: data.description ?? (phone ? `Pembeli WhatsApp ${phone}` : "Pembeli WhatsApp/Online"),
+        notes: "WA/Online",
+      },
+      ctx
+    );
+    const r = (j.r ?? {}) as { customerNo?: unknown; id?: unknown };
+    if (r.customerNo) return { customerNo: String(r.customerNo), name: createName, mobilePhone: phone || undefined };
+    // balasan save tidak memuat customerNo → cari ulang by nama tepat
+    const after = await this.searchCustomer(ctx, createName, phone);
+    if (after) return after;
+    throw new Error(`pelanggan "${createName}" dibuat tetapi customerNo tidak terbaca dari Accurate`);
+  }
+
+  async createSalesInvoice(ctx: ProviderCtx, data: SalesInvoiceInput): Promise<SavedDoc> {
+    const customerNo = await this.resolveByName(ctx, "customer", data.customerName.trim());
+    if (!customerNo) throw new Error(`pelanggan "${data.customerName}" tidak ditemukan di Accurate`);
+    const detailItem: Array<Record<string, unknown>> = [];
+    const missing: string[] = [];
+    for (const it of (data.items ?? []).slice(0, 50)) {
+      const itemNo = it.itemNo?.trim() || (await this.resolveByName(ctx, "item", it.name.trim()));
+      if (!itemNo) {
+        missing.push(it.name);
+        continue;
+      }
+      const unitPrice = Number(it.price);
+      if (!Number.isFinite(unitPrice) || unitPrice <= 0) {
+        throw new Error(`harga item "${it.name}" belum terbaca — lengkapi harga item`);
+      }
+      detailItem.push({ itemNo, quantity: it.qty ?? 1, unitPrice });
+    }
+    if (missing.length) throw new Error(`item tidak ditemukan di Accurate: ${missing.join(", ")}`);
+    if (!detailItem.length) throw new Error("faktur penjualan butuh minimal 1 item");
+    const branch = await this.resolveBranchName(ctx);
+    // ongkos kirim / biaya lain ikut ditagihkan sebagai detailExpense agar total
+    // faktur = total yang dibayar pembeli (sebelumnya faktur hanya berisi barang,
+    // sehingga penerimaan kas "melebihi nilai piutang faktur").
+    // API asli mewajibkan accountNo di detailExpense (tanpa itu Accurate menolak:
+    // "Detail ... tidak ada atau sudah dihapus dari database") — akun diambil dari
+    // COA yang sudah ada (akun pendapatan yg mengandung kata ongkir/ongkos/kirim,
+    // fallback pendapatan lain-lain); bila tidak ketemu → faktur barang saja
+    // (penerimaan kas otomatis dibatasi ke sisa piutang oleh createSalesReceipt).
+    const shipAmount = Number(data.shipping?.amount ?? 0);
+    let detailExpense: Array<Record<string, unknown>> = [];
+    if (Number.isFinite(shipAmount) && shipAmount > 0) {
+      const accountNo =
+        data.shipping?.accountNo?.trim() || (await this.shippingRevenueAccount(ctx));
+      detailExpense =
+        accountNo
+          ? [
+              {
+                accountNo: accountNo,
+                expenseName: String(data.shipping?.name ?? "Ongkos Kirim").slice(0, 100),
+                expenseAmount: shipAmount,
+              },
+            ]
+          : [];
+    }
+    const j = await this.modulePost(
+      "/accurate/api/sales-invoice/save.do",
+      {
+        customerNo,
+        transDate: this.toAccurateDate(data.date),
+        ...(branch ? { branchName: branch } : {}),
+        ...(data.no ? { number: data.no } : {}),
+        description: data.description ?? "",
+        taxable: false,
+        detailDownPayment: [],
+        detailExpense,
+        detailItem,
+      },
+      ctx
+    );
+    const doc = await this.savedDoc(j, "/accurate/api/sales-invoice/detail.do", ctx);
+    if (doc.total === undefined && doc.id) {
+      try {
+        const d = await this.moduleGet(`/accurate/api/sales-invoice/detail.do?id=${encodeURIComponent(doc.id)}`, ctx);
+        const row = (Array.isArray(d.d) ? d.d[0] : d.d) as Record<string, unknown> | undefined;
+        const t = Number(row?.totalAmount ?? row?.grandTotal ?? NaN);
+        if (Number.isFinite(t) && t > 0) doc.total = t;
+      } catch {
+        /* total tak terbaca — pemanggil memakai total pesanan */
+      }
+    }
+    return doc;
+  }
+
+  /** Sisa piutang faktur penjualan by nomor (totalAmount − paidAmount). Null bila faktur
+   *  tidak ketemu / total tak terbaca → pemanggil tidak boleh membatasi jumlah. */
+  private async invoiceOutstanding(ctx: ProviderCtx, invoiceNo: string): Promise<number | null> {
+    const no = invoiceNo.trim();
+    if (!no) return null;
+    try {
+      const j = await this.moduleGet(
+        `/accurate/api/sales-invoice/list.do?sp.pageSize=10&fields=id,number,totalAmount,paidAmount&keywords=${encodeURIComponent(no)}`,
+        ctx
+      );
+      const arr = (j.d as Array<Record<string, unknown>>) ?? [];
+      // hanya pakai baris dgn nomor persis — jangan cap dgn faktur milik orang lain
+      const row = arr.find((r) => String(r.number ?? "").trim() === no);
+      if (!row) return null;
+      const total = Number(row.totalAmount ?? NaN);
+      if (!Number.isFinite(total)) return null;
+      const paid = Number(row.paidAmount ?? 0);
+      return Math.max(0, Math.round((total - (Number.isFinite(paid) ? paid : 0)) * 100) / 100);
+    } catch {
+      return null;
+    }
+  }
+
+  async createSalesReceipt(ctx: ProviderCtx, data: SalesReceiptInput): Promise<SavedDoc> {
+    const customerNo = await this.resolveByName(ctx, "customer", data.customerName.trim());
+    if (!customerNo) throw new Error(`pelanggan "${data.customerName}" tidak ditemukan di Accurate`);
+    if (!data.invoiceNo?.trim()) throw new Error("nomor faktur yang dibayar wajib diisi untuk penerimaan kas");
+    const all = await this.allAccounts(ctx);
+    const cash = all.filter(
+      (a) => a.accountType === "CASH_BANK" && this.isLeaf(a) && !/\b(USD|SGD|EUR|MYR|AUD|JPY)\b/i.test(a.name)
+    );
+    const bankNo = data.bankNo?.trim() || cash[0]?.no;
+    if (!bankNo) throw new Error("rekening kas/bank rupiah tidak ditemukan di Accurate");
+    let amount = Number(data.amount ?? 0);
+    if (!(amount > 0)) throw new Error("jumlah penerimaan kas wajib lebih dari 0");
+    // Accurate menolak bila pembayaran > sisa piutang faktur ("melebihi nilai
+    // piutang fakturnya") — batasi ke sisa piutang yang sebenarnya.
+    const invoiceNo = data.invoiceNo.trim();
+    const outstanding = await this.invoiceOutstanding(ctx, invoiceNo);
+    if (outstanding !== null) {
+      if (outstanding <= 0) throw new Error(`faktur ${invoiceNo} sudah lunas — penerimaan kas dilewati`);
+      if (outstanding < amount) amount = outstanding;
+    }
+    const branch = await this.resolveBranchName(ctx);
+    const j = await this.modulePost(
+      "/accurate/api/sales-receipt/save.do",
+      {
+        customerNo,
+        bankNo,
+        chequeAmount: amount,
+        transDate: this.toAccurateDate(data.date),
+        ...(branch ? { branchName: branch } : {}),
+        ...(data.no ? { number: data.no } : {}),
+        description: data.description ?? "",
+        detailInvoice: [{ invoiceNo, paymentAmount: amount }],
+      },
+      ctx
+    );
+    return this.savedDoc(j, "/accurate/api/sales-receipt/detail.do", ctx);
   }
 
   // ── Referensi akuntansi (cabang, buku besar) — cache 5 menit per sesi ──
@@ -499,8 +747,22 @@ export class AccurateAdapter implements AccountingProvider {
     return hit ?? pool[0] ?? null;
   }
 
-  private async resolveByName(ctx: ProviderCtx, api: "vendor" | "item", name: string): Promise<string | null> {
-    const field = api === "vendor" ? "vendorNo" : "no";
+  /** Akun pendapatan utk ongkir yang ditagihkan ke pelanggan — dari COA yang sudah ada
+   *  (bukan membuat akun baru): utamakan akun bernuansa ongkir/ongkos kirim, lalu
+   *  pendapatan lain-lain/jasa. Undefined bila tidak ada yang cocok → faktur barang saja. */
+  private async shippingRevenueAccount(ctx: ProviderCtx): Promise<string | undefined> {
+    const all = await this.allAccounts(ctx);
+    const income = all.filter(
+      (a) => (a.accountType === "REVENUE" || a.accountType === "OTHER_INCOME") && this.isLeaf(a)
+    );
+    const hit =
+      income.find((a) => /ongkir|ongkos\s*kirim|pengiriman|freight|shipping/i.test(a.name)) ??
+      income.find((a) => /lain-lain|other\s*income|jasa/i.test(a.name));
+    return hit?.no || undefined;
+  }
+
+  private async resolveByName(ctx: ProviderCtx, api: "vendor" | "item" | "customer", name: string): Promise<string | null> {
+    const field = api === "vendor" ? "vendorNo" : api === "customer" ? "customerNo" : "no";
     const j = await this.moduleGet(
       `/accurate/api/${api}/list.do?sp.pageSize=5&fields=${field},name&keywords=${encodeURIComponent(name)}`,
       ctx
@@ -510,7 +772,7 @@ export class AccurateAdapter implements AccountingProvider {
     return hit ? String(hit[field] ?? "") || null : null;
   }
 
-  async createPurchaseInvoice(ctx: ProviderCtx, data: PurchaseInvoiceInput): Promise<{ id: string }> {
+  async createPurchaseInvoice(ctx: ProviderCtx, data: PurchaseInvoiceInput): Promise<SavedDoc> {
     const vendorNo = await this.resolveByName(ctx, "vendor", data.vendorName.trim());
     if (!vendorNo) throw new Error(`vendor "${data.vendorName}" tidak ditemukan di Accurate`);
     const detailItem: Array<Record<string, unknown>> = [];
@@ -536,14 +798,16 @@ export class AccurateAdapter implements AccountingProvider {
       },
       ctx
     );
-    const r = (j.r ?? {}) as { id?: unknown; number?: unknown };
-    return { id: String(r.id ?? r.number ?? "") };
+    return this.savedDoc(j, "/accurate/api/purchase-invoice/detail.do", ctx);
   }
 
-  async createExpense(ctx: ProviderCtx, data: ExpenseInput): Promise<{ id: string }> {
+  async createExpense(ctx: ProviderCtx, data: ExpenseInput): Promise<SavedDoc> {
     const all = await this.allAccounts(ctx);
     const hint = data.description ?? "";
-    const expense = this.pickAccount(all, /EXPENSE|COGS/i, hint);
+    const picked = data.accountNo
+      ? all.find((a) => a.no === data.accountNo && this.isLeaf(a))
+      : null;
+    const expense = picked ?? this.pickAccount(all, /EXPENSE|COGS/i, hint);
     if (!expense) throw new Error("akun beban tidak ditemukan di Accurate");
     const payable = this.pickAccount(all, /^OTHER_CURRENT_LIABILITY$/i, "", true);
     if (!payable) throw new Error("akun liabilitas jangka pendek tidak ditemukan di Accurate");
@@ -552,28 +816,31 @@ export class AccurateAdapter implements AccountingProvider {
       "/accurate/api/expense/save.do",
       {
         transDate: this.toAccurateDate(data.date),
+        dueDate: this.toAccurateDate(data.date),
         ...(branch ? { branchName: branch } : {}),
         description: hint,
         expensePayableNo: payable.no,
-        detailAccount: [{ accountNo: expense.no, amount: data.total ?? 0 }],
+        detailAccount: [
+          { accountNo: expense.no, amount: data.total ?? 0, expenseName: hint.slice(0, 100) || "Beban operasional" },
+        ],
       },
       ctx
     );
-    const r = (j.r ?? {}) as { id?: unknown; number?: unknown };
-    return { id: String(r.id ?? r.number ?? "") };
+    return this.savedDoc(j, "/accurate/api/expense/detail.do", ctx);
   }
 
-  async createBankTransfer(ctx: ProviderCtx, data: BankTransferInput): Promise<{ id: string }> {
+  async createBankTransfer(ctx: ProviderCtx, data: BankTransferInput): Promise<SavedDoc> {
     const all = await this.allAccounts(ctx);
     // transfer antar rekening sendiri: hanya RUPIAH — akun USD/SGD ditolak API ("mata uang asing")
     const cash = all.filter(
       (a) => a.accountType === "CASH_BANK" && this.isLeaf(a) && !/\b(USD|SGD|EUR|MYR|AUD|JPY)\b/i.test(a.name)
     );
     if (cash.length < 2) throw new Error("rekening kas/bank rupiah daun minimal 2 di Accurate");
-    const words = (data.description ?? "").toLowerCase().split(/[^\p{L}\d]+/u).filter((w) => w.length >= 3);
-    const match = (a: GlAccount) => words.some((w) => a.name.toLowerCase().includes(w));
-    const from = cash.find(match) ?? cash[0];
-    const to = cash.find((a) => a.no !== from.no && match(a)) ?? cash.find((a) => a.no !== from.no)!;
+    const from = cash.find((a) => a.no === data.fromBankNo);
+    const to = cash.find((a) => a.no === data.toBankNo && a.no !== data.fromBankNo);
+    if (!from) throw new Error("rekening bank sumber tidak valid / tidak ditemukan");
+    if (!to) throw new Error("rekening bank tujuan tidak valid / tidak ditemukan");
+    if (from.no === to.no) throw new Error("rekening sumber dan tujuan tidak boleh sama");
     const branch = await this.resolveBranchName(ctx);
     const j = await this.modulePost(
       "/accurate/api/bank-transfer/save.do",
@@ -587,8 +854,7 @@ export class AccurateAdapter implements AccountingProvider {
       },
       ctx
     );
-    const r = (j.r ?? {}) as { id?: unknown; number?: unknown };
-    return { id: String(r.id ?? r.number ?? "") };
+    return this.savedDoc(j, "/accurate/api/bank-transfer/detail.do", ctx);
   }
 
   async refreshToken(refreshToken: string): Promise<ProviderTokenSet> {

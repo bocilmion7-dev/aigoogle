@@ -2,9 +2,12 @@ import type {
   AiModuleKey,
   AiModuleModelsResponse,
   AiProviderRow,
+  AiSubPlan,
+  AiTopupPackage,
   AppSettings,
   ConnectionInfo,
   Me,
+  WaSubPlan,
 } from "@aigoogle/shared";
 
 /**
@@ -12,6 +15,12 @@ import type {
  * setelah idle panjang, koneksi half-open bisa menggantung; tanpa ini
  * PageLoader muter selamanya.
  */
+/** Event global: saldo token berubah (chat/voice selesai) → header memuat ulang. */
+export const AI_WALLET_EVENT = "ai-wallet-updated";
+export function notifyAiWalletChanged(): void {
+  window.dispatchEvent(new Event(AI_WALLET_EVENT));
+}
+
 export async function getMe(): Promise<Me | null> {
   try {
     const res = await fetch("/api/me", { signal: AbortSignal.timeout(15_000) });
@@ -84,8 +93,8 @@ export interface AuditRow {
 async function adminFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, init);
   if (!res.ok) {
-    const j = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new Error(j.error ?? "gagal");
+    const j = (await res.json().catch(() => ({}))) as { error?: string; message?: string };
+    throw new Error(j.message || j.error || "gagal");
   }
   return res.json() as Promise<T>;
 }
@@ -137,6 +146,8 @@ export interface ScanResponse {
   fileName: string;
   kind: string;
   rawText: string;
+  /** false bila AI menilai gambar bukan dokumen */
+  isDocument?: boolean;
   fields: ScanFields;
   suggestedTarget: EntryTarget | null;
   /** modul yang disebut AI (bisa modul yang belum didukung atau "none") */
@@ -176,25 +187,202 @@ export function friendlyWarning(code?: string): string | null {
 export interface WaStatusLite {
   balance: number;
   rupiahPerCredit: number;
-  waProvider: "meta" | "d360" | "waserver";
+  waProvider: "meta" | "waserver";
   waserverReady?: boolean;
   accountProvider: string | null;
-  waD360PartnerId: string;
   settings: { autoDueDate: boolean; dailyReport: boolean; ownerPhone: string };
   recent: Array<{ id: string; to: string; body: string; status: string; error: string; createdAt: string }>;
 }
-/** callback Connect Button 360dialog → generate & simpan API key channel perusahaan */
-export const waD360Onboard = (client: string, channels: string[]) =>
-  adminFetch<{ ok: boolean; channel: string }>("/api/wa/d360/onboard", {
+export interface WaChatSummary {
+  peer: string;
+  lastMessage: string;
+  lastAt: string | null;
+  direction: string;
+  status: string;
+  error: string;
+  count: number;
+}
+export interface WaChatMessage {
+  id: string;
+  body: string;
+  direction: string;
+  status: string;
+  error: string;
+  createdAt: string;
+}
+export const getWaChats = () => adminFetch<WaChatSummary[]>("/api/wa/chats");
+export const getWaChatMessages = (peer: string) =>
+  adminFetch<WaChatMessage[]>(`/api/wa/chats/${encodeURIComponent(peer)}/messages`);
+export const sendWaMessage = (to: string, text: string) =>
+  adminFetch<{ ok: boolean; balance: number }>("/api/wa/send", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ client, channels }),
+    body: JSON.stringify({ to, text }),
   });
-/** platform: daftarkan redirect URL onboarding ke halaman WhatsApp */
-export const setD360Redirect = () =>
-  adminFetch<{ ok: boolean; redirect: string }>("/api/settings/d360-redirect", { method: "POST" });
+
+// ── Pesanan toko (AI penjaga toko) + simulator pembayaran QRIS ──────────────
+export interface WaShopOrderItem {
+  name: string;
+  no?: string;
+  qty: number;
+  price: number;
+  subtotal: number;
+}
+export interface WaShopOrder {
+  orderId: string;
+  tenantId: string;
+  buyerPhone: string;
+  buyerName: string;
+  items: WaShopOrderItem[];
+  total: number;
+  status: "pending" | "paid" | "failed";
+  qrUrl: string;
+  expiresAt: string;
+  createdAt: string;
+}
+/** Daftar pesanan toko pada satu percakapan; `simulator` = tombol bayar-uji boleh tampil */
+export const getWaShopOrders = (peer: string) =>
+  adminFetch<{ simulator: boolean; orders: WaShopOrder[] }>(
+    `/api/wa/shop/orders?peer=${encodeURIComponent(peer)}`
+  );
+/** Tandai lunas lewat simulator (jalur sama dgn notifikasi Midtrans) */
+export const settleWaShopOrder = (orderId: string) =>
+  adminFetch<{ ok: boolean; orderId: string; status: string }>(
+    `/api/wa/shop/orders/${encodeURIComponent(orderId)}/settle-test`,
+    { method: "POST" }
+  );
+
+// ── Halaman Pesanan: pesanan WA ditautkan ke dokumen Accurate ──────────────
+export interface OrderDocRef {
+  id: string;
+  number: string;
+}
+export interface OrderAccurate {
+  customerNo?: string;
+  customerName?: string;
+  salesOrder?: OrderDocRef;
+  salesInvoice?: OrderDocRef;
+  salesReceipt?: OrderDocRef;
+  syncedAt?: string;
+  lastError?: string;
+}
+export interface OrderShipping {
+  destinationAddress?: string;
+  destinationPostalCode?: string;
+  destinationNote?: string;
+  courierName?: string;
+  courierCode?: string;
+  serviceName?: string;
+  serviceCode?: string;
+  price?: number;
+  duration?: string;
+  weightGram?: number;
+  biteshipOrderId?: string;
+  trackingId?: string;
+  trackingLink?: string;
+  waybillId?: string;
+  status?: string;
+}
+/** tahap pesanan diturunkan server: menunggu|lunas|pesanan-acc|difakturkan|selesai|gagal */
+export interface OrderRow extends WaShopOrder {
+  stage: string;
+  fulfillment?: "pickup" | "courier";
+  itemsSubtotal?: number;
+  /** nomor HP yang dikumpulkan AI dari pembeli (bisa beda dgn nomor WA) */
+  buyerContactPhone?: string;
+  shipping?: OrderShipping;
+  accurate?: OrderAccurate;
+}
+export const getOrders = (params?: { status?: string; q?: string }) => {
+  const qs = new URLSearchParams();
+  if (params?.status) qs.set("status", params.status);
+  if (params?.q) qs.set("q", params.q);
+  const s = qs.toString();
+  return adminFetch<{ accurateConnected: boolean; orders: OrderRow[] }>(`/api/orders${s ? `?${s}` : ""}`);
+};
+export interface AccurateCustomerRef {
+  customerNo: string;
+  name: string;
+  mobilePhone?: string;
+}
+export const searchAccurateCustomers = (q: string) =>
+  adminFetch<AccurateCustomerRef[]>(`/api/orders/customers?q=${encodeURIComponent(q)}`);
+export type OrderAccurateDoc = "customer" | "sales-order" | "sales-invoice" | "sales-receipt" | "close-order" | "retry";
+// ── Pengiriman (Biteship): asal gudang, order, pelacakan ───────────────────
+export interface ShippingOrigin {
+  contactName: string;
+  phone: string;
+  email?: string;
+  organization: string;
+  address: string;
+  postalCode: string;
+  note?: string;
+}
+export interface ShippingArea {
+  id: string;
+  name: string;
+  postalCode: string;
+}
+export const getShippingSettings = () =>
+  adminFetch<{ origin: ShippingOrigin; biteshipReady: boolean; biteshipMode: "off" | "test" | "live"; couriers: string }>(
+    "/api/shipping/settings"
+  );
+export const putShippingSettings = (body: Partial<ShippingOrigin>) =>
+  adminFetch<{ origin: ShippingOrigin; biteshipReady: boolean; biteshipMode: "off" | "test" | "live" }>("/api/shipping/settings", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+export const searchShippingAreas = (q: string) =>
+  adminFetch<ShippingArea[]>(`/api/shipping/areas?q=${encodeURIComponent(q)}`);
+export const createBiteshipOrder = (orderId: string) =>
+  adminFetch<{ ok: boolean; shipment: { id: string; waybillId: string; status: string }; order: OrderRow | null }>(
+    `/api/orders/${encodeURIComponent(orderId)}/biteship`,
+    { method: "POST" }
+  );
+export interface OrderTracking {
+  id: string;
+  waybillId: string;
+  courier: { company: string; name?: string; driverName?: string; driverPhone?: string };
+  status: string;
+  history: Array<{ note: string; status: string; updatedAt: string }>;
+}
+export const getOrderTracking = (orderId: string) =>
+  adminFetch<{ ok: boolean; tracking: OrderTracking }>(`/api/orders/${encodeURIComponent(orderId)}/tracking`);
+
+export const runOrderAccurate = (
+  orderId: string,
+  body: { doc: OrderAccurateDoc; customerNo?: string; customerName?: string; date?: string; note?: string; bankNo?: string }
+) =>
+  adminFetch<{ ok: boolean; order: OrderRow | null }>(`/api/orders/${encodeURIComponent(orderId)}/accurate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
 export const getWaStatus = () => adminFetch<WaStatusLite>("/api/wa/status");
-export const putWaSettings = (body: { autoDueDate?: boolean; dailyReport?: boolean; ownerPhone?: string }) =>
+
+// ── Sandbox WhatsApp (pipeline sama dengan live, tanpa kirim WA) ───────────
+export interface SandboxSession {
+  peer: string;
+  shopAi: boolean;
+  ownerPhone: string;
+  accurateConnected: boolean;
+  biteshipReady: boolean;
+  aiAccess: boolean;
+  messages: WaChatMessage[];
+}
+export const getSandboxSession = () => adminFetch<SandboxSession>("/api/sandbox/session");
+export const getSandboxMessages = () => adminFetch<WaChatMessage[]>("/api/sandbox/messages");
+export const sendSandboxMessage = (text: string) =>
+  adminFetch<{ replied: boolean; reason?: string; messages: WaChatMessage[] }>("/api/sandbox/messages", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text }),
+  });
+export const clearSandbox = () =>
+  adminFetch<{ ok: boolean; deleted: number }>("/api/sandbox/messages", { method: "DELETE" });
+export const putWaSettings = (body: { autoDueDate?: boolean; dailyReport?: boolean; ownerPhone?: string; shopAi?: boolean }) =>
   adminFetch<unknown>("/api/wa/settings", {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
@@ -220,15 +408,15 @@ export const disconnectWaWaserver = () =>
   adminFetch<{ ok: boolean }>("/api/wa/waserver/session", { method: "DELETE" });
 
 // ── Langganan gateway WhatsApp waserver (Midtrans) ─────────────────────────
-export interface WaSubscribePlan {
+export interface WaSubscribeResult {
   orderId: string;
   amount: number;
-  plan: "1bulan" | "2bulan" | "3bulan";
+  plan: WaSubPlan;
   months: number;
   qris: { qrUrl: string; qrContent: string; contractId?: string; referenceNo?: string; expiredAt: string };
 }
-export const waSubscribe = (plan: "1bulan" | "2bulan" | "3bulan") =>
-  adminFetch<WaSubscribePlan>("/api/wa/subscribe", {
+export const waSubscribe = (plan: string) =>
+  adminFetch<WaSubscribeResult>("/api/wa/subscribe", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ plan }),
@@ -341,6 +529,20 @@ export interface EntryBody {
   total?: number;
   description?: string;
   items?: Array<{ name: string; qty?: number | null; price?: number | null }>;
+  invoiceNo?: string;
+  bankNo?: string;
+  expenseAccountNo?: string;
+  fromBankNo?: string;
+  toBankNo?: string;
+}
+export interface EntryOptions {
+  bankAccounts: Array<{ no: string; name: string }>;
+  expenseAccounts: Array<{ no: string; name: string }>;
+  invoices: Array<{ number: string; transDate: string; totalAmount: number }>;
+}
+export async function getEntryOptions(customerName = ""): Promise<EntryOptions> {
+  const qs = customerName ? `?customerName=${encodeURIComponent(customerName)}` : "";
+  return adminFetch<EntryOptions>(`/api/customers/entry-options${qs}`);
 }
 export async function postEntry(body: EntryBody): Promise<{ ok: boolean; id: string; target: string }> {
   const res = await fetch("/api/customers/entries", {
@@ -417,6 +619,12 @@ export interface PlatformAnalytics {
 export const getPlatformAnalytics = () => adminFetch<PlatformAnalytics>("/api/platform/analytics");
 
 // ── Billing AI (saldo per member) ────────────────────────────────────────────
+export type AiGateReason = "subscription" | "token";
+export const AI_GATE_EVENT = "aigoogle:ai-gate";
+export function notifyAiGate(reason: AiGateReason): void {
+  window.dispatchEvent(new CustomEvent(AI_GATE_EVENT, { detail: { reason } }));
+}
+
 export interface AiWalletSummary {
   /** saldo dalam TOKEN (tampilan utama) */
   balanceTokens: number;
@@ -427,6 +635,17 @@ export interface AiWalletSummary {
   tokens30d: number;
   spentTokens30d: number;
   calls30d: number;
+  /** paket top up token dari Admin Platform */
+  topupPackages: AiTopupPackage[];
+  /** status akses AI: langganan/demo/token */
+  access?: {
+    reason: AiGateReason | "ok";
+    subscriptionActive: boolean;
+    trialActive: boolean;
+    trialEndsAt: string | null;
+    balance: number;
+    minReserve: number;
+  };
   /** internal rupiah */
   balance: number;
   spent30d: number;
@@ -464,13 +683,47 @@ export interface AiMemberWallet {
   balance: number | null;
 }
 
+export interface AiSubscriptionPayload {
+  plans: AiSubPlan[];
+  wallet: AiWalletSummary;
+  access: {
+    reason: "ok" | "subscription" | "token";
+    subscriptionActive: boolean;
+    trialActive: boolean;
+    trialEndsAt: string | null;
+    balance: number;
+    minReserve: number;
+  };
+  subscription: { plan: string; status: string; expiresAt: string | null; active: boolean } | null;
+}
+export interface AiSubscriptionResult {
+  orderId: string;
+  amount: number;
+  plan: AiSubPlan;
+  months: number;
+  tokens: number;
+  qris: { qrUrl: string; qrContent: string; referenceNo?: string; expiredAt: string };
+}
+export const getAiSubscription = () => adminFetch<AiSubscriptionPayload>("/api/ai/subscription");
+export const postAiSubscription = (planId: string) =>
+  adminFetch<AiSubscriptionResult>("/api/ai/subscription", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ planId }),
+  });
+export const getBillingPayment = (orderId: string) =>
+  adminFetch<{ orderId: string; amount: number; status: string; settled: boolean }>(
+    `/api/billing/payment/${orderId}`
+  );
+
 export const getAiWallet = () => adminFetch<AiWalletSummary>("/api/ai/wallet");
-export const getAiLedger = (take = 50) => adminFetch<AiLedgerRow[]>(`/api/ai/ledger?take=${take}`);
-export const postAiTopup = (amount: number) =>
+export const getAiLedger = (take = 10, skip = 0) =>
+  adminFetch<AiLedgerRow[]>(`/api/ai/ledger?take=${take}&skip=${skip}`);
+export const postAiTopup = (packageId: string) =>
   adminFetch<AiTopupResponse>("/api/ai/topup", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ amount }),
+    body: JSON.stringify({ packageId }),
   });
 export const getAiTopup = (orderId: string) =>
   adminFetch<{ orderId: string; status: string; credits: number; amount: number }>(`/api/ai/topup/${orderId}`);

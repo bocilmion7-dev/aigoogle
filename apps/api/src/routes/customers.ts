@@ -12,7 +12,7 @@ import { writeAudit } from "../audit.js";
 import { detectKind, extractText, VISION_KINDS } from "../doc/extract.js";
 import { scanDocument, type ScanHint } from "../doc/scan.js";
 import { ocrImage, ocrUsable } from "../doc/ocr.js";
-import { AiSaldoHabis, assertCanUseAi, chargeAi } from "../ai/billing.js";
+import { AiLanggananHabis, AiSaldoHabis, assertAiAccess, chargeAi } from "../ai/billing.js";
 import { getModuleModel } from "../ai/module-model.js";
 
 export const customersRouter = Router();
@@ -153,16 +153,15 @@ customersRouter.post(
     const kind = detectKind(fileName, mime);
     if (kind === "unknown") return res.status(415).json({ error: "unsupported_type" });
 
-    // saldo AI member — blokir total bila tidak cukup
+    // gate AI: langganan/demo lalu saldo token
     try {
-      await assertCanUseAi(req.user!.id, req.user!.tenant.id);
+      await assertAiAccess(req.user!.id, req.user!.tenant.id);
     } catch (e) {
+      if (e instanceof AiLanggananHabis) {
+        return res.status(402).json({ error: "langganan_ai_habis", reason: e.reason });
+      }
       if (e instanceof AiSaldoHabis) {
-        return res.status(402).json({
-          error: "saldo_ai_habis",
-          balance: e.balance,
-          need: e.need,
-        });
+        return res.status(402).json({ error: "saldo_ai_habis", balance: e.balance, need: e.need });
       }
       throw e;
     }
@@ -200,6 +199,7 @@ customersRouter.post(
       fileName,
       kind,
       rawText: out.rawText,
+      isDocument: out.isDocument,
       ocrText: ocrText || undefined,
       fields: out.fields,
       suggestedTarget: out.target,
@@ -217,6 +217,53 @@ customersRouter.post(
   })
 );
 
+/** Opsi form input: rekening bank/beban + faktur belum lunas pelanggan. */
+customersRouter.get(
+  "/customers/entry-options",
+  rateLimit({ name: "entry-options", windowMs: 60_000, max: 60 }),
+  requireUser,
+  asyncHandler(async (req, res) => {
+    const ctx = await accurateCtxFor(req.user!.tenant.id);
+    if (!ctx) return res.status(409).json({ error: "belum_connect" });
+    const provider = accurateProvider();
+    const listRes = (await provider.execute(
+      "glaccount.list",
+      { pageSize: 500, fields: "no,name,accountType" },
+      ctx
+    )) as { items?: Array<Record<string, unknown>> } | Array<Record<string, unknown>>;
+    const rows = Array.isArray(listRes) ? listRes : listRes.items ?? [];
+    const leaf = (no: unknown) => !String(no ?? "").endsWith("-00");
+    const accounts = rows
+      .map((r) => ({ no: String(r.no ?? ""), name: String(r.name ?? ""), type: String(r.accountType ?? "") }))
+      .filter((a) => a.no && a.name && leaf(a.no));
+    const bankAccounts = accounts.filter(
+      (a) => a.type === "CASH_BANK" && !/\b(USD|SGD|EUR|MYR|AUD|JPY)\b/i.test(a.name)
+    );
+    const expenseAccounts = accounts.filter((a) => /EXPENSE|COGS/i.test(a.type));
+
+    const customerName = typeof req.query.customerName === "string" ? req.query.customerName.trim() : "";
+    let invoices: Array<{ number: string; transDate: string; totalAmount: number }> = [];
+    if (customerName) {
+      try {
+        const u = (await provider.execute("customer.unpaidByName", { name: customerName }, ctx)) as {
+          unpaid?: Array<Record<string, unknown>>;
+          error?: string;
+        };
+        if (!u?.error) {
+          invoices = (u.unpaid ?? []).map((r) => ({
+            number: String(r.number ?? ""),
+            transDate: String(r.transDate ?? ""),
+            totalAmount: Number(r.totalAmount ?? 0) || 0,
+          })).filter((r) => r.number);
+        }
+      } catch {
+        invoices = [];
+      }
+    }
+    res.json({ bankAccounts, expenseAccounts, invoices });
+  })
+);
+
 const EntryLineItem = z.object({
   name: z.string().min(1).max(200),
   qty: z.number().positive().optional(),
@@ -224,11 +271,11 @@ const EntryLineItem = z.object({
 });
 const ENTRY_TARGETS = ["salesInvoice", "salesReceipt", "purchaseInvoice", "expense", "bankTransfer"] as const;
 const TARGET_PERM: Record<(typeof ENTRY_TARGETS)[number], string> = {
-  salesInvoice: "accurate:sales-invoice.view",
-  salesReceipt: "accurate:sales-receipt.view",
-  purchaseInvoice: "accurate:purchase-invoice.view",
-  expense: "accurate:expense.view",
-  bankTransfer: "accurate:bank-transfer.view",
+  salesInvoice: "accurate:sales-invoice.save",
+  salesReceipt: "accurate:sales-receipt.save",
+  purchaseInvoice: "accurate:purchase-invoice.save",
+  expense: "accurate:expense.save",
+  bankTransfer: "accurate:bank-transfer.save",
 };
 const TARGET_NEEDS_NAME = new Set(["salesInvoice", "salesReceipt", "purchaseInvoice"]);
 
@@ -240,6 +287,14 @@ const EntryBody = z.object({
   total: z.number().nonnegative().optional(),
   description: z.string().max(500).optional(),
   items: z.array(EntryLineItem).max(50).optional(),
+  /** penerimaan kas: faktur yang dibayar + rekening penerimaan */
+  invoiceNo: z.string().max(60).optional(),
+  bankNo: z.string().max(40).optional(),
+  /** beban: akun beban pilihan admin */
+  expenseAccountNo: z.string().max(40).optional(),
+  /** transfer bank: rekening sumber & tujuan */
+  fromBankNo: z.string().max(40).optional(),
+  toBankNo: z.string().max(40).optional(),
 });
 
 customersRouter.post(
@@ -271,6 +326,7 @@ customersRouter.post(
           no: b.no,
           total: b.total,
           description: b.description,
+          items: b.items,
         });
       } else if (b.target === "salesReceipt") {
         saved = await provider.createSalesReceipt(ctx, {
@@ -279,6 +335,8 @@ customersRouter.post(
           no: b.no,
           amount: b.total,
           description: b.description,
+          invoiceNo: b.invoiceNo,
+          bankNo: b.bankNo,
         });
       } else if (b.target === "purchaseInvoice") {
         saved = await provider.createPurchaseInvoice(ctx, {
@@ -294,12 +352,15 @@ customersRouter.post(
           date: b.date,
           total: b.total,
           description: b.description || (b.customerName ? `Beban ${b.customerName}` : ""),
+          accountNo: b.expenseAccountNo,
         });
       } else {
         saved = await provider.createBankTransfer(ctx, {
           date: b.date,
           total: b.total,
           description: b.description,
+          fromBankNo: b.fromBankNo,
+          toBankNo: b.toBankNo,
         });
       }
     } catch (e) {

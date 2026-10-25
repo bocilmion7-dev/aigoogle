@@ -4,6 +4,7 @@ import { randomBytes } from "node:crypto";
 import { createApp } from "../src/app.js";
 import { prisma } from "../src/db.js";
 import { env } from "../src/env.js";
+import { DEFAULT_AI_SIGNUP_BONUS_TOKENS, DEFAULT_AI_SUB_PLANS, DEFAULT_AI_TOPUP_PACKAGES, DEFAULT_WA_META_TOPUPS, DEFAULT_WA_SUB_PLANS } from "@aigoogle/shared";
 
 let api: ReturnType<typeof createApp>;
 let cookie = "";
@@ -12,8 +13,7 @@ let platCookie = "";
 
 // DB lokal persisten antar-run: backup setelan asli sebelum di-reset, kembalikan setelah test
 const SETTING_KEYS = [
-  "voiceEngine", "ocrMode", "waProvider", "waD360ApiKey", "waD360BaseUrl",
-  "paymentProvider", "winpayEnv", "winpayClientId", "winpayPrivateKey", "winpayPublicKey",
+  "voiceEngine", "ocrMode", "waProvider", "waD360ApiKey", "waD360BaseUrl", "waSubPlans", "waMetaTopups", "aiTopupPackages", "aiSubPlans", "aiSignupBonusTokens",
 ] as const;
 let settingBackup: { key: string; value: string }[] = [];
 
@@ -81,50 +81,86 @@ describe("settings & connections", () => {
   });
 
   it("GET default voiceEngine = web-speech; PUT mengubah; GET ulang konsisten", async () => {
-    const g1 = await request(api).get("/api/settings").set("Cookie", cookie);
+    const g1 = await request(api).get("/api/settings").set("Cookie", platCookie);
     expect(g1.body).toEqual({
       voiceEngine: "web-speech",
       ocrMode: "vision",
       waPricePerCredit: 200,
+      waSubPlans: DEFAULT_WA_SUB_PLANS,
+      waMetaTopups: DEFAULT_WA_META_TOPUPS,
+      aiTopupPackages: DEFAULT_AI_TOPUP_PACKAGES,
+      aiSubPlans: DEFAULT_AI_SUB_PLANS,
+      aiSignupBonusTokens: DEFAULT_AI_SIGNUP_BONUS_TOKENS,
       waProvider: "d360",
       waserverReady: false,
       waD360ApiKey: "",
       waD360BaseUrl: "https://waba-v2.360dialog.io",
       waD360PartnerId: "",
       waD360PartnerKey: "",
-      paymentProvider: "winpay",
-      winpayEnv: "production",
-      winpayClientId: "3ae34b38-24c6-4fe4-8b26-9deb548020e7",
-      winpayPrivateKey: "",
-      winpayPublicKey: "",
     });
     const put = await request(api).put("/api/settings").set("Cookie", platCookie).send({ voiceEngine: "edge" });
     expect(put.status).toBe(200);
-    const g2 = await request(api).get("/api/settings").set("Cookie", cookie);
+    const g2 = await request(api).get("/api/settings").set("Cookie", platCookie);
     expect(g2.body.voiceEngine).toBe("edge");
     const putOcr = await request(api).put("/api/settings").set("Cookie", platCookie).send({ ocrMode: "text" });
     expect(putOcr.status).toBe(200);
     const putPrice = await request(api).put("/api/settings").set("Cookie", platCookie).send({ waPricePerCredit: 350 });
     expect(putPrice.status).toBe(200);
     expect(putPrice.body.waPricePerCredit).toBe(350);
-    const g3 = await request(api).get("/api/settings").set("Cookie", cookie);
+    const g3 = await request(api).get("/api/settings").set("Cookie", platCookie);
     expect(g3.body).toEqual({
       voiceEngine: "edge",
       ocrMode: "text",
       waPricePerCredit: 350,
+      waSubPlans: DEFAULT_WA_SUB_PLANS,
+      waMetaTopups: DEFAULT_WA_META_TOPUPS,
+      aiTopupPackages: DEFAULT_AI_TOPUP_PACKAGES,
+      aiSubPlans: DEFAULT_AI_SUB_PLANS,
+      aiSignupBonusTokens: DEFAULT_AI_SIGNUP_BONUS_TOKENS,
       waProvider: "d360",
       waserverReady: false,
       waD360ApiKey: "",
       waD360BaseUrl: "https://waba-v2.360dialog.io",
       waD360PartnerId: "",
       waD360PartnerKey: "",
-      paymentProvider: "winpay",
-      winpayEnv: "production",
-      winpayClientId: "3ae34b38-24c6-4fe4-8b26-9deb548020e7",
-      winpayPrivateKey: "",
-      winpayPublicKey: "",
     });
     await request(api).put("/api/settings").set("Cookie", platCookie).send({ ocrMode: "vision", waPricePerCredit: 200 });
+  });
+
+  it("PUT waSubPlans (3 paket) oleh platform → tersimpan & terbaca", async () => {
+    const custom = [
+      { id: "p1", name: "1 Bulan", months: 1, price: 25000 },
+      { id: "p2", name: "3 Bulan", months: 3, price: 65000 },
+      { id: "p3", name: "6 Bulan", months: 6, price: 120000 },
+    ];
+    const put = await request(api).put("/api/settings").set("Cookie", platCookie).send({ waSubPlans: custom });
+    expect(put.status).toBe(200);
+    expect(put.body.waSubPlans).toEqual(custom);
+    const g = await request(api).get("/api/settings").set("Cookie", cookie);
+    expect(g.body.waSubPlans).toEqual(custom);
+    const customTopups = [
+      { id: "t1", label: "10 Ribu", amount: 10000 },
+      { id: "t2", label: "30 Ribu", amount: 30000 },
+      { id: "t3", label: "75 Ribu", amount: 75000 },
+    ];
+    const putTopups = await request(api).put("/api/settings").set("Cookie", platCookie).send({ waMetaTopups: customTopups });
+    expect(putTopups.status).toBe(200);
+    expect(putTopups.body.waMetaTopups).toEqual(customTopups);
+    const customAi = [
+      { id: "a1", price: 10000, tokens: 20000000 },
+      { id: "a2", price: 20000, tokens: 45000000 },
+    ];
+    const putAi = await request(api).put("/api/settings").set("Cookie", platCookie).send({ aiTopupPackages: customAi });
+    expect(putAi.status).toBe(200);
+    expect(putAi.body.aiTopupPackages).toEqual(customAi);
+    await request(api)
+      .put("/api/settings")
+      .set("Cookie", platCookie)
+      .send({
+        waSubPlans: DEFAULT_WA_SUB_PLANS,
+        waMetaTopups: DEFAULT_WA_META_TOPUPS,
+        aiTopupPackages: DEFAULT_AI_TOPUP_PACKAGES,
+      });
   });
 
   it("PUT /settings oleh user perusahaan → 401 (khusus platform)", async () => {
@@ -142,25 +178,19 @@ describe("settings & connections", () => {
     const r = await request(api).get("/api/settings").set("Cookie", staffCookie);
     expect(r.status).toBe(200);
     expect(r.body).not.toHaveProperty("waD360ApiKey");
-    expect(r.body).not.toHaveProperty("winpayPrivateKey");
-    expect(r.body.paymentProvider).toBe("winpay");
   });
 
-  it("PUT paymentProvider winpay↔midtrans oleh platform; default kembali winpay", async () => {
-    const p1 = await request(api).put("/api/settings").set("Cookie", platCookie).send({ paymentProvider: "midtrans" });
-    expect(p1.status).toBe(200);
-    expect(p1.body.paymentProvider).toBe("midtrans");
-    const g = await request(api).get("/api/settings").set("Cookie", cookie);
-    expect(g.body.paymentProvider).toBe("midtrans");
-    await request(api).put("/api/settings").set("Cookie", platCookie).send({ paymentProvider: "winpay" });
-    const g2 = await request(api).get("/api/settings").set("Cookie", cookie);
-    expect(g2.body.paymentProvider).toBe("winpay");
+  it("admin perusahaan dengan settings.manage tetap tidak menerima secret platform", async () => {
+    const r = await request(api).get("/api/settings").set("Cookie", cookie);
+    expect(r.status).toBe(200);
+    expect(r.body).not.toHaveProperty("waD360PartnerKey");
+    expect(r.body).not.toHaveProperty("waD360ApiKey");
   });
 
   it("GET /settings dengan sesi platform (psid) saja → 200", async () => {
     const r = await request(api).get("/api/settings").set("Cookie", platCookie);
     expect(r.status).toBe(200);
-    expect(r.body.winpayClientId).toBe("3ae34b38-24c6-4fe4-8b26-9deb548020e7");
+    expect(r.body.waD360BaseUrl).toBe("https://waba-v2.360dialog.io");
   });
 
   it("GET /api/connections → mengandung accurate connected", async () => {

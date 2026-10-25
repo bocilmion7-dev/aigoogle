@@ -3,6 +3,8 @@ import { env } from "./env.js";
 import { createApp } from "./app.js";
 import { runWaJobs } from "./wa/scheduler.js";
 import { runProactiveJobs } from "./wa/proactive.js";
+import { syncShippingStatuses } from "./wa/shipping-notify.js";
+import { track } from "./shipping/biteship.js";
 import { syncAllTenants } from "./sync/daily.js";
 
 // server ini punya IPv6 default yg tak stabil ke API Google — paksa IPv4 dulu
@@ -58,6 +60,18 @@ setInterval(
       .catch((e) => console.error("[proaktif] gagal:", e instanceof Error ? e.message : e));
   },
   30 * 60_000
+);
+
+// Status pengiriman Biteship — fallback bila webhook belum dipasang (tiap 10 menit)
+setInterval(
+  () => {
+    void syncShippingStatuses((id) => track(id))
+      .then((n) => {
+        if (n > 0) console.log(`[kirim] ${n} status pengiriman diperbarui`);
+      })
+      .catch((e) => console.error("[kirim] gagal:", e instanceof Error ? e.message : e));
+  },
+  10 * 60_000
 );
 
 // Scheduler WA — tiap 15 menit (produksi: cron eksternal)

@@ -2512,7 +2512,28 @@ export async function runAggregation(
       };
       const priceRow = first(priceRes);
       const stockRow = first(stockRes);
-      const sellingPrice = numIn(priceRow, ["price", "sellingPrice", "amount", "value"]);
+      let sellingPrice = numIn(priceRow, ["price", "sellingPrice", "amount", "value"]);
+      // Sebagian DB Accurate (terutama data lama) tidak mengisi get-selling-price —
+      // harga sebenarnya ada di item.detail → detailSellingPrice. Tanpa fallback ini
+      // AI menjawab "harga belum tersedia" padahal barang punya harga.
+      if (!(typeof sellingPrice === "number" && sellingPrice > 0) && String(hit.id ?? "")) {
+        try {
+          const det = await execute("item.detail", { id: String(hit.id) });
+          const d = (first(det) ?? (det as Record<string, unknown>)) as Record<string, unknown> | null;
+          const list = (d?.detailSellingPrice as Array<Record<string, unknown>> | undefined) ?? [];
+          const cat = (p: Record<string, unknown>) => p.priceCategory as { defaultCategory?: boolean } | undefined;
+          const cur = (p: Record<string, unknown>) => p.currency as { code?: string } | undefined;
+          const unit = (p: Record<string, unknown>) => p.unit as { name?: string } | undefined;
+          const pick =
+            list.find((p) => cat(p)?.defaultCategory === true && cur(p)?.code === "IDR" && unit(p)?.name === "PCS") ??
+            list.find((p) => cur(p)?.code === "IDR") ??
+            list[0];
+          const p = Number(pick?.price);
+          if (Number.isFinite(p) && p > 0) sellingPrice = p;
+        } catch {
+          /* biarkan null → tool menjawab harga belum tersedia */
+        }
+      }
       const stock = numIn(stockRow, ["stock", "stockQuantity", "quantity", "balance"]) ?? numIn(hit, ["quantity"]);
       const alternatives = rows.filter((r) => r !== hit).slice(0, 4);
       return {

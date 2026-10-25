@@ -30,6 +30,8 @@ export interface ScanFields {
 }
 export interface ScanResult {
   rawText: string;
+  /** false bila AI menilai gambar bukan dokumen (selfie/objek/pemandangan) */
+  isDocument: boolean;
   fields: ScanFields;
   target: ScanTarget | null;
   /** saran mentah AI (bisa modul yang belum didukung atau "none") */
@@ -66,6 +68,7 @@ Klasifikasikan dokumen dan tentukan modul Accurate Online yang tepat untuk menca
 
 Balas HANYA JSON valid tanpa markdown:
 {
+  "isDocument": true,
   "text": "transkripsi isi dokumen (singkat, pertahankan angka & nomor)",
   "docType": "faktur" | "nota" | "kwitansi" | "lainnya",
   "customerName": "nama pelanggan ATAU pemasok/pembeli yang tertera, kosongkan jika tidak",
@@ -93,6 +96,7 @@ DAFTAR MODUL (pilih satu, atau "none" bila dokumen tidak perlu dicatat):
 - "none"            — dokumen hanya arsip (kwitansi dari pemasok utk pembayaran yg sudah tercatat, salinan dokumen sendiri, surat jalan tanpa transaksi)
 
 ATURAN PENENTU:
+0. Jika gambar BUKAN dokumen (selfie/wajah, pemandangan, objek, meme, atau screenshot tanpa informasi dokumen), set "isDocument": false dan "suggestedModule": "none".
 1. Posisi perusahaan menentukan arah: yang MENERBITKAN faktur berarti LAWAN transaksi. Faktur diterbitkan pemasok → purchaseInvoice; diterbitkan atas nama kita → salesInvoice.
 2. Dokumen berisi BARANG → masuk modul invoice (bukan penerimaan kas) agar stok tercatat.
 3. Dokumen hanya UANG (kwitansi/transfer) → modul receipt/payment/deposit/transfer sesuai arah & pihak.
@@ -112,6 +116,7 @@ function emptyFields(): ScanFields {
 
 function coerce(raw: Record<string, unknown>): {
   rawText: string;
+  isDocument: boolean;
   fields: ScanFields;
   /** modul yang dikenali (didukung maupun belum); null kalau tak dikenal */
   suggestedModule: string | null;
@@ -141,6 +146,7 @@ function coerce(raw: Record<string, unknown>): {
     : [];
   return {
     rawText: String(raw.text ?? "").slice(0, 8000),
+    isDocument: raw.isDocument !== false,
     fields: {
       docType,
       customerName: String(raw.customerName ?? "").slice(0, 200),
@@ -259,7 +265,7 @@ export async function scanDocument(opts: {
     } else {
       // PDF hasil scan → kirim halaman sebagai gambar JPEG tertanam
       const images = extractPdfImages(buffer);
-      if (!images.length) return { rawText: localText, fields: emptyFields(), target: null, aiOk: false };
+      if (!images.length) return { rawText: localText, isDocument: true, fields: emptyFields(), target: null, aiOk: false };
       for (const img of images) {
         parts.push({ inlineData: { mimeType: "image/jpeg", data: img.toString("base64") } });
       }
@@ -300,6 +306,7 @@ export async function scanDocument(opts: {
           : suggestedTarget(out.fields.docType);
     return {
       rawText: out.rawText,
+      isDocument: out.isDocument,
       fields: out.fields,
       target,
       aiModule: modul,
@@ -308,5 +315,5 @@ export async function scanDocument(opts: {
       aiOk: true,
     };
   }
-  return { rawText: localText, fields: emptyFields(), target: null, aiOk: false };
+  return { rawText: localText, isDocument: true, fields: emptyFields(), target: null, aiOk: false };
 }

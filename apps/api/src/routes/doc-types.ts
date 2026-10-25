@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "../db.js";
 import { asyncHandler } from "../asyncHandler.js";
 import { requireUser } from "../middleware/session.js";
+import { requirePerm } from "../permissions.js";
 import { writeAudit } from "../audit.js";
 
 /** Jenis dokumen kustom per PERUSAHAAN (dipakai semua user tenant). */
@@ -60,6 +61,7 @@ docTypesRouter.get(
 docTypesRouter.put(
   "/doc/types",
   requireUser,
+  requirePerm("app:users.manage"),
   asyncHandler(async (req, res) => {
     const body = Body.safeParse(req.body);
     if (!body.success) return res.status(400).json({ error: "bad_request", issues: body.error.issues });

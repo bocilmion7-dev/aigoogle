@@ -151,7 +151,11 @@ function tablesToSentences(md: string): string {
 export function cleanSpeech(text: string): string {
   return text
     .replace(/^>\s?/gm, "")
-    .replace(/https?:\/\/\S+/g, "tautan")
+    // tautan markdown → teks + kata "tautan", jangan sampai menempel jadi satu kata
+    .replace(/\[([^\]]*)\]\(([^)]*)\)/g, "$1 tautan")
+    .replace(/https?:\/\/\S+/g, " tautan")
+    // bullet di awal baris ("- ", "• ", "* ") dibuang agar tidak dibacakan "strip"
+    .replace(/^[\s]*[•▪▫◦·*-]\s+/gm, "")
     .replace(/[*_#`~^|\\<>\[\](){}]/g, "")
     .replace(
       /[\u{1F000}-\u{1FAFF}\u{2190}-\u{21FF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}\u{2B00}-\u{2BFF}]/gu,
@@ -159,6 +163,8 @@ export function cleanSpeech(text: string): string {
     )
     .replace(/[•▪▫◦·]/g, " ")
     .replace(/[—–−]/g, " ")
+    // baris baru → jeda kalimat (hindari kalimat berderet tanpa jeda)
+    .replace(/\n+/g, ". ")
     .replace(/\.{2,}/g, ".")
     .replace(/,{2,}/g, ",")
     .replace(/\s+/g, " ")

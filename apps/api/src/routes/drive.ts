@@ -8,7 +8,7 @@ import { driveClientFor, engineMode } from "../drive/registry.js";
 import { ensureFolder, folderNameFor } from "../drive/folders.js";
 import { docFileName } from "../doc/naming.js";
 import { requirePerm } from "../permissions.js";
-import { AiSaldoHabis, assertCanUseAi, chargeAi } from "../ai/billing.js";
+import { AiLanggananHabis, AiSaldoHabis, assertAiAccess, chargeAi } from "../ai/billing.js";
 import { buildPlan, executePlan, executeUndo } from "../drive/tidy.js";
 import type { TidyPlanItem, TidyResultItem, UndoTarget } from "../drive/types.js";
 import { classifyFile } from "../drive/classify.js";
@@ -126,19 +126,22 @@ driveRouter.post(
         ? "Drive"
         : listing.folders.find((f) => f.id === body.data.folderId)?.name ?? "";
     const totalPdfs = listing.files.filter((f) => f.mimeType === "application/pdf").length;
+    // gate AI HARUS sebelum header streaming dikirim (agar error bisa JSON)
+    try {
+      await assertAiAccess(user.id, user.tenant.id);
+    } catch (e) {
+      if (e instanceof AiLanggananHabis) {
+        return res.status(402).json({ error: "langganan_ai_habis", reason: e.reason });
+      }
+      if (e instanceof AiSaldoHabis) return res.status(402).json({ error: "saldo_ai_habis", balance: e.balance, need: e.need });
+      throw e;
+    }
     const streaming = req.query.stream === "1";
     let send: (e: Record<string, unknown>) => void = () => {};
     if (streaming) {
       res.setHeader("Content-Type", "application/x-ndjson; charset=utf-8");
       send = (e) => res.write(JSON.stringify(e) + "\n");
       send({ type: "start", total: totalPdfs, folderName });
-    }
-    // saldo AI member — blokir total bila tidak cukup
-    try {
-      await assertCanUseAi(user.id, user.tenant.id);
-    } catch (e) {
-      if (e instanceof AiSaldoHabis) return res.status(402).json({ error: "saldo_ai_habis", balance: e.balance, need: e.need });
-      throw e;
     }
     const driveModel = await getModuleModel("drive");
     const preferred = driveModel || undefined;
@@ -221,8 +224,12 @@ driveRouter.post(
   "/drive/jobs/:id/run",
   requireUser,
   asyncHandler(async (req, res) => {
+    const user = req.user!;
+    if (!(await requireDriveTidy(user.tenant.id, user.id))) {
+      return res.status(403).json({ error: "tidak_punya_hak" });
+    }
     const job = await prisma.driveJob.findFirst({
-      where: { id: req.params.id, tenantId: req.user!.tenant.id },
+      where: { id: req.params.id, tenantId: user.tenant.id },
     });
     if (!job) return res.status(404).json({ error: "tidak_ditemukan" });
     if (job.status === "running") return res.status(409).json({ error: "sedang_berjalan" });
@@ -269,8 +276,12 @@ driveRouter.post(
   "/drive/jobs/:id/cancel",
   requireUser,
   asyncHandler(async (req, res) => {
+    const user = req.user!;
+    if (!(await requireDriveTidy(user.tenant.id, user.id))) {
+      return res.status(403).json({ error: "tidak_punya_hak" });
+    }
     const job = await prisma.driveJob.findFirst({
-      where: { id: req.params.id, tenantId: req.user!.tenant.id },
+      where: { id: req.params.id, tenantId: user.tenant.id },
     });
     if (!job) return res.status(404).json({ error: "tidak_ditemukan" });
     cancelFlags.set(job.id, true);

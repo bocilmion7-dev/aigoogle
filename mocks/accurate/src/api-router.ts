@@ -28,9 +28,9 @@ apiRouter.use("/glaccount", makeListRouter({
   module: "glaccount", rows: (db) => db.data.glaccount,
   fieldsForDetail: ["id", "no", "name", "accountType", "balance"],
 }));
-apiRouter.use("/sales-order", makeListRouter({ module: "sales-order", rows: (db) => db.data["sales-order"] }));
+apiRouter.use("/sales-order", makeListRouter({ module: "sales-order", rows: (db) => db.data["sales-order"], addable: true }));
 apiRouter.use("/sales-receipt", makeListRouter({ module: "sales-receipt", rows: (db) => db.data["sales-receipt"], addable: true }));
-apiRouter.use("/purchase-invoice", makeListRouter({ module: "purchase-invoice", rows: (db) => db.data["purchase-invoice"] }));
+apiRouter.use("/purchase-invoice", makeListRouter({ module: "purchase-invoice", rows: (db) => db.data["purchase-invoice"], addable: true }));
 
 for (const mod of Object.keys(ACCURATE_MODULES)) {
   apiRouter.use(`/${mod}`, makeModuleRouter(mod));

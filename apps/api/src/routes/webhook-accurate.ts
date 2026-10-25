@@ -7,14 +7,15 @@ import { ACCURATE_WEBHOOK_EVENTS } from "../providers/accounting/accurate-paths.
 import { ACCURATE_REDIRECT_URI, realAccurateProvider } from "../providers/accounting/index.js";
 import { invalidateTenantCache, EVENT_TO_CACHE_PREFIX } from "../cache.js";
 import { sendWaText } from "../wa/service.js";
+import { issueLaunchState } from "./launch.js";
 
 export const webhookAccurateRouter = Router();
 
-// CTA OAuth: redirect ke authorize Accurate dgn scope penuh (196 scope resmi dari manifest).
-// State SELALU kosong: /api/callback/accurate pakai requireState:false; state kustom
-// akan ditolak pending map (/ (?error=state)).
+// CTA OAuth: redirect ke authorize Accurate dgn scope penuh.
+// State acak diikat ke cookie browser agar callback tidak bisa dipalsukan (login CSRF).
 webhookAccurateRouter.get("/integrations/accurate/authorize", (_req, res) => {
-  res.redirect(302, realAccurateProvider().authorizeUrl({ redirectUri: ACCURATE_REDIRECT_URI, state: "" }));
+  const state = issueLaunchState(res);
+  res.redirect(302, realAccurateProvider().authorizeUrl({ redirectUri: ACCURATE_REDIRECT_URI, state }));
 });
 
 /**
@@ -120,10 +121,8 @@ function webhookNotificationBody(event: string, payload: unknown, dbId: string):
 
 /**
  * Verifikasi App Key webhook (terdaftar di Area Developer Accurate).
- * Dicari fleksibel di header umum + query + body — format resmi Accurate belum
- * terdokumentasi publik; kalau key tak ditemukan di posisi mana pun, request
- * TETAP diterima (dicatat "tidak_dikenali" di _meta) supaya push nyata tidak
- * terblokir saat format aslinya berbeda.
+ * Dicari fleksibel di header umum + query + body; FAIL-CLOSED bila key
+ * dikonfigurasi tetapi tidak ditemukan di posisi mana pun.
  */
 function checkAppKey(req: { get: (h: string) => string | undefined; query: Record<string, unknown>; body?: unknown }): {
   ok: boolean;
@@ -142,7 +141,8 @@ function checkAppKey(req: { get: (h: string) => string | undefined; query: Recor
   }
   const b = (req.body ?? {}) as { appKey?: unknown; key?: unknown };
   for (const v of [b.appKey, b.key]) if (typeof v === "string" && v) cand.push(v);
-  if (!cand.length) return { ok: true, status: "tidak_dikenali" };
+  // fail-closed: bila App Key dikonfigurasi, request tanpa key ditolak
+  if (!cand.length) return { ok: false, status: "tidak_dikenali" };
   return cand.includes(expect) ? { ok: true, status: "cocok" } : { ok: false, status: "salah" };
 }
 

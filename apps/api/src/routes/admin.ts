@@ -5,7 +5,7 @@ import { asyncHandler } from "../asyncHandler.js";
 import { requirePerm, loadPermissionSet } from "../permissions.js";
 import { requirePlatform } from "../middleware/session.js";
 import { writeAudit } from "../audit.js";
-import { APP_FEATURES, isValidPermissionKey } from "../app-features.js";
+import { APP_FEATURES, COMPANY_APP_FEATURES, PLATFORM_ONLY_PERMISSIONS, isValidPermissionKey } from "../app-features.js";
 import { accurateProvider } from "../providers/accounting/index.js";
 import { accurateCtxFor } from "../providers/accounting/connection.js";
 
@@ -107,7 +107,7 @@ adminRouter.get(
         // koneksi bermasalah → mirrorChecked tetap false
       }
     }
-    res.json({ modules, appFeatures: APP_FEATURES });
+    res.json({ modules, appFeatures: scope.isPlatform ? APP_FEATURES : COMPANY_APP_FEATURES });
   })
 );
 
@@ -121,6 +121,9 @@ adminRouter.put(
       return res.status(400).json({ error: "permission_key_tidak_valid" });
     }
     const scope = await tenantScope(req);
+    if (!scope.isPlatform && body.data.permissions.some((p) => PLATFORM_ONLY_PERMISSIONS.has(p))) {
+      return res.status(400).json({ error: "permission_platform_tidak_boleh" });
+    }
     const role = await prisma.role.findFirst({
       where: { id: req.params.id, tenantId: scope.tenantId },
     });

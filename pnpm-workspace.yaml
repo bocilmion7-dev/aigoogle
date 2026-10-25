@@ -9,3 +9,6 @@ allowBuilds:
   esbuild: true
   prisma: true
   msedge-tts: true
+
+overrides:
+  body-parser: 1.20.9

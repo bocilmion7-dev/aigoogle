@@ -9,6 +9,7 @@
   `DATABASE_URL=<...>/aigoogle_test npx prisma migrate deploy`.
 
 ## Deploy (produksi)
+**Setiap perubahan harus langsung di-deploy ke publik** setelah verifikasi lulus (tidak menunggu diminta):
 1. `cd apps/web && pnpm build && rsync -a --delete dist/ /var/www/aigoogle/`
 2. `systemctl restart aigoogle-api` (API pakai `tsx` — perubahan kode butuh restart; ±15 dtk).
 3. Cek `curl -s http://127.0.0.1:3001/api/health?deep=1`.

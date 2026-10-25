@@ -28,13 +28,48 @@ export interface AccountingProvider {
   openDb(accessToken: string, providerDbId: string): Promise<OpenDbResult>;
   capabilityCatalog(): ToolSpec[];
   execute(tool: string, args: Record<string, unknown>, ctx: ProviderCtx): Promise<unknown>;
-  createSalesInvoice(ctx: ProviderCtx, data: SalesInvoiceInput): Promise<{ id: string }>;
-  createSalesReceipt(ctx: ProviderCtx, data: SalesReceiptInput): Promise<{ id: string }>;
-  createPurchaseInvoice(ctx: ProviderCtx, data: PurchaseInvoiceInput): Promise<{ id: string }>;
-  createExpense(ctx: ProviderCtx, data: ExpenseInput): Promise<{ id: string }>;
-  createBankTransfer(ctx: ProviderCtx, data: BankTransferInput): Promise<{ id: string }>;
+  createSalesOrder(ctx: ProviderCtx, data: SalesOrderInput): Promise<SavedDoc>;
+  closeSalesOrder(ctx: ProviderCtx, data: { number: string }): Promise<void>;
+  createSalesInvoice(ctx: ProviderCtx, data: SalesInvoiceInput): Promise<SavedDoc>;
+  createSalesReceipt(ctx: ProviderCtx, data: SalesReceiptInput): Promise<SavedDoc>;
+  createPurchaseInvoice(ctx: ProviderCtx, data: PurchaseInvoiceInput): Promise<SavedDoc>;
+  createExpense(ctx: ProviderCtx, data: ExpenseInput): Promise<SavedDoc>;
+  createBankTransfer(ctx: ProviderCtx, data: BankTransferInput): Promise<SavedDoc>;
+  /** cari pelanggan Accurate by nama/nomor HP; buat baru bila `createName` diisi */
+  findOrCreateCustomer(ctx: ProviderCtx, data: CustomerLookupInput): Promise<CustomerRef | null>;
+  listCustomers(ctx: ProviderCtx, opts: { keywords?: string; limit?: number }): Promise<CustomerRef[]>;
   refreshToken(refreshToken: string): Promise<ProviderTokenSet>;
   privilegeCatalog(ctx: ProviderCtx): Promise<PrivilegeGroup[]>;
+}
+/** hasil save dokumen Accurate — nomor dokumen bisa berbeda dari id internal */
+export interface SavedDoc {
+  id: string;
+  number: string;
+  /** total dokumen bila terbaca (dipakai utk mencocokkan penerimaan kas) */
+  total?: number;
+}
+export interface SalesOrderInput {
+  /** customerNo hasil pencarian/pembuatan pelanggan Accurate */
+  customerNo: string;
+  date?: string;
+  no?: string;
+  description?: string;
+  items: Array<{ itemNo: string; qty: number; price: number }>;
+  taxable?: boolean;
+}
+export interface CustomerRef {
+  customerNo: string;
+  name: string;
+  mobilePhone?: string;
+}
+export interface CustomerLookupInput {
+  /** nama/nomor pembeli dari pesanan WhatsApp */
+  name?: string;
+  phone?: string;
+  /** nama utk dibuat bila pelanggan belum ada (bila kosong → tidak membuat) */
+  createName?: string;
+  categoryName?: string;
+  description?: string;
 }
 export interface SalesInvoiceInput {
   customerName: string;
@@ -42,6 +77,9 @@ export interface SalesInvoiceInput {
   no?: string;
   total?: number;
   description?: string;
+  items?: ScannedLineItem[];
+  /** biaya tambahan yang ikut ditagihkan (mis. ongkos kirim) */
+  shipping?: { amount: number; name?: string; accountNo?: string };
 }
 export interface SalesReceiptInput {
   customerName: string;
@@ -49,11 +87,17 @@ export interface SalesReceiptInput {
   no?: string;
   amount?: number;
   description?: string;
+  /** nomor faktur penjualan yang dibayar (wajib untuk sales-receipt) */
+  invoiceNo?: string;
+  /** rekening kas/bank penerimaan; kosong = pilih otomatis rekening rupiah pertama */
+  bankNo?: string;
 }
 export interface ScannedLineItem {
   name: string;
   qty?: number;
   price?: number;
+  /** kode barang Accurate bila sudah diketahui (lebih akurat daripada nama) */
+  itemNo?: string;
 }
 export interface PurchaseInvoiceInput {
   vendorName: string;
@@ -67,11 +111,15 @@ export interface ExpenseInput {
   date?: string;
   total?: number;
   description?: string;
+  /** akun beban (daun) pilihan user; kosong = pilih otomatis dari deskripsi */
+  accountNo?: string;
 }
 export interface BankTransferInput {
   date?: string;
   total?: number;
   description?: string;
+  fromBankNo?: string;
+  toBankNo?: string;
 }
 export interface ToolSpec {
   name: string;

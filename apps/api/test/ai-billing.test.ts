@@ -80,6 +80,17 @@ describe("wallet member", () => {
     expect(bonus?.amount).toBe(5000);
   });
 
+  it("bonus pendaftaran hanya sekali per perusahaan (bukan per member)", async () => {
+    const other = "user-uji-billing-2";
+    await prisma.aiLedger.deleteMany({ where: { userId: other } });
+    await prisma.aiWallet.deleteMany({ where: { userId: other } });
+    expect(await getBalance(other, TENANT)).toBe(0);
+    const bonus = await prisma.aiLedger.findMany({ where: { userId: other, kind: "bonus" } });
+    expect(bonus).toHaveLength(0);
+    await prisma.aiLedger.deleteMany({ where: { userId: other } });
+    await prisma.aiWallet.deleteMany({ where: { userId: other } });
+  });
+
   it("chargeAi memotong saldo + mencatat modal/margin", async () => {
     const out = await chargeAi({
       userId: USER,
@@ -118,8 +129,8 @@ describe("top up", () => {
       data: { orderId, userId: USER, tenantId: TENANT, amount: 10050, credits: 10000 },
     });
     const before = await getBalance(USER, TENANT);
-    await finalizeAiTopup(orderId, true, "settlement", "winpay");
-    await finalizeAiTopup(orderId, true, "settlement", "winpay");
+    await finalizeAiTopup(orderId, true, "settlement", "midtrans");
+    await finalizeAiTopup(orderId, true, "settlement", "midtrans");
     expect(await getBalance(USER, TENANT)).toBe(before + 10000);
     const rows = await prisma.aiLedger.findMany({ where: { userId: USER, refId: orderId } });
     expect(rows).toHaveLength(1);
@@ -129,7 +140,7 @@ describe("top up", () => {
     const orderId = `ai-uji-fail-${Date.now()}`;
     await prisma.aiTopup.create({ data: { orderId, userId: USER, tenantId: TENANT, amount: 10050, credits: 10000 } });
     const before = await getBalance(USER, TENANT);
-    await finalizeAiTopup(orderId, false, "cancel", "winpay");
+    await finalizeAiTopup(orderId, false, "cancel", "midtrans");
     expect(await getBalance(USER, TENANT)).toBe(before);
   });
 });

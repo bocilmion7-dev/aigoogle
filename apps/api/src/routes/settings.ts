@@ -3,10 +3,9 @@ import { z } from "zod";
 import { prisma } from "../db.js";
 import { env } from "../env.js";
 import { requireUser, requireUserOrPlatform, requirePlatform } from "../middleware/session.js";
-import { loadPermissionSet } from "../permissions.js";
-import { WINPAY_DEFAULT_CLIENT_ID } from "@aigoogle/shared";
 import { asyncHandler } from "../asyncHandler.js";
-import { WA_TOPUP_RUPIAH_PER_CREDIT } from "../wa/service.js";
+import { parseWaMetaTopups, parseWaSubPlans, WA_TOPUP_RUPIAH_PER_CREDIT } from "../wa/service.js";
+import { parseAiSubPlans, parseAiTopupPackages } from "../ai/billing.js";
 import { writeAudit } from "../audit.js";
 
 export const settingsRouter = Router();
@@ -16,23 +15,61 @@ const PutBody = z
     voiceEngine: z.enum(["web-speech", "edge"]).optional(),
     ocrMode: z.enum(["vision", "text"]).optional(),
     waPricePerCredit: z.number().int().min(1).max(1_000_000).optional(),
-    /** penyedia WhatsApp utk embedded signup: meta | d360 | waserver (default d360) */
-    waProvider: z.enum(["meta", "d360", "waserver"]).optional(),
-    waD360ApiKey: z.string().max(200).optional(),
-    waD360BaseUrl: z.string().url().max(200).optional(),
-    /** kredensial PARTNER 360dialog — utk Connect Button + generate API key klien */
-    waD360PartnerId: z.string().max(100).optional(),
-    waD360PartnerKey: z.string().max(200).optional(),
-    /** penyedia pembayaran QRIS: winpay (default) | midtrans */
-    paymentProvider: z.enum(["winpay", "midtrans"]).optional(),
-    winpayEnv: z.enum(["production", "sandbox"]).optional(),
-    winpayClientId: z.string().max(100).optional(),
-    winpayPrivateKey: z.string().max(20000).optional(),
-    winpayPublicKey: z.string().max(20000).optional(),
+    /** penyedia WhatsApp: waserver (default) | meta */
+    waProvider: z.enum(["meta", "waserver"]).optional(),
+    /** 3 paket langganan WhatsApp Gateway */
+    waSubPlans: z
+      .array(
+        z.object({
+          id: z.string().min(1).max(20),
+          name: z.string().min(1).max(40),
+          months: z.number().int().min(1).max(36),
+          price: z.number().int().min(1).max(10_000_000),
+        })
+      )
+      .length(3)
+      .optional(),
+    /** 3 pilihan nominal top up saldo META */
+    waMetaTopups: z
+      .array(
+        z.object({
+          id: z.string().min(1).max(20),
+          label: z.string().min(1).max(40),
+          amount: z.number().int().min(2000).max(10_000_000),
+        })
+      )
+      .length(3)
+      .optional(),
+    /** paket top up token AI — jumlah dinamis (1–12) */
+    aiTopupPackages: z
+      .array(
+        z.object({
+          id: z.string().min(1).max(24),
+          price: z.number().int().min(1000).max(10_000_000),
+          tokens: z.number().int().min(1000).max(1_000_000_000),
+        })
+      )
+      .min(1)
+      .max(12)
+      .optional(),
+    /** 3 paket langganan AI bulanan */
+    aiSubPlans: z
+      .array(
+        z.object({
+          id: z.string().min(1).max(24),
+          name: z.string().min(1).max(40),
+          months: z.number().int().min(1).max(36),
+          price: z.number().int().min(1000).max(10_000_000),
+          tokens: z.number().int().min(1000).max(1_000_000_000),
+          features: z.array(z.string().min(1).max(80)).max(8),
+        })
+      )
+      .length(3)
+      .optional(),
+    /** bonus token pendaftaran Accurate (token) */
+    aiSignupBonusTokens: z.number().int().min(0).max(1_000_000_000).optional(),
   })
   .refine((b) => Object.values(b).some((v) => v !== undefined), { message: "tidak ada field" });
-
-const D360_DEFAULT_BASE = "https://waba-v2.360dialog.io";
 
 async function settingsSnapshot(includeSecrets: boolean) {
   const rows = await prisma.appSetting.findMany({
@@ -40,8 +77,8 @@ async function settingsSnapshot(includeSecrets: boolean) {
       key: {
         in: [
           "voiceEngine", "ocrMode", "waPricePerCredit", "waProvider",
-          "waD360ApiKey", "waD360BaseUrl", "waD360PartnerId", "waD360PartnerKey",
-          "paymentProvider", "winpayEnv", "winpayClientId", "winpayPrivateKey", "winpayPublicKey",
+          "waSubPlans", "waMetaTopups",
+          "aiTopupPackages", "aiSubPlans", "aiSignupBonusTokens",
         ],
       },
     },
@@ -53,57 +90,28 @@ async function settingsSnapshot(includeSecrets: boolean) {
     voiceEngine: get("voiceEngine") ?? "web-speech",
     ocrMode: get("ocrMode") === "text" ? "text" : "vision",
     waPricePerCredit: Number.isFinite(price) && price >= 1 ? price : WA_TOPUP_RUPIAH_PER_CREDIT,
-    waProvider: rawProvider === "meta" || rawProvider === "waserver" ? rawProvider : "d360",
+    waSubPlans: parseWaSubPlans(get("waSubPlans")),
+    waMetaTopups: parseWaMetaTopups(get("waMetaTopups")),
+    aiTopupPackages: parseAiTopupPackages(get("aiTopupPackages")),
+    aiSubPlans: parseAiSubPlans(get("aiSubPlans")),
+    aiSignupBonusTokens:
+      get("aiSignupBonusTokens") !== undefined ? Math.max(0, Number(get("aiSignupBonusTokens")) || 0) : 250000,
+    waProvider: rawProvider === "meta" ? "meta" : "waserver",
     // gateway waserver dikonfigurasi lewat env (infra), bukan DB
     waserverReady: env.WASERVER_URL !== "" && env.WASERVER_API_KEY !== "",
-    paymentProvider: get("paymentProvider") === "midtrans" ? "midtrans" : "winpay",
-    winpayEnv: get("winpayEnv") === "sandbox" ? "sandbox" : "production",
   };
   if (!includeSecrets) return base;
   return {
     ...base,
-    waD360ApiKey: get("waD360ApiKey") ?? "",
-    waD360BaseUrl: get("waD360BaseUrl") ?? D360_DEFAULT_BASE,
-    waD360PartnerId: get("waD360PartnerId") ?? "",
-    waD360PartnerKey: get("waD360PartnerKey") ?? "",
-    winpayClientId: get("winpayClientId") || WINPAY_DEFAULT_CLIENT_ID,
-    winpayPrivateKey: get("winpayPrivateKey") ?? "",
-    winpayPublicKey: get("winpayPublicKey") ?? "",
   };
 }
-
-// Daftarkan redirect URL Integrated Onboarding ke halaman WhatsApp (prasyarat Connect Button)
-settingsRouter.post(
-  "/settings/d360-redirect",
-  requirePlatform,
-  asyncHandler(async (req, res) => {
-    const partnerId = (await prisma.appSetting.findUnique({ where: { key: "waD360PartnerId" } }))?.value ?? "";
-    const partnerKey = (await prisma.appSetting.findUnique({ where: { key: "waD360PartnerKey" } }))?.value ?? "";
-    if (!partnerId || !partnerKey) return res.status(409).json({ error: "partner_id_key_belum_diisi" });
-    const origin = env.APP_ORIGIN.replace(/\/$/, "");
-    const redirect = `${origin}/whatsapp`;
-    const r = await fetch(`https://hub.360dialog.io/api/v2/partners/${encodeURIComponent(partnerId)}`, {
-      method: "PATCH",
-      headers: { "X-API-Key": partnerKey, "Content-Type": "application/json" },
-      body: JSON.stringify({ partner_redirect_url: redirect }),
-    });
-    if (!r.ok) {
-      const t = await r.text().catch(() => "");
-      return res.status(502).json({ error: `d360_${r.status}:${t.slice(0, 200)}` });
-    }
-    await writeAudit("platform", req.platform!.id, "settings.d360_redirect", { redirect });
-    res.json({ ok: true, redirect });
-  })
-);
 
 settingsRouter.get(
   "/settings",
   requireUserOrPlatform,
   asyncHandler(async (req, res) => {
-    const includeSecrets =
-      !!req.platform ||
-      (!!req.user && (await loadPermissionSet(req.user.roleId)).has("app:settings.manage"));
-    res.json(await settingsSnapshot(includeSecrets));
+    // secret platform (partner key dll) HANYA untuk sesi platform — jangan pernah ke tenant
+    res.json(await settingsSnapshot(!!req.platform));
   })
 );
 
@@ -115,10 +123,14 @@ settingsRouter.put(
     if (!body.success) return res.status(400).json({ error: "bad_request" });
     for (const [key, value] of Object.entries(body.data)) {
       if (value === undefined) continue;
+      const stored =
+        key === "waSubPlans" || key === "waMetaTopups" || key === "aiTopupPackages" || key === "aiSubPlans"
+          ? JSON.stringify(value)
+          : String(value);
       await prisma.appSetting.upsert({
         where: { key },
-        create: { key, value: String(value) },
-        update: { value: String(value) },
+        create: { key, value: stored },
+        update: { value: stored },
       });
     }
     await writeAudit(

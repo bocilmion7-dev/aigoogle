@@ -7,9 +7,9 @@ import { requireUser } from "../middleware/session.js";
 import { isBillingEnabled, billingServerKey, verifyWebhookSignature, type MidtransNotification } from "../billing/midtrans.js";
 import { isEntitled } from "../billing/entitlement.js";
 import { generateQrMpm, midtransSnapReady, verifyMidtransNotification } from "../billing/midtrans-snap.js";
-import { paymentSettings, verifyWinpayCallback } from "../billing/winpay.js";
 import { finalizeWaTopup } from "../wa/service.js";
-import { finalizeAiTopup } from "../ai/billing.js";
+import { applyShopPaymentResult } from "../wa/shop-settle.js";
+import { creditTokens, finalizeAiTopup, tenantOwnerId } from "../ai/billing.js";
 import { writeAudit } from "../audit.js";
 
 export const billingRouter = Router();
@@ -90,10 +90,12 @@ billingRouter.post(
         payment_type: z.string().optional(),
         fraud_status: z.string().optional(),
         transaction_time: z.string().optional(),
+        /** standar notifikasi HTTP Midtrans: signature ada di body, bukan header */
+        signature_key: z.string().optional(),
       })
       .safeParse(req.body);
     if (!body.success) return res.status(400).json({ error: "bad_request" });
-    const signature = String(req.header("x-signature-key") ?? "");
+    const signature = String(body.data.signature_key ?? req.header("x-signature-key") ?? "");
     if (!verifyWebhookSignature(body.data, billingServerKey(), signature)) {
       return res.status(401).json({ error: "signature_tidak_valid" });
     }
@@ -121,8 +123,7 @@ billingRouter.post(
 );
 
 /** Notifikasi QRIS MPM BI-SNAP (qr-mpm-notify). Tanpa sesi — keamanan via signature RSA.
- *  Satu router utk semua provider SNAP: dispatch by prefix orderId
- *  (`wa-` → Winpay topup, `sub-` → Midtrans subscription). */
+ *  Dispatch berdasarkan prefix orderId (`ai-`/`mt-`/`wg-`/`sub-`). */
 export const snapNotifyRouter = Router();
 
 snapNotifyRouter.post(
@@ -138,22 +139,17 @@ snapNotifyRouter.post(
     const timestamp = String(req.header("x-timestamp") ?? "");
     const signature = String(req.header("x-signature") ?? "");
 
-    // ── Winpay (WA topup) ──
-    if (ref.startsWith("wa-")) {
-      const cfg = await paymentSettings();
-      if (!verifyWinpayCallback(cfg.winpay.publicKey, "POST", path, raw, timestamp, signature)) {
-        console.warn("[winpay] notifikasi signature tidak valid / public key belum diisi:", path);
-        return res.status(401).json({ responseCode: "4014700", responseMessage: "Invalid signature" });
-      }
-      const paid = trx === "00";
-      const failed = ["04", "05", "06"].includes(trx);
-      if (paid || failed) await finalizeWaTopup(ref, paid, paid ? "settlement" : "cancel", "winpay");
-      return res.json({ responseCode: "2005200", responseMessage: "Successful" });
-    }
-
     // ── Midtrans BI-SNAP ──
     const pubKey = process.env.MIDTRANS_PUBLIC_KEY ?? "";
-    if (!pubKey || !verifyMidtransNotification(pubKey, "POST", path, raw, timestamp, signature)) {
+    // Path yg ditandatangani Midtrans bisa berupa endpoint API (`/v1.0/...`) atau
+    // URL notifikasi lengkap (mis. `/api/billing/webhook/v1.0/...`). Coba keduanya.
+    const sigPaths = new Set<string>([path]);
+    const v1At = path.indexOf("/v1.0/");
+    if (v1At >= 0) sigPaths.add(path.slice(v1At));
+    const signatureValid =
+      !!pubKey &&
+      [...sigPaths].some((p) => verifyMidtransNotification(pubKey, "POST", p, raw, timestamp, signature));
+    if (!signatureValid) {
       console.warn("[midtrans-snap] notifikasi signature tidak valid / public key belum diisi:", path);
       return res.status(401).json({ responseCode: "4015200", responseMessage: "Invalid signature" });
     }
@@ -180,13 +176,25 @@ snapNotifyRouter.post(
         console.warn("[midtrans-snap] order waserver tidak dikenal:", ref);
         return res.status(404).json({ responseCode: "4045200", responseMessage: "Order not found" });
       }
+      // notifikasi berulang setelah lunas jangan memperpanjang langganan lagi
+      if (payment.status === "settlement") {
+        return res.json({ responseCode: "2005200", responseMessage: "Request has been processed successfully" });
+      }
       const status = paid ? "settlement" : failed ? "cancel" : trx;
       await prisma.payment.update({
         where: { id: payment.id },
         data: { status, paymentMethod: "qris" },
       });
       if (paid) {
-        const months = payment.amount >= 75000 ? 3 : payment.amount >= 50000 ? 2 : 1;
+        // durasi dari orderId baru (`wg-<bulan>m-...`); order lama fallback ke nominal
+        const fromId = /^wg-(\d+)m-/.exec(ref);
+        const months = fromId
+          ? Math.min(36, Math.max(1, Number(fromId[1])))
+          : payment.amount >= 75000
+            ? 3
+            : payment.amount >= 50000
+              ? 2
+              : 1;
         const expiresAt = new Date(Date.now() + months * 30 * 86400_000);
         const existing = await prisma.subscription.findFirst({
           where: { tenantId: payment.tenantId },
@@ -216,11 +224,83 @@ snapNotifyRouter.post(
       return res.json({ responseCode: "2005200", responseMessage: "Request has been processed successfully" });
     }
 
+    // ── Langganan AI bulanan (prefix subl-) ──
+    if (ref.startsWith("subl-")) {
+      const m = /^subl-(.+?)-(\d+)m-(\d+)-[a-f0-9]+$/.exec(ref);
+      if (!m) return res.status(400).json({ responseCode: "4005200", responseMessage: "Invalid order id" });
+      const planId = m[1]!;
+      const months = Math.min(36, Math.max(1, Number(m[2])));
+      const tokens = Math.max(0, Number(m[3]));
+      const payment = await prisma.payment.findUnique({ where: { orderId: ref } });
+      if (!payment) {
+        console.warn("[midtrans-snap] order langganan AI tidak dikenal:", ref);
+        return res.status(404).json({ responseCode: "4045200", responseMessage: "Order not found" });
+      }
+      if (paid && payment.status === "settlement") {
+        return res.json({ responseCode: "2005200", responseMessage: "Request has been processed successfully" });
+      }
+      const status = paid ? "settlement" : failed ? "cancel" : trx;
+      await prisma.payment.update({ where: { id: payment.id }, data: { status, paymentMethod: "qris" } });
+      if (paid) {
+        const ownerId = await tenantOwnerId(payment.tenantId);
+        if (ownerId) {
+          await creditTokens({
+            userId: ownerId,
+            tenantId: payment.tenantId,
+            tokens,
+            refId: ref,
+            meta: `langganan ${planId} · ${months} bulan`,
+          });
+        }
+        const existing = await prisma.subscription.findFirst({
+          where: { tenantId: payment.tenantId, plan: { startsWith: "ai:" } },
+          orderBy: { createdAt: "desc" },
+        });
+        const base = existing?.expiresAt && existing.expiresAt > new Date() ? existing.expiresAt : new Date();
+        const expiresAt = new Date(base.getTime() + months * 30 * 86400_000);
+        if (existing) {
+          await prisma.subscription.update({
+            where: { id: existing.id },
+            data: { status: "active", plan: `ai:${planId}`, expiresAt },
+          });
+        } else {
+          await prisma.subscription.create({
+            data: { tenantId: payment.tenantId, plan: `ai:${planId}`, status: "active", expiresAt },
+          });
+        }
+        await writeAudit(payment.tenantId, "system", "ai.subscribe_settled", {
+          orderId: ref,
+          planId,
+          months,
+          tokens,
+          ownerId,
+        });
+      } else if (failed) {
+        await writeAudit(payment.tenantId, "system", "ai.subscribe_failed", { orderId: ref, status: trx });
+      }
+      return res.json({ responseCode: "2005200", responseMessage: "Request has been processed successfully" });
+    }
+
+    // ── Pesanan toko WhatsApp (prefix shop-) ──
+    if (ref.startsWith("shop-")) {
+      const status = paid ? "settlement" : failed ? "cancel" : trx;
+      const r = await applyShopPaymentResult({ orderId: ref, paymentStatus: status, source: "midtrans" });
+      if (!r.found) {
+        console.warn("[midtrans-snap] order toko tidak dikenal:", ref);
+        return res.status(404).json({ responseCode: "4045200", responseMessage: "Order not found" });
+      }
+      return res.json({ responseCode: "2005200", responseMessage: "Request has been processed successfully" });
+    }
+
     // ── Langganan subscription ──
     const payment = await prisma.payment.findUnique({ where: { orderId: ref } });
     if (!payment) {
       console.warn("[midtrans-snap] order tidak dikenal:", ref);
       return res.status(404).json({ responseCode: "4045200", responseMessage: "Order not found" });
+    }
+    // notifikasi settlement berulang jangan memperpanjang masa aktif terus-menerus
+    if (paid && payment.status === "settlement") {
+      return res.json({ responseCode: "2005200", responseMessage: "Request has been processed successfully" });
     }
     const status = paid ? "settlement" : failed ? "cancel" : trx;
     await prisma.payment.update({

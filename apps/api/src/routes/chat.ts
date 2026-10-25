@@ -14,7 +14,7 @@ import { DRIVE_TOOLS, executeDriveTool } from "../ai/drive-tools.js";
 import { STATS_TOOLS, executeStatsTool } from "../ai/stats-tools.js";
 import { transformToRoute, formatAggregationResult, ROUTER_PROMPT_CHARS } from "../ai/transformer.js";
 import { recordLlmUsage, usageToday, dailyLimit } from "../ai/usage.js";
-import { AiSaldoHabis, assertCanUseAi } from "../ai/billing.js";
+import { AiLanggananHabis, AiSaldoHabis, assertAiAccess } from "../ai/billing.js";
 import type { LLMContent } from "../ai/llm-types.js";
 import { buildSystemPrompt } from "../ai/system-prompt.js";
 import { loadPermissionSet } from "../permissions.js";
@@ -28,13 +28,22 @@ chatRouter.get(
   "/chat/sessions",
   requireUser,
   asyncHandler(async (req, res) => {
+    const q = z
+      .object({
+        take: z.coerce.number().int().min(1).max(100).optional(),
+        skip: z.coerce.number().int().min(0).optional(),
+      })
+      .safeParse(req.query);
+    const take = q.success ? (q.data.take ?? 50) : 50;
+    const skip = q.success ? (q.data.skip ?? 0) : 0;
     const sessions = await prisma.chatSession.findMany({
       where: { tenantId: req.user!.tenant.id, userId: req.user!.id },
       orderBy: { createdAt: "desc" },
-      take: 20,
+      take: take + 1,
+      skip,
       select: { id: true, title: true, createdAt: true },
     });
-    res.json(sessions);
+    res.json({ sessions: sessions.slice(0, take), hasMore: sessions.length > take });
   })
 );
 
@@ -104,16 +113,28 @@ chatRouter.post(
       }
     }
 
-    // saldo AI per member — blokir total bila di bawah reserve
+    // gate akses AI: masa langganan/demo dulu, lalu saldo token
     try {
-      await assertCanUseAi(user.id, user.tenant.id);
+      await assertAiAccess(user.id, user.tenant.id);
     } catch (e) {
+      if (e instanceof AiLanggananHabis) {
+        send({
+          type: "error",
+          code: "langganan_ai_habis",
+          reason: e.reason,
+          message:
+            e.reason === "trial"
+              ? "Masa demo 3 hari sudah habis. Silakan pilih paket langganan untuk melanjutkan."
+              : "Masa langganan AI sudah habis. Silakan perpanjang langganan.",
+        });
+        res.end();
+        return;
+      }
       if (e instanceof AiSaldoHabis) {
         send({
           type: "error",
-          message: `Saldo AI Anda Rp${e.balance.toLocaleString("id-ID")} — tidak cukup (minimum Rp${e.need.toLocaleString(
-            "id-ID"
-          )}). Top up di halaman Saldo.`,
+          code: "saldo_ai_habis",
+          message: `Token AI habis — minimum Rp${e.need.toLocaleString("id-ID")}. Silakan top up token.`,
         });
         res.end();
         return;
@@ -165,7 +186,7 @@ chatRouter.post(
       ...STATS_TOOLS,
     ];
     const stats = toolStats(tools);
-    console.log(`[chat] tools: ${stats.count}/${provider.capabilityCatalog().length} (~${stats.approxTokens} tok) | msg: ${body.data.message.slice(0, 80)}`);
+    console.log(`[chat] tools: ${stats.count}/${provider.capabilityCatalog().length} (~${stats.approxTokens} tok) | msgChars: ${body.data.message.length}`);
     // ctx bisa berubah setelah refresh session "Upsss..."
     let liveCtx = ctx;
     const t0 = Date.now();
@@ -257,7 +278,9 @@ chatRouter.post(
                   idx += CHUNK;
                 }, INTERVAL);
               });
-              void recordLlmUsage({
+              // tunggu pemotongan saldo selesai sebelum "done" agar angka saldo
+              // yang diambil klien setelahnya sudah mencerminkan pemakaian ini
+              await recordLlmUsage({
                 tenantId: user.tenant.id,
                 kind: body.data.voice === true ? "voice" : "chat",
                 model: preferredModel || undefined,

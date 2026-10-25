@@ -34,14 +34,3 @@ declare interface SpeechRecognition {
   abort(): void;
 }
 
-declare module "360dialog-connect-button/dist/dialog-connect-button.esm.js" {
-  import type { ComponentType } from "react";
-  export const ConnectButton: ComponentType<{
-    partnerId: string;
-    label?: string;
-    callback: (cb: { client: string; channels: string[]; revoked?: boolean }) => void;
-    requestedNumber?: string;
-    version?: "v1" | "v2";
-    useNewRedirect?: boolean;
-  }>;
-}

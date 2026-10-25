@@ -2,7 +2,6 @@ import { Fragment, useCallback, useEffect, useState } from "react";
 import {
   getAdminTenants,
   getAdminUsers,
-  getAuditLogs,
   getPlatformAnalytics,
   getUsage,
   getConnections,
@@ -13,7 +12,6 @@ import {
   putUserRole,
   type AdminRole,
   type AdminUser,
-  type AuditRow,
   type PrivilegesPayload,
   type PlatformAnalytics,
   type UsagePayload,
@@ -22,13 +20,12 @@ import type { ConnectionInfo } from "@aigoogle/shared";
 import { AppHeader, PageLoader } from "../ui";
 import { ACCURATE_OAUTH_CTA } from "../oauth";
 
-type Tab = "users" | "roles" | "audit" | "usage";
+type Tab = "users" | "roles" | "usage";
 
 export function Admin() {
   const [tab, setTab] = useState<Tab>("users");
   const [roles, setRoles] = useState<AdminRole[]>([]);
   const [users, setUsers] = useState<AdminUser[]>([]);
-  const [audit, setAudit] = useState<AuditRow[]>([]);
   const [priv, setPriv] = useState<PrivilegesPayload | null>(null);
   const [selRole, setSelRole] = useState<string>("");
   const [checked, setChecked] = useState<Set<string>>(new Set());
@@ -95,10 +92,6 @@ export function Admin() {
     if (tab === "users") {
       setErr(null);
       void getAdminUsers(selTenant || undefined).then(setUsers).catch(onFetchErr);
-    }
-    if (tab === "audit") {
-      setErr(null);
-      void getAuditLogs(50, selTenant || undefined).then(setAudit).catch(onFetchErr);
     }
     if (tab === "usage") {
       setErr(null);
@@ -183,7 +176,7 @@ export function Admin() {
       <AppHeader me={me} />
       <main className="page">
         <h1>Admin</h1>
-        <p className="page__sub">Kelola user dan hak akses peran perusahaan, serta jejak audit.</p>
+        <p className="page__sub">Kelola user dan hak akses peran perusahaan.</p>
 
         {/* Koneksi Accurate milik perusahaan — hanya sisi perusahaan (Admin Platform tidak punya koneksi) */}
         {!canSettings && (
@@ -230,9 +223,6 @@ export function Admin() {
           </button>
           <button className="tab" aria-pressed={tab === "roles"} onClick={() => setTab("roles")}>
             Peran
-          </button>
-          <button className="tab" aria-pressed={tab === "audit"} onClick={() => setTab("audit")}>
-            Audit
           </button>
           <button className="tab" aria-pressed={tab === "usage"} onClick={() => setTab("usage")}>
             Pemakaian AI
@@ -335,7 +325,7 @@ export function Admin() {
               </select>
             </label>
 
-            <h3 className="section-title" style={{ marginTop: "var(--space-m)" }}>Modul Accurate</h3>
+            <h3 className="section-title" style={{ marginTop: "var(--space-s)" }}>Modul Accurate</h3>
             <div className="stack" style={{ gap: 0 }}>
               {priv?.modules.map((m) => (
                 <label key={m.key} className="check">
@@ -450,40 +440,6 @@ export function Admin() {
                 </div>
               </>
             )}
-          </div>
-        )}
-
-        {tab === "audit" && (
-          <div className="table-wrap">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Waktu</th>
-                  <th>User</th>
-                  <th>Aksi</th>
-                  <th>Detail</th>
-                </tr>
-              </thead>
-              <tbody>
-                {audit.map((a) => (
-                  <tr key={a.id}>
-                    <td className="meta" style={{ whiteSpace: "nowrap" }}>
-                      {new Date(a.createdAt).toLocaleString("id-ID")}
-                    </td>
-                    <td>{a.userEmail}</td>
-                    <td>{a.action}</td>
-                    <td className="muted" style={{ maxWidth: 240, overflow: "hidden", textOverflow: "ellipsis" }}>
-                      {a.detail}
-                    </td>
-                  </tr>
-                ))}
-                {audit.length === 0 && (
-                  <tr>
-                    <td colSpan={4} className="empty">Belum ada aktivitas tercatat.</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
           </div>
         )}
 

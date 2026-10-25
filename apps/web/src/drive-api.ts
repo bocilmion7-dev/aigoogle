@@ -1,3 +1,4 @@
+import { notifyAiGate } from "./api";
 export interface DriveFile {
   id: string;
   name: string;
@@ -54,7 +55,12 @@ export async function drivePlan(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ folderId }),
   });
-  if (!r.ok) throw new Error(((await r.json()) as { error?: string }).error ?? "gagal_membuat_rencana");
+  if (!r.ok) {
+    const j = (await r.json().catch(() => ({}))) as { error?: string };
+    if (j.error === "langganan_ai_habis") notifyAiGate("subscription");
+    else if (j.error === "saldo_ai_habis" || j.error === "token_ai_habis") notifyAiGate("token");
+    throw new Error(j.error ?? "gagal_membuat_rencana");
+  }
   if (!onEvent) return r.json();
   if (!r.body) throw new Error("gagal_membuat_rencana");
   const reader = r.body.getReader();

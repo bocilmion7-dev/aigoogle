@@ -162,6 +162,18 @@ function reasoningEffort(): string | undefined {
   return v;
 }
 
+/**
+ * Qwen3 di DashScope "menalar" dulu (lambat ±2-5 dtk/putaran). Set
+ * AIGOOGLE_ENABLE_THINKING=false untuk mematikan reasoning model Qwen — hanya
+ * dikirim bila env diisi, supaya provider lain (NVIDIA/9Router) tidak menolak.
+ */
+function enableThinking(): boolean | undefined {
+  const v = (process.env.AIGOOGLE_ENABLE_THINKING ?? "").trim().toLowerCase();
+  if (v === "false" || v === "0" || v === "off") return false;
+  if (v === "true" || v === "1" || v === "on") return true;
+  return undefined;
+}
+
 /** Parse JSON respons OpenAI-compatible yg mungkin diakhiri trailing non-JSON (mis. "data: [DONE]" dari 9Router). */
 function parseOpenAIJson(text: string): unknown {
   try {
@@ -201,6 +213,8 @@ export class RealNvidiaClient implements NvidiaClient {
     };
     const effort = reasoningEffort();
     if (effort) body.reasoning_effort = effort;
+    const thinking = enableThinking();
+    if (thinking !== undefined) body.enable_thinking = thinking;
     if (tools?.length) {
       body.tools = tools;
       body.tool_choice = "auto";
@@ -231,6 +245,8 @@ export class RealNvidiaClient implements NvidiaClient {
     };
     const effort = reasoningEffort();
     if (effort) body.reasoning_effort = effort;
+    const thinking = enableThinking();
+    if (thinking !== undefined) body.enable_thinking = thinking;
     if (tools?.length) {
       body.tools = tools;
       body.tool_choice = "auto";

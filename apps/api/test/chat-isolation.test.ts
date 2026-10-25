@@ -50,7 +50,7 @@ describe("isolasi tenant chat", () => {
 
   it("daftar sesi B tidak memuat sesi A", async () => {
     const res = await request(api).get("/api/chat/sessions").set("Cookie", cookieB);
-    expect(res.body.map((s: { id: string }) => s.id)).not.toContain(sessionA);
+    expect(res.body.sessions.map((s: { id: string }) => s.id)).not.toContain(sessionA);
   });
 
   it("audit log A tidak terlihat oleh tenant lain (baris terikat tenantId)", async () => {

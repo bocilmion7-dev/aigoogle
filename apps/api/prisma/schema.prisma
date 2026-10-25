@@ -215,7 +215,7 @@ model WaAccount {
   phoneNumberId String   @default("")
   displayName   String   @default("")
   tokenEnc      String   @default("")
-  provider      String   @default("meta") // meta|d360
+  provider      String   @default("meta") // meta|waserver
   status        String   @default("pending") // pending|connected|error
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -238,7 +238,7 @@ model WaTopup {
   credits       Int      // amount / 200
   status        String   @default("pending") // pending|settlement|deny|cancel|expire
   paymentMethod String   @default("")
-  providerRef   String   @default("") // contractId Winpay / referensi provider pembayaran
+  providerRef   String   @default("") // referensi provider pembayaran (Midtrans referenceNo)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   @@index([tenantId])

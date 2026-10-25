@@ -76,6 +76,16 @@ describe("roles & privileges", () => {
       expect.arrayContaining(["accurate:customer.view", "accurate:sales-invoice.view", "accurate:item.view"])
     );
     expect(r.body.appFeatures.map((f: { key: string }) => f.key)).toContain("app:drive.tidy");
+    expect(r.body.appFeatures.map((f: { key: string }) => f.key)).not.toContain("app:settings.manage");
+  });
+
+  it("perusahaan tidak boleh memberi permission platform-only", async () => {
+    const r = await request(api)
+      .put(`/api/admin/roles/${adminRoleId}/permissions`)
+      .set("Cookie", adminCookie)
+      .send({ permissions: ["app:users.manage", "app:settings.manage"] });
+    expect(r.status).toBe(400);
+    expect(r.body.error).toBe("permission_platform_tidak_boleh");
   });
   it("PUT permissions → replace + key sampah ditolak", async () => {
     const bad = await request(api)

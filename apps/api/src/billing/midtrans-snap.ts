@@ -133,12 +133,15 @@ export async function generateQrMpm(orderId: string, amountRupiah: number): Prom
   if (!clientId || !process.env.MIDTRANS_CLIENT_SECRET) throw new Error("midtrans_belum_dikonfigurasi");
   const path = "/v1.0/qr/qr-mpm-generate";
   const timestamp = tsWib();
+  const validUntil = tsWib(new Date(Date.now() + 15 * 60_000));
+  // Acquirer QRIS opsional (mis. "AIRPAY SHOPEE" utk sandbox); default Midtrans = GOPAY
+  const acquirer = (process.env.MIDTRANS_QRIS_ACQUIRER ?? "").trim();
   const body = JSON.stringify({
     partnerReferenceNo: orderId,
     amount: { value: amountRupiah.toFixed(2), currency: "IDR" },
     merchantId: partnerId,
-    validityPeriod: tsWib(new Date(Date.now() + 15 * 60_000)),
-    additionalInfo: { isStatic: false },
+    validityPeriod: validUntil,
+    additionalInfo: { isStatic: false, ...(acquirer ? { acquirer } : {}) },
   });
   const token = await getAccessToken();
   const r = await fetch(midtransBaseUrl(midtransEnv()) + path, {
@@ -162,6 +165,6 @@ export async function generateQrMpm(orderId: string, amountRupiah: number): Prom
     qrUrl: String(j.qrUrl ?? ""),
     qrContent: String(j.qrContent ?? ""),
     referenceNo: String(j.referenceNo ?? ""),
-    expiredAt: timestamp,
+    expiredAt: validUntil,
   };
 }

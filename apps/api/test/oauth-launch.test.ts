@@ -37,14 +37,15 @@ describe("launch & callback", () => {
 
   it("email operator platform di OAuth tetap alur perusahaan — cookie sid, tanpa sesi platform baru", async () => {
     const sessBefore = await prisma.platformSession.count();
-    const launch = await request(api).get("/api/launch?dbId=1001").redirects(0);
+    const agent = request.agent(api);
+    const launch = await agent.get("/api/launch?dbId=1001").redirects(0);
     const state = new URL(launch.headers.location).searchParams.get("state")!;
     const cbUrl = encodeURIComponent("http://localhost:3001/api/oauth/accurate/callback");
     const au = await fetch(`${mockBase}/oauth/authorize?client_id=c&redirect_uri=${cbUrl}&state=${state}&user=platform`, {
       redirect: "manual",
     });
     const code = new URL(au.headers.get("location")!).searchParams.get("code")!;
-    const cb = await request(api).get(`/api/oauth/accurate/callback?code=${code}&state=${state}`).redirects(0);
+    const cb = await agent.get(`/api/oauth/accurate/callback?code=${code}&state=${state}`).redirects(0);
     expect(cb.status).toBe(302);
     const raw = cb.headers["set-cookie"];
     const all = (Array.isArray(raw) ? raw : [raw]).join(";");
@@ -56,12 +57,13 @@ describe("launch & callback", () => {
   });
 
   it("callback penuh: code → session cookie → /api/me + tenant & connection tersimpan, tanpa duplikasi", async () => {
-    const launch = await request(api).get("/api/launch?dbId=1001").redirects(0);
+    const agent = request.agent(api);
+    const launch = await agent.get("/api/launch?dbId=1001").redirects(0);
     const state = new URL(launch.headers.location).searchParams.get("state")!;
     const cbUrl = encodeURIComponent("http://localhost:3001/api/oauth/accurate/callback");
     const au = await fetch(`${mockBase}/oauth/authorize?client_id=c&redirect_uri=${cbUrl}&state=${state}&user=admin`, { redirect: "manual" });
     const code = new URL(au.headers.get("location")!).searchParams.get("code")!;
-    const cb = await request(api).get(`/api/oauth/accurate/callback?code=${code}&state=${state}`).redirects(0);
+    const cb = await agent.get(`/api/oauth/accurate/callback?code=${code}&state=${state}`).redirects(0);
     expect(cb.status).toBe(302);
     // user baru → wajib set password dulu
     expect(cb.headers.location).toContain("/set-password");
@@ -69,7 +71,7 @@ describe("launch & callback", () => {
     const cookieStr = Array.isArray(setCookie) ? setCookie.join(";") : (setCookie ?? "");
     const sid = /sid=([^;]+)/.exec(cookieStr)?.[1];
     expect(sid).toBeTruthy();
-    const me = await request(api).get("/api/me").set("Cookie", `sid=${sid}`);
+    const me = await agent.get("/api/me");
     expect(me.status).toBe(200);
     expect(me.body.needsPassword).toBe(true);
     expect(me.body.tenant.provider).toBe("accurate");
@@ -86,16 +88,13 @@ describe("launch & callback", () => {
     );
     expect(await prisma.connection.count({ where: { tenantId: tenant!.id, provider: "accurate" } })).toBe(1);
     // set password → OAuth ulang redirect ke /app
-    const setPw = await request(api)
-      .post("/api/auth/set-password")
-      .set("Cookie", `sid=${sid}`)
-      .send({ password: "password123" });
+    const setPw = await agent.post("/api/auth/set-password").send({ password: "password123" });
     expect(setPw.status).toBe(200);
-    const launch2 = await request(api).get("/api/launch?dbId=1001").redirects(0);
+    const launch2 = await agent.get("/api/launch?dbId=1001").redirects(0);
     const state2 = new URL(launch2.headers.location).searchParams.get("state")!;
     const au2 = await fetch(`${mockBase}/oauth/authorize?client_id=c&redirect_uri=${cbUrl}&state=${state2}&user=admin`, { redirect: "manual" });
     const code2 = new URL(au2.headers.get("location")!).searchParams.get("code")!;
-    const cb2 = await request(api).get(`/api/oauth/accurate/callback?code=${code2}&state=${state2}`).redirects(0);
+    const cb2 = await agent.get(`/api/oauth/accurate/callback?code=${code2}&state=${state2}`).redirects(0);
     expect(cb2.headers.location).toContain("/app");
     expect(await prisma.tenant.count({ where: { providerDbId: "1001" } })).toBe(1);
     // scoped ke tenant fixture — ada admin@demo.local lain di tenant internal (seed/bikinan suite lain)

@@ -154,7 +154,7 @@ export function makeListRouter(opts: {
     });
   }
   if (opts.addable) {
-    r.post("/add.do", sessionGuard, (req, res) => {
+    const create = (req: Parameters<Router["post"]>[1] extends never ? never : any, res: any) => {
       const { dbId, userId } = req.mockCtx!;
       if (!privilegeOf(dbId, userId, opts.module)?.AllowCreate) {
         return res.json(fail([`Anda tidak punya akses create modul ${opts.module}`]));
@@ -163,10 +163,51 @@ export function makeListRouter(opts: {
         ? req.body
         : {}) as Record<string, unknown>;
       const prefix = opts.module.replace(/[^a-z]/gi, "").slice(0, 2).toUpperCase();
-      const row: Row = { id: `${prefix}-${randomUUID().slice(0, 8)}`, ...normalizeRow(body) };
-      (opts.rows(getDb(dbId)!) as Row[]).push(row);
-      res.json(ok(row.id));
-    });
+      const id = `${prefix}-${randomUUID().slice(0, 8)}`;
+      const row: Row = { id, ...normalizeRow(body), number: String(body.number ?? id) };
+      // pelanggan baru selalu punya customerNo (API asli membuatkan otomatis)
+      if (opts.module === "customer" && !row.customerNo) row.customerNo = id;
+      const db = getDb(dbId)! as unknown as { data?: Record<string, Row[]> };
+      if (typeof body.customerNo === "string" && !row.customer) {
+        const cust = (db.data?.customer ?? []).find((c) => c.customerNo === body.customerNo);
+        if (cust) row.customer = { customerNo: cust.customerNo, name: cust.name };
+      }
+      if (typeof body.vendorNo === "string" && !row.vendor) {
+        const ven = (db.data?.vendor ?? []).find((v) => v.vendorNo === body.vendorNo);
+        if (ven) row.vendor = { vendorNo: ven.vendorNo, name: ven.name };
+      }
+      if (row.totalAmount === undefined && Array.isArray(row.detailItem)) {
+        // mirror API asli: total faktur = barang + biaya/expense (mis. ongkos kirim)
+        const items = (row.detailItem as Array<Record<string, unknown>>).reduce(
+          (s, it) => s + Number(it.quantity ?? 0) * Number(it.unitPrice ?? 0),
+          0
+        );
+        const expense = Array.isArray(row.detailExpense)
+          ? (row.detailExpense as Array<Record<string, unknown>>).reduce(
+              (s, it) => s + Number(it.expenseAmount ?? 0),
+              0
+            )
+          : 0;
+        row.totalAmount = items + expense;
+      }
+      // pembayaran (sales-receipt) mengurangi piutang faktur — seperti Accurate asli
+      if (opts.module === "sales-receipt" && Array.isArray(row.detailInvoice)) {
+        const invoices = ((db.data?.["sales-invoice"] ?? []) as Row[]) ?? [];
+        for (const inv of invoices) {
+          const pay = (row.detailInvoice as Array<Record<string, unknown>>)
+            .filter((d) => String(d.invoiceNo ?? "") === String(inv.number))
+            .reduce((s, it) => s + Number(it.paymentAmount ?? 0), 0);
+          if (pay > 0) inv.paidAmount = Number(inv.paidAmount ?? 0) + pay;
+        }
+      }
+      (opts.rows(db as MockDb) as Row[]).push(row);
+      res.json({
+        s: true,
+        r: { id, number: row.number, ...(row.customerNo ? { customerNo: row.customerNo } : {}) },
+      });
+    };
+    r.post("/add.do", sessionGuard, create);
+    r.post("/save.do", sessionGuard, create);
   }
   return r;
 }

@@ -9,8 +9,9 @@ import { requireUser } from "../middleware/session.js";
 import { requirePerm } from "../permissions.js";
 import { writeAudit } from "../audit.js";
 import { isBillingEnabled, billingServerKey, verifyWebhookSignature, type MidtransNotification } from "../billing/midtrans.js";
-import { generateQris, isBillingActive, paymentProvider, queryQris, winpayReady } from "../billing/winpay.js";
-import { generateQrMpm, midtransSnapReady } from "../billing/midtrans-snap.js";
+import { generateQrMpm, midtransSnapReady, midtransEnv } from "../billing/midtrans-snap.js";
+import { applyShopPaymentResult } from "../wa/shop-settle.js";
+import { listShopOrders } from "../wa/shop-order.js";
 import {
   WA_COST_CREDITS_PER_MESSAGE,
   creditsFromRupiah,
@@ -18,6 +19,8 @@ import {
   getOrCreateBalance,
   getWaSettings,
   getWaProviderGlobal,
+  getWaMetaTopups,
+  getWaSubPlans,
   getWaWebhookSettings,
   setWaWebhookSettings,
   WA_WEBHOOK_EVENT_OPTIONS,
@@ -50,6 +53,11 @@ waRouter.get(
       take: 20,
       select: { id: true, to: true, body: true, status: true, error: true, createdAt: true },
     });
+    const sub = await prisma.subscription.findFirst({
+      where: { tenantId: req.user!.tenant.id, plan: "wa_gateway" },
+      orderBy: { createdAt: "desc" },
+    });
+    const subActive = !!sub && sub.status === "active" && (!sub.expiresAt || sub.expiresAt > new Date());
     res.json({
       // terhubung = akun milik PERUSAHAAN sendiri (hasil onboarding/embedded signup),
       // BUKAN sekadar key sandbox platform tersedia — nomor (phoneNumberId) juga wajib ada,
@@ -59,15 +67,9 @@ waRouter.get(
         acct.status === "connected" &&
         // waserver: koneksi dipegang gateway Baileys — tak butuh tokenEnc/phoneNumberId Meta
         (acct.provider === "waserver" || (!!acct.tokenEnc && !!acct.phoneNumberId)),
-      // jalur global platform (sandbox) siap — kirim terbatas ke nomor verified platform
-      platformReady:
-        (await getWaProviderGlobal()).provider === "d360" &&
-        !!(await prisma.appSetting.findUnique({ where: { key: "waD360ApiKey" } }))?.value,
       waProvider: (await getWaProviderGlobal()).provider,
       waserverReady: waserverReady(),
       accountProvider: acct?.provider ?? null,
-      waD360PartnerId:
-        (await prisma.appSetting.findUnique({ where: { key: "waD360PartnerId" } }))?.value ?? "",
       account: acct
         ? {
             wabaId: acct.wabaId,
@@ -82,80 +84,145 @@ waRouter.get(
       settings,
       metaConfigured: metaConfigured(),
       embedUrl: embeddedSignupUrl(`${env.APP_ORIGIN}/wa/embed-callback`),
-      billingEnabled: await isBillingActive(),
-      paymentProvider: await paymentProvider(),
+      billingEnabled: isBillingEnabled() && midtransSnapReady(),
+      subPlans: await getWaSubPlans(),
+      metaTopups: await getWaMetaTopups(),
+      waSubscription: sub
+        ? {
+            plan: sub.plan,
+            status: sub.status,
+            expiresAt: sub.expiresAt?.toISOString() ?? null,
+            active: subActive,
+          }
+        : null,
       recent,
     });
   })
 );
 
+/** Daftar percakapan WhatsApp (dikelompokkan per nomor lawan bicara). */
+waRouter.get(
+  "/wa/chats",
+  requireUser,
+  asyncHandler(async (req, res) => {
+    const tenantId = req.user!.tenant.id;
+    const groups = await prisma.waMessageLog.groupBy({
+      by: ["to"],
+      // nomor semu sandbox (sandbox:<userId>) tidak ditampilkan sebagai chat asli
+      where: { tenantId, to: { not: "" }, NOT: { to: { startsWith: "sandbox:" } } },
+      _max: { createdAt: true },
+      _count: { _all: true },
+    });
+    const sorted = groups
+      .filter((g) => g.to)
+      .sort((a, b) => (b._max.createdAt?.getTime() ?? 0) - (a._max.createdAt?.getTime() ?? 0))
+      .slice(0, 100);
+    const peers = sorted.map((g) => g.to);
+    const latest = peers.length
+      ? await prisma.waMessageLog.findMany({
+          where: { tenantId, to: { in: peers } },
+          orderBy: { createdAt: "desc" },
+          select: { to: true, body: true, direction: true, status: true, createdAt: true, error: true },
+        })
+      : [];
+    const lastByPeer = new Map<string, (typeof latest)[number]>();
+    for (const row of latest) if (!lastByPeer.has(row.to)) lastByPeer.set(row.to, row);
+    res.json(
+      sorted.map((g) => {
+        const last = lastByPeer.get(g.to);
+        return {
+          peer: g.to,
+          lastMessage: last?.body ?? "",
+          lastAt: last?.createdAt ?? g._max.createdAt,
+          direction: last?.direction ?? "out",
+          status: last?.status ?? "",
+          error: last?.error ?? "",
+          count: g._count._all,
+        };
+      })
+    );
+  })
+);
+
+/** Isi percakapan dengan satu nomor WhatsApp. */
+waRouter.get(
+  "/wa/chats/:peer/messages",
+  requireUser,
+  asyncHandler(async (req, res) => {
+    const peer = String(req.params.peer ?? "").slice(0, 32);
+    if (!peer) return res.status(400).json({ error: "bad_request" });
+    const rows = await prisma.waMessageLog.findMany({
+      where: { tenantId: req.user!.tenant.id, to: peer },
+      orderBy: { createdAt: "asc" },
+      take: 500,
+      select: { id: true, body: true, direction: true, status: true, error: true, createdAt: true },
+    });
+    res.json(rows);
+  })
+);
+
+/**
+ * Pesanan toko (AI penjaga toko) utk satu percakapan — dipakai halaman chat
+ * utk menampilkan status QRIS dan tombol simulator pembayaran.
+ * `simulator` hanya true di lingkungan non-produksi (MIDTRANS_ENV != production).
+ */
+waRouter.get(
+  "/wa/shop/orders",
+  requireUser,
+  asyncHandler(async (req, res) => {
+    const peer = String(req.query.peer ?? "").slice(0, 32);
+    const orders = await listShopOrders(req.user!.tenant.id, peer || undefined);
+    res.json({ simulator: midtransEnv() !== "production", orders });
+  })
+);
+
+/**
+ * Simulator pembayaran pesanan toko — menandai pesanan LUNAS lewat jalur yang
+ * sama dengan notifikasi BI-SNAP (payment → order → WA pemilik/pembeli → audit),
+ * sehingga datanya nyata, bukan baris uji terpisah.
+ * Dibuka utk billing aktif; hanya sandbox/non-produksi dan admin perusahaan.
+ */
+waRouter.post(
+  "/wa/shop/orders/:orderId/settle-test",
+  requireUser,
+  requirePerm("app:users.manage"),
+  asyncHandler(async (req, res) => {
+    if (midtransEnv() === "production") return res.status(409).json({ error: "bukan_sandbox" });
+    const orderId = String(req.params.orderId ?? "").slice(0, 64);
+    const payment = await prisma.payment.findFirst({ where: { orderId, tenantId: req.user!.tenant.id } });
+    if (!payment) return res.status(404).json({ error: "tidak_ditemukan" });
+    if (payment.status === "settlement") return res.status(409).json({ error: "sudah_settle" });
+    const r = await applyShopPaymentResult({
+      orderId,
+      paymentStatus: "settlement",
+      source: "simulator",
+      actor: req.user!.id,
+    });
+    if (!r.found) return res.status(404).json({ error: "tidak_ditemukan" });
+    await writeAudit(req.user!.tenant.id, req.user!.id, "wa.shop_order_settle_test", {
+      orderId,
+      amount: payment.amount,
+    });
+    res.json({ ok: true, orderId, status: "paid" });
+  })
+);
+
 waRouter.put(
   "/wa/settings",
-  requirePerm("app:settings.manage"),
+  requirePerm("app:users.manage"),
   asyncHandler(async (req, res) => {
     const body = z
       .object({
         autoDueDate: z.boolean().optional(),
         dailyReport: z.boolean().optional(),
         ownerPhone: z.string().max(32).optional(),
+        shopAi: z.boolean().optional(),
       })
       .safeParse(req.body);
     if (!body.success) return res.status(400).json({ error: "bad_request" });
     await setWaSettings(req.user!.tenant.id, body.data);
     await writeAudit(req.user!.tenant.id, req.user!.id, "wa.settings", body.data);
     res.json(await getWaSettings(req.user!.tenant.id));
-  })
-);
-
-// Callback Integrated Onboarding (Connect Button 360dialog): simpan client/channel,
-// generate API key channel via Partner API, simpan sbg akun WhatsApp perusahaan.
-// Model "managed by partner": kunci perusahaan dibuat otomatis — tanpa input manual.
-waRouter.post(
-  "/wa/d360/onboard",
-  requirePerm("app:users.manage"),
-  asyncHandler(async (req, res) => {
-    const body = z
-      .object({ client: z.string().min(1).max(100), channels: z.array(z.string().min(1).max(100)).max(20) })
-      .safeParse(req.body);
-    if (!body.success) return res.status(400).json({ error: "bad_request" });
-    const partnerId = (await prisma.appSetting.findUnique({ where: { key: "waD360PartnerId" } }))?.value ?? "";
-    const partnerKey = (await prisma.appSetting.findUnique({ where: { key: "waD360PartnerKey" } }))?.value ?? "";
-    if (!partnerId || !partnerKey) return res.status(409).json({ error: "partner_belum_dikonfigurasi" });
-
-    const channelId = body.data.channels[0];
-    if (!channelId) return res.status(400).json({ error: "channel_kosong" });
-    const kr = await fetch(
-      `https://hub.360dialog.io/api/v2/partners/${encodeURIComponent(partnerId)}/channels/${encodeURIComponent(channelId)}/api_keys`,
-      { method: "POST", headers: { "X-API-Key": partnerKey } }
-    );
-    if (!kr.ok) {
-      const t = await kr.text().catch(() => "");
-      // channel belum "running" (onboarding Meta masih diproses) → user klik lagi nanti
-      return res.status(502).json({ error: `d360_${kr.status}:${t.slice(0, 220)}` });
-    }
-    const kj = (await kr.json()) as { api_key?: string; address?: string };
-    if (!kj.api_key) return res.status(502).json({ error: "api_key_tidak_ada" });
-
-    await prisma.waAccount.upsert({
-      where: { tenantId: req.user!.tenant.id },
-      create: {
-        tenantId: req.user!.tenant.id,
-        provider: "d360",
-        wabaId: body.data.client,
-        phoneNumberId: channelId,
-        tokenEnc: encryptToken(kj.api_key),
-        status: "connected",
-      },
-      update: {
-        provider: "d360",
-        wabaId: body.data.client,
-        phoneNumberId: channelId,
-        tokenEnc: encryptToken(kj.api_key),
-        status: "connected",
-      },
-    });
-    await writeAudit(req.user!.tenant.id, req.user!.id, "wa.d360.onboard", { client: body.data.client, channel: channelId });
-    res.json({ ok: true, channel: channelId });
   })
 );
 
@@ -191,12 +258,7 @@ waRouter.post(
   "/wa/topup",
   requireUser,
   asyncHandler(async (req, res) => {
-    const body = z
-      .object({
-        amount: z.number().int().min(2000).max(10_000_000),
-        provider: z.enum(["winpay", "midtrans"]).optional(),
-      })
-      .safeParse(req.body);
+    const body = z.object({ amount: z.number().int().min(2000).max(10_000_000) }).safeParse(req.body);
     if (!body.success) return res.status(400).json({ error: "bad_request" });
     const tenantId = req.user!.tenant.id;
     const price = await waPricePerCredit();
@@ -207,96 +269,53 @@ waRouter.post(
     const totalAmount = baseAmount + feeAmount;
     const credits = creditsFromRupiah(baseAmount, price);
     if (credits < 1) return res.status(400).json({ error: "minimal_topup", min: price });
-    const want = body.data.provider ?? (await paymentProvider());
 
-    // ── QRIS Midtrans BI-SNAP ──
-    if (want === "midtrans") {
-      if (!isBillingEnabled() || !midtransSnapReady()) {
-        return res.status(503).json({ error: "billing_dormant", credits, amount: totalAmount, feeAmount, baseAmount });
-      }
-      const orderId = `mt-${randomBytes(8).toString("hex")}`;
-      await prisma.waTopup.create({
-        data: { tenantId, orderId, amount: totalAmount, credits },
-      });
-      try {
-        const qr = await generateQrMpm(orderId, totalAmount);
-        await prisma.waTopup.update({
-          where: { orderId },
-          data: { paymentMethod: "midtrans", providerRef: qr.referenceNo },
-        });
-        return res.json({ orderId, credits, amount: totalAmount, feeAmount, baseAmount, provider: "midtrans", qris: qr });
-      } catch (e) {
-        return res.status(502).json({
-          error: "qris_gagal",
-          detail: String(e instanceof Error ? e.message : e).slice(0, 200),
-          orderId,
-          credits,
-        });
-      }
+    if (!isBillingEnabled() || !midtransSnapReady()) {
+      return res.status(503).json({ error: "billing_dormant", credits, amount: totalAmount, feeAmount, baseAmount });
     }
-
-    const orderId = `wa-${randomBytes(8).toString("hex")}`;
+    const orderId = `mt-${randomBytes(8).toString("hex")}`;
     await prisma.waTopup.create({
       data: { tenantId, orderId, amount: totalAmount, credits },
     });
-
-    // ── QRIS via Winpay (default) ──
-    if ((await paymentProvider()) === "winpay") {
-      if (!(await winpayReady())) {
-        // belum dikonfigurasi platform → dormant (dev/mock)
-        return res.status(503).json({ error: "billing_dormant", orderId, credits, amount: totalAmount, feeAmount, baseAmount });
-      }
-      try {
-        const qr = await generateQris(orderId, totalAmount);
-        await prisma.waTopup.update({
-          where: { orderId },
-          data: { paymentMethod: "winpay", providerRef: qr.contractId },
-        });
-        return res.json({ orderId, credits, amount: totalAmount, feeAmount, baseAmount, provider: "winpay", qris: qr });
-      } catch (e) {
-        return res.status(502).json({
-          error: "qris_gagal",
-          detail: String(e instanceof Error ? e.message : e).slice(0, 200),
-          orderId,
-          credits,
-        });
-      }
+    try {
+      const qr = await generateQrMpm(orderId, totalAmount);
+      await prisma.waTopup.update({
+        where: { orderId },
+        data: { paymentMethod: "midtrans", providerRef: qr.referenceNo },
+      });
+      return res.json({ orderId, credits, amount: totalAmount, feeAmount, baseAmount, provider: "midtrans", qris: qr });
+    } catch (e) {
+      return res.status(502).json({
+        error: "qris_gagal",
+        detail: String(e instanceof Error ? e.message : e).slice(0, 200),
+        orderId,
+        credits,
+      });
     }
-
-    // ── Midtrans (legacy) ──
-    if (!isBillingEnabled()) {
-      return res.status(503).json({ error: "billing_dormant", orderId, credits, amount: totalAmount, feeAmount, baseAmount });
-    }
-    // Midtrans Snap — implementasi penuh menyusul; untuk sekarang order tercatat
-    res.json({ orderId, credits, amount: totalAmount, feeAmount, baseAmount, snapRedirect: null });
   })
 );
 
-/** Langganan bulanan gateway WhatsApp waserver via Midtrans (1bln 30rb / 2bln 50rb / 3bln 75rb). */
-const WA_SUB_PLANS: Record<string, { amount: number; months: number }> = {
-  "1bulan": { amount: 30000, months: 1 },
-  "2bulan": { amount: 50000, months: 2 },
-  "3bulan": { amount: 75000, months: 3 },
-};
-
+/** Langganan gateway WhatsApp waserver via Midtrans — paket diatur Admin Platform (3 paket). */
 waRouter.post(
   "/wa/subscribe",
   requireUser,
   asyncHandler(async (req, res) => {
-    const body = z.object({ plan: z.enum(["1bulan", "2bulan", "3bulan"]) }).safeParse(req.body);
+    const body = z.object({ plan: z.string().min(1).max(40) }).safeParse(req.body);
     if (!body.success) return res.status(400).json({ error: "bad_request" });
-    const tenantId = req.user!.tenant.id;
-    const plan = WA_SUB_PLANS[body.data.plan];
-    const amount = plan.amount;
-    const orderId = `wg-${randomBytes(8).toString("hex")}`;
-    await prisma.payment.create({ data: { tenantId, orderId, amount, status: "pending" } });
+    const plans = await getWaSubPlans();
+    const plan = plans.find((p) => p.id === body.data.plan);
+    if (!plan) return res.status(400).json({ error: "paket_tidak_ditemukan" });
     if (!isBillingEnabled() || !midtransSnapReady()) {
-      return res.status(503).json({ error: "billing_dormant", amount, orderId });
+      return res.status(503).json({ error: "billing_dormant", amount: plan.price, plan });
     }
+    const tenantId = req.user!.tenant.id;
+    // durasi bulan disimpan di orderId (`wg-<bulan>m-<ref>`) agar callback tahu paketnya
+    const orderId = `wg-${plan.months}m-${randomBytes(8).toString("hex")}`;
+    await prisma.payment.create({ data: { tenantId, orderId, amount: plan.price, status: "pending" } });
     try {
-      const qr = await generateQrMpm(orderId, amount);
+      const qr = await generateQrMpm(orderId, plan.price);
       await prisma.payment.update({ where: { orderId }, data: { paymentMethod: "qris", fraudStatus: qr.referenceNo } });
-      return res.json({ orderId, amount, plan: body.data.plan, months: plan.months, qris: qr });
+      return res.json({ orderId, amount: plan.price, plan, months: plan.months, qris: qr });
     } catch (e) {
       return res.status(502).json({
         error: "qris_gagal",
@@ -335,11 +354,13 @@ waRouter.post(
         transaction_status: z.string(),
         payment_type: z.string().optional(),
         fraud_status: z.string().optional(),
+        /** standar notifikasi HTTP Midtrans: signature ada di body, bukan header */
+        signature_key: z.string().optional(),
       })
       .safeParse(req.body);
     if (!body.success) return res.status(400).json({ error: "bad_request" });
     if (!isBillingEnabled()) return res.status(403).json({ error: "billing_dormant" });
-    const signature = String(req.header("x-signature-key") ?? "");
+    const signature = String(body.data.signature_key ?? req.header("x-signature-key") ?? "");
     if (!verifyWebhookSignature(body.data as MidtransNotification, billingServerKey(), signature)) {
       return res.status(401).json({ error: "signature_tidak_valid" });
     }
@@ -365,25 +386,15 @@ waRouter.post(
   })
 );
 
-/** Status topup utk polling UI — sertakan query Winpay bila notifikasi belum masuk. */
+/** Status topup utk polling UI. */
 waRouter.get(
   "/wa/topup/:orderId/status",
   requireUser,
   asyncHandler(async (req, res) => {
-    let order = await prisma.waTopup.findFirst({
+    const order = await prisma.waTopup.findFirst({
       where: { orderId: req.params.orderId, tenantId: req.user!.tenant.id },
     });
     if (!order) return res.status(404).json({ error: "tidak_ditemukan" });
-    if (order.status === "pending" && order.paymentMethod === "winpay" && order.providerRef && (await winpayReady())) {
-      try {
-        const q = await queryQris(order.orderId, order.providerRef);
-        if (q === "paid") await finalizeWaTopup(order.orderId, true, "settlement", "winpay");
-        else if (q === "failed") await finalizeWaTopup(order.orderId, false, "cancel", "winpay");
-        order = (await prisma.waTopup.findUnique({ where: { id: order.id } })) ?? order;
-      } catch {
-        // provider tak terjangkau — biarkan notifikasi yg menyelesaikan
-      }
-    }
     res.json({
       status: order.status,
       settled: order.status === "settlement",
@@ -398,7 +409,7 @@ waRouter.post(
   "/wa/topup/:orderId/mock-settle",
   requireUser,
   asyncHandler(async (req, res) => {
-    if (await isBillingActive()) return res.status(409).json({ error: "billing_aktif" });
+    if (isBillingEnabled() && midtransSnapReady()) return res.status(409).json({ error: "billing_aktif" });
     const topup = await prisma.waTopup.findFirst({
       where: { orderId: req.params.orderId, tenantId: req.user!.tenant.id },
     });

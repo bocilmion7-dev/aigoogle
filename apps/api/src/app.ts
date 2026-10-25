@@ -15,6 +15,8 @@ import { billingRouter, snapNotifyRouter } from "./routes/billing.js";
 import { authRouter } from "./routes/auth.js";
 import { waRouter } from "./routes/wa.js";
 import { customersRouter } from "./routes/customers.js";
+import { ordersRouter } from "./routes/orders.js";
+import { sandboxRouter } from "./routes/sandbox.js";
 import { webhookAccurateRouter, webhookRootRouter } from "./routes/webhook-accurate.js";
 import { LlmHttpError } from "./ai/llm-error.js";
 import { opsRouter } from "./routes/ops.js";
@@ -26,10 +28,14 @@ import { rateLimit } from "./middleware/rate-limit.js";
 export function createApp() {
   const app = express();
   app.disable("x-powered-by");
+  // API data akuntansi/saldo tidak boleh di-cache: ETag bisa memicu 304 tanpa body
+  // dan tampil sebagai error di klien (mis. paging riwayat saldo).
+  app.set("etag", false);
   app.use((_req, res, next) => {
     res.setHeader("X-Content-Type-Options", "nosniff");
     res.setHeader("X-Frame-Options", "DENY");
     res.setHeader("Referrer-Policy", "same-origin");
+    res.setHeader("Cache-Control", "no-store");
     next();
   });
   app.use(
@@ -46,9 +52,11 @@ export function createApp() {
   // batas umum per IP — mencegah penyalahgunaan kasar (login & chat punya limit lebih ketat)
   app.use("/api", rateLimit({ name: "global", windowMs: 60_000, max: 600 }));
   app.use("/api", opsRouter);
-  // Notifikasi QRIS Winpay — pasang paling awal agar tak tertangkap router lain
+  // Notifikasi QRIS Midtrans — pasang paling awal agar tak tertangkap router lain
   // (ada router dengan .use(middleware) tanpa path yang menangkap semua request)
   app.use("/api", snapNotifyRouter);
+  // URL notifikasi Midtrans terdaftar sebagai /api/billing/webhook/v1.0/qr/qr-mpm-notify
+  app.use("/api/billing/webhook", snapNotifyRouter);
   app.use(snapNotifyRouter);
   app.use("/api", meRouter);
   app.use("/api", authRouter);
@@ -63,6 +71,8 @@ export function createApp() {
   app.use("/api", billingRouter);
   app.use("/api", waRouter);
   app.use("/api", customersRouter);
+  app.use("/api", ordersRouter);
+  app.use("/api", sandboxRouter);
   app.use("/api", docTypesRouter);
   app.use("/api", aiBillingRouter);
   app.use("/api", webhookAccurateRouter);

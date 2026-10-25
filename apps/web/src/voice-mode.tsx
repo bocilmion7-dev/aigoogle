@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { CHAT_TIMEOUT_MS, isTimeoutError, streamChat, type ChatEvent } from "./chat-api";
-import { getSettings } from "./api";
+import { getSettings, notifyAiGate, notifyAiWalletChanged } from "./api";
 import { speakWebAsync, stopSpeak, sttWebSpeech, toSpokenText, ttsEdge } from "./voice";
 type Phase = "idle" | "listening" | "thinking" | "speaking";
 
@@ -76,7 +76,17 @@ export function VoiceMode({
         (e: ChatEvent) => {
           if (e.type === "start" && e.sessionId) setSessionId(e.sessionId);
           if (e.type === "text_delta") ai += e.delta;
-          if (e.type === "error") setError(e.message);
+          if (e.type === "error") {
+            if (e.code === "langganan_ai_habis") {
+              notifyAiGate("subscription");
+              return;
+            }
+            if (e.code === "saldo_ai_habis" || e.code === "token_ai_habis") {
+              notifyAiGate("token");
+              return;
+            }
+            setError(e.message);
+          }
         },
         AbortSignal.timeout(CHAT_TIMEOUT_MS),
         true
@@ -115,26 +125,28 @@ export function VoiceMode({
     } finally {
       busyRef.current = false;
       abortRef.current = null;
+      notifyAiWalletChanged();
     }
   }
 
   return (
     <div className="voice-mode" role="dialog" aria-modal="true" aria-label="Mode percakapan suara">
-      <button className="voice-mode__exit" onClick={onExit} aria-label="Keluar mode suara" title="Kembali ke chat">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-          <line x1="18" y1="6" x2="6" y2="18" />
-          <line x1="6" y1="6" x2="18" y2="18" />
-        </svg>
-      </button>
+      <div className="voice-mode__top">
+        <span className="voice-mode__eyebrow">Mode Suara</span>
+        <button className="voice-mode__exit" onClick={onExit} aria-label="Keluar mode suara" title="Kembali ke chat">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
 
       <div className="voice-mode__center">
-        <div
-          className={`voice-mode__orb voice-mode__orb--${phase}`}
-          aria-hidden="true"
-        >
+        <div className={`voice-mode__orb voice-mode__orb--${phase}`} aria-hidden="true">
           <span className="voice-mode__core" />
         </div>
-        <p className="voice-mode__hint" aria-live="polite">
+        <p className={`voice-mode__hint voice-mode__hint--${phase}`} aria-live="polite">
+          <span className="voice-mode__phase-dot" aria-hidden="true" />
           {HINT[phase]}
         </p>
         {error && (
@@ -144,19 +156,21 @@ export function VoiceMode({
         )}
       </div>
 
-      <button
-        className={`voice-mode__mic${phase === "listening" ? " voice-mode__mic--live" : ""}`}
-        onClick={() => void handleMic()}
-        disabled={phase === "thinking" || phase === "speaking"}
-        aria-label={phase === "listening" ? "Berhenti mendengarkan" : "Bicara"}
-        title={phase === "listening" ? "Klik untuk berhenti" : "Tekan lalu bicara"}
-      >
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-          <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z" />
-          <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-          <line x1="12" y1="19" x2="12" y2="22" />
-        </svg>
-      </button>
+      <div className="voice-mode__bottom">
+        <button
+          className={`voice-mode__mic${phase === "listening" ? " voice-mode__mic--live" : ""}`}
+          onClick={() => void handleMic()}
+          disabled={phase === "thinking" || phase === "speaking"}
+          aria-label={phase === "listening" ? "Berhenti mendengarkan" : "Bicara"}
+          title={phase === "listening" ? "Klik untuk berhenti" : "Tekan lalu bicara"}
+        >
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+            <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z" />
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+            <line x1="12" y1="19" x2="12" y2="22" />
+          </svg>
+        </button>
+      </div>
     </div>
   );
 }

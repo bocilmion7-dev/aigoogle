@@ -1,9 +1,9 @@
-import { Router } from "express";
+import { Router, type Request, type Response } from "express";
 import { randomBytes } from "node:crypto";
 import { z } from "zod";
 import { prisma } from "../db.js";
 import { env } from "../env.js";
-import { encryptToken } from "../crypto.js";
+import { decryptToken, encryptToken } from "../crypto.js";
 import {
   accurateProvider,
   realAccurateProvider,
@@ -11,16 +11,49 @@ import {
   ACCURATE_REDIRECT_URI,
 } from "../providers/accounting/index.js";
 import type { AccountingProvider } from "../providers/accounting/types.js";
+import { ensureWallet } from "../ai/billing.js";
 
 export const launchRouter = Router();
 
 // state sementara in-memory (dev; produksi: tabel/signed state)
 const pending = new Map<string, { dbId?: string; exp: number }>();
+const LAUNCH_COOKIE = "launch_state";
+
+function isHttps(req: Request): boolean {
+  return !!req.secure || String(req.headers["x-forwarded-proto"] ?? "").split(",")[0]!.trim() === "https";
+}
+
+/** Buat state OAuth + ikat ke browser lewat cookie terenkripsi (cegah login CSRF). */
+export function issueLaunchState(res: Response, dbId?: string): string {
+  if (pending.size > 2_000) {
+    const now = Date.now();
+    for (const [k, v] of pending) if (v.exp < now) pending.delete(k);
+    if (pending.size > 5_000) pending.clear();
+  }
+  const state = `ls-${randomBytes(16).toString("hex")}`;
+  pending.set(state, { dbId, exp: Date.now() + 600_000 });
+  res.cookie(LAUNCH_COOKIE, encryptToken(JSON.stringify({ s: state })), {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: isHttps(res.req as Request),
+    maxAge: 10 * 60_000,
+    path: "/api",
+  });
+  return state;
+}
+
+function launchStateMatches(req: Request, state: string): boolean {
+  try {
+    const pack = JSON.parse(decryptToken(String(req.cookies?.[LAUNCH_COOKIE] ?? ""))) as { s?: string };
+    return !!pack.s && pack.s === state;
+  } catch {
+    return false;
+  }
+}
 
 launchRouter.get("/launch", (req, res) => {
   const q = z.object({ dbId: z.string().optional(), user: z.string().optional() }).parse(req.query);
-  const state = `ls-${randomBytes(16).toString("hex")}`;
-  pending.set(state, { dbId: q.dbId, exp: Date.now() + 600_000 });
+  const state = issueLaunchState(res, q.dbId);
   const url = new URL(accurateProvider().authorizeUrl({ redirectUri: OAUTH_REDIRECT_URI, state }));
   if (q.user) url.searchParams.set("user", q.user); // mock only
   res.redirect(url.toString());
@@ -54,7 +87,9 @@ async function handleCallback(
     if (state) {
       const hit = pending.get(state);
       pending.delete(state);
-      if (!hit || hit.exp < Date.now()) {
+      const cookieOk = launchStateMatches(req, state);
+      res.clearCookie(LAUNCH_COOKIE, { path: "/api" });
+      if (!hit || hit.exp < Date.now() || !cookieOk) {
         res.redirect(`${opts.origin}/?error=state`);
         return;
       }
@@ -76,6 +111,10 @@ async function handleCallback(
     const open = await provider.openDb(tok.accessToken, db.providerDbId);
 
     // ── Alur perusahaan pelanggan ────────────────────────────────────────────
+    const existingTenant = await prisma.tenant.findUnique({
+      where: { provider_providerDbId: { provider: "accurate", providerDbId: db.providerDbId } },
+      select: { id: true },
+    });
     const tenant = await prisma.tenant.upsert({
       where: { provider_providerDbId: { provider: "accurate", providerDbId: db.providerDbId } },
       create: { provider: "accurate", providerDbId: db.providerDbId, name: db.name, alias: db.alias },
@@ -116,6 +155,12 @@ async function handleCallback(
       },
       update: { roleId: role.id, phone: pUser.phone ?? undefined },
     });
+    // perusahaan baru via Accurate → beri bonus token pendaftaran (sekali per tenant)
+    if (!existingTenant) {
+      await ensureWallet(user.id, tenant.id).catch((e) =>
+        console.warn("[billing] gagal memberi bonus pendaftaran:", e instanceof Error ? e.message : e)
+      );
+    }
     await prisma.connection.upsert({
       where: { tenantId_provider: { tenantId: tenant.id, provider: "accurate" } },
       create: {
@@ -140,7 +185,12 @@ async function handleCallback(
     await prisma.session.create({
       data: { id: sid, userId: user.id, expiresAt: new Date(Date.now() + 7 * 86400_000) },
     });
-    res.cookie("sid", sid, { httpOnly: true, sameSite: "lax", maxAge: 7 * 86400_000 });
+    res.cookie("sid", sid, {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: isHttps(req as Request),
+      maxAge: 7 * 86400_000,
+    });
     // login perusahaan membersihkan sesi platform lama di browser yang sama
     res.clearCookie("psid");
     if (!user.passwordHash) {
@@ -168,7 +218,7 @@ launchRouter.get("/callback/accurate", (req, res, next) =>
   handleCallback(req, res, next, {
     redirectUri: ACCURATE_REDIRECT_URI,
     provider: realAccurateProvider,
-    requireState: false,
+    requireState: true,
     origin: new URL(ACCURATE_REDIRECT_URI).origin,
   })
 );

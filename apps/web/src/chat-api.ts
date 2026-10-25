@@ -4,7 +4,7 @@ export type ChatEvent =
   | { type: "tool_result"; tool: string; ok: boolean }
   | { type: "text_delta"; delta: string }
   | { type: "done"; messageId: string }
-  | { type: "error"; message: string };
+  | { type: "error"; message: string; code?: string };
 
 export interface SessionInfo {
   id: string;
@@ -36,9 +36,14 @@ export function isTimeoutError(e: unknown): boolean {
   return e instanceof Error && (e.name === "TimeoutError" || e.name === "AbortError");
 }
 
-export async function listSessions(): Promise<SessionInfo[]> {
-  const res = await fetch("/api/chat/sessions", { signal: AbortSignal.timeout(BOOT_TIMEOUT_MS) });
-  return res.ok ? res.json() : [];
+export async function listSessions(
+  take = 50,
+  skip = 0
+): Promise<{ sessions: SessionInfo[]; hasMore: boolean }> {
+  const res = await fetch(`/api/chat/sessions?take=${take}&skip=${skip}`, {
+    signal: AbortSignal.timeout(BOOT_TIMEOUT_MS),
+  });
+  return res.ok ? res.json() : { sessions: [], hasMore: false };
 }
 
 export async function listMessages(sessionId: string): Promise<MessageInfo[]> {

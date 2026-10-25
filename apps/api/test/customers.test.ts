@@ -39,7 +39,13 @@ beforeAll(async () => {
   });
   const role = await prisma.role.create({ data: { tenantId: tenant.id, key: "admin", name: "Admin" } });
   await prisma.rolePermission.create({ data: { roleId: role.id, permissionKey: "app:settings.manage" } });
-  for (const permissionKey of ["accurate:customer.view", "accurate:sales-invoice.view", "accurate:sales-receipt.view"]) {
+  for (const permissionKey of [
+    "accurate:customer.view",
+    "accurate:sales-invoice.view",
+    "accurate:sales-receipt.view",
+    "accurate:sales-invoice.save",
+    "accurate:sales-receipt.save",
+  ]) {
     await prisma.rolePermission.create({ data: { roleId: role.id, permissionKey } });
   }
   const user = await prisma.user.create({
@@ -168,6 +174,20 @@ describe("GET /api/customers/names", () => {
   });
 });
 
+describe("GET /api/customers/entry-options", () => {
+  it("mengembalikan rekening bank, akun beban, dan faktur belum lunas pelanggan", async () => {
+    const r = await request(api)
+      .get("/api/customers/entry-options?customerName=Budi")
+      .set("Cookie", cookie);
+    expect(r.status).toBe(200);
+    expect(r.body.bankAccounts.map((a: { no: string }) => a.no)).toEqual(expect.arrayContaining(["1000", "1100"]));
+    expect(r.body.expenseAccounts.map((a: { no: string }) => a.no)).toEqual(expect.arrayContaining(["5000"]));
+    expect(r.body.invoices.map((i: { number: string }) => i.number)).toEqual(
+      expect.arrayContaining(["SI.2026.10.00001"]),
+    );
+  });
+});
+
 describe("POST /api/customers/entries", () => {
   it("tanpa login → 401; body ngawur → 400", async () => {
     expect((await request(api).post("/api/customers/entries").send({ target: "salesInvoice", customerName: "X" })).status).toBe(401);
@@ -182,7 +202,14 @@ describe("POST /api/customers/entries", () => {
     const res = await request(api)
       .post("/api/customers/entries")
       .set("Cookie", cookie)
-      .send({ target: "salesInvoice", customerName: "Budi Santoso", total: 999000, date: "2026-10-05", description: "Uji coba" });
+      .send({
+        target: "salesInvoice",
+        customerName: "Budi Santoso",
+        total: 999000,
+        date: "2026-10-05",
+        description: "Uji coba",
+        items: [{ name: "Kertas A4", qty: 1, price: 999000 }],
+      });
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({ ok: true, target: "salesInvoice" });
     expect(String(res.body.id)).toMatch(/^SA-/);
@@ -197,7 +224,13 @@ describe("POST /api/customers/entries", () => {
     const res = await request(api)
       .post("/api/customers/entries")
       .set("Cookie", cookie)
-      .send({ target: "salesReceipt", customerName: "Siti Aminah", total: 150000 });
+      .send({
+        target: "salesReceipt",
+        customerName: "Siti Aminah",
+        total: 150000,
+        invoiceNo: "SI.2026.10.00001",
+        bankNo: "1000",
+      });
     expect(res.status).toBe(200);
     expect(res.body.target).toBe("salesReceipt");
     expect(String(res.body.id)).toMatch(/^SA-/);
@@ -266,7 +299,7 @@ describe("isolation: hak modul", () => {
     expect((await request(api).get("/api/customers").set("Cookie", bareCookie)).status).toBe(403);
   });
 
-  it("menolak entri faktur tanpa accurate:sales-invoice.view", async () => {
+  it("menolak entri faktur tanpa accurate:sales-invoice.save", async () => {
     const res = await request(api)
       .post("/api/customers/entries")
       .set("Cookie", bareCookie)
@@ -274,7 +307,7 @@ describe("isolation: hak modul", () => {
     expect(res.status).toBe(403);
   });
 
-  it("menolak entri kwitansi tanpa accurate:sales-receipt.view", async () => {
+  it("menolak entri kwitansi tanpa accurate:sales-receipt.save", async () => {
     const res = await request(api)
       .post("/api/customers/entries")
       .set("Cookie", bareCookie)

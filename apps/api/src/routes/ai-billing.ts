@@ -10,12 +10,16 @@ import { isBillingEnabled } from "../billing/midtrans.js";
 import { generateQrMpm, midtransSnapReady } from "../billing/midtrans-snap.js";
 import {
   adjustWallet,
+  aiAccessStatus,
   billingSettings,
   finalizeAiTopup,
+  getAiSubPlans,
+  getAiTopupPackages,
   ledgerFor,
   revenueReport,
   rupiahToTokens,
   syncOpenRouterPricing,
+  tokensToRupiah,
   topupFee,
   walletSummary,
 } from "../ai/billing.js";
@@ -36,8 +40,9 @@ aiBillingRouter.get(
   "/ai/ledger",
   requireUser,
   asyncHandler(async (req, res) => {
-    const take = Number(req.query.take ?? 50) || 50;
-    const rows = await ledgerFor(req.user!.id, take);
+    const take = Number(req.query.take ?? 10) || 10;
+    const skip = Number(req.query.skip ?? 0) || 0;
+    const rows = await ledgerFor(req.user!.id, take, skip);
     const cfg = await billingSettings();
     res.json(
       rows.map((r) => ({
@@ -52,16 +57,35 @@ aiBillingRouter.get(
   })
 );
 
-/** POST /api/ai/topup {amount} → QRIS (Winpay) */
+/** POST /api/ai/topup {packageId} → QRIS (Midtrans). `amount` lama tetap didukung. */
 aiBillingRouter.post(
   "/ai/topup",
   rateLimit({ name: "ai-topup", windowMs: 60_000, max: 10 }),
   requireUser,
   asyncHandler(async (req, res) => {
-    const body = z.object({ amount: z.number().int().min(10_000).max(10_000_000) }).safeParse(req.body);
+    const body = z
+      .object({
+        packageId: z.string().min(1).max(24).optional(),
+        amount: z.number().int().min(10_000).max(10_000_000).optional(),
+      })
+      .refine((b) => !!b.packageId || b.amount !== undefined, { message: "packageId atau amount wajib" })
+      .safeParse(req.body);
     if (!body.success) return res.status(400).json({ error: "bad_request", min: 10_000 });
-    // biaya admin + service charge Midtrans 2% ditambahkan ke total bayar; saldo masuk = pokok
-    const baseAmount = body.data.amount;
+
+    const cfg = await billingSettings();
+    let baseAmount: number;
+    let tokenAmount: number;
+    if (body.data.packageId) {
+      const pkg = (await getAiTopupPackages()).find((p) => p.id === body.data.packageId);
+      if (!pkg) return res.status(400).json({ error: "paket_tidak_ditemukan" });
+      baseAmount = pkg.price;
+      tokenAmount = pkg.tokens;
+    } else {
+      baseAmount = body.data.amount!;
+      tokenAmount = rupiahToTokens(baseAmount, cfg.rupiahPer1kTokens);
+    }
+    // saldo internal disimpan dalam rupiah; token paket dikonversi agar tampilan token pas
+    const credits = body.data.packageId ? tokensToRupiah(tokenAmount, cfg.rupiahPer1kTokens) : baseAmount;
     const feeAmount = topupFee(baseAmount);
     const totalAmount = baseAmount + feeAmount;
     const orderId = `ai-${randomBytes(8).toString("hex")}`;
@@ -71,7 +95,7 @@ aiBillingRouter.post(
         userId: req.user!.id,
         tenantId: req.user!.tenant.id,
         amount: totalAmount,
-        credits: baseAmount,
+        credits,
       },
     });
     if (!isBillingEnabled() || !midtransSnapReady()) {
@@ -80,22 +104,84 @@ aiBillingRouter.post(
         orderId: topup.orderId,
         amount: totalAmount,
         feeAmount,
-        credits: baseAmount,
+        credits,
+        tokens: tokenAmount,
       });
     }
     try {
       const qr = await generateQrMpm(orderId, totalAmount);
       await prisma.aiTopup.update({ where: { id: topup.id }, data: { providerRef: qr.referenceNo } });
-      const cfg = await billingSettings();
       return res.json({
         orderId,
         amount: totalAmount,
         feeAmount,
-        credits: baseAmount,
-        tokens: rupiahToTokens(baseAmount, cfg.rupiahPer1kTokens),
+        credits,
+        tokens: tokenAmount,
         provider: "midtrans",
         qris: qr,
       });
+    } catch (e) {
+      return res.status(502).json({
+        error: "qris_gagal",
+        detail: String(e instanceof Error ? e.message : e).slice(0, 200),
+        orderId,
+      });
+    }
+  })
+);
+
+/** GET /api/ai/subscription — paket langganan bulanan + status langganan perusahaan */
+aiBillingRouter.get(
+  "/ai/subscription",
+  requireUser,
+  asyncHandler(async (req, res) => {
+    const [plans, sub, wallet, access] = await Promise.all([
+      getAiSubPlans(),
+      prisma.subscription.findFirst({
+        where: { tenantId: req.user!.tenant.id, plan: { startsWith: "ai:" } },
+        orderBy: { createdAt: "desc" },
+      }),
+      walletSummary(req.user!.id, req.user!.tenant.id),
+      aiAccessStatus(req.user!.id, req.user!.tenant.id),
+    ]);
+    const active = !!sub && sub.status === "active" && (!sub.expiresAt || sub.expiresAt > new Date());
+    res.json({
+      plans,
+      wallet,
+      access,
+      subscription: sub
+        ? {
+            plan: sub.plan.replace(/^ai:/, ""),
+            status: sub.status,
+            expiresAt: sub.expiresAt?.toISOString() ?? null,
+            active,
+          }
+        : null,
+    });
+  })
+);
+
+/** POST /api/ai/subscription {planId} → QRIS langganan bulanan */
+aiBillingRouter.post(
+  "/ai/subscription",
+  rateLimit({ name: "ai-sub", windowMs: 60_000, max: 10 }),
+  requireUser,
+  asyncHandler(async (req, res) => {
+    const body = z.object({ planId: z.string().min(1).max(24) }).safeParse(req.body);
+    if (!body.success) return res.status(400).json({ error: "bad_request" });
+    const plan = (await getAiSubPlans()).find((p) => p.id === body.data.planId);
+    if (!plan) return res.status(400).json({ error: "paket_tidak_ditemukan" });
+    if (!isBillingEnabled() || !midtransSnapReady()) {
+      return res.status(503).json({ error: "billing_dormant", plan });
+    }
+    const tenantId = req.user!.tenant.id;
+    // durasi & token disimpan di orderId agar callback tetap akurat walau setelan berubah
+    const orderId = `subl-${plan.id}-${plan.months}m-${plan.tokens}-${randomBytes(6).toString("hex")}`;
+    await prisma.payment.create({ data: { tenantId, orderId, amount: plan.price, status: "pending" } });
+    try {
+      const qr = await generateQrMpm(orderId, plan.price);
+      await prisma.payment.update({ where: { orderId }, data: { paymentMethod: "qris", fraudStatus: qr.referenceNo } });
+      return res.json({ orderId, amount: plan.price, plan, months: plan.months, tokens: plan.tokens, qris: qr });
     } catch (e) {
       return res.status(502).json({
         error: "qris_gagal",

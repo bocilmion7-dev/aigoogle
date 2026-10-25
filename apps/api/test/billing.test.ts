@@ -95,7 +95,8 @@ describe("webhook update (mode aktif disuntik via env)", () => {
     expect(flipped).not.toBe(sig);
     const bad = await request(api).post("/api/billing/webhook").set("X-Signature-Key", flipped).send(payload);
     expect(bad.status).toBe(401);
-    const ok = await request(api).post("/api/billing/webhook").set("X-Signature-Key", sig).send(payload);
+    // signature standar Midtrans ada di body (`signature_key`), bukan header
+    const ok = await request(api).post("/api/billing/webhook").send({ ...payload, signature_key: sig });
     expect(ok.status).toBe(200);
     const p = await prisma.payment.findUniqueOrThrow({ where: { id: payment.id } });
     expect(p.status).toBe("deny");

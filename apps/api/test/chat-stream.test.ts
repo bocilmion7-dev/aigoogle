@@ -128,12 +128,12 @@ describe("chat stream", () => {
   it("GET /api/chat/sessions → daftar sesi tenant sendiri", async () => {
     const res = await request(api).get("/api/chat/sessions").set("Cookie", cookie);
     expect(res.status).toBe(200);
-    expect(res.body.length).toBeGreaterThan(0);
+    expect(res.body.sessions.length).toBeGreaterThan(0);
   });
 
   it("GET messages sesi → urutan user/ai", async () => {
     const list = await request(api).get("/api/chat/sessions").set("Cookie", cookie);
-    const id = list.body[0].id as string;
+    const id = list.body.sessions[0].id as string;
     const res = await request(api).get(`/api/chat/sessions/${id}/messages`).set("Cookie", cookie);
     expect(res.status).toBe(200);
     expect(res.body.length).toBeGreaterThan(0);

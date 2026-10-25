@@ -1,14 +1,16 @@
 import { useEffect, useState } from "react";
 import type { ComponentType } from "react";
 import type { Me } from "@aigoogle/shared";
-import { getAiWallet, getMe } from "./api";
+import { AI_WALLET_EVENT, getAiWallet, getMe } from "./api";
 import {
   IconActivity,
   IconChat,
+  IconCoin,
   IconCompass,
   IconCpu,
   IconHome,
   IconLogout,
+  IconPackage,
   IconScan,
   IconSettings,
   IconSliders,
@@ -19,6 +21,7 @@ interface NavLink {
   href: string;
   label: string;
   short: string;
+  hidden?: boolean;
   Icon: ComponentType<{ size?: number }>;
 }
 
@@ -42,8 +45,17 @@ export function AppHeader({ me }: { me?: Me | null }) {
         .catch(() => null);
     };
     load();
+    const onVisible = () => {
+      if (document.visibilityState === "visible") load();
+    };
     window.addEventListener("focus", load);
-    return () => window.removeEventListener("focus", load);
+    window.addEventListener(AI_WALLET_EVENT, load);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.removeEventListener("focus", load);
+      window.removeEventListener(AI_WALLET_EVENT, load);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, [dataForBalance]);
 
   const data = me !== undefined ? me : own;
@@ -60,15 +72,17 @@ export function AppHeader({ me }: { me?: Me | null }) {
   const sisiAccurate = !canPlatform; // Staf & Admin Accurate
   const links: NavLink[] = [
     ...(sisiAccurate ? [{ href: "/app", label: "Dashboard", short: "Beranda", Icon: IconHome }] : []),
-    ...(canAdmin && !canPlatform
-      ? [{ href: "/aktivitas", label: "Aktivitas", short: "Aktivitas", Icon: IconActivity }]
-      : []),
     ...(sisiAccurate
       ? [{ href: "/explore", label: "Explore Manager", short: "Explore", Icon: IconCompass }]
       : []),
     ...(sisiAccurate ? [{ href: "/whatsapp", label: "WhatsApp", short: "WhatsApp", Icon: IconChat }] : []),
+    ...(sisiAccurate ? [{ href: "/pesanan", label: "Kelola Pesanan", short: "Pesanan", Icon: IconPackage }] : []),
+    ...(canAdmin && !canPlatform
+      ? [{ href: "/aktivitas", label: "Aktivitas", short: "Aktivitas", Icon: IconActivity }]
+      : []),
     ...(canAdmin ? [{ href: "/admin", label: "User & Peran", short: "User", Icon: IconUsers }] : []),
-    ...(sisiAccurate ? [{ href: "/pelanggan", label: "Scan", short: "Scan", Icon: IconScan }] : []),
+    // Scan tetap ada (tidak dihapus) — hanya disembunyikan dari bottom bar
+    ...(sisiAccurate ? [{ href: "/pelanggan", label: "Scan", short: "Scan", hidden: true, Icon: IconScan }] : []),
     ...(canPlatform ? [{ href: "/settings", label: "Pengaturan", short: "Setelan", Icon: IconSettings }] : []),
     ...(canPlatform ? [{ href: "/ai", label: "AI Provider", short: "AI", Icon: IconCpu }] : []),
     ...(canPlatform ? [{ href: "/ai-models", label: "Model per Modul", short: "Model", Icon: IconSliders }] : []),
@@ -95,7 +109,7 @@ export function AppHeader({ me }: { me?: Me | null }) {
             </span>
             {tokens !== null && data.tenant.provider !== "platform" && (
               <a className="app-header__balance" href="/saldo" title="Saldo token AI & pemakaian">
-                <strong>{tokens.toLocaleString("id-ID")}</strong> token
+                <IconCoin size={13} /> <strong>{tokens.toLocaleString("id-ID")}</strong>
               </a>
             )}
           </span>
@@ -111,10 +125,10 @@ export function AppHeader({ me }: { me?: Me | null }) {
         </div>
       </header>
       <nav className="bottom-nav" aria-label="Menu utama">
-        {links.map(({ href, label, short, Icon }) => (
+        {links.map(({ href, label, short, hidden, Icon }) => (
           <a
             key={href}
-            className="bottom-nav__item"
+            className={`bottom-nav__item${hidden ? " bottom-nav__item--hidden" : ""}`}
             href={href}
             title={label}
             aria-label={label}

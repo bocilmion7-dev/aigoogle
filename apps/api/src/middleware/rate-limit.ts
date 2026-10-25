@@ -30,8 +30,10 @@ export interface RateLimitOpts {
 function clientKey(req: Request): string {
   const u = (req as Request & { user?: { id?: string } }).user;
   if (u?.id) return `u:${u.id}`;
-  const fwd = String(req.headers["x-forwarded-for"] ?? "").split(",")[0]!.trim();
-  return `ip:${fwd || req.ip || "?"}`;
+  // X-Real-IP diisi nginx dari koneksi sebenarnya. JANGAN pakai X-Forwarded-For
+  // (entri pertama bisa dipalsukan klien → rate limit login bisa di-bypass).
+  const real = String(req.headers["x-real-ip"] ?? "").trim();
+  return `ip:${real || req.ip || req.socket.remoteAddress || "?"}`;
 }
 
 export function rateLimit(o: RateLimitOpts) {

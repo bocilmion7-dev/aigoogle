@@ -3,9 +3,11 @@ import type { ConnectionInfo, Me } from "@aigoogle/shared";
 import {
   friendlyWarning,
   getConnections,
+  getEntryOptions,
   getMe,
   postEntry,
   uploadScan,
+  type EntryOptions,
   type EntryTarget,
   type ScanResponse,
 } from "../api";
@@ -61,13 +63,49 @@ export function Pelanggan() {
       streamRef.current?.getTracks().forEach((t) => t.stop());
     };
   }, []);
-  const [form, setForm] = useState({ customerName: "", date: "", no: "", total: "", description: "" });
+  const [form, setForm] = useState({
+    customerName: "",
+    date: "",
+    no: "",
+    total: "",
+    description: "",
+    invoiceNo: "",
+    bankNo: "",
+    expenseAccountNo: "",
+    fromBankNo: "",
+    toBankNo: "",
+  });
+  const [items, setItems] = useState<Array<{ name: string; qty: string; price: string }>>([]);
+  const [options, setOptions] = useState<EntryOptions | null>(null);
+  const [optionsBusy, setOptionsBusy] = useState(false);
   const [target, setTarget] = useState<"" | EntryTarget>("");
 
   useEffect(() => {
     void getMe().then(setMe);
     void getConnections().then(setConns).catch(() => undefined);
   }, []);
+
+  const needOptions = target === "salesReceipt" || target === "expense" || target === "bankTransfer";
+  useEffect(() => {
+    if (!needOptions) return;
+    const timer = window.setTimeout(() => {
+      setOptionsBusy(true);
+      void getEntryOptions(form.customerName)
+        .then((o) => {
+          setOptions(o);
+          setForm((f) => ({
+            ...f,
+            bankNo: f.bankNo || o.bankAccounts[0]?.no || "",
+            expenseAccountNo: f.expenseAccountNo || o.expenseAccounts[0]?.no || "",
+            fromBankNo: f.fromBankNo || o.bankAccounts[0]?.no || "",
+            toBankNo: f.toBankNo || o.bankAccounts[1]?.no || o.bankAccounts[0]?.no || "",
+          }));
+        })
+        .catch(() => null)
+        .finally(() => setOptionsBusy(false));
+    }, 400);
+    return () => window.clearTimeout(timer);
+  }, [needOptions, target, form.customerName]);
 
   if (me === undefined) {
     return (
@@ -87,11 +125,11 @@ export function Pelanggan() {
   const connected = accurate?.status === "connected";
   const perms = me.permissions ?? [];
   const TARGET_PERM: Record<EntryTarget, string> = {
-    salesInvoice: "accurate:sales-invoice.view",
-    salesReceipt: "accurate:sales-receipt.view",
-    purchaseInvoice: "accurate:purchase-invoice.view",
-    expense: "accurate:expense.view",
-    bankTransfer: "accurate:bank-transfer.view",
+    salesInvoice: "accurate:sales-invoice.save",
+    salesReceipt: "accurate:sales-receipt.save",
+    purchaseInvoice: "accurate:purchase-invoice.save",
+    expense: "accurate:expense.save",
+    bankTransfer: "accurate:bank-transfer.save",
   };
   const hasPerm = (t: EntryTarget) => perms.includes(TARGET_PERM[t]);
   const needsName = (t: EntryTarget) => t === "salesInvoice" || t === "salesReceipt" || t === "purchaseInvoice";
@@ -114,7 +152,20 @@ export function Pelanggan() {
         no: res.fields.no,
         total: res.fields.total !== null ? String(res.fields.total) : "",
         description: res.fields.description,
+        invoiceNo: "",
+        bankNo: "",
+        expenseAccountNo: "",
+        fromBankNo: "",
+        toBankNo: "",
       });
+      setItems(
+        res.fields.items.map((i) => ({
+          name: i.name,
+          qty: i.qty !== undefined && i.qty !== null ? String(i.qty) : "1",
+          price: i.price !== undefined && i.price !== null ? String(i.price) : "",
+        }))
+      );
+      setOptions(null);
       setTarget(res.suggestedTarget ?? "");
       const warn = friendlyWarning(res.warning);
       if (warn) setErr(warn);
@@ -131,25 +182,54 @@ export function Pelanggan() {
     if (needsName(target) && !form.customerName.trim()) {
       return setErr(target === "purchaseInvoice" ? "Nama pemasok/vendor wajib diisi." : "Nama pelanggan wajib diisi.");
     }
-    if (target === "purchaseInvoice" && !(scan?.fields.items.length)) {
-      return setErr("Faktur pembelian butuh rincian item — item tidak terbaca, lengkapi manual nanti atau pilih modul lain.");
+    const cleanItems = items
+      .filter((i) => i.name.trim())
+      .map((i) => ({
+        name: i.name.trim(),
+        qty: Math.max(1, Number(i.qty) || 1),
+        price: Number(i.price.replace(/[^\d.]/g, "")) || 0,
+      }));
+    if ((target === "salesInvoice" || target === "purchaseInvoice") && cleanItems.length === 0) {
+      return setErr("Faktur butuh minimal satu rincian item — tambahkan item manual.");
     }
+    if ((target === "salesInvoice" || target === "purchaseInvoice") && cleanItems.some((i) => i.price <= 0)) {
+      return setErr("Harga setiap item wajib diisi (lebih dari 0).");
+    }
+    const totalNum = Number(form.total.replace(/[^\d.]/g, "")) || 0;
+    if (target === "salesReceipt" && !form.invoiceNo.trim()) {
+      return setErr("Pilih/isi nomor faktur yang dibayar.");
+    }
+    if (target === "salesReceipt" && !form.bankNo) return setErr("Pilih rekening penerimaan.");
+    if (target === "expense" && !form.expenseAccountNo) return setErr("Pilih akun beban.");
+    if (target === "expense" && totalNum <= 0) return setErr("Nominal beban wajib lebih dari 0.");
+    if (target === "bankTransfer") {
+      if (!form.fromBankNo || !form.toBankNo) return setErr("Pilih rekening sumber dan tujuan.");
+      if (form.fromBankNo === form.toBankNo) return setErr("Rekening sumber dan tujuan tidak boleh sama.");
+      if (totalNum <= 0) return setErr("Nominal transfer wajib lebih dari 0.");
+    }
+    if (target === "salesReceipt" && totalNum <= 0) return setErr("Jumlah diterima wajib lebih dari 0.");
+    const itemTotal = cleanItems.reduce((a, i) => a + i.qty * i.price, 0);
     setErr(""); setBusy(true);
     try {
-      const totalNum = form.total.replace(/[^\d.]/g, "");
       const res = await postEntry({
         target,
         customerName: form.customerName.trim(),
         ...(form.date ? { date: form.date } : {}),
         ...(form.no ? { no: form.no } : {}),
-        ...(totalNum ? { total: Number(totalNum) } : {}),
         ...(form.description ? { description: form.description } : {}),
-        ...(target === "purchaseInvoice" && scan?.fields.items.length
-          ? { items: scan.fields.items.map((i) => ({ name: i.name, qty: i.qty ?? undefined, price: i.price ?? undefined })) }
+        ...(target === "salesInvoice" || target === "purchaseInvoice"
+          ? { total: itemTotal, items: cleanItems }
+          : { total: totalNum }),
+        ...(target === "salesReceipt"
+          ? { invoiceNo: form.invoiceNo.trim(), bankNo: form.bankNo }
           : {}),
+        ...(target === "expense" ? { expenseAccountNo: form.expenseAccountNo } : {}),
+        ...(target === "bankTransfer" ? { fromBankNo: form.fromBankNo, toBankNo: form.toBankNo } : {}),
       });
       setOkMsg(`Tersimpan ke ${TARGET_LABEL[target]} — no. referensi ${res.id}`);
       setScan(null);
+      setItems([]);
+      setOptions(null);
     } catch (e) {
       setErr((e as Error).message);
     } finally {
@@ -340,6 +420,112 @@ export function Pelanggan() {
                       />
                     </label>
                   ) : null}
+                  {target === "salesReceipt" && (
+                    <>
+                      <label className="field">
+                        Rekening penerimaan
+                        <select
+                          className="select"
+                          value={form.bankNo}
+                          onChange={(e) => setForm({ ...form, bankNo: e.target.value })}
+                        >
+                          <option value="">— pilih rekening —</option>
+                          {(options?.bankAccounts ?? []).map((a) => (
+                            <option key={a.no} value={a.no}>
+                              {a.no} · {a.name}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="field">
+                        Faktur yang dibayar
+                        {(options?.invoices?.length ?? 0) > 0 ? (
+                          <select
+                            className="select"
+                            value={form.invoiceNo}
+                            onChange={(e) => {
+                              const inv = options?.invoices.find((x) => x.number === e.target.value);
+                              setForm({
+                                ...form,
+                                invoiceNo: e.target.value,
+                                total: inv ? String(inv.totalAmount) : form.total,
+                              });
+                            }}
+                          >
+                            <option value="">— pilih faktur —</option>
+                            {options!.invoices.map((inv) => (
+                              <option key={inv.number} value={inv.number}>
+                                {inv.number} · {rp(inv.totalAmount)} · {inv.transDate}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <input
+                            className="input"
+                            value={form.invoiceNo}
+                            onChange={(e) => setForm({ ...form, invoiceNo: e.target.value })}
+                            placeholder="Nomor faktur penjualan"
+                          />
+                        )}
+                      </label>
+                    </>
+                  )}
+                  {target === "expense" && (
+                    <label className="field">
+                      Akun beban
+                      <select
+                        className="select"
+                        value={form.expenseAccountNo}
+                        onChange={(e) => setForm({ ...form, expenseAccountNo: e.target.value })}
+                      >
+                        <option value="">— pilih akun —</option>
+                        {(options?.expenseAccounts ?? []).map((a) => (
+                          <option key={a.no} value={a.no}>
+                            {a.no} · {a.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  )}
+                  {target === "bankTransfer" && (
+                    <>
+                      <label className="field">
+                        Dari rekening
+                        <select
+                          className="select"
+                          value={form.fromBankNo}
+                          onChange={(e) => setForm({ ...form, fromBankNo: e.target.value })}
+                        >
+                          <option value="">— pilih rekening —</option>
+                          {(options?.bankAccounts ?? []).map((a) => (
+                            <option key={a.no} value={a.no}>
+                              {a.no} · {a.name}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="field">
+                        Ke rekening
+                        <select
+                          className="select"
+                          value={form.toBankNo}
+                          onChange={(e) => setForm({ ...form, toBankNo: e.target.value })}
+                        >
+                          <option value="">— pilih rekening —</option>
+                          {(options?.bankAccounts ?? []).map((a) => (
+                            <option key={a.no} value={a.no} disabled={a.no === form.fromBankNo}>
+                              {a.no} · {a.name}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    </>
+                  )}
+                  {optionsBusy && (
+                    <p className="meta" style={{ margin: 0 }}>
+                      <span className="spinner" aria-hidden="true" /> Memuat rekening/faktur…
+                    </p>
+                  )}
                   <label className="field">
                     Tanggal (YYYY-MM-DD)
                     <input
@@ -359,16 +545,18 @@ export function Pelanggan() {
                       placeholder="NOTA-7"
                     />
                   </label>
-                  <label className="field">
-                    Total (Rp)
-                    <input
-                      className="input num"
-                      inputMode="numeric"
-                      value={form.total}
-                      onChange={(e) => setForm({ ...form, total: e.target.value })}
-                      placeholder="150000"
-                    />
-                  </label>
+                  {target !== "salesInvoice" && target !== "purchaseInvoice" && (
+                    <label className="field">
+                      {target === "salesReceipt" ? "Jumlah diterima (Rp)" : "Total (Rp)"}
+                      <input
+                        className="input num"
+                        inputMode="numeric"
+                        value={form.total}
+                        onChange={(e) => setForm({ ...form, total: e.target.value })}
+                        placeholder="150000"
+                      />
+                    </label>
+                  )}
                   <label className="field">
                     Keterangan
                     <input
@@ -379,6 +567,75 @@ export function Pelanggan() {
                     />
                   </label>
                 </div>
+
+                {(target === "salesInvoice" || target === "purchaseInvoice") && (
+                  <div className="capture__items" style={{ marginTop: "var(--space-s)" }}>
+                    <strong>Rincian item</strong>
+                    {items.map((it, i) => (
+                      <div className="capture__item" key={i}>
+                        <input
+                          className="input"
+                          aria-label={`Nama item ${i + 1}`}
+                          value={it.name}
+                          onChange={(e) => {
+                            const next = [...items];
+                            next[i] = { ...it, name: e.target.value };
+                            setItems(next);
+                          }}
+                          placeholder="Nama barang/jasa"
+                        />
+                        <input
+                          className="input capture__qty"
+                          aria-label={`Qty item ${i + 1}`}
+                          value={it.qty}
+                          onChange={(e) => {
+                            const next = [...items];
+                            next[i] = { ...it, qty: e.target.value };
+                            setItems(next);
+                          }}
+                        />
+                        <input
+                          className="input capture__price"
+                          aria-label={`Harga item ${i + 1}`}
+                          value={it.price}
+                          onChange={(e) => {
+                            const next = [...items];
+                            next[i] = { ...it, price: e.target.value };
+                            setItems(next);
+                          }}
+                          placeholder="Harga"
+                        />
+                        <button
+                          type="button"
+                          className="btn btn--ghost btn--sm"
+                          aria-label={`Hapus item ${i + 1}`}
+                          onClick={() => setItems(items.filter((_, j) => j !== i))}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      className="btn btn--ghost btn--sm"
+                      onClick={() => setItems([...items, { name: "", qty: "1", price: "" }])}
+                    >
+                      + Item
+                    </button>
+                    <p className="meta" style={{ margin: 0 }}>
+                      Total dari item:{" "}
+                      {rp(
+                        items.reduce(
+                          (a, it) =>
+                            a +
+                            (Number(it.qty) || 0) * (Number(it.price.replace(/[^\d.]/g, "")) || 0),
+                          0
+                        )
+                      )}{" "}
+                      — total dihitung Accurate dari rincian item.
+                    </p>
+                  </div>
+                )}
 
                 <div className="btn-row" style={{ marginTop: "var(--space-s)" }}>
                   <button className="btn" disabled={busy} onClick={() => void saveEntry()}>

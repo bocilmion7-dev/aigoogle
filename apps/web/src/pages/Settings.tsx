@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
-import type { AppSettings } from "@aigoogle/shared";
-import { WINPAY_DEFAULT_CLIENT_ID } from "@aigoogle/shared";
-import { getMe, getSettings, putSettings, setD360Redirect } from "../api";
+import { DEFAULT_AI_SIGNUP_BONUS_TOKENS, DEFAULT_AI_SUB_PLANS, DEFAULT_AI_TOPUP_PACKAGES, DEFAULT_WA_META_TOPUPS, DEFAULT_WA_SUB_PLANS, type AiSubPlan, type AiTopupPackage, type AppSettings, type WaMetaTopup, type WaSubPlan } from "@aigoogle/shared";
+import { getMe, getSettings, putSettings } from "../api";
 import { AppHeader, PageLoader } from "../ui";
+import { IconPlus, IconTrash } from "../icons";
 
 /** Pengaturan PLATFORM (global, berlaku semua perusahaan) — khusus Admin Platform.
  *  Setelan milik perusahaan (Otomasi WA, Notifikasi webhook, Koneksi) ada di sisi perusahaan. */
@@ -11,7 +11,6 @@ export function Settings() {
   const [aset, setAset] = useState<AppSettings | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
-  const [d360Msg, setD360Msg] = useState<string | null>(null);
 
   useEffect(() => {
     void getMe().then(setMe);
@@ -36,22 +35,59 @@ export function Settings() {
         voiceEngine: aset.voiceEngine,
         ocrMode: aset.ocrMode ?? "vision",
         ...(aset.waPricePerCredit !== undefined ? { waPricePerCredit: aset.waPricePerCredit } : {}),
-        waProvider: aset.waProvider ?? "d360",
-        ...(aset.waD360ApiKey !== undefined ? { waD360ApiKey: aset.waD360ApiKey } : {}),
-        ...(aset.waD360BaseUrl !== undefined ? { waD360BaseUrl: aset.waD360BaseUrl } : {}),
-        ...(aset.waD360PartnerId !== undefined ? { waD360PartnerId: aset.waD360PartnerId } : {}),
-        ...(aset.waD360PartnerKey !== undefined ? { waD360PartnerKey: aset.waD360PartnerKey } : {}),
-        paymentProvider: aset.paymentProvider ?? "winpay",
-        winpayEnv: aset.winpayEnv ?? "production",
-        ...(aset.winpayClientId !== undefined ? { winpayClientId: aset.winpayClientId } : {}),
-        ...(aset.winpayPrivateKey !== undefined ? { winpayPrivateKey: aset.winpayPrivateKey } : {}),
-        ...(aset.winpayPublicKey !== undefined ? { winpayPublicKey: aset.winpayPublicKey } : {}),
+        waProvider: aset.waProvider ?? "waserver",
+        waSubPlans: aset.waSubPlans ?? DEFAULT_WA_SUB_PLANS,
+        waMetaTopups: aset.waMetaTopups ?? DEFAULT_WA_META_TOPUPS,
+        aiTopupPackages: aset.aiTopupPackages ?? DEFAULT_AI_TOPUP_PACKAGES,
+        aiSubPlans: aset.aiSubPlans ?? DEFAULT_AI_SUB_PLANS,
+        aiSignupBonusTokens: aset.aiSignupBonusTokens ?? DEFAULT_AI_SIGNUP_BONUS_TOKENS,
       });
       setMsg("Pengaturan disimpan.");
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Gagal menyimpan pengaturan.");
     }
   }, [aset]);
+
+  function updateSubPlan(i: number, patch: Partial<WaSubPlan>) {
+    if (!aset) return;
+    const list = (aset.waSubPlans ?? DEFAULT_WA_SUB_PLANS).map((p, idx) => (idx === i ? { ...p, ...patch } : p));
+    setAset({ ...aset, waSubPlans: list });
+  }
+
+  function updateMetaTopup(i: number, patch: Partial<WaMetaTopup>) {
+    if (!aset) return;
+    const list = (aset.waMetaTopups ?? DEFAULT_WA_META_TOPUPS).map((p, idx) => (idx === i ? { ...p, ...patch } : p));
+    setAset({ ...aset, waMetaTopups: list });
+  }
+
+  function updateAiPackage(i: number, patch: Partial<AiTopupPackage>) {
+    if (!aset) return;
+    const list = (aset.aiTopupPackages ?? DEFAULT_AI_TOPUP_PACKAGES).map((p, idx) => (idx === i ? { ...p, ...patch } : p));
+    setAset({ ...aset, aiTopupPackages: list });
+  }
+
+  function addAiPackage() {
+    if (!aset) return;
+    const list = aset.aiTopupPackages ?? DEFAULT_AI_TOPUP_PACKAGES;
+    if (list.length >= 12) return;
+    setAset({
+      ...aset,
+      aiTopupPackages: [...list, { id: `a${Date.now().toString(36)}`, price: 10000, tokens: 250000 }],
+    });
+  }
+
+  function removeAiPackage(i: number) {
+    if (!aset) return;
+    const list = aset.aiTopupPackages ?? DEFAULT_AI_TOPUP_PACKAGES;
+    if (list.length <= 1) return;
+    setAset({ ...aset, aiTopupPackages: list.filter((_, idx) => idx !== i) });
+  }
+
+  function updateAiSubPlan(i: number, patch: Partial<AiSubPlan>) {
+    if (!aset) return;
+    const list = (aset.aiSubPlans ?? DEFAULT_AI_SUB_PLANS).map((p, idx) => (idx === i ? { ...p, ...patch } : p));
+    setAset({ ...aset, aiSubPlans: list });
+  }
 
   if (me === undefined) {
     return (
@@ -149,88 +185,218 @@ export function Settings() {
         </section>
 
         <section className="card">
-          <strong className="card__title">Pembayaran QRIS</strong>
-          <div className="stack" style={{ gap: 0 }}>
-            <label className="check">
-              <input
-                type="radio" name="payprov" checked={(aset?.paymentProvider ?? "winpay") === "winpay"}
-                onChange={() => aset && setAset({ ...aset, paymentProvider: "winpay" })}
-              />
-              <span>Winpay (default) — QRIS MPM lewat SNAP API Winpay</span>
-            </label>
-            <label className="check">
-              <input
-                type="radio" name="payprov" checked={aset?.paymentProvider === "midtrans"}
-                onChange={() => aset && setAset({ ...aset, paymentProvider: "midtrans" })}
-              />
-              <span>Midtrans</span>
-            </label>
+          <strong className="card__title">Paket Langganan WhatsApp Gateway</strong>
+          <p className="meta" style={{ margin: "0 0 var(--space-xs)" }}>
+            Tiga paket yang tampil di halaman WhatsApp perusahaan. Nama paket, durasi, dan harga bisa diubah kapan saja.
+          </p>
+          <div className="stack">
+            {(aset?.waSubPlans ?? DEFAULT_WA_SUB_PLANS).map((p, i) => (
+              <div key={p.id} className="panel">
+                <span className="meta" style={{ fontWeight: 600 }}>Paket {i + 1}</span>
+                <div style={{ display: "grid", gridTemplateColumns: "minmax(120px, 1.4fr) 90px minmax(110px, 1fr)", gap: "var(--space-xs)", marginTop: 6, alignItems: "end" }}>
+                  <label className="field">
+                    Nama paket
+                    <input
+                      className="input"
+                      value={p.name}
+                      maxLength={40}
+                      onChange={(e) => updateSubPlan(i, { name: e.target.value })}
+                      placeholder="mis. 1 Bulan"
+                    />
+                  </label>
+                  <label className="field">
+                    Durasi (bulan)
+                    <input
+                      className="input num"
+                      type="number"
+                      inputMode="numeric"
+                      min={1}
+                      max={36}
+                      value={p.months}
+                      onChange={(e) => updateSubPlan(i, { months: Number(e.target.value) })}
+                    />
+                  </label>
+                  <label className="field">
+                    Harga (Rp)
+                    <input
+                      className="input num"
+                      type="number"
+                      inputMode="numeric"
+                      min={1}
+                      max={10000000}
+                      value={p.price}
+                      onChange={(e) => updateSubPlan(i, { price: Number(e.target.value) })}
+                    />
+                  </label>
+                </div>
+              </div>
+            ))}
           </div>
-          {(aset?.paymentProvider ?? "winpay") === "winpay" && (
-            <>
-              <label className="field" style={{ maxWidth: 420, marginTop: "var(--space-xs)" }}>
-                Client ID
-                <input
-                  className="input"
-                  type="text"
-                  value={aset?.winpayClientId ?? WINPAY_DEFAULT_CLIENT_ID}
-                  onChange={(e) => aset && setAset({ ...aset, winpayClientId: e.target.value })}
-                  placeholder="Client ID merchant Winpay"
-                />
-              </label>
-              <label className="field" style={{ maxWidth: 260 }}>
-                Lingkungan
-                <select
-                  className="input"
-                  value={aset?.winpayEnv ?? "production"}
-                  onChange={(e) =>
-                    aset && setAset({ ...aset, winpayEnv: e.target.value === "sandbox" ? "sandbox" : "production" })
-                  }
-                >
-                  <option value="production">Produksi (snap.winpay.id)</option>
-                  <option value="sandbox">Sandbox (sandbox-snap.winpay.id)</option>
-                </select>
-              </label>
-              <label className="field" style={{ maxWidth: 560 }}>
-                Private key merchant (PEM)
-                <textarea
-                  className="input"
-                  rows={4}
-                  style={{ fontFamily: "monospace", fontSize: 12, resize: "vertical" }}
-                  value={aset?.winpayPrivateKey ?? ""}
-                  onChange={(e) => aset && setAset({ ...aset, winpayPrivateKey: e.target.value })}
-                  placeholder="tempel private key RSA merchant (-----BEGIN PRIVATE KEY-----)"
-                />
-              </label>
-              <label className="field" style={{ maxWidth: 560 }}>
-                Public key Winpay (untuk verifikasi notifikasi)
-                <textarea
-                  className="input"
-                  rows={3}
-                  style={{ fontFamily: "monospace", fontSize: 12, resize: "vertical" }}
-                  value={aset?.winpayPublicKey ?? ""}
-                  onChange={(e) => aset && setAset({ ...aset, winpayPublicKey: e.target.value })}
-                  placeholder="public key Winpay dari dashboard (base64 / PEM)"
-                />
-              </label>
-              <p className="meta" style={{ margin: 0 }}>
-                Tempel private key merchant (hasil generate di server) untuk mengaktifkan topup QRIS. Public key
-                Winpay dari dashboard dipakai memverifikasi notifikasi — tanpa itu pembayaran tetap terkonfirmasi
-                otomatis lewat pengecekan status berkala.
-              </p>
-            </>
-          )}
         </section>
 
         <section className="card">
-          <strong className="card__title">Penyedia WhatsApp (Embedded Signup)</strong>
+          <strong className="card__title">Pilihan Top Up META</strong>
+          <p className="meta" style={{ margin: "0 0 var(--space-xs)" }}>
+            Tiga pilihan nominal yang tampil saat perusahaan menekan tombol Top Up META. Kredit dihitung otomatis dari harga per kredit.
+          </p>
+          <div className="stack">
+            {(aset?.waMetaTopups ?? DEFAULT_WA_META_TOPUPS).map((p, i) => (
+              <div key={p.id} className="panel">
+                <span className="meta" style={{ fontWeight: 600 }}>Pilihan {i + 1}</span>
+                <div style={{ display: "grid", gridTemplateColumns: "minmax(120px, 1.4fr) minmax(110px, 1fr)", gap: "var(--space-xs)", marginTop: 6, alignItems: "end" }}>
+                  <label className="field">
+                    Label
+                    <input
+                      className="input"
+                      value={p.label}
+                      maxLength={40}
+                      onChange={(e) => updateMetaTopup(i, { label: e.target.value })}
+                      placeholder="mis. 10 Ribu"
+                    />
+                  </label>
+                  <label className="field">
+                    Nominal (Rp)
+                    <input
+                      className="input num"
+                      type="number"
+                      inputMode="numeric"
+                      min={2000}
+                      max={10000000}
+                      value={p.amount}
+                      onChange={(e) => updateMetaTopup(i, { amount: Number(e.target.value) })}
+                    />
+                  </label>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="card">
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "var(--space-xs)", flexWrap: "wrap" }}>
+            <strong className="card__title" style={{ marginBottom: 0 }}>Paket Top Up Token AI</strong>
+            <button
+              type="button"
+              className="btn btn--2 btn--sm"
+              onClick={addAiPackage}
+              disabled={(aset?.aiTopupPackages ?? DEFAULT_AI_TOPUP_PACKAGES).length >= 12}
+            >
+              <IconPlus size={15} /> Tambah
+            </button>
+          </div>
+          <p className="meta" style={{ margin: "4px 0 var(--space-xs)" }}>
+            Jumlah paket bebas (maks 12). Token yang didapat diisi langsung per paket.
+          </p>
+          <div className="stack">
+            {(aset?.aiTopupPackages ?? DEFAULT_AI_TOPUP_PACKAGES).map((p, i) => (
+              <div key={p.id} className="panel">
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 40px", gap: "var(--space-xs)", alignItems: "end" }}>
+                  <label className="field">
+                    Harga (Rp)
+                    <input
+                      className="input num"
+                      type="number"
+                      inputMode="numeric"
+                      min={1000}
+                      max={10000000}
+                      value={p.price}
+                      onChange={(e) => updateAiPackage(i, { price: Number(e.target.value) })}
+                    />
+                  </label>
+                  <label className="field">
+                    Token didapat
+                    <input
+                      className="input num"
+                      type="number"
+                      inputMode="numeric"
+                      min={1000}
+                      max={1000000000}
+                      value={p.tokens}
+                      onChange={(e) => updateAiPackage(i, { tokens: Number(e.target.value) })}
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    className="icon-btn"
+                    onClick={() => removeAiPackage(i)}
+                    disabled={(aset?.aiTopupPackages ?? DEFAULT_AI_TOPUP_PACKAGES).length <= 1}
+                    aria-label={`Hapus paket ${i + 1}`}
+                    title="Hapus paket"
+                  >
+                    <IconTrash size={16} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="card">
+          <strong className="card__title">Langganan AI Bulanan</strong>
+          <p className="meta" style={{ margin: "4px 0 var(--space-xs)" }}>
+            Tiga paket kartu langganan. Harga, token per bulan, durasi, dan fitur bisa diubah.
+          </p>
+          <div className="stack">
+            {(aset?.aiSubPlans ?? DEFAULT_AI_SUB_PLANS).map((p, i) => (
+              <div key={p.id} className="panel">
+                <span className="meta" style={{ fontWeight: 600 }}>Kartu {i + 1}</span>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: "var(--space-xs)", marginTop: 6, alignItems: "end" }}>
+                  <label className="field">
+                    Nama paket
+                    <input className="input" value={p.name} maxLength={40} onChange={(e) => updateAiSubPlan(i, { name: e.target.value })} />
+                  </label>
+                  <label className="field">
+                    Harga / bulan (Rp)
+                    <input className="input num" type="number" min={1000} max={10000000} value={p.price} onChange={(e) => updateAiSubPlan(i, { price: Number(e.target.value) })} />
+                  </label>
+                  <label className="field">
+                    Token / bulan
+                    <input className="input num" type="number" min={1000} max={1000000000} value={p.tokens} onChange={(e) => updateAiSubPlan(i, { tokens: Number(e.target.value) })} />
+                  </label>
+                  <label className="field">
+                    Durasi (bln)
+                    <input className="input num" type="number" min={1} max={36} value={p.months} onChange={(e) => updateAiSubPlan(i, { months: Number(e.target.value) })} />
+                  </label>
+                </div>
+                <label className="field" style={{ marginTop: "var(--space-xs)" }}>
+                  Fitur (satu per baris)
+                  <textarea
+                    className="input"
+                    rows={3}
+                    style={{ resize: "vertical" }}
+                    value={p.features.join("\n")}
+                    onChange={(e) => updateAiSubPlan(i, { features: e.target.value.split("\n").map((f) => f.trim()).filter(Boolean) })}
+                  />
+                </label>
+              </div>
+            ))}
+          </div>
+          <strong className="card__title" style={{ marginTop: "var(--space-m)" }}>Bonus Token Pendaftaran Accurate</strong>
+          <p className="meta" style={{ margin: "4px 0 var(--space-xs)" }}>
+            Diberikan sekali untuk perusahaan yang pertama kali mendaftar via Accurate.
+          </p>
+          <label className="field" style={{ maxWidth: 280 }}>
+            Jumlah token bonus
+            <input
+              className="input num"
+              type="number"
+              min={0}
+              max={1000000000}
+              value={aset?.aiSignupBonusTokens ?? DEFAULT_AI_SIGNUP_BONUS_TOKENS}
+              onChange={(e) => aset && setAset({ ...aset, aiSignupBonusTokens: Number(e.target.value) })}
+            />
+          </label>
+        </section>
+
+        <section className="card">
+          <strong className="card__title">Penyedia WhatsApp</strong>
           <div className="stack" style={{ gap: 0 }}>
             <label className="check">
               <input
-                type="radio" name="waprov" checked={(aset?.waProvider ?? "d360") === "d360"}
-                onChange={() => aset && setAset({ ...aset, waProvider: "d360" })}
+                type="radio" name="waprov" checked={(aset?.waProvider ?? "waserver") === "waserver"}
+                onChange={() => aset && setAset({ ...aset, waProvider: "waserver" })}
               />
-              <span>360dialog (default) — perusahaan tempel API key dari Hub 360dialog</span>
+              <span>Waserver — gateway WhatsApp milik platform (scan QR dari halaman WhatsApp)</span>
             </label>
             <label className="check">
               <input
@@ -239,84 +405,18 @@ export function Settings() {
               />
               <span>Meta Cloud API — Embedded Signup iframe (wajib verifikasi bisnis Meta)</span>
             </label>
-            <label className="check">
-              <input
-                type="radio" name="waprov" checked={aset?.waProvider === "waserver"}
-                onChange={() => aset && setAset({ ...aset, waProvider: "waserver" })}
-              />
-              <span>Waserver — gateway WhatsApp milik platform (scan QR dari halaman WhatsApp)</span>
-            </label>
           </div>
-          {(aset?.waProvider ?? "d360") === "waserver" && (
+          {(aset?.waProvider ?? "waserver") === "waserver" && (
             <p className="meta" style={{ margin: "var(--space-xs) 0 0" }}>
               {aset?.waserverReady
                 ? "Gateway aktif. Setiap perusahaan menghubungkan nomornya sendiri lewat halaman WhatsApp (scan QR)."
                 : "Gateway belum dikonfigurasi di server — isi WASERVER_URL dan WASERVER_API_KEY pada environment API lalu muat ulang."}
             </p>
           )}
-          {(aset?.waProvider ?? "d360") === "d360" && (
-            <>
-              <label className="field" style={{ maxWidth: 420, marginTop: "var(--space-xs)" }}>
-                API Key 360dialog platform (sandbox/utama)
-                <input
-                  className="input"
-                  type="text"
-                  value={aset?.waD360ApiKey ?? ""}
-                  onChange={(e) => aset && setAset({ ...aset, waD360ApiKey: e.target.value })}
-                  placeholder="tempel API key dari 360dialog"
-                />
-              </label>
-              <label className="field" style={{ maxWidth: 420 }}>
-                Base URL API
-                <input
-                  className="input"
-                  type="text"
-                  value={aset?.waD360BaseUrl ?? ""}
-                  onChange={(e) => aset && setAset({ ...aset, waD360BaseUrl: e.target.value })}
-                  placeholder="https://waba-v2.360dialog.io (sandbox: https://waba-sandbox.360dialog.io)"
-                />
-              </label>
-              <p className="meta" style={{ margin: 0 }}>
-                Sandbox hanya bisa kirim ke nomor penerima tetap (maks 200 pesan). Untuk produksi, daftarkan platform
-                sebagai <b>360dialog Partner</b> — API key klien dibuat otomatis setelah Embedded Signup.
-              </p>
-              <strong className="card__title" style={{ marginTop: "var(--space-s)" }}>
-                Partner (Embedded Signup otomatis)
-              </strong>
-              <label className="field" style={{ maxWidth: 420 }}>
-                Partner ID
-                <input
-                  className="input"
-                  type="text"
-                  value={aset?.waD360PartnerId ?? ""}
-                  onChange={(e) => aset && setAset({ ...aset, waD360PartnerId: e.target.value })}
-                  placeholder="partner ID dari 360dialog"
-                />
-              </label>
-              <label className="field" style={{ maxWidth: 420 }}>
-                Partner API Key
-                <input
-                  className="input"
-                  type="text"
-                  value={aset?.waD360PartnerKey ?? ""}
-                  onChange={(e) => aset && setAset({ ...aset, waD360PartnerKey: e.target.value })}
-                  placeholder="Partner API key"
-                />
-              </label>
-              <div className="btn-row">
-                <button
-                  className="btn btn--2"
-                  onClick={() =>
-                    void setD360Redirect()
-                      .then((r) => setD360Msg("Redirect siap dipakai."))
-                      .catch(() => setD360Msg("Gagal — pastikan Partner ID & Partner API Key tersimpan dulu."))
-                  }
-                >
-                  Daftarkan redirect URL ke halaman WhatsApp
-                </button>
-                {d360Msg && <p className="meta" style={{ margin: 0, alignSelf: "center" }}>{d360Msg}</p>}
-              </div>
-            </>
+          {aset?.waProvider === "meta" && (
+            <p className="meta" style={{ margin: "var(--space-xs) 0 0" }}>
+              Perusahaan mendaftarkan nomor lewat formulir Embedded Signup Meta di halaman WhatsApp.
+            </p>
           )}
         </section>
 

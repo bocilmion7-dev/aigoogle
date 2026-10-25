@@ -1,25 +1,26 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AppHeader, PageLoader } from "../ui";
-import { IconCheck } from "../icons";
+import { IconActivity, IconBell, IconChat, IconCheck, IconClock, IconLink, IconPackage, IconPhone, IconPower, IconQr, IconRefresh, IconSend, IconSettings, IconWallet } from "../icons";
 // package.json paket menunjuk file yang tak ada — impor langsung bundel ESM aslinya
-import { ConnectButton } from "360dialog-connect-button/dist/dialog-connect-button.esm.js";
-import { getMe, getWaWebhookEvents, waD360Onboard, putWaSettings, putWaWebhookEvents, getWaWaserverSession, reconnectWaWaserver, disconnectWaWaserver, type WaWaserverSession, waSubscribe, getWaSubscribeStatus } from "../api";
+import { getMe, getWaWebhookEvents, putWaSettings, putWaWebhookEvents, getWaWaserverSession, reconnectWaWaserver, disconnectWaWaserver, type WaWaserverSession, waSubscribe, getWaSubscribeStatus, type WaSubscribeResult } from "../api";
+import { DEFAULT_WA_META_TOPUPS, DEFAULT_WA_SUB_PLANS, type WaMetaTopup, type WaSubPlan } from "@aigoogle/shared";
 
 interface WaStatus {
   connected: boolean;
-  platformReady: boolean;
-  waProvider: "meta" | "d360" | "waserver";
+  waProvider: "meta" | "waserver";
   waserverReady?: boolean;
   accountProvider: string | null;
-  waD360PartnerId: string;
   account: { wabaId: string; phoneNumberId: string; displayName: string; status: string } | null;
   balance: number;
   costPerMessage: number;
   rupiahPerCredit: number;
-  settings: { autoDueDate: boolean; dailyReport: boolean; ownerPhone: string };
+  settings: { autoDueDate: boolean; dailyReport: boolean; ownerPhone: string; shopAi?: boolean };
   metaConfigured: boolean;
   embedUrl: string | null;
   billingEnabled: boolean;
+  subPlans?: WaSubPlan[];
+  metaTopups?: WaMetaTopup[];
+  waSubscription?: { plan: string; status: string; expiresAt: string | null; active: boolean } | null;
   recent: Array<{ id: string; to: string; body: string; status: string; error: string; createdAt: string; direction?: string }>;
 
 }
@@ -27,17 +28,16 @@ interface WaStatus {
 export function WhatsApp() {
   const [st, setSt] = useState<WaStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [amount, setAmount] = useState(10000);
-  const [busy, setBusy] = useState<"winpay" | "midtrans" | null>(null);
+  const [metaTopupsOpen, setMetaTopupsOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
   const [me, setMe] = useState<Awaited<ReturnType<typeof getMe>> | undefined>(undefined);
   const [waAuto, setWaAuto] = useState(false);
   const [waDaily, setWaDaily] = useState(false);
+  const [waShop, setWaShop] = useState(false);
   const [waPhone, setWaPhone] = useState("");
   const [waWh, setWaWh] = useState<{ events: string[]; rateMin: number; options: Array<{ key: string; label: string }> } | null>(null);
   const [admMsg, setAdmMsg] = useState<string | null>(null);
   const [admBusy, setAdmBusy] = useState(false);
-  const [d360Msg, setD360Msg] = useState<string | null>(null);
-  const [d360Busy, setD360Busy] = useState(false);
   const [qris, setQris] = useState<
     | {
         orderId: string;
@@ -48,7 +48,6 @@ export function WhatsApp() {
         qrUrl: string;
         qrContent: string;
         expiredAt: string;
-        provider: "winpay" | "midtrans";
       }
     | null
   >(null);
@@ -62,7 +61,8 @@ export function WhatsApp() {
 
   // ── Tab + langganan waserver ─────────────────────────────────────────────
   const [tab, setTab] = useState<"gateway" | "meta">("gateway");
-  const [subOrder, setSubOrder] = useState<string | null>(null);
+  const [subPlansOpen, setSubPlansOpen] = useState(false);
+  const [subQris, setSubQris] = useState<WaSubscribeResult | null>(null);
   const [subMsg, setSubMsg] = useState<string | null>(null);
   const [subBusy, setSubBusy] = useState(false);
 
@@ -204,37 +204,12 @@ export function WhatsApp() {
     if (!isAdmin || !st) return;
     setWaAuto(!!st.settings?.autoDueDate);
     setWaDaily(!!st.settings?.dailyReport);
+    setWaShop(!!st.settings?.shopAi);
     setWaPhone(st.settings?.ownerPhone ?? "");
     void getWaWebhookEvents()
       .then((s) => setWaWh({ events: s.events ?? [], rateMin: s.rateMin ?? 10, options: s.options ?? [] }))
       .catch(() => undefined);
   }, [isAdmin, st]);
-
-  // callback Connect Button: klien selesai Embedded Signup → generate & simpan API key channel.
-  // useCallback WAJIB — component memanggil ulang callback di tiap render bila identity berubah,
-  // dan query ?client=&channels= dibersihkan agar onboarding tidak terpicu berulang.
-  const onboardD360 = useCallback(
-    async (client: string, channels: string[]) => {
-      if (d360Busy) return;
-      setD360Busy(true);
-      setD360Msg(null);
-      window.history.replaceState({}, "", "/whatsapp");
-      try {
-        await waD360Onboard(client, channels);
-        setD360Msg("Nomor WhatsApp terhubung.");
-        load();
-      } catch (e) {
-        setD360Msg(
-          e instanceof Error && e.message.includes("d360_")
-            ? "Pendaftaran belum selesai diproses — coba lagi beberapa saat."
-            : "Gagal menghubungkan nomor."
-        );
-      } finally {
-        setD360Busy(false);
-      }
-    },
-    [d360Busy, load]
-  );
 
   function fmtStamp(iso: string): string {
     const d = new Date(iso);
@@ -247,7 +222,7 @@ export function WhatsApp() {
     setAdmMsg(null);
     setAdmBusy(true);
     try {
-      await putWaSettings({ autoDueDate: waAuto, dailyReport: waDaily, ownerPhone: waPhone });
+      await putWaSettings({ autoDueDate: waAuto, dailyReport: waDaily, ownerPhone: waPhone, shopAi: waShop });
       if (waWh) await putWaWebhookEvents({ events: waWh.events, rateMin: waWh.rateMin });
       setAdmMsg("Setelan perusahaan disimpan.");
       load();
@@ -263,16 +238,18 @@ export function WhatsApp() {
   // berubah antar render (React #310: "Rendered more hooks than during the
   // previous render") dan halaman blank.
   useEffect(() => {
-    if (!subOrder) return;
+    if (!subQris) return;
+    const orderId = subQris.orderId;
+    const planName = subQris.plan.name;
     const t = window.setInterval(() => {
-      void getWaSubscribeStatus(subOrder)
+      void getWaSubscribeStatus(orderId)
         .then((j) => {
           if (j.settled) {
-            setSubOrder(null);
-            setSubMsg("Langganan WhatsApp Gateway aktif.");
+            setSubQris(null);
+            setSubMsg(`Langganan ${planName} aktif.`);
             load();
           } else if (j.status === "cancel" || j.status === "expire") {
-            setSubOrder(null);
+            setSubQris(null);
             setSubMsg(null);
             setError("Langganan dibatalkan atau kedaluwarsa.");
           }
@@ -280,7 +257,21 @@ export function WhatsApp() {
         .catch(() => undefined);
     }, 4000);
     return () => window.clearInterval(t);
-  }, [subOrder, load]);
+  }, [subQris, load]);
+
+  // Esc menutup popup paket / top up / QRIS
+  useEffect(() => {
+    if (!subPlansOpen && !subQris && !metaTopupsOpen && !qris) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      setSubPlansOpen(false);
+      setSubQris(null);
+      setMetaTopupsOpen(false);
+      setQris(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [subPlansOpen, subQris, metaTopupsOpen, qris]);
 
   if (!st) {
     return (
@@ -293,16 +284,17 @@ export function WhatsApp() {
     );
   }
 
-  async function topup(provider: "winpay" | "midtrans" = "winpay") {
+  async function topup(baseAmount: number) {
     setError(null);
     setTopupMsg(null);
     setQris(null);
-    setBusy(provider);
+    setMetaTopupsOpen(false);
+    setBusy(true);
     try {
       const res = await fetch("/api/wa/topup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount, provider }),
+        body: JSON.stringify({ amount: baseAmount }),
       });
       const j = (await res.json()) as {
         error?: string;
@@ -312,29 +304,19 @@ export function WhatsApp() {
         amount?: number;      // total (termasuk fee)
         feeAmount?: number;   // biaya admin 0.2%
         baseAmount?: number;  // jumlah pokok
-        provider?: "winpay" | "midtrans";
-        qris?: { qrUrl: string; qrContent: string; contractId?: string; referenceNo?: string; expiredAt: string };
+        qris?: { qrUrl: string; qrContent: string; referenceNo?: string; expiredAt: string };
       };
       if (res.ok && j.qris && j.orderId) {
         setTopupMsg(null);
         setQris({
           orderId: j.orderId,
           credits: j.credits ?? 0,
-          amount: j.amount ?? amount,
+          amount: j.amount ?? baseAmount,
           feeAmount: j.feeAmount ?? 0,
-          baseAmount: j.baseAmount ?? amount,
-          provider: j.provider ?? provider,
+          baseAmount: j.baseAmount ?? baseAmount,
           ...j.qris,
         });
         return;
-      }
-      if (res.status === 503 && j.orderId) {
-        const s = await fetch(`/api/wa/topup/${j.orderId}/mock-settle`, { method: "POST" });
-        if (s.ok) {
-          load();
-          alert(`Topup mock settle: +${j.credits} kredit`);
-          return;
-        }
       }
       if (!res.ok) {
         setError(
@@ -346,189 +328,174 @@ export function WhatsApp() {
         );
       } else load();
     } finally {
-      setBusy(null);
+      setBusy(false);
     }
   }
 
-  async function subscribe(plan: "1bulan" | "2bulan" | "3bulan") {
+  async function subscribe(plan: WaSubPlan) {
     setError(null);
     setSubMsg(null);
-    setSubOrder(null);
+    setSubQris(null);
+    setSubPlansOpen(false);
     setSubBusy(true);
     try {
-      const j = await waSubscribe(plan);
-      setSubOrder(j.orderId);
-    } catch {
-      setSubMsg("Gagal membuat pesanan langganan — coba lagi.");
+      const j = await waSubscribe(plan.id);
+      setSubQris(j);
+    } catch (e) {
+      const code = e instanceof Error ? e.message : "";
+      setError(code === "billing_dormant" ? "Pembayaran QRIS belum aktif di platform." : "Gagal membuat pesanan langganan — coba lagi.");
     } finally {
       setSubBusy(false);
     }
   }
 
+  const subPlans = st.subPlans?.length ? st.subPlans : DEFAULT_WA_SUB_PLANS;
+  const metaTopups = st.metaTopups?.length ? st.metaTopups : DEFAULT_WA_META_TOPUPS;
+  const bestPlan = subPlans.reduce(
+    (a, b) => (b.price / Math.max(1, b.months) < a.price / Math.max(1, a.months) ? b : a),
+    subPlans[0]!
+  );
+  const subUntil = st.waSubscription?.expiresAt
+    ? new Date(st.waSubscription.expiresAt).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })
+    : null;
+  const gatewayConnected = st.waProvider === "waserver" && st.connected;
+  const metaConnected = st.waProvider === "meta" && st.connected;
+
   return (
     <div className="app">
       <AppHeader />
-      <main className="page page--narrow">
-        <h1>WhatsApp Gateway Platform</h1>
-        <p className="page__sub">
-          Kirim & terima pesan WhatsApp lewat dua saluran: <strong>Gateway WhatsApp</strong> (self-hosted via
-          Baileys, langganan bulanan) dan <strong>WhatsApp META</strong> (Business Platform resmi, pembelian kredit).
-          Pilih tab di bawah untuk mengelola masing-masing saluran.
-        </p>
+      <main className="page page--narrow wa-page">
+        <header className="wa-head">
+          <div>
+            <h1>WhatsApp</h1>
+            <p className="page__sub">Gateway &amp; META</p>
+          </div>
+          <div className="wa-chips">
+            <span className={`wa-chip ${(tab === "gateway" ? gatewayConnected : metaConnected) ? "is-ok" : "is-off"}`}>
+              {tab === "gateway" ? <IconChat size={14} /> : <IconSend size={14} />}
+              {(tab === "gateway" ? gatewayConnected : metaConnected) ? "Terhubung" : "Terputus"}
+            </span>
+          </div>
+        </header>
 
-        <div className="tabs">
-          <button
-            type="button"
-            className={`tabs__btn ${tab === "gateway" ? "tabs__btn--active" : ""}`}
-            onClick={() => setTab("gateway")}
-            aria-pressed={tab === "gateway"}
-          >
-            WhatsApp Gateway
+        <div className="tabs tabs--fill">
+          <button type="button" className="tab" onClick={() => setTab("gateway")} aria-pressed={tab === "gateway"}>
+            <IconChat size={16} /> Gateway
           </button>
-          <button
-            type="button"
-            className={`tabs__btn ${tab === "meta" ? "tabs__btn--active" : ""}`}
-            onClick={() => setTab("meta")}
-            aria-pressed={tab === "meta"}
-          >
-            WhatsApp META
+          <button type="button" className="tab" onClick={() => setTab("meta")} aria-pressed={tab === "meta"}>
+            <IconSend size={16} /> META
           </button>
         </div>
 
         {/* ── Tab 1: WhatsApp Gateway (waserver) ── */}
         {tab === "gateway" && (
           <>
-            <section className="card">
-              <strong className="card__title">Status WhatsApp Gateway</strong>
-              {st.waProvider === "waserver" && st.connected ? (
-                <>
-                  <p className="small muted" style={{ margin: "0 0 4px" }}>
-                    Terhubung{st.account?.displayName ? ` — nomor ${st.account.displayName}` : ""}
-                    <span className="trust-tag">
-                      <IconCheck size={14} /> Gateway Baileys
-                    </span>
-                  </p>
-                  <p className="small" style={{ margin: 0 }}>
-                    Saldo: <strong className="num">{st.balance}</strong> kredit ·{" "}
-                    <span className="num">{st.rupiahPerCredit}</span> Rp/kirim
-                  </p>
-                </>
-              ) : (
-                <>
-                  <p className="small muted" style={{ margin: "0 0 4px" }}>
-                    Belum terhubung
-                  </p>
-                  <p className="small" style={{ margin: 0 }}>
-                    Silakan scan QR di bawah untuk menghubungkan nomor WhatsApp ke gateway waserver.
-                  </p>
-                </>
-              )}
+            <section className="card wa-card">
+              <div className="wa-card-head">
+                <span className={`wa-icon${gatewayConnected ? " is-ok" : ""}`}>
+                  <IconChat size={18} />
+                </span>
+                <div className="wa-card-title">
+                  <strong>Gateway</strong>
+                  <span className="meta">
+                    {gatewayConnected ? st.account?.displayName || "Nomor terhubung" : "Belum terhubung"}
+                  </span>
+                </div>
+                <div className="wa-actions">
+                  {!gatewayConnected ? (
+                    <button
+                      type="button"
+                      className="btn btn--sm"
+                      onClick={wasOpenModal}
+                      disabled={!!wasBusy}
+                      aria-busy={!!wasBusy}
+                      title="Hubungkan WhatsApp"
+                    >
+                      {wasBusy === "load" ? <span className="spinner" aria-hidden="true" /> : <IconLink size={16} />}
+                      Hubungkan
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        className="icon-btn"
+                        onClick={() => void wasReconnect()}
+                        disabled={!!wasBusy}
+                        aria-busy={!!wasBusy}
+                        aria-label="Sambungkan ulang"
+                        title="Sambungkan ulang"
+                      >
+                        {wasBusy === "reconnect" ? <span className="spinner" aria-hidden="true" /> : <IconRefresh size={16} />}
+                      </button>
+                      <button
+                        type="button"
+                        className="icon-btn"
+                        onClick={() => void wasDisconnect()}
+                        disabled={!!wasBusy}
+                        aria-label="Putuskan"
+                        title="Putuskan"
+                      >
+                        <IconPower size={16} />
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
               {wasMsg && (
-                <p className="banner banner--err" role="alert" style={{ marginTop: "var(--space-xs)", marginBottom: 0 }}>
+                <p className="banner banner--err" role="alert" style={{ margin: "var(--space-xs) 0 0" }}>
                   {wasMsg}
                 </p>
               )}
-              <div style={{ display: "flex", gap: "var(--space-xs)", marginTop: "var(--space-m)", flexWrap: "wrap" }}>
-                {!st.connected && (
-                  <button
-                    type="button"
-                    className="btn"
-                    onClick={wasOpenModal}
-                    disabled={!!wasBusy}
-                    aria-busy={!!wasBusy}
-                  >
-                    {wasBusy === "load" && <span className="spinner" aria-hidden="true" />}
-                    Hubungkan WhatsApp
-                  </button>
-                )}
-                {st.connected && (
-                  <button
-                    type="button"
-                    className="btn btn--2"
-                    onClick={() => void wasReconnect()}
-                    disabled={!!wasBusy}
-                    aria-busy={!!wasBusy}
-                  >
-                    {wasBusy === "reconnect" && <span className="spinner" aria-hidden="true" />}
-                    Sambungkan ulang
-                  </button>
-                )}
-                {st.connected && (
-                  <button
-                    type="button"
-                    className="btn btn--2"
-                    onClick={() => void wasDisconnect()}
-                    disabled={!!wasBusy}
-                  >
-                    Putuskan
-                  </button>
-                )}
-              </div>
             </section>
 
-            <section className="card">
-              <strong className="card__title">Langganan WhatsApp Gateway (Midtrans)</strong>
-              <p className="meta">
-                Aktifkan akses gateway waserver lewat langganan bulanan dibayar via Midtrans QRIS.
-              </p>
-              <div className="grid-2" style={{ marginTop: "var(--space-xs)" }}>
+            <section className="card wa-card">
+              <div className="wa-card-head">
+                <span className={`wa-icon${st.waSubscription?.active ? " is-ok" : ""}`}>
+                  <IconPackage size={18} />
+                </span>
+                <div className="wa-card-title">
+                  <strong>Langganan</strong>
+                  {st.waSubscription?.active ? (
+                    <span className="wa-inline-ok">
+                      <IconCheck size={13} /> s.d. {subUntil ?? "tanpa batas"}
+                    </span>
+                  ) : st.waSubscription?.expiresAt ? (
+                    <span className="meta">Berakhir {subUntil}</span>
+                  ) : (
+                    <span className="meta">Belum aktif</span>
+                  )}
+                </div>
                 <button
                   type="button"
-                  className="btn btn--block"
-                  onClick={() => void subscribe("1bulan")}
-                  disabled={subBusy || subOrder !== null}
+                  className="btn btn--sm"
+                  onClick={() => {
+                    setSubMsg(null);
+                    setError(null);
+                    setSubPlansOpen(true);
+                  }}
+                  disabled={subBusy}
                   aria-busy={subBusy}
+                  title={st.waSubscription?.active ? "Perpanjang langganan" : "Pilih paket langganan"}
                 >
-                  {subBusy && <span className="spinner" aria-hidden="true" />}
-                  1 Bulan · 30.000 Rp
-                </button>
-                <button
-                  type="button"
-                  className="btn btn--block"
-                  onClick={() => void subscribe("2bulan")}
-                  disabled={subBusy || subOrder !== null}
-                  aria-busy={subBusy}
-                >
-                  {subBusy && <span className="spinner" aria-hidden="true" />}
-                  2 Bulan · 50.000 Rp
-                </button>
-                <button
-                  type="button"
-                  className="btn btn--block"
-                  onClick={() => void subscribe("3bulan")}
-                  disabled={subBusy || subOrder !== null}
-                  aria-busy={subBusy}
-                >
-                  {subBusy && <span className="spinner" aria-hidden="true" />}
-                  3 Bulan · 75.000 Rp
+                  {subBusy ? (
+                    <span className="spinner" aria-hidden="true" />
+                  ) : st.waSubscription?.active ? (
+                    <IconRefresh size={15} />
+                  ) : (
+                    <IconPackage size={15} />
+                  )}
+                  {st.waSubscription?.active ? "Perpanjang" : "Pilih Paket"}
                 </button>
               </div>
               {subMsg && (
-                <p className="banner banner--ok" role="status" style={{ marginTop: "var(--space-xs)", marginBottom: 0 }}>
+                <p className="banner banner--ok" role="status" style={{ margin: "var(--space-xs) 0 0" }}>
                   {subMsg}
                 </p>
               )}
               {error && (
-                <p className="banner banner--err" role="alert" style={{ marginTop: "var(--space-xs)", marginBottom: 0 }}>
+                <p className="banner banner--err" role="alert" style={{ margin: "var(--space-xs) 0 0" }}>
                   {error}
                 </p>
-              )}
-              {subOrder && (
-                <div className="qris-panel" role="status">
-                  <p className="meta" style={{ margin: "0 0 var(--space-xs)", fontWeight: 600 }}>
-                    Pembayaran langganan via QRIS Midtrans · order {subOrder}
-                  </p>
-                  <p className="meta" style={{ margin: "0 0 var(--space-xs)" }}>
-                    <span className="busy-dot" aria-hidden="true" /> Menunggu pembayaran…
-                  </p>
-                  <button
-                    className="btn btn--2 btn--block"
-                    style={{ marginTop: "var(--space-xs)" }}
-                    onClick={() => setSubOrder(null)}
-                  >
-                    Tutup
-                  </button>
-                </div>
               )}
             </section>
           </>
@@ -537,135 +504,66 @@ export function WhatsApp() {
         {/* ── Tab 2: WhatsApp META ── */}
         {tab === "meta" && (
           <>
-            <section className="card">
-              <strong className="card__title">Status WhatsApp META</strong>
-              {(st.waProvider === "d360" || st.waProvider === "meta") && st.connected ? (
-                <>
-                  <p className="small muted" style={{ margin: "0 0 4px" }}>
-                    Terhubung{st.account?.displayName ? ` (${st.account.displayName})` : ""}
-                    <span className="trust-tag">
-                      <IconCheck size={14} /> WhatsApp Business resmi Meta
-                    </span>
-                  </p>
-                  <p className="small" style={{ margin: 0 }}>
-                    Saldo: <strong className="num">{st.balance}</strong> kredit ·{" "}
-                    <span className="num">{st.rupiahPerCredit}</span> Rp/kirim
-                  </p>
-                </>
-              ) : (
-                <>
-                  <p className="small muted" style={{ margin: "0 0 4px" }}>
-                    Belum terhubung
-                  </p>
-                  <p className="small" style={{ margin: 0 }}>
-                    Daftarkan nomor bisnis lewat Meta Embedded Signup atau Connect Button di bawah.
-                  </p>
-                </>
-              )}
-              {d360Msg && <p className="banner banner--ok" role="status" style={{ marginTop: "var(--space-xs)", marginBottom: 0 }}>{d360Msg}</p>}
-              <div style={{ marginTop: "var(--space-m)" }}>
-                {st.waProvider === "d360" && (
-                  <>
-                    <div className="wa-connect">
-                      <ConnectButton
-                        partnerId={st.waD360PartnerId}
-                        label="Hubungkan WhatsApp Bisnis"
-                        callback={(cb) => void onboardD360(cb.client, cb.channels)}
-                      />
-                    </div>
-                    {d360Busy && (
-                      <p className="meta" style={{ margin: "var(--space-xs) 0 0" }}>
-                        <span className="spinner" aria-hidden="true" /> Memproses…
-                      </p>
-                    )}
-                    {st.connected ? (
-                      <p className="banner banner--ok" role="status" style={{ marginTop: "var(--space-xs)", marginBottom: 0 }}>
-                        Nomor WhatsApp Business perusahaan terhubung — notifikasi & otomasi siap dikirim lewat saluran resmi Meta.
-                      </p>
-                    ) : null}
-                  </>
-                )}
-                {st.waProvider === "meta" && (
-                  <>
-                    <p className="meta">
-                      Daftarkan nomor bisnis Anda lewat formulir Embedded Signup resmi Meta di bawah —
-                      setelah disetujui Meta, nomor aktif sebagai WhatsApp Business Platform resmi.
-                    </p>
-                    <p className="trust-line">
-                      <IconCheck size={15} /> Saluran resmi Meta Cloud API — aman & sesuai kebijakan WhatsApp.
-                    </p>
-                    {st.embedUrl ? (
-                      <iframe title="Meta WhatsApp Embedded Signup" src={st.embedUrl} className="embed" />
-                    ) : (
-                      <p className="meta" style={{ marginBottom: 0 }}>
-                        Formulir belum tersedia — hubungi pengurus sistem.
-                      </p>
-                    )}
-                  </>
-                )}
-                {(st.waProvider !== "d360" && st.waProvider !== "meta") && (
-                  <p className="meta">
-                    Provider WhatsApp saat ini adalah{" "}
-                    <strong>{st.waProvider === "waserver" ? "Waserver Gateway" : st.waProvider}</strong>. Untuk pakai
-                    WhatsApp META, ubah penyedia di menu Pengaturan (Admin Platform).
-                  </p>
+            <section className="card wa-card">
+              <div className="wa-card-head">
+                <span className={`wa-icon${metaConnected ? " is-ok" : ""}`}>
+                  <IconSend size={18} />
+                </span>
+                <div className="wa-card-title">
+                  <strong>META</strong>
+                  <span className="meta">
+                    {metaConnected ? st.account?.displayName || "Nomor terhubung" : "Belum terhubung"}
+                  </span>
+                </div>
+                {metaConnected && (
+                  <span className="wa-chip is-ok">
+                    <IconCheck size={13} /> Resmi
+                  </span>
                 )}
               </div>
+              {st.waProvider === "meta" &&
+                (st.embedUrl ? (
+                  <iframe title="Meta WhatsApp Embedded Signup" src={st.embedUrl} className="embed" style={{ marginTop: "var(--space-xs)" }} />
+                ) : (
+                  <p className="meta" style={{ margin: "var(--space-xs) 0 0" }}>
+                    Formulir belum tersedia.
+                  </p>
+                ))}
+              {st.waProvider === "waserver" && (
+                <p className="meta" style={{ margin: "var(--space-xs) 0 0" }}>
+                  Provider aktif: <strong>Waserver Gateway</strong> — kelola koneksi di tab Gateway.
+                </p>
+              )}
             </section>
 
-            <section className="card">
-              <strong className="card__title">Topup Saldo WhatsApp META</strong>
-              <p className="meta">
-                1 kredit = <span className="num">{st.rupiahPerCredit}</span> rupiah (biaya kirim 1 pesan).{" "}
-                <span style={{ color: "var(--muted)" }}>Ditambah biaya admin service charges 0,2%.</span>
-              </p>
-              <label className="field" style={{ display: "block" }}>
-                Jumlah rupiah (pokok)
-                <input
-                  className="input num"
-                  type="number"
-                  inputMode="numeric"
-                  min={2000}
-                  step={1000}
-                  value={amount}
-                  onChange={(e) => setAmount(Number(e.target.value))}
-                />
-              </label>
-              <p className="meta" style={{ margin: "4px 0 0" }}>
-                Total dibayar:{" "}
-                {(amount + Math.floor(amount * 0.002)).toLocaleString("id-ID")} Rp
-                (termasuk biaya admin 0,2% ·{" "}
-                <span className="num">
-                  {Math.floor(amount / st.rupiahPerCredit)} kredit
+            <section className="card wa-card">
+              <div className="wa-card-head">
+                <span className="wa-icon">
+                  <IconWallet size={18} />
                 </span>
-                )
-              </p>
-              <button
-                className="btn btn--block"
-                style={{ marginTop: "var(--space-xs)" }}
-                onClick={() => void topup()}
-                disabled={busy !== null}
-                aria-busy={busy === "winpay"}
-                aria-label="Topup saldo WhatsApp META"
-              >
-                {busy === "winpay" && <span className="spinner" aria-hidden="true" />}
-                {busy === "winpay"
-                  ? "Memproses…"
-                  : `Topup ${amount.toLocaleString("id-ID")} Rp (+0,2% admin)`}
-              </button>
-              <button
-                className="btn btn--2 btn--block"
-                style={{ marginTop: "var(--space-xs)" }}
-                onClick={() => void topup("midtrans")}
-                disabled={busy !== null}
-                aria-busy={busy === "midtrans"}
-                aria-label="Topup saldo META via Midtrans QRIS"
-              >
-                {busy === "midtrans" && <span className="spinner" aria-hidden="true" />}
-                {busy === "midtrans"
-                  ? "Memproses…"
-                  : `Topup via Midtrans ${amount.toLocaleString("id-ID")} Rp (+0,2% admin)`}
-              </button>
+                <div className="wa-card-title">
+                  <strong>Saldo META</strong>
+                  <span className="meta">
+                    {st.balance} kredit · {st.rupiahPerCredit} Rp/kirim
+                  </span>
+                </div>
+              </div>
+              <div className="wa-topup-row">
+                <button
+                  className="btn btn--block"
+                  onClick={() => {
+                    setTopupMsg(null);
+                    setError(null);
+                    setMetaTopupsOpen(true);
+                  }}
+                  disabled={busy}
+                  aria-busy={busy}
+                  aria-label="Top up saldo META via Midtrans QRIS"
+                >
+                  {busy ? <span className="spinner" aria-hidden="true" /> : <IconWallet size={16} />}
+                  {busy ? "Memproses…" : "Top Up"}
+                </button>
+              </div>
               {topupMsg && (
                 <p className="banner banner--ok" role="status" style={{ marginTop: "var(--space-xs)", marginBottom: 0 }}>
                   {topupMsg}
@@ -676,73 +574,101 @@ export function WhatsApp() {
                   {error}
                 </p>
               )}
-              {qris && (
-                <div className="qris-panel" role="status">
-                  <p
-                    className="meta"
-                    style={{
-                      margin: "0 0 var(--space-xs)",
-                      fontWeight: 600,
-                      color: qris.provider === "midtrans" ? "var(--accent-strong)" : "var(--ink)",
-                    }}
-                  >
-                    {qris.provider === "midtrans" ? "Pembayaran via QRIS Midtrans" : "Pembayaran via QRIS Winpay"}
-                    <span className="meta" style={{ fontWeight: 400 }}>
-                      {" "}
-                      · order {qris.orderId}
-                    </span>
-                  </p>
-                  <img src={qris.qrUrl} alt="Kode QRIS pembayaran" width={200} height={200} />
-                  <div className="qris-info">
-                    <strong>
-                      {qris.baseAmount.toLocaleString("id-ID")} Rp · {qris.credits} kredit
-                    </strong>
-                    <p className="meta" style={{ margin: "4px 0 0" }}>
-                      Biaya admin 0,2%:{" "}
-                      {qris.feeAmount.toLocaleString("id-ID")} Rp · Total: {qris.amount.toLocaleString("id-ID")} Rp
-                    </p>
-                    <p className="meta" style={{ margin: "4px 0 0" }}>
-                      Scan dengan aplikasi pembayaran apa pun (m-Banking, GoPay, OVO, DANA). Berlaku sampai{" "}
-                      {qris.expiredAt
-                        ? new Date(qris.expiredAt).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })
-                        : "15 menit lagi"}
-                      .
-                    </p>
-                    <p className="meta" style={{ margin: "4px 0 0" }}>
-                      <span className="busy-dot" aria-hidden="true" /> Menunggu pembayaran…
-                    </p>
-                    <button
-                      className="btn btn--2 btn--block"
-                      style={{ marginTop: "var(--space-xs)" }}
-                      onClick={() => {
-                        setQris(null);
-                        setTopupMsg(null);
-                      }}
-                    >
-                      Tutup
-                    </button>
-                  </div>
-                </div>
-              )}
             </section>
           </>
         )}
 
+        <section className="card wa-card">
+          <div className="wa-card-head wa-card-head--split">
+            <span className="wa-icon">
+              <IconChat size={18} />
+            </span>
+            <div className="wa-card-title">
+              <strong>Toko &amp; Riwayat</strong>
+              <span className="meta">Percakapan pembeli &amp; AI penjaga toko</span>
+            </div>
+            <div className="wa-actions">
+              <a className="btn btn--2 btn--sm" href="/sandbox" title="Uji AI tanpa mengirim WhatsApp">
+                Sandbox
+              </a>
+              <a className="btn btn--2 btn--sm" href="/wa-chats" title="Buka riwayat chat WhatsApp">
+                <IconChat size={16} /> Riwayat Chat
+              </a>
+            </div>
+          </div>
+          {isAdmin ? (
+            <>
+              <div className="wa-options">
+                <label className="wa-option">
+                  <input type="checkbox" checked={waShop} onChange={(e) => setWaShop(e.target.checked)} />
+                  <IconChat size={16} />
+                  <span>AI penjaga toko</span>
+                </label>
+              </div>
+              <div className="wa-actions" style={{ marginTop: "var(--space-xs)" }}>
+                <button
+                  type="button"
+                  className="btn btn--sm"
+                  onClick={() => void saveAdmin()}
+                  disabled={admBusy}
+                  aria-busy={admBusy}
+                  title="Simpan status AI penjaga toko"
+                >
+                  {admBusy ? <span className="spinner" aria-hidden="true" /> : <IconCheck size={15} />}
+                  Simpan
+                </button>
+              </div>
+            </>
+          ) : (
+            <p className="meta" style={{ margin: 0 }}>
+              Aktifkan AI penjaga toko lewat akun admin perusahaan.
+            </p>
+          )}
+          {admMsg && (
+            <p className="banner banner--ok" role="status" style={{ margin: "var(--space-xs) 0 0" }}>
+              {admMsg}
+            </p>
+          )}
+        </section>
+
         {isAdmin && (
-          <section className="card">
-            <strong className="card__title">Setelan perusahaan — Otomasi WhatsApp</strong>
-            <div className="stack" style={{ gap: 0 }}>
-              <label className="check check--sm">
+          <section className="card wa-card">
+            <div className="wa-card-head">
+              <span className="wa-icon">
+                <IconSettings size={18} />
+              </span>
+              <div className="wa-card-title">
+                <strong>Otomasi</strong>
+                <span className="meta">Pengingat &amp; notifikasi</span>
+              </div>
+              <button
+                type="button"
+                className="btn btn--sm"
+                onClick={() => void saveAdmin()}
+                disabled={admBusy}
+                aria-busy={admBusy}
+                title="Simpan setelan"
+              >
+                {admBusy ? <span className="spinner" aria-hidden="true" /> : <IconCheck size={15} />}
+                Simpan
+              </button>
+            </div>
+            <div className="wa-options">
+              <label className="wa-option">
                 <input type="checkbox" checked={waAuto} onChange={(e) => setWaAuto(e.target.checked)} />
-                <span>Ingatkan tagihan jatuh tempo ke pelanggan</span>
+                <IconClock size={16} />
+                <span>Jatuh tempo</span>
               </label>
-              <label className="check check--sm">
+              <label className="wa-option">
                 <input type="checkbox" checked={waDaily} onChange={(e) => setWaDaily(e.target.checked)} />
-                <span>Laporan harian ke pemilik usaha (jam 08.00)</span>
+                <IconActivity size={16} />
+                <span>Laporan harian</span>
               </label>
             </div>
-            <label className="field" style={{ maxWidth: 300, marginTop: "var(--space-xs)" }}>
-              Nomor WhatsApp pemilik (format 62…)
+            <label className="field" style={{ marginTop: "var(--space-xs)" }}>
+              <span>
+                <IconPhone size={14} /> Nomor pemilik
+              </span>
               <input
                 className="input num"
                 type="tel"
@@ -753,60 +679,60 @@ export function WhatsApp() {
                 placeholder="628123456789"
               />
             </label>
-
-            <strong className="card__title" style={{ marginTop: "var(--space-s)" }}>
-              Notifikasi perubahan data Accurate
-            </strong>
-            <p className="small muted" style={{ margin: "0 0 var(--space-xs)" }}>
-              Kirim WhatsApp otomatis ke nomor pemilik setiap ada perubahan data yang dipilih — dibatasi sekali
-              per jeda per jenis data agar tidak spam.
-            </p>
-            <div className="stack" style={{ gap: 0 }}>
-              {(waWh?.options ?? []).map((o) => (
-                <label className="check check--sm" key={o.key}>
+            <details className="wa-details">
+              <summary>
+                <IconBell size={16} />
+                Notifikasi Accurate
+                <span className="wa-count">{waWh?.events.length ?? 0}</span>
+              </summary>
+              <div className="wa-details-body">
+                <div className="stack" style={{ gap: 0 }}>
+                  {(waWh?.options ?? []).map((o) => (
+                    <label className="check check--sm" key={o.key}>
+                      <input
+                        type="checkbox"
+                        checked={waWh?.events.includes(o.key) ?? false}
+                        onChange={(e) =>
+                          setWaWh((s) =>
+                            s
+                              ? { ...s, events: e.target.checked ? [...s.events, o.key] : s.events.filter((x) => x !== o.key) }
+                              : s
+                          )
+                        }
+                      />
+                      <span>{o.label}</span>
+                    </label>
+                  ))}
+                </div>
+                <label className="field" style={{ maxWidth: 200 }}>
+                  Jeda (menit)
                   <input
-                    type="checkbox"
-                    checked={waWh?.events.includes(o.key) ?? false}
-                    onChange={(e) =>
-                      setWaWh((s) =>
-                        s
-                          ? { ...s, events: e.target.checked ? [...s.events, o.key] : s.events.filter((x) => x !== o.key) }
-                          : s
-                      )
-                    }
+                    className="input num"
+                    type="number"
+                    inputMode="numeric"
+                    min={1}
+                    max={1440}
+                    value={waWh?.rateMin ?? 10}
+                    onChange={(e) => setWaWh((s) => (s ? { ...s, rateMin: Number(e.target.value) } : s))}
                   />
-                  <span>{o.label}</span>
                 </label>
-              ))}
-            </div>
-            <label className="field" style={{ maxWidth: 220, marginTop: "var(--space-xs)" }}>
-              Jeda antar-notifikasi per jenis data (menit)
-              <input
-                className="input num"
-                type="number"
-                inputMode="numeric"
-                min={1}
-                max={1440}
-                value={waWh?.rateMin ?? 10}
-                onChange={(e) => setWaWh((s) => (s ? { ...s, rateMin: Number(e.target.value) } : s))}
-              />
-            </label>
-            {admMsg && <p className="banner banner--ok" role="status" style={{ marginTop: "var(--space-xs)", marginBottom: 0 }}>{admMsg}</p>}
-            <button
-              className="btn btn--block"
-              style={{ marginTop: "var(--space-xs)" }}
-              onClick={() => void saveAdmin()}
-              disabled={admBusy}
-              aria-busy={admBusy}
-            >
-              {admBusy && <span className="spinner" aria-hidden="true" />}
-              Simpan setelan perusahaan
-            </button>
+              </div>
+            </details>
+            {admMsg && (
+              <p className="banner banner--ok" role="status" style={{ margin: "var(--space-xs) 0 0" }}>
+                {admMsg}
+              </p>
+            )}
           </section>
         )}
 
-        <section className="card">
-          <strong className="card__title">Riwayat pesan (20 terakhir)</strong>
+        <details className="card wa-card wa-details">
+          <summary>
+            <IconChat size={16} />
+            Riwayat pesan
+            <span className="wa-count">{st.recent.length}</span>
+          </summary>
+          <div className="wa-details-body">
           {st.recent.length === 0 ? (
             <p className="empty" style={{ padding: "var(--space-m) 0" }}>
               Belum ada pesan terkirim.
@@ -861,7 +787,8 @@ export function WhatsApp() {
               })}
             </ul>
           )}
-        </section>
+          </div>
+        </details>
       </main>
 
       {wasOpen && (
@@ -934,6 +861,214 @@ export function WhatsApp() {
                 <span className="spinner" aria-hidden="true" /> Menyiapkan sesi WhatsApp…
               </p>
             )}
+          </div>
+        </div>
+      )}
+
+      {metaTopupsOpen && (
+        <div className="modal-overlay" onClick={() => setMetaTopupsOpen(false)}>
+          <div
+            className="modal modal--plans"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="topup-plan-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal__head">
+              <strong className="card__title" id="topup-plan-title">
+                Top Up META
+              </strong>
+              <button
+                type="button"
+                className="modal__x"
+                onClick={() => setMetaTopupsOpen(false)}
+                aria-label="Tutup pilihan top up"
+              >
+                ×
+              </button>
+            </div>
+            <p className="meta" style={{ margin: 0 }}>
+              Pilih nominal. Kredit masuk otomatis setelah pembayaran QRIS lunas.
+            </p>
+            <div className="plan-grid">
+              {metaTopups.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  className="plan-option"
+                  onClick={() => void topup(t.amount)}
+                >
+                  <span className="plan-option__name">{t.label}</span>
+                  <span className="plan-option__months">
+                    {Math.floor(t.amount / st.rupiahPerCredit)} kredit
+                  </span>
+                  <span className="plan-option__price">Rp{t.amount.toLocaleString("id-ID")}</span>
+                </button>
+              ))}
+            </div>
+            <div className="modal__foot">
+              <button type="button" className="btn" onClick={() => setMetaTopupsOpen(false)}>
+                Batal
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {qris && (
+        <div className="modal-overlay" onClick={() => { setQris(null); setTopupMsg(null); }}>
+          <div
+            className="modal modal--qr modal--sub-qr"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="topup-qr-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal__head">
+              <IconQr size={18} />
+              <strong className="card__title" id="topup-qr-title">
+                Top Up META
+              </strong>
+              <button
+                type="button"
+                className="modal__x"
+                onClick={() => { setQris(null); setTopupMsg(null); }}
+                aria-label="Tutup pembayaran"
+              >
+                ×
+              </button>
+            </div>
+            <div className="qr-card">
+              <p className="qr-card__status">
+                {qris.credits} kredit · Rp{qris.amount.toLocaleString("id-ID")}
+              </p>
+              {qris.qrUrl ? (
+                <img src={qris.qrUrl} alt="Kode QRIS top up" width={220} height={220} />
+              ) : (
+                <p style={{ fontFamily: "monospace", wordBreak: "break-all", margin: 0 }}>{qris.qrContent}</p>
+              )}
+              <p className="qr-card__status" role="status" aria-live="polite">
+                <span className="busy-dot" aria-hidden="true" /> Menunggu pembayaran…
+              </p>
+              <p className="qr-card__hint">Scan dengan aplikasi QRIS apa pun. Status diperbarui otomatis.</p>
+            </div>
+            <p className="meta" style={{ margin: 0, textAlign: "center" }}>
+              Order {qris.orderId}
+              {qris.expiredAt
+                ? ` · berlaku sampai ${new Date(qris.expiredAt).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}`
+                : ""}
+            </p>
+            <div className="modal__foot">
+              <button type="button" className="btn" onClick={() => { setQris(null); setTopupMsg(null); }}>
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {subPlansOpen && (
+        <div className="modal-overlay" onClick={() => setSubPlansOpen(false)}>
+          <div
+            className="modal modal--plans"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="sub-plan-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal__head">
+              <strong className="card__title" id="sub-plan-title">
+                Pilih Paket Langganan
+              </strong>
+              <button
+                type="button"
+                className="modal__x"
+                onClick={() => setSubPlansOpen(false)}
+                aria-label="Tutup pilihan paket"
+              >
+                ×
+              </button>
+            </div>
+            <p className="meta" style={{ margin: 0 }}>
+              Harga & nama paket diatur Admin Platform. Pilih satu untuk melanjutkan ke pembayaran QRIS.
+            </p>
+            <div className="plan-grid">
+              {subPlans.map((p) => {
+                const best = p.id === bestPlan.id;
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    className={`plan-option${best ? " plan-option--best" : ""}`}
+                    onClick={() => void subscribe(p)}
+                  >
+                    {best && <span className="plan-option__badge">Paling hemat</span>}
+                    <span className="plan-option__name">{p.name}</span>
+                    <span className="plan-option__months">{p.months} bulan akses</span>
+                    <span className="plan-option__price">Rp{p.price.toLocaleString("id-ID")}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="modal__foot">
+              <button type="button" className="btn" onClick={() => setSubPlansOpen(false)}>
+                Batal
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {subQris && (
+        <div className="modal-overlay" onClick={() => setSubQris(null)}>
+          <div
+            className="modal modal--qr modal--sub-qr"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="sub-qr-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal__head">
+              <span className="modal__spin" aria-hidden="true" />
+              <strong className="card__title" id="sub-qr-title">
+                Pembayaran Langganan
+              </strong>
+              <button
+                type="button"
+                className="modal__x"
+                onClick={() => setSubQris(null)}
+                aria-label="Tutup pembayaran"
+              >
+                ×
+              </button>
+            </div>
+            <div className="qr-card">
+              <p className="qr-card__status">
+                {subQris.plan.name} · Rp{subQris.amount.toLocaleString("id-ID")}
+              </p>
+              {subQris.qris.qrUrl ? (
+                <img src={subQris.qris.qrUrl} alt="QRIS pembayaran langganan" width={220} height={220} />
+              ) : (
+                <p style={{ fontFamily: "monospace", wordBreak: "break-all", margin: 0 }}>
+                  {subQris.qris.qrContent}
+                </p>
+              )}
+              <p className="qr-card__status" role="status" aria-live="polite">
+                <span className="busy-dot" aria-hidden="true" /> Menunggu pembayaran…
+              </p>
+              <p className="qr-card__hint">
+                Scan dengan aplikasi QRIS apa pun. Status diperbarui otomatis; popup tertutup sendiri setelah lunas.
+              </p>
+            </div>
+            <p className="meta" style={{ margin: 0, textAlign: "center" }}>
+              Order {subQris.orderId} · berlaku sampai{" "}
+              {new Date(subQris.qris.expiredAt).toLocaleString("id-ID")}
+            </p>
+            <div className="modal__foot">
+              <button type="button" className="btn" onClick={() => setSubQris(null)}>
+                Tutup
+              </button>
+            </div>
           </div>
         </div>
       )}

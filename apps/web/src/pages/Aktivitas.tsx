@@ -249,7 +249,7 @@ export function Aktivitas() {
           <div className="search-wrap">
             <IconSearch size={16} />
             <input
-              className="input"
+              className="input search-input"
               type="search"
               placeholder="Saring jenis data… (mis. faktur, pelanggan)"
               value={q}

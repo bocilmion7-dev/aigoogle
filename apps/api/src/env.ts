@@ -33,6 +33,8 @@ const Env = z.object({
   MIDTRANS_PARTNER_ID: z.string().default(""),
   MIDTRANS_MERCHANT_ID: z.string().default(""),
   MIDTRANS_CHANNEL_ID: z.string().default("12345"),
+  /** acquirer QRIS opsional ("AIRPAY SHOPEE"); kosong = default Midtrans (GOPAY) */
+  MIDTRANS_QRIS_ACQUIRER: z.string().default(""),
   /** PEM PKCS#8 merchant (escape \n sbg satu baris) — utk SHA256withRSA access-token */
   MIDTRANS_MERCHANT_PRIVATE_KEY: z.string().default(""),
   /** Public key Midtrans (PEM) — utk verifikasi signature notifikasi RSA */
@@ -48,6 +50,12 @@ const Env = z.object({
   WASERVER_API_KEY: z.string().default(""),
   /** Kunci bersama utk verifikasi event balikan dari waserver (header X-Events-Key) */
   WASERVER_EVENTS_KEY: z.string().default(""),
+  /** Biteship — ongkir, order pengiriman, dan pelacakan resi pesanan WhatsApp */
+  BITESHIP_API_KEY: z.string().default(""),
+  BITESHIP_BASE_URL: z.string().default("https://api.biteship.com"),
+  BITESHIP_COURIERS: z.string().default("jne,jnt,sicepat,anteraja,pos,ide,spx,ninja"),
+  /** opsional: header X-Webhook-Token yang harus dikirim webhook Biteship */
+  BITESHIP_WEBHOOK_TOKEN: z.string().default(""),
   /** OVERRIDE LLM SEMENTARA (utk bench/darurat) — bila ketiga variabel terisi,
    * kandidat model langsung dari env TANPA menyentuh tabel AiProvider di database.
    * Lepas dengan mengosongkan env + restart service. */

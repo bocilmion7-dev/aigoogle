@@ -8,6 +8,8 @@ import { ACCURATE_WEBHOOK_EVENTS } from "../src/providers/accounting/accurate-pa
 let api: ReturnType<typeof createApp>;
 let adminCookie = "";
 let tenantId = "";
+const WEBHOOK_KEY = process.env.ACCURATE_WEBHOOK_APP_KEY ?? "";
+const whHeaders = WEBHOOK_KEY ? { "x-app-key": WEBHOOK_KEY } : {};
 
 beforeAll(async () => {
   api = createApp();
@@ -45,6 +47,7 @@ describe("webhook Accurate (73 event)", () => {
     for (const event of ACCURATE_WEBHOOK_EVENTS) {
       const res = await request(api)
         .post("/api/integrations/accurate/webhook")
+        .set(whHeaders)
         .send({ event, tenantId, data: { id: "1", sample: event } });
       expect(res.status, `${event}: ${JSON.stringify(res.body)}`).toBe(200);
       expect(res.body.ok).toBe(true);
@@ -58,9 +61,18 @@ describe("webhook Accurate (73 event)", () => {
     expect(events.size).toBe(73);
   });
 
+  it("tanpa App Key ditolak (401) bila key dikonfigurasi", async () => {
+    if (!WEBHOOK_KEY) return;
+    const res = await request(api)
+      .post("/api/integrations/accurate/webhook")
+      .send({ event: ACCURATE_WEBHOOK_EVENTS[0], tenantId });
+    expect(res.status).toBe(401);
+  });
+
   it("tolak event tak dikenal (400)", async () => {
     const res = await request(api)
       .post("/api/integrations/accurate/webhook")
+      .set(whHeaders)
       .send({ event: "bukan.event", tenantId });
     expect(res.status).toBe(400);
     expect(res.body.error).toBe("event_tidak_dikenal");

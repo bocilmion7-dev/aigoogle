@@ -1,6 +1,7 @@
 import { prisma } from "../db.js";
 import { env } from "../env.js";
 import { writeAudit } from "../audit.js";
+import { DEFAULT_AI_SIGNUP_BONUS_TOKENS, DEFAULT_AI_SUB_PLANS, DEFAULT_AI_TOPUP_PACKAGES, type AiSubPlan, type AiTopupPackage } from "@aigoogle/shared";
 
 /**
  * Billing AI per MEMBER (saldo rupiah).
@@ -16,6 +17,16 @@ export class AiSaldoHabis extends Error {
   }
 }
 
+/** Masa langganan AI & masa demo 3 hari sudah habis. */
+export class AiLanggananHabis extends Error {
+  constructor(
+    public reason: "trial" | "subscription",
+    public trialEndsAt: Date | null
+  ) {
+    super("langganan_ai_habis");
+  }
+}
+
 const num = (v: string | undefined, d: number): number => {
   const n = Number(v);
   return Number.isFinite(n) ? n : d;
@@ -25,6 +36,8 @@ export interface AiBillingCfg {
   usdIdr: number;
   markup: number;
   signupBonus: number;
+  /** bonus pendaftaran dalam token (tampilan) */
+  signupBonusTokens: number;
   minReserve: number;
   /** harga jual 1.000 token (rupiah) — dasar tampilan saldo token */
   rupiahPer1kTokens: number;
@@ -33,17 +46,80 @@ export interface AiBillingCfg {
 export async function billingSettings(): Promise<AiBillingCfg> {
   const rows = await prisma.appSetting.findMany({
     where: {
-      key: { in: ["ai:usd_idr", "ai:markup", "ai:signup_bonus", "ai:min_reserve", "ai:rupiah_per_1k_tokens"] },
+      key: { in: ["ai:usd_idr", "ai:markup", "ai:signup_bonus", "aiSignupBonusTokens", "ai:min_reserve", "ai:rupiah_per_1k_tokens"] },
     },
   });
   const get = (k: string) => rows.find((r) => r.key === k)?.value;
+  const rupiahPer1kTokens = Math.max(0.001, num(get("ai:rupiah_per_1k_tokens"), 40));
+  const signupBonus = Math.max(0, Math.round(num(get("ai:signup_bonus"), 10000)));
+  const rawBonusTokens = get("aiSignupBonusTokens");
+  const signupBonusTokens =
+    rawBonusTokens !== undefined
+      ? Math.max(0, Math.round(num(rawBonusTokens, DEFAULT_AI_SIGNUP_BONUS_TOKENS)))
+      : // kompatibilitas setelan lama (bonus dalam rupiah)
+        rupiahToTokens(signupBonus, rupiahPer1kTokens);
   return {
     usdIdr: Math.max(1, num(get("ai:usd_idr"), 16500)),
     markup: Math.max(1, num(get("ai:markup"), 1.5)),
-    signupBonus: Math.max(0, Math.round(num(get("ai:signup_bonus"), 10000))),
+    signupBonus,
+    signupBonusTokens,
     minReserve: Math.max(1, Math.round(num(get("ai:min_reserve"), 500))),
-    rupiahPer1kTokens: Math.max(0.001, num(get("ai:rupiah_per_1k_tokens"), 40)),
+    rupiahPer1kTokens,
   };
+}
+
+/** Parse & validasi paket top up token AI (dinamis; fallback default bila rusak). */
+export function parseAiTopupPackages(raw: string | undefined | null): AiTopupPackage[] {
+  if (!raw) return DEFAULT_AI_TOPUP_PACKAGES;
+  try {
+    const arr = JSON.parse(raw) as unknown;
+    if (!Array.isArray(arr) || arr.length < 1) return DEFAULT_AI_TOPUP_PACKAGES;
+    return arr.slice(0, 12).map((p, i) => {
+      const o = (p ?? {}) as Record<string, unknown>;
+      return {
+        id: typeof o.id === "string" && o.id ? o.id.slice(0, 24) : `a${i + 1}`,
+        price: Math.min(10_000_000, Math.max(1000, Math.round(Number(o.price) || DEFAULT_AI_TOPUP_PACKAGES[0]!.price))),
+        tokens: Math.min(1_000_000_000, Math.max(1000, Math.round(Number(o.tokens) || DEFAULT_AI_TOPUP_PACKAGES[0]!.tokens))),
+      };
+    });
+  } catch {
+    return DEFAULT_AI_TOPUP_PACKAGES;
+  }
+}
+
+export async function getAiTopupPackages(): Promise<AiTopupPackage[]> {
+  const row = await prisma.appSetting.findUnique({ where: { key: "aiTopupPackages" } });
+  return parseAiTopupPackages(row?.value);
+}
+
+/** Parse & validasi 3 paket langganan AI (fallback ke default bila rusak). */
+export function parseAiSubPlans(raw: string | undefined | null): AiSubPlan[] {
+  if (!raw) return DEFAULT_AI_SUB_PLANS;
+  try {
+    const arr = JSON.parse(raw) as unknown;
+    if (!Array.isArray(arr) || arr.length !== 3) return DEFAULT_AI_SUB_PLANS;
+    return arr.map((p, i) => {
+      const o = (p ?? {}) as Record<string, unknown>;
+      const def = DEFAULT_AI_SUB_PLANS[i]!;
+      return {
+        id: typeof o.id === "string" && o.id ? o.id.slice(0, 24) : def.id,
+        name: typeof o.name === "string" && o.name.trim() ? o.name.trim().slice(0, 40) : def.name,
+        months: Math.min(36, Math.max(1, Math.round(Number(o.months) || def.months))),
+        price: Math.min(10_000_000, Math.max(1000, Math.round(Number(o.price) || def.price))),
+        tokens: Math.min(1_000_000_000, Math.max(1000, Math.round(Number(o.tokens) || def.tokens))),
+        features: Array.isArray(o.features)
+          ? o.features.map((f) => String(f).trim().slice(0, 80)).filter(Boolean).slice(0, 8)
+          : def.features,
+      };
+    });
+  } catch {
+    return DEFAULT_AI_SUB_PLANS;
+  }
+}
+
+export async function getAiSubPlans(): Promise<AiSubPlan[]> {
+  const row = await prisma.appSetting.findUnique({ where: { key: "aiSubPlans" } });
+  return parseAiSubPlans(row?.value);
 }
 
 /** rupiah → token (1.000 token = rupiahPer1kTokens) */
@@ -61,20 +137,86 @@ export function topupFee(baseAmount: number): number {
   return Math.max(0, Math.round(baseAmount * 0.02));
 }
 
-/** wallet dibuat saat pertama dipakai + saldo awal sesuai setelan platform */
+/**
+ * Wallet dibuat saat pertama dipakai. Bonus pendaftaran hanya diberikan SEKALI
+ * per perusahaan (tenant) — bagi user pertama yang mendaftar lewat Accurate.
+ */
 export async function ensureWallet(userId: string, tenantId: string) {
   const existing = await prisma.aiWallet.findUnique({ where: { userId } });
   if (existing) return existing;
   const cfg = await billingSettings();
-  return prisma.$transaction(async (tx) => {
-    const w = await tx.aiWallet.create({ data: { userId, tenantId, balance: cfg.signupBonus } });
-    if (cfg.signupBonus > 0) {
-      await tx.aiLedger.create({
-        data: { userId, tenantId, kind: "bonus", amount: cfg.signupBonus, meta: "saldo awal pendaftaran" },
+  const bonusRupiah = tokensToRupiah(cfg.signupBonusTokens, cfg.rupiahPer1kTokens);
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const priorBonus = await tx.aiLedger.findFirst({
+        where: { tenantId, kind: "bonus" },
+        select: { id: true },
       });
+      const grant = priorBonus ? 0 : bonusRupiah;
+      const w = await tx.aiWallet.create({ data: { userId, tenantId, balance: grant } });
+      if (grant > 0) {
+        await tx.aiLedger.create({
+          data: {
+            userId,
+            tenantId,
+            kind: "bonus",
+            amount: grant,
+            meta: `bonus token pendaftaran (${cfg.signupBonusTokens.toLocaleString("id-ID")} token)`,
+          },
+        });
+      }
+      return w;
+    });
+  } catch (e) {
+    // dua request paralel bisa sama-sama membuat wallet; yang kalah pakai wallet existing
+    if ((e as { code?: string }).code === "P2002") {
+      const existingNow = await prisma.aiWallet.findUnique({ where: { userId } });
+      if (existingNow) return existingNow;
     }
-    return w;
+    throw e;
+  }
+}
+
+/** Kredit token (mis. langganan bulanan) ke wallet member — token dikonversi ke rupiah internal. */
+export async function creditTokens(opts: {
+  userId: string;
+  tenantId: string;
+  tokens: number;
+  refId: string;
+  meta: string;
+}): Promise<{ balance: number; credits: number }> {
+  const cfg = await billingSettings();
+  const credits = tokensToRupiah(opts.tokens, cfg.rupiahPer1kTokens);
+  await ensureWallet(opts.userId, opts.tenantId);
+  return prisma.$transaction(async (tx) => {
+    const w = await tx.aiWallet.update({
+      where: { userId: opts.userId },
+      data: { balance: { increment: credits } },
+    });
+    await tx.aiLedger.create({
+      data: {
+        userId: opts.userId,
+        tenantId: opts.tenantId,
+        kind: "topup",
+        amount: credits,
+        refId: opts.refId.slice(0, 80),
+        meta: opts.meta.slice(0, 200),
+      },
+    });
+    return { balance: w.balance, credits };
   });
+}
+
+/** Pemilik/admin pertama perusahaan — penerima token langganan/bonus otomatis. */
+export async function tenantOwnerId(tenantId: string): Promise<string | null> {
+  const owner = await prisma.user.findFirst({
+    where: { tenantId, role: { permissions: { some: { permissionKey: "app:users.manage" } } } },
+    orderBy: { createdAt: "asc" },
+    select: { id: true },
+  });
+  if (owner) return owner.id;
+  const first = await prisma.user.findFirst({ where: { tenantId }, orderBy: { createdAt: "asc" }, select: { id: true } });
+  return first?.id ?? null;
 }
 
 export async function getBalance(userId: string, tenantId: string): Promise<number> {
@@ -211,6 +353,63 @@ export async function assertCanUseAi(userId: string, tenantId: string): Promise<
   return bal;
 }
 
+export interface AiAccessStatus {
+  reason: "ok" | "subscription" | "token";
+  subscriptionActive: boolean;
+  everSubscribed: boolean;
+  trialActive: boolean;
+  trialEndsAt: string | null;
+  balance: number;
+  minReserve: number;
+}
+
+/**
+ * Status akses AI perusahaan:
+ * - langganan AI aktif → lanjut;
+ * - belum langganan → masa demo 3 hari sejak perusahaan didaftarkan via Accurate;
+ * - trial/langganan habis → wajib subscription;
+ * - token di bawah reserve → wajib top up (wallet).
+ */
+export async function aiAccessStatus(userId: string, tenantId: string): Promise<AiAccessStatus> {
+  const now = new Date();
+  const [cfg, sub, tenant, balance] = await Promise.all([
+    billingSettings(),
+    prisma.subscription.findFirst({
+      where: {
+        tenantId,
+        OR: [{ plan: { startsWith: "ai:" } }, { plan: "pro" }],
+      },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.tenant.findUnique({ where: { id: tenantId }, select: { createdAt: true } }),
+    getBalance(userId, tenantId),
+  ]);
+  const subscriptionActive = !!sub && sub.status === "active" && (!sub.expiresAt || sub.expiresAt > now);
+  const trialEndsAt = tenant ? new Date(tenant.createdAt.getTime() + 3 * 86400_000) : null;
+  const trialActive = !!trialEndsAt && trialEndsAt > now;
+  const reason: AiAccessStatus["reason"] =
+    !subscriptionActive && !trialActive ? "subscription" : balance < cfg.minReserve ? "token" : "ok";
+  return {
+    reason,
+    subscriptionActive,
+    everSubscribed: !!sub,
+    trialActive,
+    trialEndsAt: trialEndsAt?.toISOString() ?? null,
+    balance,
+    minReserve: cfg.minReserve,
+  };
+}
+
+/** Gate lengkap: langganan/demo dulu, lalu saldo token. */
+export async function assertAiAccess(userId: string, tenantId: string): Promise<AiAccessStatus> {
+  const status = await aiAccessStatus(userId, tenantId);
+  if (status.reason === "subscription") {
+    throw new AiLanggananHabis(status.everSubscribed ? "subscription" : "trial", status.trialEndsAt ? new Date(status.trialEndsAt) : null);
+  }
+  if (status.reason === "token") throw new AiSaldoHabis(status.balance, status.minReserve);
+  return status;
+}
+
 export async function adjustWallet(opts: {
   userId: string;
   tenantId: string;
@@ -301,6 +500,10 @@ export async function walletSummary(userId: string, tenantId: string) {
     /** token setara biaya terpotong 30 hari */
     spentTokens30d: usage.reduce((a, r) => a + rupiahToTokens(Math.abs(r.amount), cfg.rupiahPer1kTokens), 0),
     calls30d: usage.length,
+    /** paket top up token yang diatur Admin Platform */
+    topupPackages: await getAiTopupPackages(),
+    /** status akses: langganan/demo/token */
+    access: await aiAccessStatus(userId, tenantId),
     /** internal (rupiah) — untuk admin/laporan */
     balance: w.balance,
     spent30d: usage.reduce((a, r) => a + Math.abs(r.amount), 0),
@@ -309,11 +512,12 @@ export async function walletSummary(userId: string, tenantId: string) {
   };
 }
 
-export async function ledgerFor(userId: string, take = 50) {
+export async function ledgerFor(userId: string, take = 10, skip = 0) {
   return prisma.aiLedger.findMany({
     where: { userId },
     orderBy: { createdAt: "desc" },
     take: Math.min(Math.max(take, 1), 200),
+    skip: Math.max(0, skip),
   });
 }
 

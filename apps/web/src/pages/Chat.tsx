@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import type { MessageInfo, SessionInfo } from "../chat-api";
 import { CHAT_TIMEOUT_MS, isTimeoutError, listMessages, listSessions, streamChat } from "../chat-api";
 import { MentionInput } from "../customer-mention";
 import { DocCapture } from "../doc-capture";
-import { getMe } from "../api";
+import { getAiWallet, getMe, notifyAiGate, notifyAiWalletChanged } from "../api";
 import { renderRichText } from "../rich-text";
 import { VoiceMode } from "../voice-mode";
 
@@ -29,7 +28,6 @@ const CONTOH_TANYAAN = [
 ];
 
 export function Chat() {
-  const [sessions, setSessions] = useState<SessionInfo[]>([]);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [msgs, setMsgs] = useState<UiMsg[]>([]);
   const [input, setInput] = useState("");
@@ -41,17 +39,39 @@ export function Chat() {
   const [captureOpen, setCaptureOpen] = useState(false);
   const [perms, setPerms] = useState<string[]>([]);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const bootedRef = useRef(false);
 
-  async function loadSessions() {
+  function saveLastSession(id: string | null) {
     try {
-      setSessions(await listSessions());
+      if (id) localStorage.setItem("chat:lastSession", id);
+      else localStorage.removeItem("chat:lastSession");
+    } catch {
+      /* localStorage bisa diblokir (mode privat) — riwayat tetap jalan */
+    }
+  }
+
+  async function loadSessions(autoOpen = false) {
+    try {
+      const { sessions: list } = await listSessions(50, 0);
+      // saat halaman dimuat: buka percakapan terakhir agar riwayat tidak tampak hilang
+      if (autoOpen && !bootedRef.current) {
+        bootedRef.current = true;
+        let saved: string | null = null;
+        try {
+          saved = localStorage.getItem("chat:lastSession");
+        } catch {
+          /* abaikan */
+        }
+        const pick = list.find((s) => s.id === saved) ?? list[0];
+        if (pick) void openSession(pick.id);
+      }
     } catch (e) {
       setLoadErr(isTimeoutError(e) ? "Koneksi lambat — daftar sesi gagal dimuat." : "Gagal memuat daftar sesi.");
     }
   }
   function retryLoads() {
     setLoadErr(null);
-    void loadSessions();
+    void loadSessions(true);
     if (sessionId) void openSession(sessionId);
   }
 
@@ -59,7 +79,13 @@ export function Chat() {
     void getMe()
       .then((m) => setPerms(m?.permissions ?? []))
       .catch(() => null);
-    void loadSessions();
+    // tampilkan popup akses AI (token habis / langganan-demo habis)
+    void getAiWallet()
+      .then((w) => {
+        if (w.access?.reason === "token") notifyAiGate("token");
+      })
+      .catch(() => null);
+    void loadSessions(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   useEffect(() => {
@@ -68,6 +94,7 @@ export function Chat() {
 
   async function openSession(id: string) {
     setSessionId(id);
+    saveLastSession(id);
     setError(null);
     setLoadErr(null);
     try {
@@ -109,7 +136,20 @@ export function Chat() {
           // event "start" membawa sessionId buatan server → simpan;
           // tanpa ini tiap pesan dikirim sessionId=null → server bikin SESI BARU
           // per pesan → riwayat terputus & AI linglung saat balas "ya" dst.
-          if (e.type === "start" && e.sessionId) setSessionId(e.sessionId);
+          if (e.type === "start" && e.sessionId) {
+            setSessionId(e.sessionId);
+            saveLastSession(e.sessionId);
+          }
+          if (e.type === "error") {
+            if (e.code === "langganan_ai_habis") {
+              notifyAiGate("subscription");
+              return;
+            }
+            if (e.code === "saldo_ai_habis" || e.code === "token_ai_habis") {
+              notifyAiGate("token");
+              return;
+            }
+          }
           setMsgs((m) => {
             const copy = [...m];
             const last = { ...copy[copy.length - 1] };
@@ -127,6 +167,7 @@ export function Chat() {
           });
           if (e.type === "done") {
             setBusy(false);
+            notifyAiWalletChanged();
             void loadSessions();
           }
         },
@@ -153,25 +194,10 @@ export function Chat() {
           setSessionId={setSessionId}
           onExit={() => {
             setVoiceMode(false);
-            void listSessions().then(setSessions);
+            void loadSessions(true);
           }}
         />
       )}
-      <aside aria-label="Riwayat percakapan">
-        <div className="chat-sessions">
-          {sessions.map((s) => (
-            <button
-              key={s.id}
-              className="session"
-              aria-current={sessionId === s.id ? "true" : undefined}
-              onClick={() => void openSession(s.id)}
-            >
-              {s.title.slice(0, 28)}
-            </button>
-          ))}
-        </div>
-      </aside>
-
       <section style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
         {captureOpen ? (
           <DocCapture
@@ -261,12 +287,11 @@ export function Chat() {
               className="btn btn--2"
               onClick={() => setCaptureOpen(true)}
               disabled={busy}
-              aria-label="Ambil foto dokumen"
-              title="Ambil foto dokumen (faktur/nota/kwitansi)"
+              aria-label="Lampiran dokumen"
+              title="Lampiran dokumen (browse file, foto, kamera)"
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-                <circle cx="12" cy="13" r="4" />
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M21.4 11.6l-8.4 8.4a6 6 0 0 1-8.5-8.5l8.4-8.4a4 4 0 0 1 5.7 5.7l-8.4 8.4a2 2 0 0 1-2.8-2.8l7.8-7.8" />
               </svg>
             </button>
           </span>

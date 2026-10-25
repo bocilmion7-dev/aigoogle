@@ -2,6 +2,7 @@ import { env } from "../env.js";
 import { decryptToken, encryptToken } from "../crypto.js";
 import { prisma } from "../db.js";
 import { writeAudit } from "../audit.js";
+import { DEFAULT_WA_META_TOPUPS, DEFAULT_WA_SUB_PLANS, type WaMetaTopup, type WaSubPlan } from "@aigoogle/shared";
 
 export const WA_COST_CREDITS_PER_MESSAGE = 1;
 export const WA_TOPUP_RUPIAH_PER_CREDIT = 200;
@@ -10,6 +11,59 @@ export async function waPricePerCredit(): Promise<number> {
   const row = await prisma.appSetting.findUnique({ where: { key: "waPricePerCredit" } });
   const n = row ? Number(row.value) : NaN;
   return Number.isFinite(n) && n >= 1 ? Math.floor(n) : WA_TOPUP_RUPIAH_PER_CREDIT;
+}
+
+/** Parse & validasi 3 paket langganan gateway (fallback ke default bila rusak). */
+export function parseWaSubPlans(raw: string | undefined | null): WaSubPlan[] {
+  if (!raw) return DEFAULT_WA_SUB_PLANS;
+  try {
+    const arr = JSON.parse(raw) as unknown;
+    if (!Array.isArray(arr) || arr.length !== 3) return DEFAULT_WA_SUB_PLANS;
+    const plans = arr.map((p, i) => {
+      const o = (p ?? {}) as Record<string, unknown>;
+      return {
+        id: typeof o.id === "string" && o.id ? o.id.slice(0, 20) : `p${i + 1}`,
+        name: typeof o.name === "string" && o.name.trim() ? o.name.trim().slice(0, 40) : DEFAULT_WA_SUB_PLANS[i]!.name,
+        months: Math.min(36, Math.max(1, Math.round(Number(o.months) || DEFAULT_WA_SUB_PLANS[i]!.months))),
+        price: Math.min(10_000_000, Math.max(1, Math.round(Number(o.price) || DEFAULT_WA_SUB_PLANS[i]!.price))),
+      };
+    });
+    return plans;
+  } catch {
+    return DEFAULT_WA_SUB_PLANS;
+  }
+}
+
+export async function getWaSubPlans(): Promise<WaSubPlan[]> {
+  const row = await prisma.appSetting.findUnique({ where: { key: "waSubPlans" } });
+  return parseWaSubPlans(row?.value);
+}
+
+/** Parse & validasi 3 pilihan top up META (fallback ke default bila rusak). */
+export function parseWaMetaTopups(raw: string | undefined | null): WaMetaTopup[] {
+  if (!raw) return DEFAULT_WA_META_TOPUPS;
+  try {
+    const arr = JSON.parse(raw) as unknown;
+    if (!Array.isArray(arr) || arr.length !== 3) return DEFAULT_WA_META_TOPUPS;
+    return arr.map((p, i) => {
+      const o = (p ?? {}) as Record<string, unknown>;
+      return {
+        id: typeof o.id === "string" && o.id ? o.id.slice(0, 20) : `t${i + 1}`,
+        label:
+          typeof o.label === "string" && o.label.trim()
+            ? o.label.trim().slice(0, 40)
+            : DEFAULT_WA_META_TOPUPS[i]!.label,
+        amount: Math.min(10_000_000, Math.max(2000, Math.round(Number(o.amount) || DEFAULT_WA_META_TOPUPS[i]!.amount))),
+      };
+    });
+  } catch {
+    return DEFAULT_WA_META_TOPUPS;
+  }
+}
+
+export async function getWaMetaTopups(): Promise<WaMetaTopup[]> {
+  const row = await prisma.appSetting.findUnique({ where: { key: "waMetaTopups" } });
+  return parseWaMetaTopups(row?.value);
 }
 
 export function metaConfigured(): boolean {
@@ -27,14 +81,10 @@ export function embeddedSignupUrl(redirectUri: string): string | null {
   return u.toString();
 }
 
-/** base URL 360dialog (produksi; sandbox dapat dioverride via appSetting) */
-export const D360_DEFAULT_BASE = "https://waba-v2.360dialog.io";
+export type WaProvider = "meta" | "waserver";
 
-export type WaProvider = "meta" | "d360" | "waserver";
-
-/** nilai provider dari AppSetting — nilai tak dikenal jatuh ke d360 (perilaku lama) */
 function parseWaProvider(v: string | undefined): WaProvider {
-  return v === "meta" || v === "waserver" ? v : "d360";
+  return v === "meta" ? "meta" : "waserver";
 }
 
 export function waserverReady(): boolean {
@@ -119,11 +169,19 @@ export async function syncWaserverAccount(tenantId: string, session: WaserverSes
 async function sendViaWaserver(
   tenantId: string,
   to: string,
-  body: string
+  body: string,
+  image?: { base64: string; mime: string; fileName: string }
 ): Promise<{ ok: boolean; error?: string; outboxId?: number }> {
   const r = await waserverFetch("/v1/send", {
     method: "POST",
-    body: JSON.stringify({ tenantId, to, text: body }),
+    body: JSON.stringify({
+      tenantId,
+      to,
+      text: body,
+      ...(image
+        ? { type: "image", mediaBase64: image.base64, mediaMime: image.mime, fileName: image.fileName }
+        : {}),
+    }),
   });
   if (!r.ok) {
     const t = await r.text().catch(() => "");
@@ -133,49 +191,13 @@ async function sendViaWaserver(
   return { ok: true, outboxId: j.outboxId };
 }
 
-/** kirim text via 360dialog — body kompatibel Meta Cloud API, auth header D360-API-KEY */
-async function sendD360Text(
-  apiKey: string,
-  baseUrl: string,
-  to: string,
-  body: string
-): Promise<{ ok: boolean; error?: string }> {
-  const res = await fetch(`${baseUrl.replace(/\/$/, "")}/v1/messages`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "D360-API-KEY": apiKey },
-    body: JSON.stringify({
-      messaging_product: "whatsapp",
-      recipient_type: "individual",
-      to,
-      type: "text",
-      text: { body },
-    }),
-  });
-  if (!res.ok) {
-    const err = await res.text().catch(() => "");
-    return { ok: false, error: `d360_${res.status}:${err.slice(0, 200)}` };
-  }
-  return { ok: true };
-}
-
 /** appSetting global utk provider WA */
-async function waProviderSettings(): Promise<{
-  provider: WaProvider;
-  d360ApiKey: string;
-  d360BaseUrl: string;
-}> {
-  const rows = await prisma.appSetting.findMany({
-    where: { key: { in: ["waProvider", "waD360ApiKey", "waD360BaseUrl"] } },
-  });
-  const get = (k: string) => rows.find((r) => r.key === k)?.value;
-  return {
-    provider: parseWaProvider(get("waProvider")),
-    d360ApiKey: get("waD360ApiKey") ?? "",
-    d360BaseUrl: get("waD360BaseUrl") ?? D360_DEFAULT_BASE,
-  };
+async function waProviderSettings(): Promise<{ provider: WaProvider }> {
+  const row = await prisma.appSetting.findUnique({ where: { key: "waProvider" } });
+  return { provider: parseWaProvider(row?.value) };
 }
 
-/** provider global utk halaman status (meta | d360 | waserver) */
+/** provider global utk halaman status (meta | waserver) */
 export async function getWaProviderGlobal(): Promise<{ provider: WaProvider }> {
   const row = await prisma.appSetting.findUnique({ where: { key: "waProvider" } });
   return { provider: parseWaProvider(row?.value) };
@@ -184,14 +206,14 @@ export async function getWaProviderGlobal(): Promise<{ provider: WaProvider }> {
 export async function sendWaText(
   tenantId: string,
   to: string,
-  body: string
+  body: string,
+  imageUrl?: string
 ): Promise<{ ok: boolean; error?: string; outboxId?: number }> {
   const acct = await prisma.waAccount.findUnique({ where: { tenantId } });
   const prov = await waProviderSettings();
+  const logBody = imageUrl ? `[image] ${body}\n${imageUrl}` : body;
 
   // ── CABANG WASERVER (gateway Baileys multi-tenant) ──
-  // Harus berada SEBELUM cabang d360: tanpa ini, akun ber-provider "waserver"
-  // lolos ke jalur kunci-global d360 (pakaiKunciGlobal = true) dan bocor gratis.
   // Dipilih bila perusahaan mengaktifkan waserver sendiri, ATAU provider global
   // waserver dan perusahaan belum punya akun lain.
   const pakaiWaserver =
@@ -205,14 +227,32 @@ export async function sendWaText(
     });
     if (bal.amount < WA_COST_CREDITS_PER_MESSAGE) {
       await prisma.waMessageLog.create({
-        data: { tenantId, to, body, status: "failed", error: "saldo_kurang", costCredits: 0 },
+        data: { tenantId, to, body: logBody, status: "failed", error: "saldo_kurang", costCredits: 0 },
       });
       return { ok: false, error: "saldo_kurang" };
     }
-    const r = await sendViaWaserver(tenantId, to, body);
+    let waserverImage: { base64: string; mime: string; fileName: string } | undefined;
+    if (imageUrl) {
+      try {
+        const ir = await fetch(imageUrl, { signal: AbortSignal.timeout(15_000) });
+        if (!ir.ok) throw new Error(`qr_${ir.status}`);
+        const mime = ir.headers.get("content-type")?.split(";")[0] || "image/png";
+        waserverImage = {
+          base64: Buffer.from(await ir.arrayBuffer()).toString("base64"),
+          mime,
+          fileName: "qris.png",
+        };
+      } catch {
+        await prisma.waMessageLog.create({
+          data: { tenantId, to, body: logBody, status: "failed", error: "qr_fetch", costCredits: 0 },
+        });
+        return { ok: false, error: "qr_fetch" };
+      }
+    }
+    const r = await sendViaWaserver(tenantId, to, body, waserverImage);
     if (!r.ok) {
       await prisma.waMessageLog.create({
-        data: { tenantId, to, body, status: "failed", error: r.error ?? "waserver_error", costCredits: 0 },
+        data: { tenantId, to, body: logBody, status: "failed", error: r.error ?? "waserver_error", costCredits: 0 },
       });
       return r;
     }
@@ -225,7 +265,7 @@ export async function sendWaText(
         data: {
           tenantId,
           to,
-          body,
+          body: logBody,
           status: "queued",
           costCredits: WA_COST_CREDITS_PER_MESSAGE,
           waserverOutboxId: r.outboxId ?? null,
@@ -235,52 +275,9 @@ export async function sendWaText(
     return { ok: true, outboxId: r.outboxId };
   }
 
-  // jalur 360dialog: akun perusahaan (API key sendiri) ATAU fallback kunci global (sandbox platform)
-  const pakaiKunciGlobal = !acct || acct.provider !== "d360";
-  if ((acct && acct.provider === "d360" && acct.tokenEnc) || (pakaiKunciGlobal && prov.provider === "d360" && prov.d360ApiKey)) {
-    const apiKey = acct?.provider === "d360" ? decryptToken(acct.tokenEnc) : prov.d360ApiKey;
-    // kunci milik perusahaan → pakai kredit; kunci global platform (sandbox) → gratis
-    if (!pakaiKunciGlobal) {
-      const bal = await prisma.waBalance.upsert({
-        where: { tenantId },
-        create: { tenantId, amount: 0 },
-        update: {},
-      });
-      if (bal.amount < WA_COST_CREDITS_PER_MESSAGE) {
-        await prisma.waMessageLog.create({
-          data: { tenantId, to, body, status: "failed", error: "saldo_kurang", costCredits: 0 },
-        });
-        return { ok: false, error: "saldo_kurang" };
-      }
-    }
-    const r = await sendD360Text(apiKey, prov.d360BaseUrl, to, body);
-    if (!r.ok) {
-      await prisma.waMessageLog.create({
-        data: { tenantId, to, body, status: "failed", error: r.error ?? "d360_error", costCredits: 0 },
-      });
-      return r;
-    }
-    if (!pakaiKunciGlobal) {
-      await prisma.$transaction([
-        prisma.waBalance.update({
-          where: { tenantId },
-          data: { amount: { decrement: WA_COST_CREDITS_PER_MESSAGE } },
-        }),
-        prisma.waMessageLog.create({
-          data: { tenantId, to, body, status: "sent", costCredits: WA_COST_CREDITS_PER_MESSAGE },
-        }),
-      ]);
-    } else {
-      await prisma.waMessageLog.create({
-        data: { tenantId, to, body, status: "sent", costCredits: 0 },
-      });
-    }
-    return { ok: true };
-  }
-
-  if (!acct || !acct.phoneNumberId || !acct.tokenEnc) {
+  if (!acct || acct.provider !== "meta" || !acct.phoneNumberId || !acct.tokenEnc) {
     await prisma.waMessageLog.create({
-      data: { tenantId, to, body, status: "failed", error: "belum_connect", costCredits: 0 },
+      data: { tenantId, to, body: logBody, status: "failed", error: "belum_connect", costCredits: 0 },
     });
     return { ok: false, error: "belum_connect" };
   }
@@ -291,7 +288,7 @@ export async function sendWaText(
   });
   if (bal.amount < WA_COST_CREDITS_PER_MESSAGE) {
     await prisma.waMessageLog.create({
-      data: { tenantId, to, body, status: "failed", error: "saldo_kurang", costCredits: 0 },
+      data: { tenantId, to, body: logBody, status: "failed", error: "saldo_kurang", costCredits: 0 },
     });
     return { ok: false, error: "saldo_kurang" };
   }
@@ -305,14 +302,15 @@ export async function sendWaText(
     body: JSON.stringify({
       messaging_product: "whatsapp",
       to,
-      type: "text",
-      text: { body },
+      ...(imageUrl
+        ? { type: "image", image: { link: imageUrl, caption: body } }
+        : { type: "text", text: { body } }),
     }),
   });
   if (!res.ok) {
     const err = await res.text().catch(() => "");
     await prisma.waMessageLog.create({
-      data: { tenantId, to, body, status: "failed", error: `graph_${res.status}:${err.slice(0, 200)}`, costCredits: 0 },
+      data: { tenantId, to, body: logBody, status: "failed", error: `graph_${res.status}:${err.slice(0, 200)}`, costCredits: 0 },
     });
     return { ok: false, error: `graph_${res.status}` };
   }
@@ -325,7 +323,7 @@ export async function sendWaText(
       data: {
         tenantId,
         to,
-        body,
+        body: logBody,
         status: "sent",
         costCredits: WA_COST_CREDITS_PER_MESSAGE,
       },
@@ -356,16 +354,23 @@ export async function handleWaserverEvent(
   if (e.type === "message.inbound") {
     // waserver mengirim JID (628xxxx@s.whatsapp.net) — simpan sebagai nomor saja
     const peer = String(e.from ?? "").split("@")[0] ?? "";
+    const text = String(e.text ?? "");
     await prisma.waMessageLog.create({
       data: {
         tenantId: e.tenantId,
         to: peer,
-        body: String(e.text ?? ""),
+        body: text,
         status: "received",
         direction: "in",
         costCredits: 0,
       },
     });
+    // AI penjaga toko (bila diaktifkan) — jangan blokir respons webhook
+    if (peer && text.trim()) {
+      void import("./shop.js")
+        .then((m) => m.handleShopInbound({ tenantId: e.tenantId!, from: peer, text }))
+        .catch((err) => console.warn("[shop-ai] gagal:", err instanceof Error ? err.message : err));
+    }
     return { ok: true };
   }
 
@@ -394,6 +399,16 @@ export async function handleWaserverEvent(
   return { ok: true };
 }
 
+/** Kirim gambar (mis. QRIS) dengan caption teks. */
+export async function sendWaImage(
+  tenantId: string,
+  to: string,
+  imageUrl: string,
+  caption: string
+): Promise<{ ok: boolean; error?: string; outboxId?: number }> {
+  return sendWaText(tenantId, to, caption, imageUrl);
+}
+
 export async function getOrCreateBalance(tenantId: string): Promise<number> {
   const bal = await prisma.waBalance.upsert({
     where: { tenantId },
@@ -411,25 +426,33 @@ export async function getWaSettings(tenantId: string): Promise<{
   autoDueDate: boolean;
   dailyReport: boolean;
   ownerPhone: string;
+  shopAi: boolean;
 }> {
-  const keys = [`wa:auto_due:${tenantId}`, `wa:daily_report:${tenantId}`, `wa:owner_phone:${tenantId}`];
+  const keys = [
+    `wa:auto_due:${tenantId}`,
+    `wa:daily_report:${tenantId}`,
+    `wa:owner_phone:${tenantId}`,
+    `wa:shop_ai:${tenantId}`,
+  ];
   const rows = await prisma.appSetting.findMany({ where: { key: { in: keys } } });
   const m = new Map(rows.map((r) => [r.key, r.value]));
   return {
     autoDueDate: m.get(keys[0]) === "1",
     dailyReport: m.get(keys[1]) === "1",
     ownerPhone: m.get(keys[2]) ?? "",
+    shopAi: m.get(keys[3]) === "1",
   };
 }
 
 export async function setWaSettings(
   tenantId: string,
-  s: { autoDueDate?: boolean; dailyReport?: boolean; ownerPhone?: string }
+  s: { autoDueDate?: boolean; dailyReport?: boolean; ownerPhone?: string; shopAi?: boolean }
 ): Promise<void> {
   const ops: Array<{ key: string; value: string }> = [];
   if (s.autoDueDate !== undefined) ops.push({ key: `wa:auto_due:${tenantId}`, value: s.autoDueDate ? "1" : "0" });
   if (s.dailyReport !== undefined) ops.push({ key: `wa:daily_report:${tenantId}`, value: s.dailyReport ? "1" : "0" });
   if (s.ownerPhone !== undefined) ops.push({ key: `wa:owner_phone:${tenantId}`, value: s.ownerPhone });
+  if (s.shopAi !== undefined) ops.push({ key: `wa:shop_ai:${tenantId}`, value: s.shopAi ? "1" : "0" });
   for (const o of ops) {
     await prisma.appSetting.upsert({
       where: { key: o.key },
@@ -493,7 +516,7 @@ export async function setWaWebhookSettings(
   }
 }
 
-/** Selesaikan topup (dipanggil webhook Winpay / query status / mock).
+/** Selesaikan topup (dipanggil webhook Midtrans / query status / mock).
  *  Idempoten: order yg sudah settlement tak dikreditkan dua kali. */
 export async function finalizeWaTopup(
   orderId: string,

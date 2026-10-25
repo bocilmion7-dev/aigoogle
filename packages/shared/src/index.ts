@@ -18,28 +18,97 @@ export interface AppSettings {
   voiceEngine: "web-speech" | "edge";
   ocrMode?: "vision" | "text";
   waPricePerCredit?: number;
-  /** penyedia WhatsApp perusahaan: d360 (default) | meta | waserver */
-  waProvider?: "meta" | "d360" | "waserver";
+  /** penyedia WhatsApp perusahaan: waserver (default) | meta */
+  waProvider?: "meta" | "waserver";
   /** gateway waserver siap dipakai (diisi lewat env WASERVER_URL + WASERVER_API_KEY) */
   waserverReady?: boolean;
-  waD360ApiKey?: string;
-  waD360BaseUrl?: string;
-  waD360PartnerId?: string;
-  waD360PartnerKey?: string;
-  /** penyedia pembayaran QRIS: winpay (default) | midtrans */
-  paymentProvider?: "winpay" | "midtrans";
-  /** lingkungan API Winpay */
-  winpayEnv?: "production" | "sandbox";
-  /** Client ID / Partner ID merchant Winpay */
-  winpayClientId?: string;
-  /** private key RSA merchant (PEM) — utk menandatangani request */
-  winpayPrivateKey?: string;
-  /** public key Winpay (PEM/base64) — utk memverifikasi notifikasi */
-  winpayPublicKey?: string;
+  /** 3 paket langganan WhatsApp Gateway (nama, durasi bulan, harga) */
+  waSubPlans?: WaSubPlan[];
+  /** 3 pilihan nominal top up saldo META */
+  waMetaTopups?: WaMetaTopup[];
+  /** paket top up saldo token AI (harga + jumlah token) */
+  aiTopupPackages?: AiTopupPackage[];
+  /** 3 paket langganan AI bulanan */
+  aiSubPlans?: AiSubPlan[];
+  /** bonus token untuk perusahaan yang pertama kali registrasi via Accurate */
+  aiSignupBonusTokens?: number;
 }
 
-/** Client ID Winpay default (diisi Winpay saat onboarding merchant) */
-export const WINPAY_DEFAULT_CLIENT_ID = "3ae34b38-24c6-4fe4-8b26-9deb548020e7";
+export interface WaSubPlan {
+  id: string;
+  name: string;
+  months: number;
+  price: number;
+}
+
+export const DEFAULT_WA_SUB_PLANS: WaSubPlan[] = [
+  { id: "p1", name: "1 Bulan", months: 1, price: 30000 },
+  { id: "p2", name: "2 Bulan", months: 2, price: 50000 },
+  { id: "p3", name: "3 Bulan", months: 3, price: 75000 },
+];
+
+export interface WaMetaTopup {
+  id: string;
+  label: string;
+  amount: number;
+}
+
+export const DEFAULT_WA_META_TOPUPS: WaMetaTopup[] = [
+  { id: "t1", label: "10 Ribu", amount: 10000 },
+  { id: "t2", label: "25 Ribu", amount: 25000 },
+  { id: "t3", label: "50 Ribu", amount: 50000 },
+];
+
+export interface AiTopupPackage {
+  id: string;
+  price: number;
+  tokens: number;
+}
+
+export const DEFAULT_AI_TOPUP_PACKAGES: AiTopupPackage[] = [
+  { id: "a1", price: 10000, tokens: 250000 },
+  { id: "a2", price: 25000, tokens: 625000 },
+  { id: "a3", price: 50000, tokens: 1250000 },
+  { id: "a4", price: 100000, tokens: 2500000 },
+];
+
+export interface AiSubPlan {
+  id: string;
+  name: string;
+  months: number;
+  price: number;
+  tokens: number;
+  features: string[];
+}
+
+export const DEFAULT_AI_SUB_PLANS: AiSubPlan[] = [
+  {
+    id: "starter",
+    name: "Starter",
+    months: 1,
+    price: 49000,
+    tokens: 1000000,
+    features: ["1 juta token / bulan", "Chat & voice AI", "Scan dokumen"],
+  },
+  {
+    id: "pro",
+    name: "Pro",
+    months: 1,
+    price: 149000,
+    tokens: 5000000,
+    features: ["5 juta token / bulan", "Semua fitur Starter", "Prioritas model cepat", "Riwayat & analitik"],
+  },
+  {
+    id: "bisnis",
+    name: "Bisnis",
+    months: 1,
+    price: 399000,
+    tokens: 15000000,
+    features: ["15 juta token / bulan", "Semua fitur Pro", "Multi-user perusahaan", "Dukungan prioritas"],
+  },
+];
+
+export const DEFAULT_AI_SIGNUP_BONUS_TOKENS = 250000;
 
 export interface AiProviderModelRow {
   name: string;
