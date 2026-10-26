@@ -10,7 +10,7 @@ import { getShopOrder, listShopOrders, patchShopOrder, type ShopOrder } from "..
 import { accurateItems, customerNameFor, ensureOrderCustomer, syncShopOrderPaid } from "../wa/shop-accurate.js";
 import { biteshipKeyMode, biteshipReady, createShipment, defaultCouriers, searchAreas, track } from "../shipping/biteship.js";
 import { getShippingOrigin, setShippingOrigin } from "../wa/shipping-settings.js";
-import { applyShippingUpdate, indexBiteshipOrder, notifyShipmentCreated } from "../wa/shipping-notify.js";
+import { applyShippingUpdate, indexBiteshipOrder, labelOf, notifyShipmentCreated } from "../wa/shipping-notify.js";
 
 export const ordersRouter = Router();
 
@@ -277,6 +277,17 @@ ordersRouter.get(
   })
 );
 
+/** Kunci anti-dobel: satu pesanan hanya boleh diproses sekali dalam satu waktu. */
+const SHIP_INFLIGHT = new Set<string>();
+
+/** Nomor HP penerima yang sah utk kurir: digit 8–16, bukan nomor semu sandbox. */
+function validPhone(v?: string): string {
+  const raw = String(v ?? "").trim();
+  if (!raw || /^sandbox:/i.test(raw)) return "";
+  const d = raw.replace(/\D/g, "");
+  return /^\d{8,16}$/.test(d) ? d : "";
+}
+
 /** Kirim pesanan ke Biteship (membuat order + resi untuk pelacakan). */
 ordersRouter.post(
   "/orders/:orderId/biteship",
@@ -299,6 +310,27 @@ ordersRouter.post(
     if (!origin.address || !origin.postalCode || !origin.phone) {
       return res.status(409).json({ error: "asal_belum_diatur", message: "Lengkapi alamat asal pengiriman di Pengaturan Pengiriman." });
     }
+    // Biteship menolak nomor > 32 karakter (mis. nomor semu "sandbox:<id>") →
+    // pakai input admin, nomor tersimpan, no HP hasil tanya AI, atau nomor WA asli.
+    const body = z.object({ receiverPhone: z.string().max(32).optional() }).safeParse(req.body ?? {});
+    const receiverPhone =
+      validPhone(body.success ? body.data.receiverPhone : "") ||
+      validPhone(order.shipping.destinationPhone) ||
+      validPhone(order.buyerContactPhone) ||
+      validPhone(order.buyerPhone);
+    if (!receiverPhone) {
+      return res.status(409).json({
+        error: "telepon_penerima_kosong",
+        message: "Nomor HP penerima belum ada/valid. Isi nomor HP penerima (contoh 0812xxxxxxx).",
+      });
+    }
+    if (SHIP_INFLIGHT.has(order.orderId)) {
+      return res.status(409).json({
+        error: "sedang_diproses",
+        message: "Input ke Biteship sedang diproses — tunggu sebentar lalu muat ulang.",
+      });
+    }
+    SHIP_INFLIGHT.add(order.orderId);
     const weight = order.shipping.weightGram && order.shipping.weightGram > 0 ? order.shipping.weightGram : 500;
     const items = order.items.map((it) => ({
       name: it.name,
@@ -311,7 +343,7 @@ ordersRouter.post(
         origin,
         destination: {
           contactName: order.buyerName || "Pembeli",
-          phone: order.buyerPhone,
+          phone: receiverPhone,
           address: order.shipping.destinationAddress ?? "",
           postalCode: order.shipping.destinationPostalCode ?? "",
           note: order.shipping.destinationNote ?? "",
@@ -324,6 +356,7 @@ ordersRouter.post(
       const updated = await patchShopOrder(order.orderId, (o) => {
         o.shipping = {
           ...(o.shipping ?? {}),
+          destinationPhone: receiverPhone,
           biteshipOrderId: shipment.id,
           trackingId: shipment.trackingId,
           trackingLink: shipment.trackingLink,
@@ -332,9 +365,17 @@ ordersRouter.post(
         };
       });
       await indexBiteshipOrder(shipment.id, order.orderId);
+      // notifikasi WA dibatasi 6 dtk — order Biteship sudah jadi; jangan biarkan
+      // tombol "Input ke Biteship" menggantung menunggu gateway WA.
       let notified = false;
-      if (updated && shipment.waybillId) {
-        notified = await notifyShipmentCreated(updated);
+      if (updated && (shipment.waybillId || shipment.trackingId || shipment.trackingLink)) {
+        notified = await Promise.race([
+          notifyShipmentCreated(updated).catch(() => false),
+          new Promise<boolean>((resolve) => {
+            const t = setTimeout(() => resolve(false), 6_000);
+            t.unref?.();
+          }),
+        ]);
         if (notified) {
           await patchShopOrder(order.orderId, (o) => {
             if (o.shipping) o.shipping.waybillNotified = true;
@@ -354,6 +395,8 @@ ordersRouter.post(
         error: "biteship_gagal",
         message: e instanceof Error ? e.message : "gagal membuat order Biteship",
       });
+    } finally {
+      SHIP_INFLIGHT.delete(order.orderId);
     }
   })
 );
@@ -384,6 +427,52 @@ ordersRouter.get(
   })
 );
 
+
+/** Cache singkat status lacak publik (hemat kuota Biteship). */
+const PUBLIC_TRACK_CACHE = new Map<string, { at: number; data: unknown }>();
+
+/** Halaman lacak PUBLIK (tanpa login) — hanya data kirim, tanpa alamat/nama lengkap. */
+ordersRouter.get(
+  "/public/track/:orderId",
+  asyncHandler(async (req, res) => {
+    const orderId = String(req.params.orderId ?? "").slice(0, 64);
+    const hit = PUBLIC_TRACK_CACHE.get(orderId);
+    if (hit && Date.now() - hit.at < 30_000) return res.json(hit.data);
+    const order = await getShopOrder(orderId);
+    const s = order?.shipping;
+    if (!order || !s || !s.biteshipOrderId) return res.status(404).json({ error: "tidak_ditemukan" });
+    let live: Awaited<ReturnType<typeof track>> | null = null;
+    if (s.trackingId) {
+      try {
+        live = await Promise.race([
+          track(s.trackingId),
+          new Promise<null>((resolve) => {
+            const t = setTimeout(() => resolve(null), 8_000);
+            t.unref?.();
+          }),
+        ]);
+      } catch {
+        /* fallback ke status tersimpan */
+      }
+    }
+    const status = live?.status || s.status || "";
+    const data = {
+      orderId: order.orderId,
+      courier: [s.courierName, s.serviceName].filter(Boolean).join(" "),
+      waybillId: live?.waybillId || s.waybillId || "",
+      status,
+      statusLabel: status ? labelOf(status) : "Menunggu penjemputan kurir",
+      history: (live?.history ?? []).slice(-30),
+      updatedAt: new Date().toISOString(),
+    };
+    PUBLIC_TRACK_CACHE.set(orderId, { at: Date.now(), data });
+    if (PUBLIC_TRACK_CACHE.size > 500) {
+      const oldest = [...PUBLIC_TRACK_CACHE.entries()].sort((a, b) => a[1].at - b[1].at)[0];
+      if (oldest) PUBLIC_TRACK_CACHE.delete(oldest[0]);
+    }
+    res.json(data);
+  })
+);
 
 /**
  * Webhook Biteship (set di dashboard: Integration → Pengaturan → Tambah Webhook).

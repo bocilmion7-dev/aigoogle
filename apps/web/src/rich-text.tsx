@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { shareTableImage } from "./table-image";
+import { IconDownload, IconShare } from "./icons";
 
 /**
  * Renderer pesan AI: teks biasa (pre-wrap) + blok tabel markdown (| … |)
@@ -158,7 +160,10 @@ function TableView({ tbl, big, onOpen }: { tbl: Tbl; big?: boolean; onOpen?: () 
 
 function TableBlock({ tbl }: { tbl: Tbl }) {
   const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState("");
   const wrapRef = useRef<HTMLDivElement | null>(null);
+  const liveRef = useRef<HTMLDivElement | null>(null);
   const closeRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
@@ -173,6 +178,27 @@ function TableBlock({ tbl }: { tbl: Tbl }) {
       wrapRef.current?.focus();
     };
   }, [open]);
+
+  async function bagikan(mode: "share" | "download") {
+    if (busy) return;
+    const table = liveRef.current?.querySelector("table");
+    if (!table) {
+      setNote("Tabel belum siap, coba lagi.");
+      return;
+    }
+    setBusy(true);
+    setNote("");
+    try {
+      const r = await shareTableImage(table as HTMLElement, mode);
+      setNote(r === "shared" ? "Tabel dikirim ke menu bagikan." : "Gambar tabel diunduh.");
+    } catch (e) {
+      // pengguna membatalkan sheet share → bukan error
+      if (e instanceof Error && e.name === "AbortError") return;
+      setNote("Gagal membuat gambar tabel.");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return (
     <>
@@ -189,15 +215,44 @@ function TableBlock({ tbl }: { tbl: Tbl }) {
           <div className="modal modal--data" role="dialog" aria-modal="true" aria-label="Tabel data">
             <div className="modal__head">
               <strong className="modal__title">Tabel data</strong>
-              <button ref={closeRef} className="modal__x" onClick={() => setOpen(false)} aria-label="Tutup tabel">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true">
-                  <path d="M18 6L6 18" />
-                  <path d="M6 6l12 12" />
-                </svg>
-              </button>
+              <div className="modal__actions">
+                <button
+                  type="button"
+                  className="btn btn--sm"
+                  onClick={() => void bagikan("share")}
+                  disabled={busy}
+                  aria-label="Bagikan tabel sebagai gambar"
+                >
+                  {busy ? <span className="spinner" aria-hidden="true" /> : <IconShare size={15} />}
+                  <span>Bagikan</span>
+                </button>
+                <button
+                  type="button"
+                  className="btn btn--2 btn--sm"
+                  onClick={() => void bagikan("download")}
+                  disabled={busy}
+                  aria-label="Unduh tabel sebagai gambar"
+                >
+                  <IconDownload size={15} />
+                  <span>Unduh</span>
+                </button>
+                <button ref={closeRef} className="modal__x" onClick={() => setOpen(false)} aria-label="Tutup tabel">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true">
+                    <path d="M18 6L6 18" />
+                    <path d="M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
             </div>
+            {note && (
+              <p className="meta" role="status" aria-live="polite" style={{ margin: 0 }}>
+                {note}
+              </p>
+            )}
             <div className="modal__scroll">
-              <TableView tbl={tbl} big />
+              <div ref={liveRef}>
+                <TableView tbl={tbl} big />
+              </div>
             </div>
           </div>
         </div>

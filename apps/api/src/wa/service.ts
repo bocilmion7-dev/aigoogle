@@ -95,6 +95,8 @@ export function waserverReady(): boolean {
 async function waserverFetch(path: string, init: RequestInit = {}): Promise<Response> {
   return fetch(`${env.WASERVER_URL.replace(/\/$/, "")}${path}`, {
     ...init,
+    // jangan pernah menggantung tanpa batas (menu bisa "loading terus")
+    signal: AbortSignal.timeout(10_000),
     headers: {
       "X-API-Key": env.WASERVER_API_KEY,
       ...(init.body ? { "Content-Type": "application/json" } : {}),
@@ -172,22 +174,27 @@ async function sendViaWaserver(
   body: string,
   image?: { base64: string; mime: string; fileName: string }
 ): Promise<{ ok: boolean; error?: string; outboxId?: number }> {
-  const r = await waserverFetch("/v1/send", {
-    method: "POST",
-    body: JSON.stringify({
-      tenantId,
-      to,
-      text: body,
-      ...(image
-        ? { type: "image", mediaBase64: image.base64, mediaMime: image.mime, fileName: image.fileName }
-        : {}),
-    }),
-  });
+  let r: Response;
+  try {
+    r = await waserverFetch("/v1/send", {
+      method: "POST",
+      body: JSON.stringify({
+        tenantId,
+        to,
+        text: body,
+        ...(image
+          ? { type: "image", mediaBase64: image.base64, mediaMime: image.mime, fileName: image.fileName }
+          : {}),
+      }),
+    });
+  } catch (e) {
+    return { ok: false, error: e instanceof Error && e.name === "TimeoutError" ? "waserver_timeout" : "waserver_error" };
+  }
   if (!r.ok) {
     const t = await r.text().catch(() => "");
     return { ok: false, error: `waserver_${r.status}:${t.slice(0, 200)}` };
   }
-  const j = (await r.json()) as { outboxId?: number; status?: string };
+  const j = (await r.json().catch(() => ({}))) as { outboxId?: number; status?: string };
   return { ok: true, outboxId: j.outboxId };
 }
 
@@ -293,20 +300,30 @@ export async function sendWaText(
     return { ok: false, error: "saldo_kurang" };
   }
   const token = decryptToken(acct.tokenEnc);
-  const res = await fetch(`https://graph.facebook.com/v21.0/${acct.phoneNumberId}/messages`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      messaging_product: "whatsapp",
-      to,
-      ...(imageUrl
-        ? { type: "image", image: { link: imageUrl, caption: body } }
-        : { type: "text", text: { body } }),
-    }),
-  });
+  let res: Response;
+  try {
+    res = await fetch(`https://graph.facebook.com/v21.0/${acct.phoneNumberId}/messages`, {
+      method: "POST",
+      signal: AbortSignal.timeout(15_000),
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        messaging_product: "whatsapp",
+        to,
+        ...(imageUrl
+          ? { type: "image", image: { link: imageUrl, caption: body } }
+          : { type: "text", text: { body } }),
+      }),
+    });
+  } catch (e) {
+    const error = e instanceof Error && e.name === "TimeoutError" ? "graph_timeout" : "graph_error";
+    await prisma.waMessageLog.create({
+      data: { tenantId, to, body: logBody, status: "failed", error, costCredits: 0 },
+    });
+    return { ok: false, error };
+  }
   if (!res.ok) {
     const err = await res.text().catch(() => "");
     await prisma.waMessageLog.create({

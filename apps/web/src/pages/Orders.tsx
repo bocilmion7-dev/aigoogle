@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   createBiteshipOrder,
   getMe,
@@ -40,6 +40,13 @@ const rp = (n: number) => `Rp${Math.round(n).toLocaleString("id-ID")}`;
 const when = (iso: string) =>
   new Date(iso).toLocaleString("id-ID", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
 
+/** digit nomor HP penerima yang sah (tolak nomor semu sandbox) */
+const phoneDigits = (v?: string): string => {
+  if (!v || /^sandbox:/i.test(v)) return "";
+  const d = v.replace(/\D/g, "");
+  return /^\d{8,16}$/.test(d) ? d : "";
+};
+
 export function Orders() {
   const [me, setMe] = useState<Awaited<ReturnType<typeof getMe>> | undefined>(undefined);
   const [orders, setOrders] = useState<OrderRow[]>([]);
@@ -63,6 +70,8 @@ export function Orders() {
   const [areaResults, setAreaResults] = useState<ShippingArea[]>([]);
   const [shipBusy, setShipBusy] = useState("");
   const [tracking, setTracking] = useState<OrderTracking | null>(null);
+  const [shipPhone, setShipPhone] = useState("");
+  const feedbackRef = useRef<HTMLDivElement | null>(null);
 
   const load = useCallback(async (f: string, query: string) => {
     setLoading(true);
@@ -97,6 +106,11 @@ export function Orders() {
     return () => window.clearTimeout(t);
   }, [load, stage, q]);
 
+  // error/pesan aksi tampil di atas modal — pastikan terlihat walau tombol di bawah
+  useEffect(() => {
+    if (open && (err || msg)) feedbackRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [err, msg, open]);
+
   const counts = useMemo(() => {
     const c: Record<string, number> = { total: orders.length };
     for (const o of orders) c[o.stage] = (c[o.stage] ?? 0) + 1;
@@ -111,6 +125,11 @@ export function Orders() {
     setCustQuery(o.buyerPhone);
     setCustResults([]);
     setNewName(o.buyerName || "");
+    setShipPhone(
+      phoneDigits(o.shipping?.destinationPhone) ||
+        phoneDigits(o.buyerContactPhone) ||
+        phoneDigits(o.buyerPhone)
+    );
   }
 
   async function findArea() {
@@ -143,20 +162,30 @@ export function Orders() {
 
   async function shipToBiteship() {
     if (!open) return;
+    const phone = phoneDigits(shipPhone);
+    if (!phone) {
+      setErr("Nomor HP penerima belum valid (8–16 digit, contoh 0812xxxxxxx).");
+      return;
+    }
     setShipBusy("ship");
     setErr("");
     setMsg("");
     try {
-      const r = await createBiteshipOrder(open.orderId);
+      const r = await createBiteshipOrder(open.orderId, phone);
       if (r.order) setOpen(r.order);
       setMsg(
-        r.shipment.waybillId
+        (r.shipment.waybillId
           ? `Order Biteship dibuat — resi ${r.shipment.waybillId}.`
-          : `Order Biteship dibuat (${r.shipment.id}). Resi menyusul dari kurir.`
+          : `Order Biteship dibuat (${r.shipment.id}). Resi menyusul dari kurir.`) +
+          (r.buyerNotified ? "" : " Notifikasi WhatsApp ke pembeli gagal (cek koneksi/saldo WA).")
       );
       await load(stage, q.trim());
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Gagal input ke Biteship.");
+      if (e instanceof Error && (e.name === "TimeoutError" || e.name === "AbortError")) {
+        setErr("Koneksi lambat — input Biteship belum merespons. Muat ulang untuk cek status pesanan.");
+      } else {
+        setErr(e instanceof Error ? e.message : "Gagal input ke Biteship.");
+      }
     } finally {
       setShipBusy("");
     }
@@ -237,6 +266,8 @@ export function Orders() {
 
   const a = open?.accurate;
   const canManage = !!me.permissions?.includes("app:users.manage");
+  const can = (perm: string) => !!me.permissions?.includes(perm);
+  const shipPhoneValid = /^\d{8,16}$/.test(phoneDigits(shipPhone));
   return (
     <div className="app">
       <AppHeader me={me} />
@@ -324,21 +355,27 @@ export function Orders() {
                     <strong>{o.buyerName || `Pembeli ${o.buyerPhone}`}</strong>
                     <span className={`orders-badge is-${o.stage}`}>{STAGE_LABEL[o.stage] ?? o.stage}</span>
                   </span>
-                  <span className="orders-card__items">
-                    {o.items.map((i) => `${i.name} ×${i.qty}`).join(", ")}
+                  <span className="orders-card__lines">
+                    {o.items.map((i) => (
+                      <span className="orders-card__line" key={`${i.name}-${i.qty}`}>
+                        <span className="orders-card__iname">{i.name}</span>
+                        <span className="orders-card__iqty">×{i.qty}</span>
+                        <span className="orders-card__isub">{rp(i.subtotal)}</span>
+                      </span>
+                    ))}
                   </span>
-                  <span className="orders-card__meta">
-                    <span className="orders-card__total">{rp(o.total)}</span>
+                  <span className="meta orders-card__sub">
+                    {when(o.createdAt)} · #{o.orderId.replace("shop-", "")}
+                  </span>
+                  <span className="orders-card__foot">
                     <span className="meta">
-                      {when(o.createdAt)} · {o.orderId.replace("shop-", "")}
+                      {o.fulfillment === "courier"
+                        ? `Kurir ${[o.shipping?.courierName, o.shipping?.serviceName].filter(Boolean).join(" ")} · ongkir ${rp(
+                            o.shipping?.price ?? 0
+                          )}`
+                        : "Ambil sendiri di toko"}
                     </span>
-                  </span>
-                  <span className="meta">
-                    {o.fulfillment === "courier"
-                      ? `Kurir ${o.shipping?.courierName ?? ""} ${o.shipping?.serviceName ?? ""} · ongkir ${rp(
-                          o.shipping?.price ?? 0
-                        )}`
-                      : "Ambil sendiri di toko"}
+                    <strong className="orders-card__total">{rp(o.total)}</strong>
                   </span>
                   {o.accurate?.lastError && (
                     <span className="orders-card__warn">Accurate: {o.accurate.lastError}</span>
@@ -369,6 +406,7 @@ export function Orders() {
               </button>
             </div>
 
+            <div ref={feedbackRef} />
             {err && (
               <p className="banner banner--err" role="alert">
                 {err}
@@ -486,10 +524,10 @@ export function Orders() {
                             : "belum"}
                       </span>
                     </div>
-                    {open.shipping?.trackingLink && (
+                    {(open.shipping?.biteshipOrderId || open.shipping?.trackingLink) && (
                       <div className="orders-acc__row">
                         <span>Link lacak</span>
-                        <a href={open.shipping.trackingLink} target="_blank" rel="noopener noreferrer">
+                        <a href={`/lacak/${open.orderId}`} target="_blank" rel="noopener noreferrer">
                           Buka halaman pelacakan
                         </a>
                       </div>
@@ -505,16 +543,35 @@ export function Orders() {
                         Resi &amp; link pelacakan dikirim otomatis ke WhatsApp pembeli saat paket dijemput kurir.
                       </p>
                     )}
+                    {open.status === "paid" && !open.shipping?.biteshipOrderId && canManage && (
+                      <label className="orders-field orders-field--phone">
+                        No. HP penerima
+                        <input
+                          className="input"
+                          value={shipPhone}
+                          onChange={(e) => setShipPhone(e.target.value)}
+                          placeholder="0812xxxxxxx"
+                          inputMode="tel"
+                          aria-label="Nomor HP penerima paket"
+                          aria-invalid={!shipPhoneValid}
+                        />
+                        {!shipPhoneValid && (
+                          <span className="meta" style={{ color: "var(--danger-ink)" }}>
+                            Nomor HP penerima belum valid (8–16 digit).
+                          </span>
+                        )}
+                      </label>
+                    )}
                     <div className="orders-actions">
-                      {open.status === "paid" && !open.shipping?.biteshipOrderId && (
+                      {open.status === "paid" && !open.shipping?.biteshipOrderId && canManage && (
                         <button
                           type="button"
                           className="btn btn--sm"
                           onClick={() => void shipToBiteship()}
-                          disabled={shipBusy !== ""}
+                          disabled={shipBusy !== "" || !shipPhoneValid}
                         >
                           {shipBusy === "ship" ? <span className="spinner" aria-hidden="true" /> : <IconSend size={15} />}
-                          Input ke Biteship
+                          {shipBusy === "ship" ? "Memproses…" : "Proses"}
                         </button>
                       )}
                       {open.shipping?.waybillId && (
@@ -568,7 +625,7 @@ export function Orders() {
                     )}
                   </span>
                 </div>
-                {!a?.customerNo && (
+                {!a?.customerNo && can("accurate:customer.save") && (
                   <div className="orders-cust">
                     <input
                       className="input"
@@ -629,7 +686,7 @@ export function Orders() {
                 )}
 
                 <div className="orders-acc__row">
-                  <span>Pesanan (SO)</span>
+                  <span>Pesanan</span>
                   <span>{a?.salesOrder ? <strong>{a.salesOrder.number}</strong> : <span className="meta">belum</span>}</span>
                 </div>
                 <div className="orders-acc__row">
@@ -637,7 +694,7 @@ export function Orders() {
                   <span>{a?.salesInvoice ? <strong>{a.salesInvoice.number}</strong> : <span className="meta">belum</span>}</span>
                 </div>
                 <div className="orders-acc__row">
-                  <span>Penerimaan kas</span>
+                  <span>Kas masuk</span>
                   <span>{a?.salesReceipt ? <strong>{a.salesReceipt.number}</strong> : <span className="meta">belum</span>}</span>
                 </div>
 
@@ -650,7 +707,7 @@ export function Orders() {
             </div>
 
             <div className="orders-actions">
-              {!open.accurate?.salesOrder && (
+              {can("accurate:sales-order.save") && !open.accurate?.salesOrder && !open.accurate?.salesInvoice && (
                 <button
                   type="button"
                   className="btn btn--sm"
@@ -661,7 +718,7 @@ export function Orders() {
                   Input Pesanan (SO)
                 </button>
               )}
-              {open.status === "paid" && !open.accurate?.salesInvoice && (
+              {can("accurate:sales-invoice.save") && open.status === "paid" && !open.accurate?.salesInvoice && (
                 <button
                   type="button"
                   className="btn btn--sm"
@@ -672,7 +729,7 @@ export function Orders() {
                   Buat Faktur
                 </button>
               )}
-              {open.accurate?.salesInvoice && !open.accurate?.salesReceipt && (
+              {can("accurate:sales-receipt.save") && open.accurate?.salesInvoice && !open.accurate?.salesReceipt && (
                 <button
                   type="button"
                   className="btn btn--sm"
@@ -683,7 +740,7 @@ export function Orders() {
                   Catat Penerimaan Kas
                 </button>
               )}
-              {open.accurate?.salesOrder && (
+              {can("accurate:sales-order.save") && open.accurate?.salesOrder && (
                 <button
                   type="button"
                   className="btn btn--2 btn--sm"
@@ -693,7 +750,7 @@ export function Orders() {
                   Tutup Pesanan
                 </button>
               )}
-              {open.accurate?.lastError && (
+              {can("accurate:sales-invoice.save") && open.accurate?.lastError && (
                 <button
                   type="button"
                   className="btn btn--2 btn--sm"
@@ -737,11 +794,22 @@ export function Orders() {
                 BITESHIP_API_KEY belum diatur — cek ongkir & order kurir tidak aktif.
               </p>
             )}
+            {biteshipReady && biteshipMode === "test" && (
+              <p className="banner banner--err" role="status">
+                Mode <strong>Sandbox (biteship_test)</strong>: order kurir <strong>TIDAK</strong> dikirim nyata.
+                Untuk produksi: aktivasi Order API di dashboard Biteship, lalu set{" "}
+                <strong>BITESHIP_USE_LIVE=1</strong> (memakai BITESHIP_LIVE_API_KEY).
+              </p>
+            )}
+            {biteshipReady && biteshipMode === "live" && (
+              <p className="meta" style={{ margin: 0 }}>
+                Mode <strong>Live (biteship_live)</strong> — order dikirim nyata. Pastikan Order API sudah diaktivasi.
+              </p>
+            )}
             {biteshipReady && (
               <p className="meta" style={{ margin: 0 }}>
-                Mode key Biteship:{" "}
-                <strong>{biteshipMode === "test" ? "Sandbox (biteship_test)" : "Live (biteship_live)"}</strong>
-                {biteshipMode === "live" && " — Order API harus sudah diaktivasi di dashboard Biteship."}
+                Webhook: <strong>{`${window.location.origin}/api/shipping/biteship/webhook`}</strong> — daftarkan di
+                dashboard Biteship (opsional set <strong>BITESHIP_WEBHOOK_TOKEN</strong>).
               </p>
             )}
             {err && <p className="banner banner--err" role="alert">{err}</p>}

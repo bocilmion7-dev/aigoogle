@@ -156,9 +156,15 @@ chatRouter.post(
       data: { sessionId: session.id, role: "user", content: body.data.message },
     });
 
-    // short memory: muat 10 pesan terakhir sesi (kecuali pesan user baru) agar model paham konteks percakapan sebelumnya
+    // short memory: 10 pesan terakhir DALAM 5 MENIT terakhir. Setelah jeda > 5
+    // menit, percakapan dianggap baru (konteks lama tidak dipakai lagi).
+    const MEMORY_WINDOW_MS = 5 * 60_000;
     const recent = await prisma.chatMessage.findMany({
-      where: { sessionId: session.id, id: { not: userMsg.id } },
+      where: {
+        sessionId: session.id,
+        id: { not: userMsg.id },
+        createdAt: { gte: new Date(Date.now() - MEMORY_WINDOW_MS) },
+      },
       orderBy: { createdAt: "desc" },
       take: 10,
       select: { role: true, content: true },

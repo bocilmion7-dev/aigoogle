@@ -23,11 +23,13 @@ async function platformCookie(): Promise<string> {
 beforeEach(async () => {
   await prisma.aiProviderModel.deleteMany({});
   await prisma.aiProvider.deleteMany({});
+  await prisma.appSetting.deleteMany({ where: { key: { startsWith: "aiModel." } } });
 });
 afterEach(() => { vi.unstubAllGlobals(); });
 afterAll(async () => {
   await prisma.aiProviderModel.deleteMany({});
   await prisma.aiProvider.deleteMany({});
+  await prisma.appSetting.deleteMany({ where: { key: { startsWith: "aiModel." } } });
   await prisma.$disconnect();
 });
 
@@ -77,5 +79,50 @@ describe("API kelola provider AI", () => {
     const list = await request(app).get("/api/ai/providers").set("Cookie", cookie);
     expect(list.body[0].models.map((m: { name: string }) => m.name)).toEqual(["m2", "m9"]);
     expect(list.body[0].models.map((m: { rank: number }) => m.rank)).toEqual([0, 1]);
+  });
+
+  it("model modul di luar provider aktif → 400 (tombol simpan tidak boleh menyimpan model asing)", async () => {
+    const cookie = await platformCookie();
+    const a = await request(app).post("/api/ai/providers").set("Cookie", cookie).send({
+      name: "A", baseUrl: "https://a.example/v1", apiKey: "key", models: ["m1", "m2"],
+    });
+    await request(app).post(`/api/ai/providers/${a.body.id}/activate`).set("Cookie", cookie).send({});
+
+    const bad = await request(app).put("/api/ai/module-models").set("Cookie", cookie).send({ chat: "model-asing" });
+    expect(bad.status).toBe(400);
+    expect(bad.body.error).toBe("model_tidak_ada_di_provider_aktif");
+    expect(bad.body.modules).toContain("chat");
+    // tidak tersimpan
+    expect(await prisma.appSetting.findUnique({ where: { key: "aiModel.chat" } })).toBeNull();
+
+    const good = await request(app).put("/api/ai/module-models").set("Cookie", cookie).send({ chat: "m2" });
+    expect(good.status).toBe(200);
+    const res = await request(app).get("/api/ai/module-models").set("Cookie", cookie);
+    expect(res.body.providerName).toBe("A");
+    expect(res.body.modules.find((m: { key: string }) => m.key === "chat").value).toBe("m2");
+  });
+
+  it("ganti provider aktif / ubah daftar model → model modul yang hilang dikembalikan ke Otomatis", async () => {
+    const cookie = await platformCookie();
+    const a = await request(app).post("/api/ai/providers").set("Cookie", cookie).send({
+      name: "A", baseUrl: "https://a.example/v1", apiKey: "key", models: ["m1", "m2"],
+    });
+    await request(app).post(`/api/ai/providers/${a.body.id}/activate`).set("Cookie", cookie).send({});
+    await request(app).put("/api/ai/module-models").set("Cookie", cookie).send({ chat: "m2", voice: "m1" });
+
+    // 1) provider diganti ke B yang tidak punya m1/m2
+    const b = await request(app).post("/api/ai/providers").set("Cookie", cookie).send({
+      name: "B", baseUrl: "https://b.example/v1", apiKey: "key", models: ["n1"],
+    });
+    const act = await request(app).post(`/api/ai/providers/${b.body.id}/activate`).set("Cookie", cookie).send({});
+    expect(act.status).toBe(200);
+    expect(act.body.clearedModules.sort()).toEqual(["chat", "voice"]);
+    expect((await prisma.appSetting.findUnique({ where: { key: "aiModel.chat" } }))?.value).toBe("");
+    expect((await prisma.appSetting.findUnique({ where: { key: "aiModel.voice" } }))?.value).toBe("");
+
+    // 2) model dihapus dari provider aktif → modul yang memakainya ikut otomatis
+    await request(app).put("/api/ai/module-models").set("Cookie", cookie).send({ chat: "n1" });
+    await request(app).put(`/api/ai/providers/${b.body.id}`).set("Cookie", cookie).send({ models: ["n2"] });
+    expect((await prisma.appSetting.findUnique({ where: { key: "aiModel.chat" } }))?.value).toBe("");
   });
 });

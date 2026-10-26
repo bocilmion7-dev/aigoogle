@@ -138,4 +138,43 @@ describe("chat stream", () => {
     expect(res.status).toBe(200);
     expect(res.body.length).toBeGreaterThan(0);
   });
+
+  it("ingatan AI dibatasi 5 menit: pesan lama tidak dikirim sebagai konteks", async () => {
+    const { FakeLLMClient } = await import("../src/ai/fake-llm.js");
+    const { setLLMForTest } = await import("../src/ai/llm-client.js");
+    const fake = new FakeLLMClient([
+      { parts: [{ text: "bukan-json-router" }] }, // router → null → tool loop
+      { parts: [{ text: "Jawaban singkat." }] },
+    ]);
+    setLLMForTest(() => fake);
+
+    const user = await prisma.user.findFirstOrThrow({ where: { tenantId } });
+    const session = await prisma.chatSession.create({
+      data: { tenantId, userId: user.id, title: "uji memori 5 menit" },
+    });
+    const now = Date.now();
+    await prisma.chatMessage.createMany({
+      data: [
+        { sessionId: session.id, role: "user", content: "PESAN-LAMA-SEKALI", createdAt: new Date(now - 10 * 60_000) },
+        { sessionId: session.id, role: "ai", content: "BALASAN-LAMA", createdAt: new Date(now - 9 * 60_000) },
+        { sessionId: session.id, role: "user", content: "PESAN-BARU-KONTEKS", createdAt: new Date(now - 60_000) },
+      ],
+    });
+
+    const res = await request(api)
+      .post("/api/chat/stream")
+      .set("Cookie", cookie)
+      .send({ message: "lanjutkan", sessionId: session.id })
+      .buffer(true)
+      .parse((r, cb) => {
+        let d = "";
+        r.on("data", (c) => (d += c));
+        r.on("end", () => cb(null, d));
+      });
+    expect(res.status).toBe(200);
+    const allContents = JSON.stringify(fake.calls.map((c) => c.contents));
+    expect(allContents).toContain("PESAN-BARU-KONTEKS");
+    expect(allContents).not.toContain("PESAN-LAMA-SEKALI");
+    expect(allContents).not.toContain("BALASAN-LAMA");
+  });
 });

@@ -139,7 +139,7 @@ function qrCaptionFromOrder(o: OrderResult | null): string {
           o.shipping.serviceName ?? ""
         })`.replace(/\s+\)/g, ")")
       : "";
-  return `Total ${o.totalText} ya kak${ship}. Silakan pindai gambar QRIS berikut untuk menyelesaikan pembayaran.`;
+  return `Total ${o.totalText} ya kak${ship}.\nSilakan pindai *gambar QRIS* di atas untuk menyelesaikan pembayaran 🙏`;
 }
 
 function buildSystem(tenantName: string): string {
@@ -157,7 +157,9 @@ Aturan:
 - Bila pembeli memilih KURIR: minta alamat lengkap + kode pos (5 digit), panggil cekOngkir, lalu tawarkan 3 opsi termurah (kurir, layanan, ongkir, estimasi). Setelah pembeli memilih, panggil buatPesanan dengan fulfillment "courier", alamat, kodePos, kurirCode, layananCode dari opsi itu. JANGAN mengarang ongkir.
 - Bila pembeli memilih AMBIL SENDIRI: panggil buatPesanan dengan fulfillment "pickup".
 - Setelah buatPesanan, sampaikan total (termasuk ongkir bila kurir) dan minta pembeli memindai GAMBAR QRIS yang dikirim sistem. JANGAN menuliskan URL/link QRIS mentah dan JANGAN bilang sudah dibayar — pembayaran diverifikasi otomatis.
-- Jangan meminta data sensitif (password, OTP, kartu). Jangan memakai tabel/markdown; ini percakapan WhatsApp biasa.`;
+- Format balasan untuk WhatsApp (wajib rapi): pisahkan bagian dengan SATU baris kosong; pakai *teks tebal* hanya untuk info penting (total, status, kode pesanan); daftar barang pakai baris "• nama ×qty — Rp…"; balasan 3–6 baris saja, hindari paragraf panjang.
+- DILARANG memakai tabel, markdown (** , ##, pipa "|"), atau tautan mentah. Emoji maksimal 1 per balasan dan hanya bila relevan.
+- Jangan meminta data sensitif (password, OTP, kartu).`;
 }
 
 async function searchProduct(ctx: ProviderCtx, query: string, cache?: ItemCache): Promise<unknown> {

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { transformToRoute } from "../src/ai/transformer.js";
 import type { LLMClient } from "../src/ai/llm-client.js";
 
@@ -52,5 +52,28 @@ describe("transformToRoute", () => {
     expect(a?.tool).toBe("item.topSelling");
     expect(b?.tool).toBe("item.topSelling");
     expect(f.calls()).toBe(1);
+  });
+
+  it("cache kedaluwarsa setelah 5 menit (LLM dipanggil lagi)", async () => {
+    const f = fake('{"tool":"item.topSelling","args":{"fromDate":"01/01/2017","toDate":"31/12/2017"}}');
+    const msg = "barang terlaris tahun 2017 (uji ttl cache 5 menit)";
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date("2026-10-25T10:00:00Z"));
+      expect((await run(f, msg))?.tool).toBe("item.topSelling");
+      expect(f.calls()).toBe(1);
+
+      // < 5 menit → masih cache
+      vi.setSystemTime(new Date("2026-10-25T10:04:59Z"));
+      expect((await run(f, msg))?.tool).toBe("item.topSelling");
+      expect(f.calls()).toBe(1);
+
+      // > 5 menit → kedaluwarsa, router memanggil LLM lagi
+      vi.setSystemTime(new Date("2026-10-25T10:05:01Z"));
+      expect((await run(f, msg))?.tool).toBe("item.topSelling");
+      expect(f.calls()).toBe(2);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

@@ -192,6 +192,28 @@ describe("Biteship client", () => {
     expect(seen[0]?.url).toBe("/v1/trackings/AWB999?courier=jne");
   });
 
+  it("produksi: BITESHIP_USE_LIVE=1 memakai key live (mode live), default tetap test", async () => {
+    const { biteshipKeyMode } = await import("../src/shipping/biteship.js");
+    const oldLive = process.env.BITESHIP_LIVE_API_KEY;
+    const oldUse = process.env.BITESHIP_USE_LIVE;
+    const oldKey = process.env.BITESHIP_API_KEY;
+    try {
+      process.env.BITESHIP_API_KEY = "biteship_test.uji";
+      process.env.BITESHIP_LIVE_API_KEY = "biteship_live.uji";
+      delete process.env.BITESHIP_USE_LIVE;
+      expect(biteshipKeyMode()).toBe("test"); // default: key BITESHIP_API_KEY (test)
+      process.env.BITESHIP_USE_LIVE = "1";
+      expect(biteshipKeyMode()).toBe("live"); // eksplisit → pakai key live
+    } finally {
+      if (oldLive === undefined) delete process.env.BITESHIP_LIVE_API_KEY;
+      else process.env.BITESHIP_LIVE_API_KEY = oldLive;
+      if (oldUse === undefined) delete process.env.BITESHIP_USE_LIVE;
+      else process.env.BITESHIP_USE_LIVE = oldUse;
+      if (oldKey === undefined) delete process.env.BITESHIP_API_KEY;
+      else process.env.BITESHIP_API_KEY = oldKey;
+    }
+  });
+
   it("tanpa API key → error jelas", async () => {
     const old = process.env.BITESHIP_API_KEY;
     delete process.env.BITESHIP_API_KEY;

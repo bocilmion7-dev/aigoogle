@@ -411,3 +411,103 @@ model AiModelPrice {
   source         String   @default("manual") // openrouter|manual
   updatedAt      DateTime @updatedAt
 }
+
+// ── Insight pasar (berita eksternal) ────────────────────────────────────────
+model NewsSource {
+  id        String   @id @default(cuid())
+  industry  String // kunci industri atau "umum"
+  topic     String // regulasi|harga|tren|event|makro|industri|umum
+  query     String   @unique // kata kunci pencarian (Google News RSS)
+  weight    Float    @default(1)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([industry])
+}
+
+model NewsItem {
+  id           String    @id @default(cuid())
+  url          String    @unique
+  title        String
+  snippet      String    @default("")
+  sourceName   String    @default("")
+  sourceDomain String    @default("")
+  publishedAt  DateTime?
+  fetchedAt    DateTime  @default(now())
+  topic        String    @default("umum")
+  industries   String    @default("") // dipisah koma
+  hash         String    @unique
+  @@index([publishedAt])
+  @@index([topic])
+}
+
+model TenantIndustry {
+  id        String   @id @default(cuid())
+  tenantId  String
+  industry  String
+  weight    Float    @default(1)
+  evidence  Json?
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, industry])
+  @@index([tenantId])
+}
+
+model NewsDigest {
+  id          String   @id @default(cuid())
+  tenantId    String
+  date        String // yyyy-mm-dd (WIB)
+  payload     Json
+  generatedAt DateTime @default(now())
+
+  @@unique([tenantId, date])
+  @@index([tenantId, date])
+}
+
+model NewsAskLog {
+  id        String   @id @default(cuid())
+  tenantId  String
+  userId    String
+  question  String
+  createdAt DateTime @default(now())
+
+  @@index([tenantId, createdAt])
+}
+
+// Sinyal harga pasar/pesaing untuk produk yang dijual tenant (dari berita/marketplace terindeks)
+model PriceSignal {
+  id          String    @id @default(cuid())
+  tenantId    String
+  productName String
+  ownPrice    Float?
+  marketPrice Float
+  marketMin   Float?
+  marketMax   Float?
+  title       String
+  snippet     String    @default("")
+  sourceName  String    @default("")
+  sourceUrl   String
+  publishedAt DateTime?
+  fetchedAt   DateTime  @default(now())
+
+  @@unique([tenantId, sourceUrl])
+  @@index([tenantId, fetchedAt])
+  @@index([tenantId, productName])
+}
+
+// Harga produk yang sama di berbagai marketplace (dari price API, mis. Google Shopping/SerpAPI)
+model MarketplacePrice {
+  id          String   @id @default(cuid())
+  tenantId    String
+  productName String
+  marketplace String
+  price       Float
+  title       String   @default("")
+  link        String   @default("")
+  fetchedAt   DateTime @default(now())
+
+  @@unique([tenantId, productName, marketplace, link])
+  @@index([tenantId, fetchedAt])
+  @@index([tenantId, productName])
+}

@@ -104,7 +104,7 @@ export const ROUTER_PROMPT_CHARS = ROUTER_SYSTEM.length;
 /** panggil router — kembalikan Route atau null (fallback ke tool loop penuh) */
 /** cache keputusan router — pesan identik tak perlu panggil LLM lagi (hemat 3-5 dtk/pesan) */
 const ROUTE_CACHE = new Map<string, { route: Route | null; at: number }>();
-const ROUTE_TTL_MS = 10 * 60_000;
+const ROUTE_TTL_MS = 5 * 60_000;
 const ROUTE_MAX = 300;
 
 function routeKey(userMessage: string, history: Array<{ role: "user" | "model"; text: string }>): string {

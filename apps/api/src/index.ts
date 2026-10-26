@@ -4,8 +4,20 @@ import { createApp } from "./app.js";
 import { runWaJobs } from "./wa/scheduler.js";
 import { runProactiveJobs } from "./wa/proactive.js";
 import { syncShippingStatuses } from "./wa/shipping-notify.js";
-import { track } from "./shipping/biteship.js";
+import { biteshipKeyMode, track } from "./shipping/biteship.js";
 import { syncAllTenants } from "./sync/daily.js";
+import { runNewsIngest } from "./wawasan/ingest.js";
+import { DAILY_REFRESH_MINUTES, runDailyDigests, wibDate } from "./wawasan/digest.js";
+import { wibMinutes } from "./wawasan/time.js";
+import { prisma } from "./db.js";
+
+// Peringatan produksi: key Biteship test membuat order TIDAK dikirim nyata.
+if (env.APP_ORIGIN.startsWith("https://") && biteshipKeyMode() === "test") {
+  console.warn(
+    "[biteship] MODE TEST aktif di produksi — order kurir tidak dikirim nyata. " +
+      "Set BITESHIP_USE_LIVE=1 (memakai BITESHIP_LIVE_API_KEY) setelah Order API diaktivasi."
+  );
+}
 
 // server ini punya IPv6 default yg tak stabil ke API Google — paksa IPv4 dulu
 setDefaultResultOrder("ipv4first");
@@ -47,6 +59,43 @@ setInterval(
       .catch((e) => console.error("[sync] gagal:", e instanceof Error ? e.message : e));
   },
   6 * 3600_000
+);
+
+// Insight pasar: ingest berita eksternal tiap 2 jam (bahan digest).
+setTimeout(() => {
+  void runNewsIngest()
+    .catch((e) => console.error("[insight] ingest gagal:", e instanceof Error ? e.message : e));
+}, 60_000);
+setInterval(
+  () => {
+    void runNewsIngest()
+      .catch((e) => console.error("[insight] ingest gagal:", e instanceof Error ? e.message : e));
+  },
+  2 * 3600_000
+);
+
+// Insight pasar: digest SEKALI SEHARI (04:30 WIB). Halaman hanya membaca hasilnya.
+setInterval(
+  () => {
+    void (async () => {
+      try {
+        if (wibMinutes() < DAILY_REFRESH_MINUTES) return;
+        const today = wibDate();
+        const key = "insight:digest_last";
+        const row = await prisma.appSetting.findUnique({ where: { key } });
+        if (row?.value === today) return;
+        await runDailyDigests(100);
+        await prisma.appSetting.upsert({
+          where: { key },
+          create: { key, value: today },
+          update: { value: today },
+        });
+      } catch (e) {
+        console.error("[insight] digest harian gagal:", e instanceof Error ? e.message : e);
+      }
+    })();
+  },
+  15 * 60_000
 );
 
 // Pesan proaktif WA (digest harian) — dicek tiap 30 menit; idempoten per hari.

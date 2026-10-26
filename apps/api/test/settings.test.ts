@@ -13,7 +13,7 @@ let platCookie = "";
 
 // DB lokal persisten antar-run: backup setelan asli sebelum di-reset, kembalikan setelah test
 const SETTING_KEYS = [
-  "voiceEngine", "ocrMode", "waProvider", "waD360ApiKey", "waD360BaseUrl", "waSubPlans", "waMetaTopups", "aiTopupPackages", "aiSubPlans", "aiSignupBonusTokens",
+  "voiceEngine", "ocrMode", "waProvider", "waSubPlans", "waMetaTopups", "aiTopupPackages", "aiSubPlans", "aiSignupBonusTokens",
 ] as const;
 let settingBackup: { key: string; value: string }[] = [];
 
@@ -91,12 +91,8 @@ describe("settings & connections", () => {
       aiTopupPackages: DEFAULT_AI_TOPUP_PACKAGES,
       aiSubPlans: DEFAULT_AI_SUB_PLANS,
       aiSignupBonusTokens: DEFAULT_AI_SIGNUP_BONUS_TOKENS,
-      waProvider: "d360",
+      waProvider: "waserver",
       waserverReady: false,
-      waD360ApiKey: "",
-      waD360BaseUrl: "https://waba-v2.360dialog.io",
-      waD360PartnerId: "",
-      waD360PartnerKey: "",
     });
     const put = await request(api).put("/api/settings").set("Cookie", platCookie).send({ voiceEngine: "edge" });
     expect(put.status).toBe(200);
@@ -117,12 +113,8 @@ describe("settings & connections", () => {
       aiTopupPackages: DEFAULT_AI_TOPUP_PACKAGES,
       aiSubPlans: DEFAULT_AI_SUB_PLANS,
       aiSignupBonusTokens: DEFAULT_AI_SIGNUP_BONUS_TOKENS,
-      waProvider: "d360",
+      waProvider: "waserver",
       waserverReady: false,
-      waD360ApiKey: "",
-      waD360BaseUrl: "https://waba-v2.360dialog.io",
-      waD360PartnerId: "",
-      waD360PartnerKey: "",
     });
     await request(api).put("/api/settings").set("Cookie", platCookie).send({ ocrMode: "vision", waPricePerCredit: 200 });
   });
@@ -177,20 +169,20 @@ describe("settings & connections", () => {
   it("user tanpa settings.manage tak melihat kunci tersembunyi", async () => {
     const r = await request(api).get("/api/settings").set("Cookie", staffCookie);
     expect(r.status).toBe(200);
-    expect(r.body).not.toHaveProperty("waD360ApiKey");
+    expect(r.body).not.toHaveProperty("waserverApiKey");
   });
 
   it("admin perusahaan dengan settings.manage tetap tidak menerima secret platform", async () => {
     const r = await request(api).get("/api/settings").set("Cookie", cookie);
     expect(r.status).toBe(200);
-    expect(r.body).not.toHaveProperty("waD360PartnerKey");
-    expect(r.body).not.toHaveProperty("waD360ApiKey");
+    expect(r.body).not.toHaveProperty("waserverApiKey");
+    expect(r.body).not.toHaveProperty("waserverKey");
   });
 
   it("GET /settings dengan sesi platform (psid) saja → 200", async () => {
     const r = await request(api).get("/api/settings").set("Cookie", platCookie);
     expect(r.status).toBe(200);
-    expect(r.body.waD360BaseUrl).toBe("https://waba-v2.360dialog.io");
+    expect(r.body.waProvider).toBeDefined();
   });
 
   it("GET /api/connections → mengandung accurate connected", async () => {

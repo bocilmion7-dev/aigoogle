@@ -12,9 +12,33 @@ import {
   AI_MODULE_LABELS,
   getAllModuleModels,
   setModuleModels,
+  type AiModule,
 } from "../ai/module-model.js";
 
 export const aiProvidersRouter = Router();
+
+/** Model yang terdaftar pada provider AKTIF (sumber sah pilihan model modul). */
+async function activeModelNames(): Promise<string[]> {
+  const active = await prisma.aiProvider.findFirst({
+    where: { isActive: true },
+    include: { models: { select: { name: true } } },
+  });
+  return (active?.models ?? []).map((m) => m.name);
+}
+
+/** Kosongkan model modul yang tidak ada di daftar model sah ("" = otomatis).
+ *  Dipanggil saat provider aktif / daftar modelnya berubah supaya pilihan modul
+ *  selalu konsisten dengan provider yang benar-benar dipakai. */
+async function reconcileModuleModels(names: string[]): Promise<string[]> {
+  const modules = await getAllModuleModels();
+  const patch: Partial<Record<AiModule, string>> = {};
+  for (const [key, value] of Object.entries(modules) as Array<[AiModule, string]>) {
+    if (value && !names.includes(value)) patch[key] = "";
+  }
+  const cleared = Object.keys(patch);
+  if (cleared.length) await setModuleModels(patch);
+  return cleared;
+}
 
 function maskKey(key: string): string {
   if (!key) return "";
@@ -108,6 +132,8 @@ aiProvidersRouter.put(
       }
     });
     await writeAudit("platform", req.platform!.id, "ai_provider.update", { id });
+    // daftar model provider aktif berubah → model modul yang hilang dikembalikan ke otomatis
+    if (models !== undefined && exists.isActive) await reconcileModuleModels(models);
     res.json({ ok: true });
   })
 );
@@ -120,6 +146,8 @@ aiProvidersRouter.delete(
     const exists = await prisma.aiProvider.findUnique({ where: { id } });
     if (!exists) return res.status(404).json({ error: "tidak_ditemukan" });
     await prisma.aiProvider.delete({ where: { id } });
+    // provider aktif dihapus → semua model modul kembali otomatis (tidak ada acuan sah)
+    if (exists.isActive) await reconcileModuleModels([]);
     await writeAudit("platform", req.platform!.id, "ai_provider.delete", { id, name: exists.name });
     res.json({ ok: true });
   })
@@ -130,14 +158,16 @@ aiProvidersRouter.post(
   requirePlatform,
   asyncHandler(async (req, res) => {
     const id = req.params.id;
-    const exists = await prisma.aiProvider.findUnique({ where: { id } });
+    const exists = await prisma.aiProvider.findUnique({ where: { id }, include: { models: true } });
     if (!exists) return res.status(404).json({ error: "tidak_ditemukan" });
     await prisma.$transaction([
       prisma.aiProvider.updateMany({ data: { isActive: false } }),
       prisma.aiProvider.update({ where: { id }, data: { isActive: true } }),
     ]);
-    await writeAudit("platform", req.platform!.id, "ai_provider.activate", { id });
-    res.json({ ok: true });
+    // provider aktif berganti → model modul yang tidak ada di provider baru → otomatis
+    const cleared = await reconcileModuleModels(exists.models.map((m) => m.name));
+    await writeAudit("platform", req.platform!.id, "ai_provider.activate", { id, clearedModules: cleared });
+    res.json({ ok: true, clearedModules: cleared });
   })
 );
 
@@ -189,14 +219,17 @@ aiProvidersRouter.get(
       include: { models: { orderBy: { rank: "asc" } } },
     });
     const modules = await getAllModuleModels();
+    const available = (active?.models ?? []).map((m) => ({ name: m.name, rank: m.rank }));
+    const validNames = new Set(available.map((m) => m.name));
     res.json({
       providerName: active?.name ?? "",
-      available: (active?.models ?? []).map((m) => ({ name: m.name, rank: m.rank })),
+      available,
       modules: AI_MODULES.map((m) => ({
         key: m,
         label: AI_MODULE_LABELS[m],
         hint: AI_MODULE_HINTS[m],
-        value: modules[m],
+        // nilai lama yang tidak ada di provider aktif tidak ditampilkan seolah sah
+        value: modules[m] && validNames.has(modules[m]) ? modules[m] : "",
       })),
     });
   })
@@ -218,6 +251,16 @@ aiProvidersRouter.put(
   asyncHandler(async (req, res) => {
     const body = ModuleModelsBody.safeParse(req.body);
     if (!body.success) return res.status(400).json({ error: "bad_request" });
+    // model modul WAJIB berasal dari provider aktif ("" = otomatis, selalu boleh)
+    const allowed = new Set(await activeModelNames());
+    const invalid = Object.entries(body.data).filter(([, v]) => v && !allowed.has(v)).map(([k]) => k);
+    if (invalid.length) {
+      return res.status(400).json({
+        error: "model_tidak_ada_di_provider_aktif",
+        modules: invalid,
+        message: "Pilih model yang tersedia pada provider AI aktif (atau gunakan Otomatis).",
+      });
+    }
     await setModuleModels(body.data);
     await writeAudit("platform", req.platform!.id, "ai_module_models.update", body.data);
     res.json({ ok: true });

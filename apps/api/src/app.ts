@@ -17,6 +17,7 @@ import { waRouter } from "./routes/wa.js";
 import { customersRouter } from "./routes/customers.js";
 import { ordersRouter } from "./routes/orders.js";
 import { sandboxRouter } from "./routes/sandbox.js";
+import { insightRouter } from "./routes/insight.js";
 import { webhookAccurateRouter, webhookRootRouter } from "./routes/webhook-accurate.js";
 import { LlmHttpError } from "./ai/llm-error.js";
 import { opsRouter } from "./routes/ops.js";
@@ -73,6 +74,7 @@ export function createApp() {
   app.use("/api", customersRouter);
   app.use("/api", ordersRouter);
   app.use("/api", sandboxRouter);
+  app.use("/api", insightRouter);
   app.use("/api", docTypesRouter);
   app.use("/api", aiBillingRouter);
   app.use("/api", webhookAccurateRouter);

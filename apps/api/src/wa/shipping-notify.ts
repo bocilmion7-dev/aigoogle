@@ -1,8 +1,10 @@
 import { prisma } from "../db.js";
+import { env } from "../env.js";
 import { writeAudit } from "../audit.js";
 import { trackingPageUrl } from "../shipping/biteship.js";
 import { getShopOrder, patchShopOrder, type ShopOrder } from "./shop-order.js";
 import { sendWaText } from "./service.js";
+import { shipmentCreatedMessage, shippingUpdateMessage } from "./format.js";
 
 /** Label status Biteship → kalimat untuk pembeli (status bisa camelCase / snake_case). */
 const STATUS_TEXT: Record<string, string> = {
@@ -23,7 +25,7 @@ const STATUS_TEXT: Record<string, string> = {
 };
 
 const normStatus = (s: string) => s.replace(/[_\s-]/g, "").toLowerCase();
-const labelOf = (status: string) => STATUS_TEXT[normStatus(status)] ?? `Status pengiriman: ${status}`;
+export const labelOf = (status: string) => STATUS_TEXT[normStatus(status)] ?? `Status pengiriman: ${status}`;
 const isFinal = (status: string) =>
   ["delivered", "rejected", "returned", "cancelled", "disposed", "couriernotfound"].includes(normStatus(status));
 
@@ -59,19 +61,31 @@ export async function findOrderByBiteshipId(biteshipId: string): Promise<ShopOrd
   return null;
 }
 
+/** URL halaman lacak PUBLIK milik aplikasi (tanpa login) — andal dibagikan ke pembeli. */
+export function publicTrackingUrl(orderId: string): string {
+  const origin = env.APP_ORIGIN.replace(/\/$/, "");
+  return orderId ? `${origin}/lacak/${encodeURIComponent(orderId)}` : "";
+}
+
+/** Sandbox: catat balasan ke chat sandbox (tanpa kirim WA sungguhan). */
+async function recordSandboxMessage(tenantId: string, peer: string, body: string): Promise<void> {
+  await prisma.waMessageLog.create({
+    data: { tenantId, to: peer, body, direction: "out", status: "sent", costCredits: 0 },
+  });
+}
+
 /** Kirim info resi + link pelacakan ke pembeli (dipakai setelah input ke Biteship). */
 export async function notifyShipmentCreated(order: ShopOrder): Promise<boolean> {
-  if (order.buyerPhone.startsWith("sandbox:")) return false;
   const s = order.shipping;
   if (!s) return false;
-  const link = s.trackingLink || trackingPageUrl(s.trackingId ?? "");
-  const parts = [
-    `Pesanan ${order.orderId} sudah diserahkan ke kurir.`,
-    `Kurir: ${s.courierName ?? s.courierCode ?? "-"} ${s.serviceName ?? s.serviceCode ?? ""}`.trim(),
-    s.waybillId ? `No. resi: ${s.waybillId}` : "Nomor resi menyusul dari kurir.",
-    link ? `Lacak pengiriman: ${link}` : "",
-  ].filter(Boolean);
-  const sent = await sendWaText(order.tenantId, order.buyerPhone, parts.join("\n"));
+  // utamakan halaman lacak kita sendiri (Biteship test-mode tidak bisa dibuka publik)
+  const link = publicTrackingUrl(order.orderId) || s.trackingLink || trackingPageUrl(s.trackingId ?? "");
+  const body = shipmentCreatedMessage(order, link);
+  if (order.buyerPhone.startsWith("sandbox:")) {
+    await recordSandboxMessage(order.tenantId, order.buyerPhone, body);
+    return true;
+  }
+  const sent = await sendWaText(order.tenantId, order.buyerPhone, body);
   return sent.ok;
 }
 
@@ -115,18 +129,16 @@ export async function applyShippingUpdate(input: {
 
   let notified = false;
   if (statusChanged && nextStatus) {
-    const link = updated.shipping?.trackingLink || trackingPageUrl(updated.shipping?.trackingId ?? "");
+    const link =
+      publicTrackingUrl(updated.orderId) ||
+      updated.shipping?.trackingLink ||
+      trackingPageUrl(updated.shipping?.trackingId ?? "");
+    const body = shippingUpdateMessage(updated, labelOf(nextStatus), link);
     if (updated.buyerPhone.startsWith("sandbox:")) {
-      // pesanan sandbox tidak mengirim WA, tetap catat status
+      // sandbox: catat ke chat sandbox agar terlihat seperti WA sungguhan
+      await recordSandboxMessage(updated.tenantId, updated.buyerPhone, body);
+      notified = true;
     } else {
-      const body = [
-        `Update pengiriman ${updated.orderId}`,
-        labelOf(nextStatus),
-        updated.shipping?.waybillId ? `Resi: ${updated.shipping.waybillId}` : "",
-        link ? `Lacak: ${link}` : "",
-      ]
-        .filter(Boolean)
-        .join("\n");
       const sent = await sendWaText(updated.tenantId, updated.buyerPhone, body);
       notified = sent.ok;
     }

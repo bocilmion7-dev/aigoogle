@@ -270,6 +270,7 @@ export interface OrderShipping {
   destinationAddress?: string;
   destinationPostalCode?: string;
   destinationNote?: string;
+  destinationPhone?: string;
   courierName?: string;
   courierCode?: string;
   serviceName?: string;
@@ -335,10 +336,16 @@ export const putShippingSettings = (body: Partial<ShippingOrigin>) =>
   });
 export const searchShippingAreas = (q: string) =>
   adminFetch<ShippingArea[]>(`/api/shipping/areas?q=${encodeURIComponent(q)}`);
-export const createBiteshipOrder = (orderId: string) =>
-  adminFetch<{ ok: boolean; shipment: { id: string; waybillId: string; status: string }; order: OrderRow | null }>(
+export const createBiteshipOrder = (orderId: string, receiverPhone?: string) =>
+  adminFetch<{ ok: boolean; buyerNotified: boolean; shipment: { id: string; waybillId: string; status: string }; order: OrderRow | null }>(
     `/api/orders/${encodeURIComponent(orderId)}/biteship`,
-    { method: "POST" }
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(receiverPhone ? { receiverPhone } : {}),
+      // Biteship kadang lambat — jangan biarkan tombol berputar tanpa akhir
+      signal: AbortSignal.timeout(45_000),
+    }
   );
 export interface OrderTracking {
   id: string;
@@ -735,4 +742,80 @@ export const adjustAiWallet = (userId: string, amount: number, note: string) =>
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ amount, note }),
+  });
+
+// ── Insight pasar (berita eksternal, read-only + tanya AI) ─────────────────
+export interface InsightIndustry {
+  key: string;
+  label: string;
+  weight: number;
+}
+export interface InsightItem {
+  id: string;
+  title: string;
+  url: string;
+  snippet: string;
+  sourceName: string;
+  sourceDomain: string;
+  publishedAt: string | null;
+  topic: string;
+  why: string;
+  matched: string[];
+}
+export interface InsightPriceSource {
+  title: string;
+  url: string;
+  sourceName: string;
+  publishedAt: string | null;
+}
+export interface InsightPrice {
+  productName: string;
+  ownPrice: number | null;
+  marketMin: number | null;
+  marketMax: number | null;
+  marketMedian: number | null;
+  deltaPct: number | null;
+  sampleCount: number;
+  scope: "product" | "brand";
+  sources: InsightPriceSource[];
+}
+export interface InsightMarketplaceItem {
+  marketplace: string;
+  /** penawaran termurah */
+  price: number;
+  /** penawaran termahal */
+  maxPrice: number;
+  title: string;
+  link: string;
+}
+export interface InsightMarketplace {
+  productName: string;
+  ownPrice: number | null;
+  items: InsightMarketplaceItem[];
+  cheapestMarketplace: string | null;
+  cheapestPrice: number | null;
+  deltaPct: number | null;
+  fetchedAt: string | null;
+}
+export interface InsightPayload {
+  date: string;
+  generatedAt: string;
+  industries: InsightIndustry[];
+  prices: InsightPrice[];
+  marketplaceReady: boolean;
+  marketplaces: InsightMarketplace[];
+  items: InsightItem[];
+}
+export interface InsightSource {
+  title: string;
+  url: string;
+  sourceName: string;
+  publishedAt: string | null;
+}
+export const getInsight = () => adminFetch<InsightPayload>("/api/insight");
+export const askInsight = (question: string) =>
+  adminFetch<{ answer: string; sources: InsightSource[]; remaining: number }>("/api/insight/ask", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ question }),
   });

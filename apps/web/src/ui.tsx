@@ -10,6 +10,7 @@ import {
   IconCpu,
   IconHome,
   IconLogout,
+  IconNews,
   IconPackage,
   IconScan,
   IconSettings,
@@ -71,6 +72,7 @@ export function AppHeader({ me }: { me?: Me | null }) {
   const canPlatform = perms.includes("app:settings.manage");
   const sisiAccurate = !canPlatform; // Staf & Admin Accurate
   const links: NavLink[] = [
+    ...(sisiAccurate ? [{ href: "/insight", label: "Insight", short: "Insight", Icon: IconNews }] : []),
     ...(sisiAccurate ? [{ href: "/app", label: "Dashboard", short: "Beranda", Icon: IconHome }] : []),
     ...(sisiAccurate
       ? [{ href: "/explore", label: "Explore Manager", short: "Explore", Icon: IconCompass }]
@@ -78,7 +80,7 @@ export function AppHeader({ me }: { me?: Me | null }) {
     ...(sisiAccurate ? [{ href: "/whatsapp", label: "WhatsApp", short: "WhatsApp", Icon: IconChat }] : []),
     ...(sisiAccurate ? [{ href: "/pesanan", label: "Kelola Pesanan", short: "Pesanan", Icon: IconPackage }] : []),
     ...(canAdmin && !canPlatform
-      ? [{ href: "/aktivitas", label: "Aktivitas", short: "Aktivitas", Icon: IconActivity }]
+      ? [{ href: "/aktivitas", label: "Aktivitas", short: "Aktivitas", hidden: true, Icon: IconActivity }]
       : []),
     ...(canAdmin ? [{ href: "/admin", label: "User & Peran", short: "User", Icon: IconUsers }] : []),
     // Scan tetap ada (tidak dihapus) — hanya disembunyikan dari bottom bar

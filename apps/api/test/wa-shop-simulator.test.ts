@@ -198,7 +198,7 @@ describe("simulator pembayaran pesanan toko", () => {
       where: { tenantId: tenantA, to: sandboxPeer, direction: "out", body: { contains: "Pembayaran diterima" } },
     });
     expect(log).toBeTruthy();
-    expect(log!.body).toContain(sandboxOrderId);
+    expect(log!.body).toContain(sandboxOrderId.replace(/^shop-/, ""));
     expect(log!.body).toContain("Rp30.000");
     expect(log!.status).toBe("sent");
     expect(log!.costCredits).toBe(0);

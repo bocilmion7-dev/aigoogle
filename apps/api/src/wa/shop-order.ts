@@ -33,6 +33,8 @@ export interface ShopShipping {
   destinationAddress?: string;
   destinationPostalCode?: string;
   destinationNote?: string;
+  /** nomor HP penerima yang dipakai ke kurir (bisa berbeda dgn nomor WA) */
+  destinationPhone?: string;
   courierName?: string;
   courierCode?: string;
   serviceName?: string;

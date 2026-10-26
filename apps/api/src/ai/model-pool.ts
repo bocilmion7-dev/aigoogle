@@ -62,12 +62,19 @@ async function candidates(preferred?: string): Promise<ModelCandidate[]> {
   });
   if (!active) throw new LlmHttpError(503, "tidak ada provider AI aktif — atur di halaman AI");
   let list = active.models.map((m) => toCandidate(active, m.name));
-  if (preferred && !list.some((c) => c.model === preferred)) {
-    const pref = await prisma.aiProviderModel.findUnique({
-      where: { providerId_name: { providerId: active.id, name: preferred } },
-    });
-    if (pref && pref.failureCount < MAX_FAILURES) {
-      list = [toCandidate(active, pref.name), ...list];
+  if (preferred) {
+    // model pilihan modul harus dicoba PERTAMA (bukan menunggu urutan rank —
+    // mis. provider aktif juga memuat model non-chat spt whisper di rank 1)
+    const idx = list.findIndex((c) => c.model === preferred);
+    if (idx > 0) {
+      list = [list[idx]!, ...list.slice(0, idx), ...list.slice(idx + 1)];
+    } else if (idx < 0) {
+      const pref = await prisma.aiProviderModel.findUnique({
+        where: { providerId_name: { providerId: active.id, name: preferred } },
+      });
+      if (pref && pref.failureCount < MAX_FAILURES) {
+        list = [toCandidate(active, pref.name), ...list];
+      }
     }
   }
   return list.slice(0, MAX_TRY);

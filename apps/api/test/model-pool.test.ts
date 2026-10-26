@@ -148,6 +148,21 @@ describe("pool model AI (failover DB)", () => {
     expect(tried).toEqual(["b"]); // a demoted → dilewati meski preferred
   });
 
+  it("model pilihan modul (preferred) dicoba PERTAMA meski rank-nya di bawah model lain", async () => {
+    await seedProvider(["whisper", "qwen"]);
+    const tried: string[] = [];
+    const out = await withModelFailover(
+      "generate",
+      async (c) => {
+        tried.push(c.model);
+        return "ok";
+      },
+      "qwen"
+    );
+    expect(out).toBe("ok");
+    expect(tried).toEqual(["qwen"]); // whisper (rank 0) tidak dicoba lebih dulu
+  });
+
   it("tanpa provider aktif → 503; getDefaultModel mengikuti provider aktif", async () => {
     await seedProvider(["z1", "z2"], { active: false });
     await expect(withModelFailover("generate", async () => "ok")).rejects.toThrow(/provider AI aktif/);

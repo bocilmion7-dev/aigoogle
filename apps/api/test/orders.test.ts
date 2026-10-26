@@ -10,6 +10,7 @@ vi.mock("../src/wa/service.js", async (importOriginal) => {
 });
 vi.mock("../src/shipping/biteship.js", () => ({
   biteshipReady: vi.fn(() => true),
+  biteshipKeyMode: vi.fn(() => "test"),
   defaultCouriers: vi.fn(() => "jne,jnt"),
   searchAreas: vi.fn(async () => [{ id: "AREA-1", name: "Kuningan, Jakarta Selatan. 12950", postalCode: "12950" }]),
   createShipment: vi.fn(async () => ({
@@ -147,6 +148,8 @@ beforeEach(() => {
 });
 
 afterAll(async () => {
+  await prisma.waMessageLog.deleteMany({ where: { tenantId: { in: [tenantA, tenantB] } } });
+  await prisma.appSetting.deleteMany({ where: { key: { startsWith: "wa:biteship_order:" } } });
   await prisma.appSetting.deleteMany({ where: { key: { startsWith: "wa:shop_order:shop-mock-" } } });
   await prisma.auditLog.deleteMany({ where: { tenantId: { in: [tenantA, tenantB] } } });
   await prisma.session.deleteMany({ where: { user: { tenantId: { in: [tenantA, tenantB] } } } });
@@ -405,10 +408,11 @@ describe("pengiriman (Biteship)", () => {
     expect(r.body.order.shipping.trackingId).toBe("TRK1");
     expect(r.body.order.shipping.trackingLink).toBe("https://track.biteship.com/TRK1");
     expect(r.body.buyerNotified).toBe(true);
+    // link yang dibagikan = halaman lacak publik aplikasi (bukan track.biteship.com)
     expect(sendWaText).toHaveBeenCalledWith(
       tenantA,
       "628111222333",
-      expect.stringContaining("https://track.biteship.com/TRK1")
+      expect.stringContaining(`/lacak/${id}`)
     );
     expect(createShipment).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -427,6 +431,141 @@ describe("pengiriman (Biteship)", () => {
       where: { tenantId: tenantA, action: "orders.biteship_order" },
     });
     expect(audit).toBeTruthy();
+    await prisma.appSetting.delete({ where: { key: `wa:shop_order:${id}` } });
+  });
+
+  it("order sandbox (nomor semu > 32 char) → wajib isi no HP penerima; dipakai & tersimpan", async () => {
+    const id = `shop-mock-${randomBytes(4).toString("hex")}`;
+    const o = orderOf(id, tenantA, "paid");
+    o.buyerPhone = `sandbox:test-${randomBytes(8).toString("hex")}`; // > 32 char → dulu ditolak Biteship
+    o.fulfillment = "courier";
+    o.shipping = {
+      destinationAddress: "Jl. Tujuan No. 2, Jakarta",
+      destinationPostalCode: "12950",
+      courierName: "JNE",
+      courierCode: "jne",
+      serviceName: "Reguler",
+      serviceCode: "reg",
+      price: 10000,
+      weightGram: 1000,
+    };
+    await saveShopOrder(o);
+
+    const bad = await request(api).post(`/api/orders/${id}/biteship`).set("Cookie", cookieAdmin).send({});
+    expect(bad.status).toBe(409);
+    expect(bad.body.error).toBe("telepon_penerima_kosong");
+
+    const ok = await request(api)
+      .post(`/api/orders/${id}/biteship`)
+      .set("Cookie", cookieAdmin)
+      .send({ receiverPhone: "0812-3456-7890" });
+    expect(ok.status).toBe(200);
+    expect(createShipment).toHaveBeenCalledWith(
+      expect.objectContaining({ destination: expect.objectContaining({ phone: "081234567890" }) })
+    );
+    const saved = await getShopOrder(id);
+    expect(saved?.shipping?.destinationPhone).toBe("081234567890");
+    await prisma.appSetting.delete({ where: { key: `wa:shop_order:${id}` } });
+  });
+
+  it("halaman lacak publik → status + riwayat tanpa login", async () => {
+    const id = `shop-mock-${randomBytes(4).toString("hex")}`;
+    const o = orderOf(id, tenantA, "paid");
+    o.fulfillment = "courier";
+    o.shipping = {
+      destinationAddress: "Jl. Tujuan No. 2, Jakarta",
+      destinationPostalCode: "12950",
+      courierName: "JNE",
+      courierCode: "jne",
+      serviceName: "Reguler",
+      serviceCode: "reg",
+      price: 10000,
+      weightGram: 1000,
+      biteshipOrderId: "ORD-1",
+      trackingId: "TRK1",
+      waybillId: "AWB1",
+      status: "picked",
+    };
+    await saveShopOrder(o);
+
+    const r = await request(api).get(`/api/public/track/${id}`);
+    expect(r.status).toBe(200);
+    expect(r.body).toMatchObject({ orderId: id, courier: "JNE Reguler", waybillId: "AWB1", status: "picked" });
+    expect(String(r.body.statusLabel)).toContain("dijemput");
+    expect(r.body.history.length).toBeGreaterThan(0);
+
+    expect((await request(api).get("/api/public/track/shop-tidakada")).status).toBe(404);
+    await prisma.appSetting.delete({ where: { key: `wa:shop_order:${id}` } });
+  });
+
+  it("order sandbox → notifikasi resi + link lacak tercatat di chat sandbox (tanpa WA asli)", async () => {
+    const id = `shop-mock-${randomBytes(4).toString("hex")}`;
+    const o = orderOf(id, tenantA, "paid");
+    o.buyerPhone = `sandbox:${"x".repeat(40)}`;
+    o.fulfillment = "courier";
+    o.shipping = {
+      destinationAddress: "Jl. Tujuan No. 2, Jakarta",
+      destinationPostalCode: "12950",
+      destinationPhone: "081234567890",
+      courierName: "JNE",
+      courierCode: "jne",
+      serviceName: "Reguler",
+      serviceCode: "reg",
+      price: 10000,
+      weightGram: 1000,
+    };
+    await saveShopOrder(o);
+
+    const r = await request(api).post(`/api/orders/${id}/biteship`).set("Cookie", cookieAdmin).send({});
+    expect(r.status).toBe(200);
+    expect(r.body.buyerNotified).toBe(true);
+    expect(sendWaText).not.toHaveBeenCalled();
+    const log = await prisma.waMessageLog.findFirst({
+      where: { tenantId: tenantA, to: o.buyerPhone, direction: "out" },
+    });
+    expect(log?.body).toContain(`/lacak/${id}`);
+    await prisma.waMessageLog.deleteMany({ where: { to: o.buyerPhone } });
+    await prisma.appSetting.delete({ where: { key: `wa:shop_order:${id}` } });
+  });
+
+  it("klik ganda Input ke Biteship → hanya satu yang diproses (anti-dobel)", async () => {
+    const id = `shop-mock-${randomBytes(4).toString("hex")}`;
+    const o = orderOf(id, tenantA, "paid");
+    o.fulfillment = "courier";
+    o.shipping = {
+      destinationAddress: "Jl. Tujuan No. 2, Jakarta",
+      destinationPostalCode: "12950",
+      destinationPhone: "081234567890",
+      courierName: "JNE",
+      courierCode: "jne",
+      serviceName: "Reguler",
+      serviceCode: "reg",
+      price: 10000,
+      weightGram: 1000,
+    };
+    await saveShopOrder(o);
+    (createShipment as unknown as MockFn).mockImplementationOnce(async () => {
+      await new Promise((r) => setTimeout(r, 150));
+      return {
+        id: "ORD-LOCK",
+        status: "confirmed",
+        waybillId: "AWB-LOCK",
+        trackingId: "TRK-LOCK",
+        trackingLink: "https://track.biteship.com/TRK-LOCK",
+        courier: { company: "jne", type: "reg" },
+      };
+    });
+
+    const p1 = request(api).post(`/api/orders/${id}/biteship`).set("Cookie", cookieAdmin).send({});
+    const done1 = p1.then((r) => r);
+    await new Promise((r) => setTimeout(r, 40));
+    const r2 = await request(api).post(`/api/orders/${id}/biteship`).set("Cookie", cookieAdmin).send({});
+    const r1 = await done1;
+    const statuses = [r1.status, r2.status].sort((a, b) => a - b);
+    expect(statuses).toEqual([200, 409]);
+    const blocked = r1.status === 409 ? r1 : r2;
+    expect(blocked.body.error).toBe("sedang_diproses");
+    expect(createShipment).toHaveBeenCalledTimes(1);
     await prisma.appSetting.delete({ where: { key: `wa:shop_order:${id}` } });
   });
 
@@ -525,7 +664,7 @@ describe("webhook Biteship & notifikasi pelanggan", () => {
     expect(sendWaText).toHaveBeenCalledWith(
       tenantA,
       "628111222333",
-      expect.stringContaining("Lacak pengiriman: https://track.biteship.com/TRK2")
+      expect.stringContaining(`/lacak/${id}`)
     );
     const saved = await getShopOrder(id);
     expect(saved?.shipping?.waybillId).toBe("AWB2");

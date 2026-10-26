@@ -90,9 +90,18 @@ export interface TrackingResult {
 
 const baseUrl = () => (process.env.BITESHIP_BASE_URL ?? "https://api.biteship.com").replace(/\/+$/, "");
 
+/**
+ * Key Biteship yang dipakai. Default: BITESHIP_API_KEY (test/live sesuai prefix).
+ * Produksi: set BITESHIP_USE_LIVE=1 → memakai BITESHIP_LIVE_API_KEY (bila ada).
+ * Sengaja eksplisit agar order TIDAK diam-diam berubah jadi pengiriman nyata.
+ */
 function apiKey(): string {
+  const useLive = /^(1|true|yes)$/i.test(process.env.BITESHIP_USE_LIVE ?? "");
+  if (useLive && process.env.BITESHIP_LIVE_API_KEY) return process.env.BITESHIP_LIVE_API_KEY;
   return process.env.BITESHIP_API_KEY ?? "";
 }
+
+const digitsOnly = (v: string) => String(v ?? "").replace(/\D/g, "");
 
 export function biteshipReady(): boolean {
   return apiKey() !== "";
@@ -200,16 +209,16 @@ export async function createShipment(opts: ShipmentInput): Promise<ShipmentResul
     method: "POST",
     body: JSON.stringify({
       shipper_contact_name: o.contactName || o.organization || "Toko",
-      shipper_contact_phone: o.phone,
+      shipper_contact_phone: digitsOnly(o.phone),
       shipper_contact_email: o.email ?? "",
       shipper_organization: o.organization || "Toko",
       origin_contact_name: o.contactName || o.organization || "Toko",
-      origin_contact_phone: o.phone,
+      origin_contact_phone: digitsOnly(o.phone),
       origin_address: o.address,
       origin_note: o.note ?? "",
       origin_postal_code: Number(o.postalCode.replace(/\D/g, "")),
       destination_contact_name: d.contactName || "Pembeli",
-      destination_contact_phone: d.phone,
+      destination_contact_phone: digitsOnly(d.phone),
       destination_contact_email: d.email ?? "",
       destination_address: d.address,
       destination_note: d.note ?? "",

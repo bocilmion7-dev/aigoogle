@@ -8,6 +8,8 @@ import { SetPassword } from "./pages/SetPassword";
 import { WhatsApp } from "./pages/WhatsApp";
 import { WaChats } from "./pages/WaChats";
 import { Orders } from "./pages/Orders";
+import { Lacak } from "./pages/Lacak";
+import { Insight } from "./pages/Insight";
 import { Sandbox } from "./pages/Sandbox";
 import { Pelanggan } from "./pages/Pelanggan";
 import { Aktivitas } from "./pages/Aktivitas";
@@ -21,6 +23,7 @@ import { AiGate } from "./ai-gate";
 import { AiAccessGuard } from "./ai-access-guard";
 
 function pageFor(path: string) {
+  if (path === "/insight") return <Insight />;
   if (path === "/settings") return <Settings />;
   if (path === "/ai") return <AiProviders />;
   if (path === "/ai-models") return <AiModels />;
@@ -35,6 +38,7 @@ function pageFor(path: string) {
   if (path === "/whatsapp") return <WhatsApp />;
   if (path === "/wa-chats") return <WaChats />;
   if (path === "/pesanan") return <Orders />;
+  if (path.startsWith("/lacak/")) return <Lacak orderId={decodeURIComponent(path.slice("/lacak/".length))} />;
   if (path === "/sandbox") return <Sandbox />;
   if (path === "/pelanggan") return <Pelanggan />;
   if (path === "/aktivitas") return <Aktivitas />;

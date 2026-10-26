@@ -3,8 +3,7 @@ import { writeAudit } from "../audit.js";
 import { getShopOrder, setShopOrderStatus } from "./shop-order.js";
 import { syncShopOrderPaid } from "./shop-accurate.js";
 import { sendWaText } from "./service.js";
-
-const rp = (n: number) => `Rp${Math.round(n).toLocaleString("id-ID")}`;
+import { ownerPaidMessage, paymentReceivedMessage } from "./format.js";
 
 export interface ShopPaymentResult {
   found: boolean;
@@ -55,43 +54,13 @@ export async function applyShopPaymentResult(opts: {
       }),
     ]);
     const acc = synced?.accurate;
-    const lines = order.items.map((i) => `- ${i.name} x${i.qty} = ${rp(i.subtotal)}`).join("\n");
     const ownerRow = await prisma.appSetting.findUnique({ where: { key: `wa:owner_phone:${order.tenantId}` } });
     const ownerPhone = ownerRow?.value ?? "";
     if (ownerPhone) {
-      const docs = acc?.salesInvoice
-        ? `\nFaktur Accurate: ${acc.salesInvoice.number}` +
-          (acc.salesReceipt ? `\nPenerimaan kas: ${acc.salesReceipt.number}` : "")
-        : "";
-      const ship = order.shipping;
-      const shipLine =
-        order.fulfillment === "courier" && ship
-          ? `\nPengiriman: ${ship.courierName ?? ship.courierCode ?? "kurir"} ${ship.serviceName ?? ship.serviceCode ?? ""} (${rp(
-              ship.price ?? 0
-            )})` +
-            (ship.destinationAddress ? `\nAlamat: ${ship.destinationAddress} (${ship.destinationPostalCode ?? ""})` : "")
-          : `\nPengiriman: ambil sendiri di toko`;
-      const msg =
-        `Pesanan toko sudah DIBAYAR\n` +
-        `Order: ${order.orderId}\n` +
-        `Pembeli: ${order.buyerName || order.buyerPhone}\n` +
-        `${lines}\nTotal: ${rp(order.total)}` +
-        shipLine +
-        docs;
-      await sendWaText(order.tenantId, ownerPhone, msg).catch(() => null);
+      await sendWaText(order.tenantId, ownerPhone, ownerPaidMessage(order, acc)).catch(() => null);
     }
     if (order.buyerPhone) {
-      const ship = order.shipping;
-      const next =
-        order.fulfillment === "courier" && ship
-          ? ` Pesanan akan dikirim via ${ship.courierName ?? ship.courierCode ?? "kurir"} ${
-              ship.serviceName ?? ship.serviceCode ?? ""
-            }${ship.duration ? ` (estimasi ${ship.duration})` : ""}. Nomor resi & link pelacakan dikirim otomatis setelah paket dijemput kurir.`
-          : " Silakan ambil pesanan Anda di toko.";
-      const buyerMsg =
-        `Pembayaran diterima. Pesanan ${order.orderId} sebesar ${rp(order.total)} sudah masuk.` +
-        next +
-        " Terima kasih.";
+      const buyerMsg = paymentReceivedMessage(order);
       if (order.buyerPhone.startsWith("sandbox:")) {
         // Sandbox: jangan kirim WA sungguhan — catat sebagai balasan AI supaya
         // muncul di percakapan /sandbox (isi pesan sama persis dgn live).

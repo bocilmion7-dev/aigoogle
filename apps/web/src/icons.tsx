@@ -237,8 +237,7 @@ export const IconFolder: ComponentType<IconProps> = ({ size }) => (
   </Base>
 );
 
-export const IconArrowLeft: ComponentType<IconProps> = ({ size }) => (
-  <Base size={size}>
+export const IconArrowLeft: ComponentType<IconProps> = ({ size }) => (  <Base size={size}>
     <path d="M19 12H5" />
     <path d="m12 19-7-7 7-7" />
   </Base>
@@ -351,3 +350,27 @@ export function fileIconFor(mimeType: string): ComponentType<IconProps> {
     return IconFileCode;
   return IconFile;
 }
+
+export const IconShare: ComponentType<IconProps> = ({ size }) => (
+  <Base size={size}>
+    <circle cx="18" cy="5" r="3" />
+    <circle cx="6" cy="12" r="3" />
+    <circle cx="18" cy="19" r="3" />
+    <path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4" />
+  </Base>
+);
+
+export const IconDownload: ComponentType<IconProps> = ({ size }) => (
+  <Base size={size}>
+    <path d="M12 3v12" />
+    <path d="M7 10l5 5 5-5" />
+    <path d="M4 21h16" />
+  </Base>
+);
+
+export const IconNews: ComponentType<IconProps> = ({ size }) => (
+  <Base size={size}>
+    <path d="M4 5h13a2 2 0 0 1 2 2v11a2 2 0 0 0 2 2H6a2 2 0 0 1-2-2z" />
+    <path d="M8 9h7M8 13h7M8 17h4" />
+  </Base>
+);
