@@ -37,7 +37,9 @@ export default defineConfig(() => {
       environment: "node",
       fileParallelism: false,
       testTimeout: 60000,
-      env: { ...env, DATABASE_URL: databaseUrl },
+      // Test berjalan lewat HTTP (supertest) → cookie Secure/__Host- tidak
+      // akan disimpan. Paksa origin non-HTTPS agar nama cookie tetap sid/psid.
+      env: { ...env, DATABASE_URL: databaseUrl, APP_ORIGIN: "http://localhost:5173" },
     },
   };
 });

@@ -3,46 +3,195 @@ import type {
   AiModuleModelsResponse,
   AiProviderRow,
   AiSubPlan,
-  AiTopupPackage,
   AppSettings,
   ConnectionInfo,
-  Me,
   WaSubPlan,
 } from "@aigoogle/shared";
+import type { AiWalletSummary } from "./session-api";
 
 /**
- * Muat identitas user. Timeout 15 dtk + selalu resolve (null bila gagal) —
- * setelah idle panjang, koneksi half-open bisa menggantung; tanpa ini
- * PageLoader muter selamanya.
+ * Identitas & saldo dipisah ke session-api agar landing tidak mengunduh
+ * seluruh fungsi API. Diekspor ulang di sini untuk kompatibilitas pemanggil lama.
  */
-/** Event global: saldo token berubah (chat/voice selesai) → header memuat ulang. */
-export const AI_WALLET_EVENT = "ai-wallet-updated";
-export function notifyAiWalletChanged(): void {
-  window.dispatchEvent(new Event(AI_WALLET_EVENT));
-}
-
-export async function getMe(): Promise<Me | null> {
-  try {
-    const res = await fetch("/api/me", { signal: AbortSignal.timeout(15_000) });
-    if (!res.ok) return null;
-    return (await res.json()) as Me;
-  } catch {
-    return null;
-  }
-}
+export {
+  AI_GATE_EVENT,
+  AI_WALLET_EVENT,
+  getAiWallet,
+  getMe,
+  notifyAiGate,
+  notifyAiWalletChanged,
+  resetSessionCache,
+} from "./session-api";
+export type { AiGateReason, AiWalletSummary } from "./session-api";
 
 /** login khusus operator platform (tabel akun terpisah) */
-export async function platformLogin(email: string, password: string): Promise<void> {
+export async function platformLogin(
+  email: string,
+  password: string
+): Promise<{ twoFactorRequired: boolean; emailOtpRequired: boolean; challenge?: string }> {
   const res = await fetch("/api/platform/login", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
   });
+  const j = (await res.json().catch(() => ({}))) as {
+    error?: string;
+    twoFactorRequired?: boolean;
+    emailOtpRequired?: boolean;
+    challenge?: string;
+  };
   if (!res.ok) {
-    const j = (await res.json().catch(() => ({}))) as { error?: string };
     throw new Error(j.error === "email_atau_password_salah" ? "Email atau password salah." : "Gagal masuk.");
   }
+  return {
+    twoFactorRequired: !!j.twoFactorRequired,
+    emailOtpRequired: !!j.emailOtpRequired,
+    challenge: j.challenge,
+  };
 }
+
+export async function forgotPassword(email: string): Promise<void> {
+  const res = await fetch("/api/auth/forgot-password", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+  if (!res.ok) throw new Error("Gagal mengirim email reset.");
+}
+
+export async function resetPassword(token: string, password: string): Promise<void> {
+  const res = await fetch("/api/auth/reset-password", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token, password }),
+  });
+  if (!res.ok) {
+    const j = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(j.error ?? "Gagal mereset password.");
+  }
+}
+
+export interface TwoFactorSetup {
+  secret: string;
+  uri: string;
+  qrDataUrl?: string;
+}
+export const setup2fa = () => adminFetch<TwoFactorSetup>("/api/auth/2fa/setup", { method: "POST" });
+export const enable2fa = (code: string) =>
+  adminFetch<{ ok: boolean; backupCodes: string[] }>("/api/auth/2fa/enable", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ code }),
+  });
+export const regenerateBackupCodes = (password: string, code: string) =>
+  adminFetch<{ ok: boolean; backupCodes: string[] }>("/api/auth/2fa/backup-codes", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ password, code }),
+  });
+export const disable2fa = (password: string, code: string) =>
+  adminFetch<{ ok: boolean }>("/api/auth/2fa/disable", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ password, code }),
+  });
+export const verify2fa = (challenge: string, code: string) =>
+  adminFetch<{ ok: boolean; platform: boolean; needsPassword?: boolean }>("/api/auth/2fa", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ challenge, code }),
+  });
+
+export const verifyEmailOtp = (challenge: string, code: string) =>
+  adminFetch<{ ok: boolean; platform: boolean; needsPassword?: boolean }>("/api/auth/otp", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ challenge, code }),
+  });
+export const resendEmailOtp = (challenge: string) =>
+  adminFetch<{ ok: boolean; challenge: string; resendAfter?: number }>("/api/auth/otp/resend", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ challenge }),
+  });
+export const getEmailOtpInfo = (challenge: string) =>
+  adminFetch<{ emailMasked: string; resendAfter: number; expiresAt: number }>("/api/auth/otp/info", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ challenge }),
+  });
+export const setEmailOtp = (enabled: boolean, password: string) =>
+  adminFetch<{ ok: boolean; enabled: boolean }>("/api/me/email-otp", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ enabled, password }),
+  });
+
+export interface SessionRow {
+  id: string;
+  current: boolean;
+  createdAt: string;
+  expiresAt: string;
+}
+export const getSessions = () => adminFetch<SessionRow[]>("/api/me/sessions");
+export const revokeSession = (id: string) =>
+  adminFetch<{ ok: boolean }>(`/api/me/sessions/${encodeURIComponent(id)}`, { method: "DELETE" });
+
+export const updateProfile = (body: { name?: string; phone?: string }) =>
+  adminFetch<{ ok: boolean }>("/api/me", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+export const resendVerification = () =>
+  adminFetch<{ ok: boolean }>("/api/auth/resend-verification", { method: "POST" });
+
+export const inviteUser = (body: { email: string; name: string; roleKey: string; tenantId?: string }) =>
+  adminFetch<{ ok: boolean; userId: string }>("/api/admin/users/invite", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+export const suspendTenant = (tenantId: string, suspended: boolean) =>
+  adminFetch<{ ok: boolean; suspended: boolean }>(`/api/admin/tenants/${encodeURIComponent(tenantId)}/suspend`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ suspended }),
+  });
+
+export const impersonateUser = (userId: string) =>
+  adminFetch<{ ok: boolean; userId: string }>(`/api/admin/impersonate/${encodeURIComponent(userId)}`, {
+    method: "POST",
+  });
+export const endImpersonation = () =>
+  adminFetch<{ ok: boolean }>("/api/admin/impersonate/end", { method: "POST" });
+
+export type FeatureFlags = Record<string, boolean>;
+export const getFeatures = () => adminFetch<FeatureFlags>("/api/features");
+export const getAdminFeatures = () => adminFetch<FeatureFlags>("/api/admin/features");
+export const putAdminFeatures = (body: FeatureFlags) =>
+  adminFetch<FeatureFlags>("/api/admin/features", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+export interface CompanyRow {
+  providerDbId: string;
+  name: string;
+  alias: string;
+  admin: boolean;
+  current: boolean;
+}
+export const getCompanies = () => adminFetch<CompanyRow[]>("/api/accurate/companies");
+export const switchCompany = (providerDbId: string) =>
+  adminFetch<{ ok: boolean; tenant: { id: string; name: string } }>("/api/accurate/switch", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ providerDbId }),
+  });
 
 export async function getSettings(): Promise<AppSettings> {
   const res = await fetch("/api/settings");
@@ -86,6 +235,7 @@ export interface AuditRow {
   id: string;
   action: string;
   userEmail: string;
+  tenantName?: string;
   detail: string;
   createdAt: string;
 }
@@ -123,8 +273,55 @@ export const putUserRole = (id: string, roleKey: string) =>
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ roleKey }),
   });
-export const getAuditLogs = (limit = 50, tenantId?: string) =>
-  adminFetch<AuditRow[]>(`/api/admin/audit?limit=${limit}${tenantId ? `&tenantId=${encodeURIComponent(tenantId)}` : ""}`);
+export const getAuditLogs = (limit = 50, tenantId?: string, action?: string) => {
+  const qs = new URLSearchParams({ limit: String(limit) });
+  if (tenantId) qs.set("tenantId", tenantId);
+  if (action) qs.set("action", action);
+  return adminFetch<AuditRow[]>(`/api/admin/audit?${qs.toString()}`);
+};
+
+export interface HealthPayload {
+  ok: boolean;
+  uptimeSec?: number;
+  checks?: Record<string, { ok: boolean; ms?: number; error?: string }>;
+}
+export async function getHealthDeep(): Promise<HealthPayload | null> {
+  try {
+    const res = await fetch("/api/health?deep=1", { signal: AbortSignal.timeout(15_000) });
+    return (await res.json().catch(() => null)) as HealthPayload | null;
+  } catch {
+    return null;
+  }
+}
+
+export interface MetricsPayload {
+  uptimeSec: number;
+  memoryMb: number;
+  llm: { calls: number; promptTokens: number; completionTokens: number; byKind: Record<string, number> };
+  events: Record<string, number>;
+  webVitals: Record<string, { count: number; avg: number; max: number; p75: number }>;
+  routes: Array<{ route: string; count: number; errors: number; avgMs: number; maxMs: number; p50: number; p95: number }>;
+}
+export const getMetrics = () => adminFetch<MetricsPayload>("/api/metrics");
+
+export interface AccurateStatus {
+  tenant: { id: string; name: string; alias: string; providerDbId: string };
+  connection: { status: string; host: string; expiresAt: string; updatedAt: string } | null;
+  lastMetric: { date: string; updatedAt: string } | null;
+  webhookCount24h: number;
+  lastWebhook: { event: string; createdAt: string } | null;
+  wallet: { balance: number; pendingWithdrawal: number; available: number };
+  ai: { calls: number; tokens: number; limit: number };
+}
+export const getAccurateStatus = (tenantId?: string) =>
+  adminFetch<AccurateStatus>(
+    `/api/admin/accurate/status${tenantId ? `?tenantId=${encodeURIComponent(tenantId)}` : ""}`
+  );
+export const reconcileAccurate = (tenantId?: string) =>
+  adminFetch<{ ok: boolean; credited: number }>(
+    `/api/admin/accurate/reconcile${tenantId ? `?tenantId=${encodeURIComponent(tenantId)}` : ""}`,
+    { method: "POST" }
+  );
 
 export interface CustomerRow {
   id: string;
@@ -185,6 +382,7 @@ export function friendlyWarning(code?: string): string | null {
 }
 
 export interface WaStatusLite {
+  connected: boolean;
   balance: number;
   rupiahPerCredit: number;
   waProvider: "meta" | "waserver";
@@ -626,39 +824,6 @@ export interface PlatformAnalytics {
 export const getPlatformAnalytics = () => adminFetch<PlatformAnalytics>("/api/platform/analytics");
 
 // ── Billing AI (saldo per member) ────────────────────────────────────────────
-export type AiGateReason = "subscription" | "token";
-export const AI_GATE_EVENT = "aigoogle:ai-gate";
-export function notifyAiGate(reason: AiGateReason): void {
-  window.dispatchEvent(new CustomEvent(AI_GATE_EVENT, { detail: { reason } }));
-}
-
-export interface AiWalletSummary {
-  /** saldo dalam TOKEN (tampilan utama) */
-  balanceTokens: number;
-  rupiahPer1kTokens: number;
-  minReserveTokens: number;
-  markup: number;
-  usdIdr: number;
-  tokens30d: number;
-  spentTokens30d: number;
-  calls30d: number;
-  /** paket top up token dari Admin Platform */
-  topupPackages: AiTopupPackage[];
-  /** status akses AI: langganan/demo/token */
-  access?: {
-    reason: AiGateReason | "ok";
-    subscriptionActive: boolean;
-    trialActive: boolean;
-    trialEndsAt: string | null;
-    balance: number;
-    minReserve: number;
-  };
-  /** internal rupiah */
-  balance: number;
-  spent30d: number;
-  cost30d: number;
-  minReserve: number;
-}
 export interface AiLedgerRow {
   id: string;
   kind: string;
@@ -723,7 +888,27 @@ export const getBillingPayment = (orderId: string) =>
     `/api/billing/payment/${orderId}`
   );
 
-export const getAiWallet = () => adminFetch<AiWalletSummary>("/api/ai/wallet");
+export interface InvoiceRow {
+  orderId: string;
+  kind: string;
+  amount: number;
+  status: string;
+  paymentMethod: string;
+  createdAt: string;
+}
+export const getInvoices = () => adminFetch<InvoiceRow[]>("/api/billing/invoices");
+export const getAutoRenew = () => adminFetch<{ enabled: boolean }>("/api/billing/auto-renew");
+export const setAutoRenew = (enabled: boolean) =>
+  adminFetch<{ ok: boolean; enabled: boolean }>("/api/billing/auto-renew", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ enabled }),
+  });
+export const emailInvoice = (orderId: string) =>
+  adminFetch<{ ok: boolean; sent: boolean }>(`/api/billing/invoice/${encodeURIComponent(orderId)}/email`, {
+    method: "POST",
+  });
+
 export const getAiLedger = (take = 10, skip = 0) =>
   adminFetch<AiLedgerRow[]>(`/api/ai/ledger?take=${take}&skip=${skip}`);
 export const postAiTopup = (packageId: string) =>

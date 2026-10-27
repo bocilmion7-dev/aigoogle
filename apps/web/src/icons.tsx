@@ -164,6 +164,33 @@ export const IconRefresh: ComponentType<IconProps> = ({ size }) => (
   </Base>
 );
 
+/** Buku — untuk dokumentasi/panduan. */
+export const IconBook: ComponentType<IconProps> = ({ size }) => (
+  <Base size={size}>
+    <path d="M12 6.5C10.6 5.3 8.6 4.7 6.4 4.7H3.6a.9.9 0 0 0-.9.9v11.6c0 .5.4.9.9.9h2.8c2.2 0 4.2.6 5.6 1.8" />
+    <path d="M12 6.5c1.4-1.2 3.4-1.8 5.6-1.8h2.8c.5 0 .9.4.9.9v11.6c0 .5-.4.9-.9.9h-2.8c-2.2 0-4.2.6-5.6 1.8" />
+    <path d="M12 6.5v14" />
+  </Base>
+);
+
+/** Bintang terisi — untuk rating/testimoni. */
+export const IconStar: ComponentType<IconProps> = ({ size = 20 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+    <path
+      d="M12 2.6l2.9 5.88 6.49.95-4.7 4.58 1.11 6.46L12 17.42 6.2 20.47l1.11-6.46-4.7-4.58 6.49-.95z"
+      fill="currentColor"
+    />
+  </svg>
+);
+
+export const IconMore: ComponentType<IconProps> = ({ size }) => (
+  <Base size={size}>
+    <circle cx="12" cy="5" r="1.4" fill="currentColor" stroke="none" />
+    <circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none" />
+    <circle cx="12" cy="19" r="1.4" fill="currentColor" stroke="none" />
+  </Base>
+);
+
 export const IconPower: ComponentType<IconProps> = ({ size }) => (
   <Base size={size}>
     <path d="M12 3v9" />
@@ -177,6 +204,28 @@ export const IconWallet: ComponentType<IconProps> = ({ size }) => (
     <path d="M15.5 12h4" />
     <circle cx="17.5" cy="12" r=".8" />
   </Base>
+);
+
+/** Ikon dompet terisi: blok merah solid dengan glyph dompet putih. */
+export const IconWalletBlock: ComponentType<IconProps> = ({ size = 24 }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    aria-hidden="true"
+    focusable="false"
+  >
+    <rect x="1.5" y="1.5" width="21" height="21" rx="5.5" fill="#dc2626" />
+    <path
+      d="M6.2 9.4h9.6A1.6 1.6 0 0 1 17.4 11v3.8a1.6 1.6 0 0 1-1.6 1.6H6.8A1.6 1.6 0 0 1 5.2 14.8V8.6A1.6 1.6 0 0 1 6.8 7h8.6"
+      fill="none"
+      stroke="#fff"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <circle cx="15" cy="12.5" r="1.1" fill="#fff" />
+  </svg>
 );
 
 export const IconBell: ComponentType<IconProps> = ({ size }) => (

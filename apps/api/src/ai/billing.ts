@@ -286,7 +286,7 @@ export async function chargeAi(opts: {
   const billedModel = await effectiveModel(opts.model);
   const p = await priceFor(billedModel);
   const { cost, charge } = computeCharge(p, opts.promptTokens, opts.completionTokens);
-  return prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     const w = await tx.aiWallet.findUniqueOrThrow({ where: { userId: opts.userId } });
     const deduct = Math.min(w.balance, charge);
     await tx.aiLedger.create({
@@ -308,6 +308,10 @@ export async function chargeAi(opts: {
     }
     return { balance: w.balance - deduct, charged: deduct, cost, charge };
   });
+  void import("../billing/dunning.js")
+    .then((m) => m.maybeAlertLowBalance(opts.userId, opts.tenantId, result.balance))
+    .catch(() => null);
+  return result;
 }
 
 /**

@@ -11,12 +11,52 @@
     <link rel="apple-touch-icon" href="/icon-192.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="description" content="AI Asisten — AI Accurate Assistant, Voice Assistant & Drive Organizer. Chat akuntansi, rapikan Drive, WhatsApp otomatis." />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..700;1,9..144,400..700&family=IBM+Plex+Sans:wght@400;500;600&display=swap"
-      rel="stylesheet"
-    />
+    <!-- Font SELF-HOSTED (apps/web/public/fonts, subset latin). Dulu memakai
+         fonts.googleapis.com: 3 permintaan lintas-origin (~190 KB) yang menambah
+         ~2 RTT dan memblokir render di jaringan mobile. Preload hanya varian yang
+         dipakai di atas layar (Plex + Fraunces normal); CSS-nya di src/fonts.css. -->
+    <link rel="preload" href="/fonts/plex-var.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/fraunces-600.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="canonical" href="https://ai-asisten.my.id/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="AI Asisten" />
+    <meta property="og:locale" content="id_ID" />
+    <meta property="og:url" content="https://ai-asisten.my.id/" />
+    <meta property="og:title" content="AI Asisten — Asisten AI untuk Data Accurate Anda" />
+    <meta property="og:description" content="Chat AI atas data Accurate, analisis bisnis per bidang usaha, rapikan Google Drive, dan WhatsApp otomatis untuk pemilik usaha & akuntan Indonesia." />
+    <meta property="og:image" content="https://ai-asisten.my.id/icon-512.png" />
+    <meta property="og:image:width" content="512" />
+    <meta property="og:image:height" content="512" />
+    <meta property="og:image:alt" content="AI Asisten" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="AI Asisten — Asisten AI untuk Data Accurate Anda" />
+    <meta name="twitter:description" content="Chat AI atas data Accurate, analisis bisnis per bidang usaha, rapikan Google Drive, dan WhatsApp otomatis." />
+    <meta name="twitter:image" content="https://ai-asisten.my.id/icon-512.png" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "AI Asisten",
+        "alternateName": "Accurate Accelerator",
+        "applicationCategory": "BusinessApplication",
+        "operatingSystem": "Web, Android, iOS",
+        "url": "https://ai-asisten.my.id/",
+        "description": "Asisten AI untuk pemilik usaha dan akuntan Indonesia: chat atas data Accurate, analisis bisnis per bidang usaha, penataan Google Drive, dan otomasi WhatsApp.",
+        "inLanguage": "id-ID",
+        "image": "https://ai-asisten.my.id/icon-512.png",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "IDR",
+          "description": "Mulai gratis setelah menghubungkan akun Accurate"
+        },
+        "publisher": {
+          "@type": "Organization",
+          "name": "PT Asisten Cerdas Indonesia",
+          "url": "https://ai-asisten.my.id/"
+        }
+      }
+    </script>
     <title>AI Asisten — AI Accurate Assistant, Voice Assistant & Drive Organizer</title>
   </head>
   <body>

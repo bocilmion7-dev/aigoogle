@@ -60,18 +60,29 @@ export function InstallPrompt() {
     window.addEventListener("aigoogle:installable", onInstallable);
     window.addEventListener("aigoogle:installed", onInstalled);
 
+    // Tunda ajakan install: jangan berebut main thread / menutupi konten saat
+    // halaman pertama kali tampil (memicu layout shift & menurunkan LCP).
     let timer: number | undefined;
+    const schedule = (fn: () => void, ms: number) => {
+      const idle = (window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number })
+        .requestIdleCallback;
+      if (idle) timer = idle(fn, { timeout: ms + 2000 }) as unknown as number;
+      else timer = window.setTimeout(fn, ms);
+    };
     if (window.__installPrompt) {
-      timer = window.setTimeout(show, 900);
+      schedule(show, 3500);
     } else if (isIos()) {
       setIosMode(true);
-      timer = window.setTimeout(show, 1200);
+      schedule(show, 4000);
     }
 
     return () => {
       window.removeEventListener("aigoogle:installable", onInstallable);
       window.removeEventListener("aigoogle:installed", onInstalled);
-      if (timer) window.clearTimeout(timer);
+      if (timer) {
+        window.clearTimeout(timer);
+        (window as Window & { cancelIdleCallback?: (h: number) => void }).cancelIdleCallback?.(timer);
+      }
     };
   }, []);
 

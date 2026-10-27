@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { AI_GATE_EVENT, type AiGateReason } from "./api";
+import { AI_GATE_EVENT, type AiGateReason } from "./session-api";
 
 /** Popup info akses AI: langganan/demo habis atau token habis. */
 export function AiGate() {

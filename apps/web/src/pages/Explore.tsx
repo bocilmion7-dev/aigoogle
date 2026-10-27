@@ -85,12 +85,16 @@ export function Explore() {
   const nodesRef = useRef(nodes);
   nodesRef.current = nodes;
 
+  const loadSeq = useRef(new Map<string, number>());
   const load = useCallback(async (id: string, force = false) => {
     const cur = nodesRef.current[id];
     if (!force && (cur?.loaded || cur?.loading)) return;
+    const seq = (loadSeq.current.get(id) ?? 0) + 1;
+    loadSeq.current.set(id, seq);
     setNodes((prev) => ({ ...prev, [id]: { ...(prev[id] ?? emptyNode()), loading: true } }));
     try {
       const l = await driveList(id);
+      if (loadSeq.current.get(id) !== seq) return;
       setNodes((prev) => ({
         ...prev,
         [id]: { folders: l.folders, files: l.files, loaded: true, loading: false, expanded: true },
@@ -101,6 +105,7 @@ export function Explore() {
         return next;
       });
     } catch (e) {
+      if (loadSeq.current.get(id) !== seq) return;
       setError(errText(e instanceof Error ? e.message : undefined));
       setNodes((prev) => ({ ...prev, [id]: { ...(prev[id] ?? emptyNode()), loading: false } }));
     }

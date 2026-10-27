@@ -511,3 +511,54 @@ model MarketplacePrice {
   @@index([tenantId, fetchedAt])
   @@index([tenantId, productName])
 }
+
+// ── Wallet Penjualan: saldo hasil penjualan per tenant (rupiah) ──
+model SalesWallet {
+  tenantId  String   @id
+  balance   Int      @default(0) // saldo hasil penjualan (integer rupiah)
+  updatedAt DateTime @updatedAt
+}
+
+// Ledger pergerakan wallet penjualan: sale (masuk) / withdraw (keluar) / adjust
+model SalesWalletTx {
+  id        String   @id @default(cuid())
+  tenantId  String
+  kind      String // sale|withdraw|adjust|refund
+  amount    Int // positif masuk, negatif keluar
+  orderId   String   @default("")
+  note      String   @default("")
+  createdAt DateTime @default(now())
+
+  @@index([tenantId, createdAt])
+}
+
+// Permintaan penarikan hasil penjualan
+model SalesWithdrawal {
+  id          String   @id @default(cuid())
+  tenantId    String
+  amount      Int
+  status      String   @default("pending") // pending|approved|paid|rejected
+  bankName    String   @default("")
+  bankNo      String   @default("")
+  accountName String   @default("")
+  note        String   @default("")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([tenantId, createdAt])
+}
+
+// Rekening penarikan tersimpan per tenant — tervalidasi via Brick BAV sebelum disimpan
+model SalesBankAccount {
+  id            String   @id @default(cuid())
+  tenantId      String
+  bankShortCode String // kode bank Brick (mis. BCA, MANDIRI)
+  bankName      String
+  accountNo     String
+  accountName   String // nama pemilik dari hasil validasi Brick
+  activityId    String   @default("") // id validasi Brick terakhir
+  createdAt     DateTime @default(now())
+
+  @@unique([tenantId, bankShortCode, accountNo])
+  @@index([tenantId])
+}

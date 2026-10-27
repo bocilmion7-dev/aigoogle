@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { getAiWallet, getMe } from "./api";
+import { getAiWallet, getMe } from "./session-api";
 
 /**
  * Middleware akses global (level aplikasi):

@@ -106,6 +106,12 @@ class ThrottledEmitter {
     if (this.timer) { clearInterval(this.timer); this.timer = null; }
     if (this.buffer) { this.emit(this.buffer); this.buffer = ""; }
   }
+  /** Hentikan timer & buang buffer — dipakai saat error/abort agar tidak bocor. */
+  destroy(): void {
+    if (this.timer) { clearInterval(this.timer); this.timer = null; }
+    this.buffer = "";
+    this.ended = true;
+  }
 }
 
 /** JSON dgn key urut — agar argumen identik (beda urut key) menghasilkan key cache sama. */
@@ -170,6 +176,7 @@ export async function runToolLoop(
     streamChunk
   );
 
+  try {
   for (let step = 0; step < maxSteps; step++) {
     if (now() > deadline) {
       const msg = "Butuh waktu lebih lama dari biasanya — coba persempit pertanyaan Anda.";
@@ -464,4 +471,7 @@ export async function runToolLoop(
   const msg = "Terlalu banyak langkah — coba persempit pertanyaan Anda.";
   opts.onEvent({ type: "text_delta", delta: msg });
   return { text: msg, trace };
+  } finally {
+    emitter.destroy();
+  }
 }

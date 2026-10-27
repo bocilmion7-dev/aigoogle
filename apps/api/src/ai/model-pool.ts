@@ -2,6 +2,7 @@ import { prisma } from "../db.js";
 import { env } from "../env.js";
 import { LlmHttpError } from "./llm-error.js";
 import { RealNvidiaClient, type NvidiaClient } from "./nvidia.js";
+import { assertSafeOutboundUrl, normalizeOutboundBaseUrl } from "./url-safety.js";
 
 let overrideLogged = false;
 
@@ -41,6 +42,21 @@ function toCandidate(p: { id: string; name: string; baseUrl: string; apiKey: str
   return { provider: p, model, client: new RealNvidiaClient(p.apiKey, p.baseUrl) };
 }
 
+/** Cache baseUrl yang sudah lolos validasi SSRF (hindari DNS lookup tiap request). */
+const safeBaseCache = new Map<string, string>();
+async function safeProviderBaseUrl(id: string, baseUrl: string): Promise<string> {
+  const key = `${id}:${baseUrl}`;
+  const hit = safeBaseCache.get(key);
+  if (hit) return hit;
+  const safe = normalizeOutboundBaseUrl(await assertSafeOutboundUrl(baseUrl));
+  safeBaseCache.set(key, safe);
+  if (safeBaseCache.size > 100) {
+    const first = safeBaseCache.keys().next().value;
+    if (first) safeBaseCache.delete(first);
+  }
+  return safe;
+}
+
 async function candidates(preferred?: string): Promise<ModelCandidate[]> {
   // Override LLM sementara dari env (bench/darurat) — TIDAK menyentuh database.
   const { LLM_OVERRIDE_BASE_URL, LLM_OVERRIDE_API_KEY, LLM_OVERRIDE_MODEL } = env;
@@ -49,9 +65,10 @@ async function candidates(preferred?: string): Promise<ModelCandidate[]> {
       overrideLogged = true;
       console.warn(`[model-pool] LLM override aktif (env): ${LLM_OVERRIDE_MODEL} @ ${LLM_OVERRIDE_BASE_URL}`);
     }
+    const baseUrl = await safeProviderBaseUrl("llm-override", LLM_OVERRIDE_BASE_URL);
     return [
       toCandidate(
-        { id: "llm-override", name: "LLM Override (env)", baseUrl: LLM_OVERRIDE_BASE_URL, apiKey: LLM_OVERRIDE_API_KEY },
+        { id: "llm-override", name: "LLM Override (env)", baseUrl, apiKey: LLM_OVERRIDE_API_KEY },
         LLM_OVERRIDE_MODEL
       ),
     ];
@@ -61,7 +78,9 @@ async function candidates(preferred?: string): Promise<ModelCandidate[]> {
     include: { models: { where: { failureCount: { lt: MAX_FAILURES } }, orderBy: { rank: "asc" } } },
   });
   if (!active) throw new LlmHttpError(503, "tidak ada provider AI aktif — atur di halaman AI");
-  let list = active.models.map((m) => toCandidate(active, m.name));
+  const baseUrl = await safeProviderBaseUrl(active.id, active.baseUrl);
+  const provider = { ...active, baseUrl };
+  let list = active.models.map((m) => toCandidate(provider, m.name));
   if (preferred) {
     // model pilihan modul harus dicoba PERTAMA (bukan menunggu urutan rank —
     // mis. provider aktif juga memuat model non-chat spt whisper di rank 1)
@@ -73,7 +92,7 @@ async function candidates(preferred?: string): Promise<ModelCandidate[]> {
         where: { providerId_name: { providerId: active.id, name: preferred } },
       });
       if (pref && pref.failureCount < MAX_FAILURES) {
-        list = [toCandidate(active, pref.name), ...list];
+        list = [toCandidate(provider, pref.name), ...list];
       }
     }
   }

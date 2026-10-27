@@ -1,30 +1,70 @@
-import { Landing } from "./pages/Landing";
-import { Shell } from "./pages/Shell";
-import { Settings } from "./pages/Settings";
-import { Explore } from "./pages/Explore";
-import { Admin } from "./pages/Admin";
-import { Login } from "./pages/Login";
-import { SetPassword } from "./pages/SetPassword";
-import { WhatsApp } from "./pages/WhatsApp";
-import { WaChats } from "./pages/WaChats";
-import { Orders } from "./pages/Orders";
-import { Lacak } from "./pages/Lacak";
-import { Insight } from "./pages/Insight";
-import { Sandbox } from "./pages/Sandbox";
-import { Pelanggan } from "./pages/Pelanggan";
-import { Aktivitas } from "./pages/Aktivitas";
-import { PlatformLogin } from "./pages/PlatformLogin";
-import { AiProviders } from "./pages/AiProviders";
-import { AiModels } from "./pages/AiModels";
-import { Saldo } from "./pages/Saldo";
-import { Subscription } from "./pages/Subscription";
+import { lazy, Suspense, useEffect, useState } from "react";
+import { getMe } from "./session-api";
+import { track } from "./telemetry";
+
+/* Halaman aplikasi dimuat belakangan (code-split): klien hanya mengunduh JS
+ * untuk halaman yang dibuka. Sebelumnya seluruh 24 halaman ikut dalam satu
+ * bundel 451 KB (~70% tidak terpakai di landing) sehingga LCP mobile lambat. */
+const Landing = lazy(() => import("./pages/Landing").then((m) => ({ default: m.Landing })));
+const Shell = lazy(() => import("./pages/Shell").then((m) => ({ default: m.Shell })));
+const Settings = lazy(() => import("./pages/Settings").then((m) => ({ default: m.Settings })));
+const Account = lazy(() => import("./pages/Account").then((m) => ({ default: m.Account })));
+const Explore = lazy(() => import("./pages/Explore").then((m) => ({ default: m.Explore })));
+const Admin = lazy(() => import("./pages/Admin").then((m) => ({ default: m.Admin })));
+const Login = lazy(() => import("./pages/Login").then((m) => ({ default: m.Login })));
+const ForgotPassword = lazy(() => import("./pages/ForgotPassword").then((m) => ({ default: m.ForgotPassword })));
+const ResetPassword = lazy(() => import("./pages/ResetPassword").then((m) => ({ default: m.ResetPassword })));
+const TwoFactor = lazy(() => import("./pages/TwoFactor").then((m) => ({ default: m.TwoFactor })));
+const Otp = lazy(() => import("./pages/Otp").then((m) => ({ default: m.Otp })));
+const SetPassword = lazy(() => import("./pages/SetPassword").then((m) => ({ default: m.SetPassword })));
+const WhatsApp = lazy(() => import("./pages/WhatsApp").then((m) => ({ default: m.WhatsApp })));
+const WaChats = lazy(() => import("./pages/WaChats").then((m) => ({ default: m.WaChats })));
+const Orders = lazy(() => import("./pages/Orders").then((m) => ({ default: m.Orders })));
+const Lacak = lazy(() => import("./pages/Lacak").then((m) => ({ default: m.Lacak })));
+const Insight = lazy(() => import("./pages/Insight").then((m) => ({ default: m.Insight })));
+const Penjualan = lazy(() => import("./pages/Penjualan").then((m) => ({ default: m.Penjualan })));
+const Toko = lazy(() => import("./pages/Toko").then((m) => ({ default: m.Toko })));
+const Analisa = lazy(() => import("./pages/Analisa").then((m) => ({ default: m.Analisa })));
+const Panduan = lazy(() => import("./pages/Panduan").then((m) => ({ default: m.Panduan })));
+const Dokumentasi = lazy(() => import("./pages/Dokumentasi").then((m) => ({ default: m.Dokumentasi })));
+const Sandbox = lazy(() => import("./pages/Sandbox").then((m) => ({ default: m.Sandbox })));
+const Pelanggan = lazy(() => import("./pages/Pelanggan").then((m) => ({ default: m.Pelanggan })));
+const Aktivitas = lazy(() => import("./pages/Aktivitas").then((m) => ({ default: m.Aktivitas })));
+const PlatformLogin = lazy(() => import("./pages/PlatformLogin").then((m) => ({ default: m.PlatformLogin })));
+const AiProviders = lazy(() => import("./pages/AiProviders").then((m) => ({ default: m.AiProviders })));
+const AiModels = lazy(() => import("./pages/AiModels").then((m) => ({ default: m.AiModels })));
+const Saldo = lazy(() => import("./pages/Saldo").then((m) => ({ default: m.Saldo })));
+const Subscription = lazy(() => import("./pages/Subscription").then((m) => ({ default: m.Subscription })));
+const RefundPolicy = lazy(() => import("./pages/RefundPolicy").then((m) => ({ default: m.RefundPolicy })));
+
 import { InstallPrompt } from "./install-prompt";
 import { AiGate } from "./ai-gate";
 import { AiAccessGuard } from "./ai-access-guard";
+import { PageBoundary } from "./page-boundary";
+
+/** Fallback saat chunk halaman sedang diunduh (biasanya < 300 ms). */
+function PageFallback() {
+  return (
+    <div className="app">
+      <main className="page page--narrow">
+        <div className="page-loader" role="status" aria-live="polite">
+          <span className="spinner spinner--lg" aria-hidden="true" />
+          <span className="page-loader__label">Memuat…</span>
+        </div>
+      </main>
+    </div>
+  );
+}
 
 function pageFor(path: string) {
   if (path === "/insight") return <Insight />;
+  if (path === "/penjualan") return <Penjualan />;
+  if (path === "/toko") return <Toko />;
+  if (path === "/analisa") return <Analisa />;
+  if (path === "/panduan") return <Panduan />;
+  if (path === "/dokumentasi") return <Dokumentasi />;
   if (path === "/settings") return <Settings />;
+  if (path === "/akun") return <Account />;
   if (path === "/ai") return <AiProviders />;
   if (path === "/ai-models") return <AiModels />;
   if (path === "/explore") return <Explore />;
@@ -33,11 +73,16 @@ function pageFor(path: string) {
   if (path === "/saldo") return <Saldo />;
   if (path === "/subscription") return <Subscription />;
   if (path === "/login") return <Login />;
+  if (path === "/forgot-password") return <ForgotPassword />;
+  if (path === "/reset-password") return <ResetPassword />;
+  if (path === "/2fa") return <TwoFactor />;
+  if (path === "/otp") return <Otp />;
   if (path === "/platform") return <PlatformLogin />;
   if (path === "/set-password") return <SetPassword />;
   if (path === "/whatsapp") return <WhatsApp />;
   if (path === "/wa-chats") return <WaChats />;
   if (path === "/pesanan") return <Orders />;
+  if (path === "/refund") return <RefundPolicy />;
   if (path.startsWith("/lacak/")) return <Lacak orderId={decodeURIComponent(path.slice("/lacak/".length))} />;
   if (path === "/sandbox") return <Sandbox />;
   if (path === "/pelanggan") return <Pelanggan />;
@@ -45,13 +90,68 @@ function pageFor(path: string) {
   return <Landing />;
 }
 
+const PUBLIC_PREFIXES = [
+  "/login",
+  "/platform",
+  "/forgot-password",
+  "/reset-password",
+  "/verify-email",
+  "/2fa",
+  "/otp",
+  "/lacak/",
+  "/dokumentasi",
+  "/panduan",
+  "/refund",
+];
+
+function isPublicPath(path: string): boolean {
+  if (path === "/") return true;
+  return PUBLIC_PREFIXES.some((p) => (p.endsWith("/") ? path.startsWith(p) : path === p));
+}
+
 export function App() {
+  const [route, setRoute] = useState(() => window.location.pathname + window.location.search);
+  const path = route.split("?")[0] ?? "/";
+  const publicPage = isPublicPath(path);
+  const [me, setMe] = useState<Awaited<ReturnType<typeof getMe>> | undefined>(undefined);
+
+  useEffect(() => {
+    const sync = () => setRoute(window.location.pathname + window.location.search);
+    window.addEventListener("popstate", sync);
+    window.addEventListener("aigoogle:navigate", sync);
+    return () => {
+      window.removeEventListener("popstate", sync);
+      window.removeEventListener("aigoogle:navigate", sync);
+    };
+  }, []);
+
+  useEffect(() => {
+    track("page_view", { path, public: publicPage });
+  }, [publicPage, path, route]);
+
+  // Cukup cek sesi sekali per mount; navigasi antar halaman tidak perlu /api/me lagi.
+  useEffect(() => {
+    if (publicPage || me !== undefined) return;
+    void getMe().then(setMe);
+  }, [publicPage, me]);
+
+  useEffect(() => {
+    if (!publicPage && me === null) window.location.replace("/login");
+  }, [publicPage, me]);
+
+  if (!publicPage && me === undefined) return <PageFallback />;
+  if (!publicPage && me === null) return null;
+
   return (
     <>
       <InstallPrompt />
-      <AiAccessGuard />
+      {!publicPage && <AiAccessGuard />}
       <AiGate />
-      {pageFor(window.location.pathname)}
+      <PageBoundary>
+        <Suspense key={route} fallback={<PageFallback />}>
+          {pageFor(path)}
+        </Suspense>
+      </PageBoundary>
     </>
   );
 }

@@ -112,6 +112,7 @@ const ALL_PERMS = [
 ];
 
 beforeAll(async () => {
+  process.env.BITESHIP_WEBHOOK_TOKEN = "test-token";
   api = createApp();
   const mk = async (name: string) =>
     (
@@ -148,6 +149,7 @@ beforeEach(() => {
 });
 
 afterAll(async () => {
+  delete process.env.BITESHIP_WEBHOOK_TOKEN;
   await prisma.waMessageLog.deleteMany({ where: { tenantId: { in: [tenantA, tenantB] } } });
   await prisma.appSetting.deleteMany({ where: { key: { startsWith: "wa:biteship_order:" } } });
   await prisma.appSetting.deleteMany({ where: { key: { startsWith: "wa:shop_order:shop-mock-" } } });
@@ -613,7 +615,7 @@ describe("webhook Biteship & notifikasi pelanggan", () => {
       courier_link: "https://track.biteship.com/TRK1",
       status: "inTransit",
     };
-    const r = await request(api).post("/api/shipping/biteship/webhook").send(payload);
+    const r = await request(api).post("/api/shipping/biteship/webhook").set("X-Webhook-Token", "test-token").send(payload);
     expect(r.status).toBe(200);
     expect(r.body.matched).toBe(true);
     expect(r.body.notified).toBe(true);
@@ -627,7 +629,7 @@ describe("webhook Biteship & notifikasi pelanggan", () => {
     );
 
     vi.clearAllMocks();
-    const again = await request(api).post("/api/shipping/biteship/webhook").send(payload);
+    const again = await request(api).post("/api/shipping/biteship/webhook").set("X-Webhook-Token", "test-token").send(payload);
     expect(again.status).toBe(200);
     expect(again.body.notified).toBe(false);
     expect(sendWaText).not.toHaveBeenCalled();
@@ -659,7 +661,7 @@ describe("webhook Biteship & notifikasi pelanggan", () => {
       courier_type: "REG",
       courier_link: "https://track.biteship.com/TRK2",
     };
-    const r = await request(api).post("/api/shipping/biteship/webhook").send(payload);
+    const r = await request(api).post("/api/shipping/biteship/webhook").set("X-Webhook-Token", "test-token").send(payload);
     expect(r.status).toBe(200);
     expect(sendWaText).toHaveBeenCalledWith(
       tenantA,

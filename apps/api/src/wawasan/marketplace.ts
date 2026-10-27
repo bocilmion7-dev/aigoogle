@@ -1,5 +1,5 @@
 import { prisma } from "../db.js";
-import { buildQuerySpec, matchGroups, modelNumbers, parsePrice, topTenantProducts } from "./market-price.js";
+import { buildQuerySpec, matchGroups, matchesProductSpec, modelNumbers, parsePrice, parseProductSpec, topTenantProducts } from "./market-price.js";
 import { wibDate } from "./time.js";
 
 /**
@@ -45,7 +45,9 @@ const FOREIGN_SOURCE =
   /(ebay|amazon|aliexpress|alibaba|banggood|wish\.com|etsy|walmart|rakuten|carousell|mercari|qoo10|temu|shein)/i;
 
 /** Barang lain yang sering tertangkap Google Shopping (tablet, laptop, dll.). */
-const WRONG_ITEM = /(tablet|\btab\b|laptop|komputer|kamera|monitor|printer|\btv\b|smartwatch|jam tangan)/i;
+const WRONG_ITEM = /(tablet|\btab\b|laptop|komputer|kamera|monitor|printer|\btv\b|smartwatch|jam tangan|\bhdd\b|\bssd\b|enclosure|hardisk|hard disk|flashdisk|memory card|\bsd card\b|power ?bank)/i;
+/** "Hard Case"/"casing" adalah aksesori HP — bukan hard case penyimpanan (HDD/SSD). */
+const STORAGE_CASE = /(hard\s*case|hdd|ssd|hardisk|hard disk|enclosure|flashdisk|memory card)/i;
 const PRODUCT_IS_KIND = /(tablet|laptop|komputer|kamera|monitor|printer|\btv\b|smartwatch)/i;
 
 /** Barang sejenis yang bukan kategori produk tenant (dompet, kacamata, …). */
@@ -137,7 +139,7 @@ function wrongCategory(title: string, productName: string): boolean {
  */
 export function isRelevantShopping(title: string, productName: string): boolean {
   const t = title.toLowerCase();
-  const spec = buildQuerySpec(productName);
+  const querySpec = buildQuerySpec(productName);
   const words = productName
     .toLowerCase()
     .replace(/[^\p{L}\p{N} ]+/gu, " ")
@@ -145,9 +147,30 @@ export function isRelevantShopping(title: string, productName: string): boolean 
     .filter(Boolean);
   const letters = words.filter((w) => /\p{L}/u.test(w) && w.length >= 3);
   const byWord = letters.some((w) => t.includes(w));
-  const byCategory = spec.groups.length ? matchGroups(t, spec.groups) : false;
-  if (!byWord && !byCategory) return false;
+  const isType = querySpec.groups.length > 0;
+
+  // Barang sejenis (aksesori: casing, charger, anti gores …) → pencocokan kategori.
+  if (isType) {
+    if (!byWord && !matchGroups(t, querySpec.groups)) return false;
+    if (wrongCategory(t, productName)) return false;
+    const nums = modelNumbers(productName);
+    if (nums.length && !nums.some((n) => new RegExp(`(^|[^0-9])${n}([^0-9]|$)`).test(t))) return false;
+    return true;
+  }
+
+  // ── Pencocokan KETAT generik (semua bidang usaha) ──
+  if (!byWord) return false;
   if (wrongCategory(t, productName)) return false;
+
+  // Kata pembeda (merek/nama produk) wajib muncul; kata pertama dianggap kategori
+  // sehingga boleh tidak muncul (mis. "Oli Shell Helix" vs "Shell Helix 1L").
+  const distinctive = letters.slice(1);
+  if (distinctive.length && !distinctive.every((w) => t.includes(w))) return false;
+
+  const spec = parseProductSpec(productName);
+  const hasStrong = spec.models.length > 0 || spec.numbers.length > 0 || spec.measures.length > 0;
+  if (hasStrong) return matchesProductSpec(title, spec);
+
   const numbers = modelNumbers(productName);
   if (numbers.length && !numbers.some((n) => new RegExp(`(^|[^0-9])${n}([^0-9]|$)`).test(t))) {
     return false;
@@ -171,6 +194,10 @@ export function aggregateOffers(
     if (FOREIGN_SOURCE.test(it.marketplace)) return false;
     if (!isRelevantShopping(it.title, productName)) return false;
     if (WRONG_ITEM.test(it.title) && !PRODUCT_IS_KIND.test(productName)) return false;
+    // jangan campur aksesori HP ("Hard Case") dengan wadah penyimpanan (HDD/SSD enclosure)
+    if (STORAGE_CASE.test(it.title) && /hard\s*case|casing|cover/i.test(productName) && !/hdd|ssd|hardisk|hard disk/i.test(productName)) {
+      return false;
+    }
     if (ownPrice && ownPrice > 0 && (it.price < ownPrice / PRICE_BAND || it.price > ownPrice * PRICE_BAND)) {
       return false;
     }

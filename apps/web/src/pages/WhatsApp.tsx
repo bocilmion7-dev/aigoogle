@@ -25,6 +25,19 @@ interface WaStatus {
 
 }
 
+/** Hanya izinkan iframe Embedded Signup dari domain resmi Meta/Facebook. */
+function safeMetaEmbedUrl(raw?: string | null): string | null {
+  if (!raw) return null;
+  try {
+    const u = new URL(raw);
+    if (u.protocol !== "https:") return null;
+    if (!/(^|\.)facebook\.com$/i.test(u.hostname)) return null;
+    return u.toString();
+  } catch {
+    return null;
+  }
+}
+
 export function WhatsApp() {
   const [st, setSt] = useState<WaStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -360,6 +373,7 @@ export function WhatsApp() {
     : null;
   const gatewayConnected = st.waProvider === "waserver" && st.connected;
   const metaConnected = st.waProvider === "meta" && st.connected;
+  const metaEmbedUrl = safeMetaEmbedUrl(st.embedUrl);
 
   return (
     <div className="app">
@@ -522,8 +536,8 @@ export function WhatsApp() {
                 )}
               </div>
               {st.waProvider === "meta" &&
-                (st.embedUrl ? (
-                  <iframe title="Meta WhatsApp Embedded Signup" src={st.embedUrl} className="embed" style={{ marginTop: "var(--space-xs)" }} />
+                (metaEmbedUrl ? (
+                  <iframe title="Meta WhatsApp Embedded Signup" src={metaEmbedUrl} className="embed" style={{ marginTop: "var(--space-xs)" }} />
                 ) : (
                   <p className="meta" style={{ margin: "var(--space-xs) 0 0" }}>
                     Formulir belum tersedia.

@@ -1,10 +1,13 @@
-import { useEffect, useRef, useState } from "react";
+import "../app.css";
+import { memo, useEffect, useRef, useState } from "react";
 import { CHAT_TIMEOUT_MS, isTimeoutError, listMessages, listSessions, streamChat } from "../chat-api";
 import { MentionInput } from "../customer-mention";
 import { DocCapture } from "../doc-capture";
 import { getAiWallet, getMe, notifyAiGate, notifyAiWalletChanged } from "../api";
 import { renderRichText } from "../rich-text";
 import { VoiceMode } from "../voice-mode";
+import { track } from "../telemetry";
+import { OnboardingChecklist } from "../onboarding";
 
 interface UiMsg {
   role: "user" | "ai";
@@ -12,6 +15,46 @@ interface UiMsg {
   /** nama proses berjalan (bukan nama tool) — tampil selagi AI bekerja */
   process?: string;
 }
+
+/**
+ * Baris pesan di-memo: saat streaming, hanya pesan terakhir yang berubah.
+ * Tanpa ini seluruh riwayat (dan parser tabel) dirender ulang tiap delta.
+ */
+const MessageRow = memo(function MessageRow({
+  m,
+  isLast,
+  busy,
+}: {
+  m: UiMsg;
+  isLast: boolean;
+  busy: boolean;
+}) {
+  return (
+    <div className={`msg ${m.role === "ai" ? "msg--ai" : ""}`}>
+      <strong className="msg__who">{m.role === "user" ? "Anda" : "AI"}</strong>
+      <div className="msg__body">
+        {renderRichText(m.content)}
+        {busy && isLast && !m.content && (
+          <span className="thinking" role="status" aria-label={m.process ?? "AI sedang berpikir"}>
+            <span className="thinking__dot" aria-hidden="true" />
+            <span className="thinking__dot" aria-hidden="true" />
+            <span className="thinking__dot" aria-hidden="true" />
+            <span className="thinking__label">{m.process ?? "Berpikir…"}</span>
+          </span>
+        )}
+        {busy && isLast && m.content && !m.process && <span className="cursor" aria-hidden="true" />}
+        {busy && isLast && m.content && m.process && (
+          <span className="thinking thinking--line" role="status" aria-label={m.process}>
+            <span className="thinking__dot" aria-hidden="true" />
+            <span className="thinking__dot" aria-hidden="true" />
+            <span className="thinking__dot" aria-hidden="true" />
+            <span className="thinking__label">{m.process}</span>
+          </span>
+        )}
+      </div>
+    </div>
+  );
+});
 
 // daftar contoh — dibalas sistem saat pengguna mengetik /contoh (tanpa AI)
 const CONTOH_TANYAAN = [
@@ -38,6 +81,7 @@ export function Chat() {
   const [loadErr, setLoadErr] = useState<string | null>(null);
   const [captureOpen, setCaptureOpen] = useState(false);
   const [perms, setPerms] = useState<string[]>([]);
+  const [booted, setBooted] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const bootedRef = useRef(false);
 
@@ -64,8 +108,10 @@ export function Chat() {
         }
         const pick = list.find((s) => s.id === saved) ?? list[0];
         if (pick) void openSession(pick.id);
+        else setBooted(true);
       }
     } catch (e) {
+      setBooted(true);
       setLoadErr(isTimeoutError(e) ? "Koneksi lambat — daftar sesi gagal dimuat." : "Gagal memuat daftar sesi.");
     }
   }
@@ -102,6 +148,8 @@ export function Chat() {
       setMsgs(history.map((m) => ({ role: m.role as "user" | "ai", content: m.content })));
     } catch (e) {
       setLoadErr(isTimeoutError(e) ? "Koneksi lambat — riwayat percakapan gagal dimuat." : "Gagal memuat riwayat percakapan.");
+    } finally {
+      setBooted(true);
     }
   }
 
@@ -125,6 +173,7 @@ export function Chat() {
     }
     setBusy(true);
     setError(null);
+    track("chat_send", { chars: text.length, voice: voiceMode });
     // indikator tampil SEJAK AWAL (0 dtk) — tanpa ini layar diam ±4 dtk selama LLM turn 1
     setMsgs((m) => [...m, { role: "user", content: text }, { role: "ai", content: "", process: "Menganalisis pertanyaan…" }]);
     setInput("");
@@ -213,8 +262,9 @@ export function Chat() {
           aria-label="Transkrip percakapan"
           className="chat-log"
         >
-          {msgs.length === 0 && (
+          {msgs.length === 0 && booted && (
             <div className="empty" style={{ padding: "var(--space-l) 0" }}>
+              <OnboardingChecklist />
               <p style={{ color: "var(--ink-2)", fontSize: "var(--step-0)" }}>
               Tanya data akuntansi Anda — ketik atau pakai mic. Ketik{" "}
               <code>/contoh</code> untuk melihat contoh pertanyaan, atau <code>@</code> untuk memilih
@@ -222,33 +272,10 @@ export function Chat() {
               </p>
             </div>
           )}
-          {msgs.map((m, i) => (
-            <div key={i} className={`msg ${m.role === "ai" ? "msg--ai" : ""}`}>
-              <strong className="msg__who">{m.role === "user" ? "Anda" : "AI"}</strong>
-              <div className="msg__body">
-                {renderRichText(m.content)}
-                {busy && i === msgs.length - 1 && !m.content && (
-                  <span className="thinking" role="status" aria-label={m.process ?? "AI sedang berpikir"}>
-                    <span className="thinking__dot" aria-hidden="true" />
-                    <span className="thinking__dot" aria-hidden="true" />
-                    <span className="thinking__dot" aria-hidden="true" />
-                    <span className="thinking__label">{m.process ?? "Berpikir…"}</span>
-                  </span>
-                )}
-                {busy && i === msgs.length - 1 && m.content && !m.process && (
-                  <span className="cursor" aria-hidden="true" />
-                )}
-                {busy && i === msgs.length - 1 && m.content && m.process && (
-                  <span className="thinking thinking--line" role="status" aria-label={m.process}>
-                    <span className="thinking__dot" aria-hidden="true" />
-                    <span className="thinking__dot" aria-hidden="true" />
-                    <span className="thinking__dot" aria-hidden="true" />
-                    <span className="thinking__label">{m.process}</span>
-                  </span>
-                )}
-              </div>
-            </div>
-          ))}
+          {msgs.map((m, i) => {
+            const isLast = i === msgs.length - 1;
+            return <MessageRow key={i} m={m} isLast={isLast} busy={busy && isLast} />;
+          })}
           <div ref={bottomRef} />
         </div>
         {error && (

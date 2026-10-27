@@ -12,6 +12,10 @@ import {
 } from "../providers/accounting/index.js";
 import type { AccountingProvider } from "../providers/accounting/types.js";
 import { ensureWallet } from "../ai/billing.js";
+import { createToken, getTwoFactor } from "../auth/tokens.js";
+import { createEmailOtpChallenge, isEmailOtpEnabled } from "../auth/email-otp.js";
+import { isTenantSuspended } from "../middleware/session.js";
+import { clearImpersonationCookie, clearPlatformCookie, setSessionCookie } from "../cookies.js";
 
 export const launchRouter = Router();
 
@@ -34,6 +38,8 @@ export function issueLaunchState(res: Response, dbId?: string): string {
   pending.set(state, { dbId, exp: Date.now() + 600_000 });
   res.cookie(LAUNCH_COOKIE, encryptToken(JSON.stringify({ s: state })), {
     httpOnly: true,
+    // WAJIB Lax: callback Accurate adalah navigasi top-level lintas-site.
+    // SameSite=Strict membuat cookie ini tidak ikut terkirim → state mismatch.
     sameSite: "lax",
     secure: isHttps(res.req as Request),
     maxAge: 10 * 60_000,
@@ -77,6 +83,7 @@ async function handleCallback(
     // Accurate menolak akses (user batal) → kembali dengan kode error
     const qError = typeof req.query.error === "string" ? req.query.error : undefined;
     if (qError) {
+      console.warn(`[oauth] provider menolak akses: ${qError}`);
       res.redirect(`${opts.origin}/?error=${encodeURIComponent(qError)}`);
       return;
     }
@@ -90,6 +97,9 @@ async function handleCallback(
       const cookieOk = launchStateMatches(req, state);
       res.clearCookie(LAUNCH_COOKIE, { path: "/api" });
       if (!hit || hit.exp < Date.now() || !cookieOk) {
+        console.warn(
+          `[oauth] state tidak valid (hit=${!!hit}, expired=${hit ? hit.exp < Date.now() : true}, cookie=${cookieOk})`
+        );
         res.redirect(`${opts.origin}/?error=state`);
         return;
       }
@@ -105,6 +115,7 @@ async function handleCallback(
     const dbs = await provider.listDbs(tok.accessToken);
     const db = (st?.dbId ? dbs.find((d) => d.providerDbId === st.dbId) : dbs[0]) ?? dbs[0];
     if (!db) {
+      console.warn("[oauth] tidak ada database Accurate untuk akun ini");
       res.redirect(`${opts.origin}/?error=nodb`);
       return;
     }
@@ -120,6 +131,10 @@ async function handleCallback(
       create: { provider: "accurate", providerDbId: db.providerDbId, name: db.name, alias: db.alias },
       update: {},
     });
+    if (await isTenantSuspended(tenant.id)) {
+      res.redirect(`${opts.origin}/?error=suspended`);
+      return;
+    }
     // Tingkat peran sisi perusahaan:
     //  - accurate-admin : admin database Accurate (db.admin) — kelola perusahaannya
     //  - staff          : pengguna Accurate biasa
@@ -134,9 +149,15 @@ async function handleCallback(
       .capabilityCatalog()
       .map((t) => t.requiredPermission);
     const appPerms = db.admin
-      ? ["app:users.manage", "app:drive.tidy", "app:chat.history", "app:audit.view"] // tanpa settings.manage
+      ? ["app:users.manage", "app:drive.tidy", "app:chat.history", "app:wa.send", "app:audit.view"] // tanpa settings.manage
       : [];
-    const staffView = ["accurate:customer.view", "accurate:item.view", "accurate:sales-invoice.view", "accurate:sales-receipt.view"];
+    const staffView = [
+      "app:wa.send",
+      "accurate:customer.view",
+      "accurate:item.view",
+      "accurate:sales-invoice.view",
+      "accurate:sales-receipt.view",
+    ];
     await prisma.rolePermission.createMany({
       data: (db.admin ? [...appPerms, ...modulPerms] : [...appPerms, ...staffView]).map(
         (permissionKey) => ({ roleId: role.id, permissionKey })
@@ -181,18 +202,36 @@ async function handleCallback(
         session: open.session,
       },
     });
+    // 2FA aktif → jangan langsung buat sesi; minta kode TOTP dulu.
+    const two = await getTwoFactor(user.id);
+    if (two.enabled) {
+      const challenge = await createToken("2fa_challenge", { userId: user.id, platform: false }, 5 * 60_000);
+      res.redirect(`${opts.origin}/2fa?challenge=${encodeURIComponent(challenge)}`);
+      return;
+    }
+    if (await isEmailOtpEnabled(user.id)) {
+      try {
+        const challenge = await createEmailOtpChallenge({
+          userId: user.id,
+          platform: false,
+          email: user.email,
+          name: user.name,
+        });
+        res.redirect(`${opts.origin}/otp?challenge=${encodeURIComponent(challenge)}`);
+      } catch {
+        console.warn("[oauth] gagal mengirim OTP email — cek Resend/MAIL_FROM");
+        res.redirect(`${opts.origin}/?error=otp_gagal`);
+      }
+      return;
+    }
     const sid = randomBytes(32).toString("hex");
     await prisma.session.create({
       data: { id: sid, userId: user.id, expiresAt: new Date(Date.now() + 7 * 86400_000) },
     });
-    res.cookie("sid", sid, {
-      httpOnly: true,
-      sameSite: "lax",
-      secure: isHttps(req as Request),
-      maxAge: 7 * 86400_000,
-    });
-    // login perusahaan membersihkan sesi platform lama di browser yang sama
-    res.clearCookie("psid");
+    setSessionCookie(res, sid, 7 * 86400_000);
+    // login perusahaan membersihkan sesi platform/impersonation lama di browser yang sama
+    clearPlatformCookie(res);
+    clearImpersonationCookie(res);
     if (!user.passwordHash) {
       res.redirect(`${opts.origin}/set-password`);
       return;

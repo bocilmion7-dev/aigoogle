@@ -1,13 +1,20 @@
 import { Router } from "express";
+import { randomBytes } from "node:crypto";
 import { z } from "zod";
 import { prisma } from "../db.js";
+import { env } from "../env.js";
+import { createToken } from "../auth/tokens.js";
+import { sendMail } from "../mail.js";
+import { clearImpersonationCookie, readImpersonationId, setImpersonationCookie } from "../cookies.js";
 import { asyncHandler } from "../asyncHandler.js";
 import { requirePerm, loadPermissionSet } from "../permissions.js";
-import { requirePlatform } from "../middleware/session.js";
+import { requirePlatform, requireUserOrPlatform } from "../middleware/session.js";
 import { writeAudit } from "../audit.js";
 import { APP_FEATURES, COMPANY_APP_FEATURES, PLATFORM_ONLY_PERMISSIONS, isValidPermissionKey } from "../app-features.js";
 import { accurateProvider } from "../providers/accounting/index.js";
 import { accurateCtxFor } from "../providers/accounting/connection.js";
+import { reconcileSalesWallet, salesWalletSummary } from "../sales/wallet.js";
+import { usageToday, dailyLimit } from "../ai/usage.js";
 
 export const adminRouter = Router();
 
@@ -205,6 +212,7 @@ adminRouter.get(
       },
       orderBy: { createdAt: "desc" },
       take: q.data.limit,
+      include: { tenant: { select: { name: true } } },
     });
     const ids = [...new Set(rows.map((r) => r.userId))];
     const users = await prisma.user.findMany({ where: { id: { in: ids } }, select: { id: true, email: true } });
@@ -214,9 +222,306 @@ adminRouter.get(
         id: r.id,
         action: r.action,
         userEmail: emailById.get(r.userId) ?? r.userId,
+        tenantName: r.tenant.name,
         detail: r.detail,
         createdAt: r.createdAt,
       }))
     );
+  })
+);
+
+function csvCell(value: unknown): string {
+  let s = String(value ?? "");
+  // Cegah CSV injection saat dibuka di Excel/Sheets.
+  if (/^[=+\-@]/.test(s)) s = `'${s}`;
+  return `"${s.replace(/"/g, '""')}"`;
+}
+
+adminRouter.get(
+  "/admin/audit/export",
+  requireAdminAccess("app:audit.view"),
+  asyncHandler(async (req, res) => {
+    const q = z
+      .object({
+        action: z.string().max(100).optional(),
+        tenantId: z.string().max(64).optional(),
+        limit: z.coerce.number().int().min(1).max(5000).default(2000),
+      })
+      .safeParse(req.query);
+    if (!q.success) return res.status(400).json({ error: "bad_request" });
+    const scope = await tenantScope(req);
+    const rows = await prisma.auditLog.findMany({
+      where: {
+        ...(scope.isPlatform && !scope.tenantId ? {} : { tenantId: scope.tenantId }),
+        ...(q.data.action ? { action: q.data.action } : {}),
+      },
+      orderBy: { createdAt: "desc" },
+      take: q.data.limit,
+      include: { tenant: { select: { name: true } } },
+    });
+    const ids = [...new Set(rows.map((r) => r.userId))];
+    const users = await prisma.user.findMany({ where: { id: { in: ids } }, select: { id: true, email: true } });
+    const emailById = new Map(users.map((u) => [u.id, u.email]));
+    const header = ["waktu", "tenant", "user", "action", "detail"].map(csvCell).join(",");
+    const body = rows
+      .map((r) =>
+        [
+          r.createdAt.toISOString(),
+          r.tenant.name,
+          emailById.get(r.userId) ?? r.userId,
+          r.action,
+          r.detail,
+        ].map(csvCell).join(",")
+      )
+      .join("\n");
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="audit-${new Date().toISOString().slice(0, 10)}.csv"`);
+    res.send(`\uFEFF${header}\n${body}\n`);
+  })
+);
+
+/* ── Status Accurate & monitoring ────────────────────────────────────────── */
+
+adminRouter.get(
+  "/admin/accurate/status",
+  requireAdminAccess("app:audit.view"),
+  asyncHandler(async (req, res) => {
+    const scope = await tenantScope(req);
+    if (!scope.tenantId) return res.status(400).json({ error: "tenant_wajib" });
+    const [tenant, conn, lastMetric, webhookCount, lastWebhook, wallet, usage, limit] = await Promise.all([
+      prisma.tenant.findUnique({
+        where: { id: scope.tenantId },
+        select: { id: true, name: true, alias: true, providerDbId: true },
+      }),
+      prisma.connection.findUnique({
+        where: { tenantId_provider: { tenantId: scope.tenantId, provider: "accurate" } },
+      }),
+      prisma.dailyMetric.findFirst({ where: { tenantId: scope.tenantId }, orderBy: { date: "desc" } }),
+      prisma.accurateWebhookEvent.count({
+        where: { tenantId: scope.tenantId, createdAt: { gte: new Date(Date.now() - 86400_000) } },
+      }),
+      prisma.accurateWebhookEvent.findFirst({
+        where: { tenantId: scope.tenantId },
+        orderBy: { createdAt: "desc" },
+        select: { event: true, createdAt: true },
+      }),
+      salesWalletSummary(scope.tenantId),
+      usageToday(scope.tenantId),
+      dailyLimit(scope.tenantId),
+    ]);
+    res.json({
+      tenant,
+      connection: conn
+        ? {
+            status: conn.status,
+            host: conn.host,
+            expiresAt: conn.expiresAt,
+            updatedAt: conn.updatedAt,
+          }
+        : null,
+      lastMetric: lastMetric ? { date: lastMetric.date, updatedAt: lastMetric.updatedAt } : null,
+      webhookCount24h: webhookCount,
+      lastWebhook,
+      wallet: {
+        balance: wallet.balance,
+        pendingWithdrawal: wallet.pendingWithdrawal,
+        available: wallet.available,
+      },
+      ai: { calls: usage.calls, tokens: usage.tokens, limit },
+    });
+  })
+);
+
+adminRouter.post(
+  "/admin/accurate/reconcile",
+  requireAdminAccess("app:audit.view"),
+  asyncHandler(async (req, res) => {
+    const scope = await tenantScope(req);
+    if (!scope.tenantId) return res.status(400).json({ error: "tenant_wajib" });
+    const credited = await reconcileSalesWallet(scope.tenantId, true);
+    await writeAudit(scope.tenantId, req.user?.id ?? req.platform?.id ?? "platform", "sales.wallet_reconcile_manual", {
+      credited,
+    });
+    res.json({ ok: true, credited });
+  })
+);
+
+/* ── Undang user baru (self-service admin perusahaan / platform) ─────────── */
+
+adminRouter.post(
+  "/admin/users/invite",
+  requireAdminAccess("app:users.manage"),
+  asyncHandler(async (req, res) => {
+    const body = z
+      .object({
+        email: z.string().email(),
+        name: z.string().trim().min(1).max(120),
+        roleKey: z.string().min(1).max(60),
+        tenantId: z.string().max(64).optional(),
+      })
+      .safeParse(req.body);
+    if (!body.success) return res.status(400).json({ error: "bad_request" });
+
+    const scope = await tenantScope(req);
+    const tenantId = scope.isPlatform ? (body.data.tenantId || scope.tenantId) : scope.tenantId;
+    if (!tenantId) return res.status(400).json({ error: "tenant_wajib" });
+    const tenant = await prisma.tenant.findUnique({ where: { id: tenantId }, select: { id: true, name: true } });
+    if (!tenant) return res.status(404).json({ error: "tenant_tidak_ditemukan" });
+    const role = await prisma.role.findFirst({ where: { tenantId, key: body.data.roleKey } });
+    if (!role) return res.status(404).json({ error: "role_tidak_ditemukan" });
+
+    const email = body.data.email.toLowerCase();
+    const existing = await prisma.user.findFirst({ where: { tenantId, email } });
+    if (existing?.passwordHash) return res.status(409).json({ error: "email_sudah_terdaftar" });
+
+    const user =
+      existing ??
+      (await prisma.user.create({
+        data: {
+          tenantId,
+          providerUserId: `invite:${randomBytes(16).toString("hex")}`,
+          email,
+          name: body.data.name,
+          roleId: role.id,
+        },
+      }));
+    if (existing && existing.roleId !== role.id) {
+      await prisma.user.update({ where: { id: existing.id }, data: { roleId: role.id, name: body.data.name } });
+    }
+
+    const token = await createToken("reset", { userId: user.id, tenantId }, 7 * 86400_000);
+    const link = `${env.APP_ORIGIN}/reset-password?token=${encodeURIComponent(token)}`;
+    void sendMail({
+      to: email,
+      subject: `Undangan bergabung ke ${tenant.name} — AI Asisten`,
+      text:
+        `Halo ${body.data.name},\n\nAnda diundang bergabung ke ${tenant.name} sebagai ${role.name}.\n` +
+        `Buat password Anda melalui tautan berikut (berlaku 7 hari):\n${link}\n\n` +
+        `Jika Anda tidak merasa diundang, abaikan email ini.`,
+    });
+    await writeAudit(tenantId, req.user?.id ?? req.platform?.id ?? "platform", "user.invite", {
+      userId: user.id,
+      email,
+      roleKey: role.key,
+    });
+    res.json({ ok: true, userId: user.id });
+  })
+);
+
+/* ── Suspend / aktifkan tenant (khusus platform) ──────────────────────────── */
+
+adminRouter.post(
+  "/admin/tenants/:id/suspend",
+  requirePlatform,
+  asyncHandler(async (req, res) => {
+    const body = z.object({ suspended: z.boolean() }).safeParse(req.body);
+    if (!body.success) return res.status(400).json({ error: "bad_request" });
+    const tenant = await prisma.tenant.findUnique({ where: { id: req.params.id } });
+    if (!tenant) return res.status(404).json({ error: "tenant_tidak_ditemukan" });
+    const key = `tenant:suspended:${tenant.id}`;
+    await prisma.appSetting.upsert({
+      where: { key },
+      create: { key, value: body.data.suspended ? "1" : "0" },
+      update: { value: body.data.suspended ? "1" : "0" },
+    });
+    await writeAudit(tenant.id, req.platform!.id, "tenant.suspend", { suspended: body.data.suspended });
+    res.json({ ok: true, suspended: body.data.suspended });
+  })
+);
+
+/* ── Feature flags sederhana (kill switch rollout) ───────────────────────── */
+
+const FEATURE_KEYS = [
+  "ai_chat",
+  "voice",
+  "drive",
+  "insight",
+  "whatsapp",
+  "push",
+  "ads",
+  "billing",
+] as const;
+
+async function featureSnapshot(): Promise<Record<string, boolean>> {
+  const rows = await prisma.appSetting.findMany({
+    where: { key: { in: FEATURE_KEYS.map((k) => `feature:${k}`) } },
+  });
+  const map = new Map(rows.map((r) => [r.key.replace(/^feature:/, ""), r.value === "1"]));
+  return Object.fromEntries(FEATURE_KEYS.map((k) => [k, map.get(k) ?? true]));
+}
+
+adminRouter.get(
+  "/features",
+  requireUserOrPlatform,
+  asyncHandler(async (_req, res) => {
+    res.json(await featureSnapshot());
+  })
+);
+
+adminRouter.get(
+  "/admin/features",
+  requirePlatform,
+  asyncHandler(async (_req, res) => {
+    res.json(await featureSnapshot());
+  })
+);
+
+adminRouter.put(
+  "/admin/features",
+  requirePlatform,
+  asyncHandler(async (req, res) => {
+    const body = z.record(z.string(), z.boolean()).safeParse(req.body);
+    if (!body.success) return res.status(400).json({ error: "bad_request" });
+    const unknown = Object.keys(body.data).filter((k) => !FEATURE_KEYS.includes(k as (typeof FEATURE_KEYS)[number]));
+    if (unknown.length) return res.status(400).json({ error: "feature_tidak_dikenal", keys: unknown });
+    for (const [key, value] of Object.entries(body.data)) {
+      const k = `feature:${key}`;
+      await prisma.appSetting.upsert({
+        where: { key: k },
+        create: { key: k, value: value ? "1" : "0" },
+        update: { value: value ? "1" : "0" },
+      });
+    }
+    await writeAudit("platform", req.platform!.id, "features.update", body.data);
+    res.json(await featureSnapshot());
+  })
+);
+
+/* ── Impersonation platform (debug user) ─────────────────────────────────── */
+
+adminRouter.post(
+  "/admin/impersonate/:userId",
+  requirePlatform,
+  asyncHandler(async (req, res) => {
+    const user = await prisma.user.findUnique({
+      where: { id: req.params.userId },
+      select: { id: true, tenantId: true, email: true },
+    });
+    if (!user) return res.status(404).json({ error: "user_tidak_ditemukan" });
+    const sid = randomBytes(32).toString("hex");
+    await prisma.session.create({
+      data: { id: sid, userId: user.id, expiresAt: new Date(Date.now() + 3600_000) },
+    });
+    setImpersonationCookie(res, sid, 3600_000);
+    await writeAudit(user.tenantId, req.platform!.id, "platform.impersonate", { userId: user.id, email: user.email });
+    res.json({ ok: true, userId: user.id });
+  })
+);
+
+adminRouter.post(
+  "/admin/impersonate/end",
+  requireUserOrPlatform,
+  asyncHandler(async (req, res) => {
+    const imp = readImpersonationId(req);
+    if (imp) {
+      await prisma.session.deleteMany({ where: { id: imp } });
+      if (req.user) {
+        await writeAudit(req.user.tenant.id, req.platform?.id ?? "platform", "platform.impersonate_end", {
+          userId: req.user.id,
+        });
+      }
+    }
+    clearImpersonationCookie(res);
+    res.json({ ok: true });
   })
 );

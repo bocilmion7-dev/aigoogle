@@ -1,14 +1,20 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  emailInvoice,
   getAiSubscription,
+  getAutoRenew,
   getBillingPayment,
+  getInvoices,
   getMe,
   postAiSubscription,
+  setAutoRenew as putAutoRenew,
   type AiSubscriptionPayload,
   type AiSubscriptionResult,
+  type InvoiceRow,
 } from "../api";
 import { AppHeader, PageLoader } from "../ui";
 import { IconCheck } from "../icons";
+import { track } from "../telemetry";
 
 const rp = (n: number): string => `Rp${Math.round(n).toLocaleString("id-ID")}`;
 
@@ -19,16 +25,29 @@ export function Subscription() {
   const [qris, setQris] = useState<AiSubscriptionResult | null>(null);
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
+  const [invoices, setInvoices] = useState<InvoiceRow[]>([]);
+  const [invMsg, setInvMsg] = useState("");
+  const [invBusy, setInvBusy] = useState("");
+  const [autoRenew, setAutoRenew] = useState(false);
+  const [renewBusy, setRenewBusy] = useState(false);
   const pollRef = useRef<number | null>(null);
 
   const load = useCallback(async () => {
     setData(await getAiSubscription());
   }, []);
+  const loadInvoices = useCallback(async () => {
+    setInvoices(await getInvoices().catch(() => []));
+  }, []);
 
   useEffect(() => {
     void getMe().then(setMe);
     void load().catch(() => setErr("Gagal memuat paket langganan."));
-  }, [load]);
+    void loadInvoices();
+    void getAutoRenew().then((r) => setAutoRenew(r.enabled)).catch(() => null);
+  }, [load, loadInvoices]);
+  useEffect(() => {
+    if (me === null) window.location.href = "/login";
+  }, [me]);
 
   useEffect(() => {
     if (!qris) return;
@@ -55,6 +74,7 @@ export function Subscription() {
     setBusyPlan(planId);
     setErr("");
     setMsg("");
+    track("subscribe_click", { plan: planId });
     try {
       const res = await postAiSubscription(planId);
       setQris(res);
@@ -72,6 +92,34 @@ export function Subscription() {
     }
   }
 
+  async function toggleAutoRenew() {
+    setRenewBusy(true);
+    setErr("");
+    try {
+      const next = !autoRenew;
+      await putAutoRenew(next);
+      setAutoRenew(next);
+      setMsg(next ? "Perpanjangan otomatis diaktifkan." : "Perpanjangan otomatis dimatikan.");
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Gagal mengubah perpanjangan otomatis.");
+    } finally {
+      setRenewBusy(false);
+    }
+  }
+
+  async function sendInvoice(orderId: string) {
+    setInvBusy(orderId);
+    setInvMsg("");
+    try {
+      const r = await emailInvoice(orderId);
+      setInvMsg(r.sent ? "Invoice dikirim ke email akun Anda." : "Pengiriman email tidak tersedia.");
+    } catch (e) {
+      setInvMsg(e instanceof Error ? e.message : "Gagal mengirim invoice.");
+    } finally {
+      setInvBusy("");
+    }
+  }
+
   if (me === undefined) {
     return (
       <div className="app">
@@ -81,11 +129,9 @@ export function Subscription() {
       </div>
     );
   }
-  if (me === null) {
-    window.location.href = "/login";
-    return null;
-  }
+  if (me === null) return null;
 
+  const renewRequested = new URLSearchParams(window.location.search).get("renew") === "1";
   const active = data?.subscription?.active ? data.subscription : null;
   const activeName = active ? (data?.plans.find((p) => p.id === active.plan)?.name ?? active.plan) : "";
   const activeUntil = active?.expiresAt
@@ -100,6 +146,11 @@ export function Subscription() {
         <p className="page__sub">
           Paket bulanan dengan token rutin. Token masuk otomatis setelah pembayaran QRIS lunas.
         </p>
+        {renewRequested && (
+          <p className="banner banner--ok" role="status">
+            Masa aktif Anda akan berakhir. Pilih paket di bawah untuk memperpanjang.
+          </p>
+        )}
         {data && (
           <p className="meta" style={{ marginTop: "calc(-1 * var(--space-2xs))" }}>
             Saldo token saat ini: <strong>{data.wallet.balanceTokens.toLocaleString("id-ID")}</strong>
@@ -137,6 +188,17 @@ export function Subscription() {
             </div>
           </div>
         )}
+        <section className="card" style={{ marginBottom: "var(--space-s)" }}>
+          <strong className="card__title">Perpanjangan otomatis</strong>
+          <p className="meta" style={{ marginTop: 0 }}>
+            Kami kirim pengingat dan menyiapkan perpanjangan sebelum masa aktif habis. Pembayaran QRIS tetap perlu dikonfirmasi.
+          </p>
+          <label className="check">
+            <input type="checkbox" checked={autoRenew} onChange={() => void toggleAutoRenew()} disabled={renewBusy} />
+            <span>Aktifkan pengingat perpanjangan otomatis</span>
+          </label>
+        </section>
+
         {msg && (
           <p className="banner banner--ok" role="status" style={{ marginBottom: "var(--space-xs)" }}>
             {msg}
@@ -194,6 +256,57 @@ export function Subscription() {
             })}
           </div>
         )}
+        <p className="meta" style={{ marginTop: "var(--space-m)" }}>
+          <a href="/refund">Kebijakan refund &amp; kredit</a>
+        </p>
+
+        <section className="card" style={{ marginTop: "var(--space-m)" }}>
+          <strong className="card__title">Riwayat pembayaran</strong>
+          <p className="meta" style={{ marginTop: 0 }}>Unduh atau kirim invoice ke email akun Anda.</p>
+          {invMsg && <p className="banner banner--ok" role="status">{invMsg}</p>}
+          <div className="table-wrap">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Tanggal</th>
+                  <th>Jenis</th>
+                  <th>Order</th>
+                  <th>Nominal</th>
+                  <th>Status</th>
+                  <th>Aksi</th>
+                </tr>
+              </thead>
+              <tbody>
+                {invoices.map((inv) => (
+                  <tr key={`${inv.orderId}-${inv.kind}`}>
+                    <td style={{ whiteSpace: "nowrap" }}>{new Date(inv.createdAt).toLocaleDateString("id-ID")}</td>
+                    <td>{inv.kind}</td>
+                    <td><code style={{ fontSize: "0.72rem" }}>{inv.orderId}</code></td>
+                    <td>Rp{inv.amount.toLocaleString("id-ID")}</td>
+                    <td>{inv.status === "settlement" ? "Lunas" : inv.status === "pending" ? "Menunggu" : inv.status}</td>
+                    <td>
+                      <div className="btn-row" style={{ gap: 4 }}>
+                        <a className="btn btn--2 btn--sm" href={`/api/billing/invoice/${encodeURIComponent(inv.orderId)}`}>
+                          PDF
+                        </a>
+                        <button
+                          className="btn btn--ghost btn--sm"
+                          onClick={() => void sendInvoice(inv.orderId)}
+                          disabled={invBusy === inv.orderId}
+                        >
+                          {invBusy === inv.orderId ? "Mengirim…" : "Email"}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {invoices.length === 0 && (
+                  <tr><td colSpan={6} className="empty">Belum ada pembayaran.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
       </main>
 
       {qris && (

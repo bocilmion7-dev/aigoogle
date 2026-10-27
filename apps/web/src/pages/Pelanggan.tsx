@@ -84,14 +84,21 @@ export function Pelanggan() {
     void getMe().then(setMe);
     void getConnections().then(setConns).catch(() => undefined);
   }, []);
+  useEffect(() => {
+    if (me === null) window.location.href = "/login";
+    else if (me?.permissions?.includes("app:settings.manage")) window.location.replace("/admin");
+  }, [me]);
 
   const needOptions = target === "salesReceipt" || target === "expense" || target === "bankTransfer";
+  const optionsSeq = useRef(0);
   useEffect(() => {
     if (!needOptions) return;
+    const seq = ++optionsSeq.current;
     const timer = window.setTimeout(() => {
       setOptionsBusy(true);
       void getEntryOptions(form.customerName)
         .then((o) => {
+          if (seq !== optionsSeq.current) return;
           setOptions(o);
           setForm((f) => ({
             ...f,
@@ -102,7 +109,9 @@ export function Pelanggan() {
           }));
         })
         .catch(() => null)
-        .finally(() => setOptionsBusy(false));
+        .finally(() => {
+          if (seq === optionsSeq.current) setOptionsBusy(false);
+        });
     }, 400);
     return () => window.clearTimeout(timer);
   }, [needOptions, target, form.customerName]);
@@ -116,10 +125,7 @@ export function Pelanggan() {
       </div>
     );
   }
-  if (me === null) {
-    window.location.href = "/login";
-    return null;
-  }
+  if (me === null) return null;
 
   const accurate = conns.find((c) => c.provider === "accurate");
   const connected = accurate?.status === "connected";
@@ -134,11 +140,8 @@ export function Pelanggan() {
   const hasPerm = (t: EntryTarget) => perms.includes(TARGET_PERM[t]);
   const needsName = (t: EntryTarget) => t === "salesInvoice" || t === "salesReceipt" || t === "purchaseInvoice";
 
-  // Admin Platform tidak memakai halaman Scan — arahkan ke kelola User & Peran
-  if (me.permissions?.includes("app:settings.manage")) {
-    window.location.replace("/admin");
-    return null;
-  }
+  // Admin Platform tidak memakai halaman Scan — effect di atas mengarahkan ke /admin
+  if (me.permissions?.includes("app:settings.manage")) return null;
   const onScanFile = async (file: File | undefined) => {
     if (!file) return;
     setErr(""); setOkMsg(""); setScan(null);

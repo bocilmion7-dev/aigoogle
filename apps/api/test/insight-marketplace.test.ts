@@ -158,4 +158,42 @@ describe("harga antar marketplace", () => {
     expect(isRelevantShopping("Casing hp cover karakter", "Hard Case")).toBe(true);
     expect(isRelevantShopping("Sepatu lari pria", "Hard Case")).toBe(false);
   });
+
+  it("iPhone 6S 128GB hanya cocok dengan model & kapasitas yang sama", () => {
+    const p = "iPhone 6S 128 GB";
+    expect(isRelevantShopping("Apple iPhone 6S 128GB Garansi Resmi", p)).toBe(true);
+    expect(isRelevantShopping("iPhone 6s 128 GB second mulus", p)).toBe(true);
+    expect(isRelevantShopping("iPhone 6 128GB", p)).toBe(false);
+    expect(isRelevantShopping("iPhone 7 128GB", p)).toBe(false);
+    expect(isRelevantShopping("iPhone 16 128GB", p)).toBe(false);
+    expect(isRelevantShopping("iPhone 6S Plus 128GB", p)).toBe(false);
+    expect(isRelevantShopping("iPhone 6S Pro 128GB", p)).toBe(false);
+    expect(isRelevantShopping("iPhone 6S 64GB", p)).toBe(false);
+    expect(isRelevantShopping("iPhone 6S 32 GB", p)).toBe(false);
+    // judul multi-kapasitas → ambigu, tolak
+    expect(isRelevantShopping("iPhone 6S 16gb/32gb/64gb/128gb second", p)).toBe(false);
+  });
+
+  it("generik: cocok ketat lintas bidang usaha (bukan hanya HP)", () => {
+    // semen 50kg: beda berat / beda merek ditolak
+    const semen = "Semen Tiga Roda 50 kg";
+    expect(isRelevantShopping("Semen Tiga Roda 50kg sak", semen)).toBe(true);
+    expect(isRelevantShopping("Semen Gresik 50 kg", semen)).toBe(false);
+    expect(isRelevantShopping("Semen Tiga Roda 40 kg", semen)).toBe(false);
+
+    // oli 1L: beda volume ditolak
+    const oli = "Oli Shell Helix 1 L";
+    expect(isRelevantShopping("Shell Helix 1L sintetik", oli)).toBe(true);
+    expect(isRelevantShopping("Shell Helix 4 Liter", oli)).toBe(false);
+
+    // kabel 2 meter: beda panjang ditolak
+    const kabel = "Kabel HDMI 2 m";
+    expect(isRelevantShopping("Kabel HDMI 2 meter 4K", kabel)).toBe(true);
+    expect(isRelevantShopping("Kabel HDMI 5 m", kabel)).toBe(false);
+
+    // sepatu ukuran 42: beda ukuran ditolak
+    const sepatu = "Sepatu Nike Air 42";
+    expect(isRelevantShopping("Nike Air ukuran 42 original", sepatu)).toBe(true);
+    expect(isRelevantShopping("Nike Air ukuran 44", sepatu)).toBe(false);
+  });
 });

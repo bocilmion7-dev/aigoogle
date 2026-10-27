@@ -16,8 +16,10 @@ describe("password", () => {
     expect(verifyPassword("x", "bcrypt:aa:bb")).toBe(false);
   });
   it("validasi strength", () => {
-    expect(validatePasswordStrength("short1")).toBe("minimal_8");
-    expect(validatePasswordStrength("abcdefgh")).toBe("butuh_angka");
-    expect(validatePasswordStrength("abcdefgh1")).toBeNull();
+    expect(validatePasswordStrength("short1")).toBe("minimal_12");
+    expect(validatePasswordStrength("abcdefghijkl")).toBe("butuh_huruf_besar");
+    expect(validatePasswordStrength("Abcdefghijkl")).toBe("butuh_angka");
+    expect(validatePasswordStrength("Abcdefghijk1")).toBe("butuh_simbol");
+    expect(validatePasswordStrength("Abcdefghij1!")).toBeNull();
   });
 });

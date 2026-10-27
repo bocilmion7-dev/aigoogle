@@ -9,6 +9,11 @@ export function Shell() {
   useEffect(() => {
     void getMe().then(setMe);
   }, []);
+  useEffect(() => {
+    if (me === null) window.location.href = "/";
+    else if (me?.needsPassword) window.location.href = "/set-password";
+    else if (me?.permissions?.includes("app:settings.manage")) window.location.replace("/admin");
+  }, [me]);
   if (me === undefined) {
     return (
       <div className="app">
@@ -18,19 +23,7 @@ export function Shell() {
       </div>
     );
   }
-  if (me === null) {
-    window.location.href = "/";
-    return null;
-  }
-  if (me.needsPassword) {
-    window.location.href = "/set-password";
-    return null;
-  }
-  // Admin Platform tidak punya Dashboard — langsung ke kelola User & Peran
-  if (me.permissions?.includes("app:settings.manage")) {
-    window.location.replace("/admin");
-    return null;
-  }
+  if (me === null || me.needsPassword || me.permissions?.includes("app:settings.manage")) return null;
   return (
     <div className="app app--chat">
       <AppHeader me={me} />

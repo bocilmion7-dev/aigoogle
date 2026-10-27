@@ -4,6 +4,7 @@ import { asyncHandler } from "../asyncHandler.js";
 import { requireUser } from "../middleware/session.js";
 import { loadPermissionSet, requirePerm } from "../permissions.js";
 import { writeAudit } from "../audit.js";
+import { rateLimit } from "../middleware/rate-limit.js";
 import { accurateProvider } from "../providers/accounting/index.js";
 import { accurateCtxFor } from "../providers/accounting/connection.js";
 import { getShopOrder, listShopOrders, patchShopOrder, type ShopOrder } from "../wa/shop-order.js";
@@ -434,6 +435,7 @@ const PUBLIC_TRACK_CACHE = new Map<string, { at: number; data: unknown }>();
 /** Halaman lacak PUBLIK (tanpa login) — hanya data kirim, tanpa alamat/nama lengkap. */
 ordersRouter.get(
   "/public/track/:orderId",
+  rateLimit({ name: "public-track", windowMs: 60_000, max: 30 }),
   asyncHandler(async (req, res) => {
     const orderId = String(req.params.orderId ?? "").slice(0, 64);
     const hit = PUBLIC_TRACK_CACHE.get(orderId);
@@ -483,8 +485,9 @@ ordersRouter.post(
   "/shipping/biteship/webhook",
   asyncHandler(async (req, res) => {
     const token = process.env.BITESHIP_WEBHOOK_TOKEN ?? "";
-    const given = String(req.header("x-webhook-token") ?? req.query.token ?? "");
-    if (token && given !== token) {
+    const given = String(req.header("x-webhook-token") ?? "");
+    // Fail-closed: webhook publik tanpa token tidak boleh diterima sama sekali.
+    if (!token || given !== token) {
       return res.status(401).json({ error: "unauthorized" });
     }
     const b = (req.body ?? {}) as Record<string, unknown>;

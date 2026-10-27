@@ -4,16 +4,11 @@ import {
   getMe,
   getOrderTracking,
   getOrders,
-  getShippingSettings,
-  putShippingSettings,
   runOrderAccurate,
   searchAccurateCustomers,
-  searchShippingAreas,
   type AccurateCustomerRef,
   type OrderRow,
   type OrderTracking,
-  type ShippingArea,
-  type ShippingOrigin,
 } from "../api";
 import { AppHeader, PageLoader } from "../ui";
 import { IconCheck, IconPackage, IconRefresh, IconSearch, IconSend } from "../icons";
@@ -62,43 +57,31 @@ export function Orders() {
   const [custResults, setCustResults] = useState<AccurateCustomerRef[]>([]);
   const [newName, setNewName] = useState("");
   // pengiriman (Biteship)
-  const [shipOpen, setShipOpen] = useState(false);
-  const [origin, setOrigin] = useState<ShippingOrigin | null>(null);
-  const [biteshipReady, setBiteshipReady] = useState(false);
-  const [biteshipMode, setBiteshipMode] = useState<"off" | "test" | "live">("off");
-  const [areaQ, setAreaQ] = useState("");
-  const [areaResults, setAreaResults] = useState<ShippingArea[]>([]);
   const [shipBusy, setShipBusy] = useState("");
   const [tracking, setTracking] = useState<OrderTracking | null>(null);
   const [shipPhone, setShipPhone] = useState("");
   const feedbackRef = useRef<HTMLDivElement | null>(null);
+  const loadSeq = useRef(0);
 
   const load = useCallback(async (f: string, query: string) => {
+    const seq = ++loadSeq.current;
     setLoading(true);
     try {
       const r = await getOrders({ status: f, q: query });
+      if (seq !== loadSeq.current) return;
       setOrders(r.orders);
       setConnected(r.accurateConnected);
       setErr("");
     } catch (e) {
+      if (seq !== loadSeq.current) return;
       setErr(e instanceof Error ? e.message : "Gagal memuat pesanan.");
     } finally {
-      setLoading(false);
+      if (seq === loadSeq.current) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
     void getMe().then(setMe);
-  }, []);
-
-  useEffect(() => {
-    void getShippingSettings()
-      .then((r) => {
-        setOrigin(r.origin);
-        setBiteshipReady(r.biteshipReady);
-        setBiteshipMode(r.biteshipMode);
-      })
-      .catch(() => null);
   }, []);
 
   useEffect(() => {
@@ -130,34 +113,6 @@ export function Orders() {
         phoneDigits(o.buyerContactPhone) ||
         phoneDigits(o.buyerPhone)
     );
-  }
-
-  async function findArea() {
-    setShipBusy("area");
-    try {
-      setAreaResults(await searchShippingAreas(areaQ.trim()));
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : "Gagal mencari kode pos.");
-    } finally {
-      setShipBusy("");
-    }
-  }
-
-  async function saveOrigin() {
-    if (!origin) return;
-    setShipBusy("save");
-    setErr("");
-    try {
-      const r = await putShippingSettings(origin);
-      setOrigin(r.origin);
-      setBiteshipReady(r.biteshipReady);
-      setBiteshipMode(r.biteshipMode);
-      setMsg("Pengaturan pengiriman disimpan.");
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : "Gagal menyimpan pengaturan pengiriman.");
-    } finally {
-      setShipBusy("");
-    }
   }
 
   async function shipToBiteship() {
@@ -279,22 +234,7 @@ export function Orders() {
               Pesanan masuk dari WhatsApp · tersambung ke Accurate
             </p>
           </div>
-          <div className="orders-head__actions">
-            {canManage && (
-              <button type="button" className="btn btn--2 btn--sm" onClick={() => setShipOpen(true)}>
-                <IconPackage size={15} /> Pengaturan pengiriman
-              </button>
-            )}
-            <button
-              type="button"
-              className="btn btn--2 btn--sm"
-              onClick={() => void load(stage, q.trim())}
-              disabled={loading}
-              aria-busy={loading}
-            >
-              <IconRefresh size={15} /> Muat ulang
-            </button>
-          </div>
+          <div className="orders-head__actions" />
         </header>
 
         {!connected && (
@@ -355,24 +295,13 @@ export function Orders() {
                     <strong>{o.buyerName || `Pembeli ${o.buyerPhone}`}</strong>
                     <span className={`orders-badge is-${o.stage}`}>{STAGE_LABEL[o.stage] ?? o.stage}</span>
                   </span>
-                  <span className="orders-card__lines">
-                    {o.items.map((i) => (
-                      <span className="orders-card__line" key={`${i.name}-${i.qty}`}>
-                        <span className="orders-card__iname">{i.name}</span>
-                        <span className="orders-card__iqty">×{i.qty}</span>
-                        <span className="orders-card__isub">{rp(i.subtotal)}</span>
-                      </span>
-                    ))}
-                  </span>
                   <span className="meta orders-card__sub">
                     {when(o.createdAt)} · #{o.orderId.replace("shop-", "")}
                   </span>
                   <span className="orders-card__foot">
                     <span className="meta">
                       {o.fulfillment === "courier"
-                        ? `Kurir ${[o.shipping?.courierName, o.shipping?.serviceName].filter(Boolean).join(" ")} · ongkir ${rp(
-                            o.shipping?.price ?? 0
-                          )}`
+                        ? `Kurir ${[o.shipping?.courierName, o.shipping?.serviceName].filter(Boolean).join(" ")}`
                         : "Ambil sendiri di toko"}
                     </span>
                     <strong className="orders-card__total">{rp(o.total)}</strong>
@@ -771,147 +700,6 @@ export function Orders() {
         </div>
       )}
 
-      {shipOpen && origin && (
-        <div className="modal-overlay" onClick={() => setShipOpen(false)}>
-          <div
-            className="modal modal--qr"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="ship-title"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="modal__head">
-              <IconPackage size={18} />
-              <strong className="card__title" id="ship-title">
-                Asal Pengiriman
-              </strong>
-              <button type="button" className="modal__x" onClick={() => setShipOpen(false)} aria-label="Tutup pengaturan pengiriman">
-                ×
-              </button>
-            </div>
-            {!biteshipReady && (
-              <p className="banner banner--err" role="status">
-                BITESHIP_API_KEY belum diatur — cek ongkir & order kurir tidak aktif.
-              </p>
-            )}
-            {biteshipReady && biteshipMode === "test" && (
-              <p className="banner banner--err" role="status">
-                Mode <strong>Sandbox (biteship_test)</strong>: order kurir <strong>TIDAK</strong> dikirim nyata.
-                Untuk produksi: aktivasi Order API di dashboard Biteship, lalu set{" "}
-                <strong>BITESHIP_USE_LIVE=1</strong> (memakai BITESHIP_LIVE_API_KEY).
-              </p>
-            )}
-            {biteshipReady && biteshipMode === "live" && (
-              <p className="meta" style={{ margin: 0 }}>
-                Mode <strong>Live (biteship_live)</strong> — order dikirim nyata. Pastikan Order API sudah diaktivasi.
-              </p>
-            )}
-            {biteshipReady && (
-              <p className="meta" style={{ margin: 0 }}>
-                Webhook: <strong>{`${window.location.origin}/api/shipping/biteship/webhook`}</strong> — daftarkan di
-                dashboard Biteship (opsional set <strong>BITESHIP_WEBHOOK_TOKEN</strong>).
-              </p>
-            )}
-            {err && <p className="banner banner--err" role="alert">{err}</p>}
-            {msg && <p className="banner banner--ok" role="status">{msg}</p>}
-            <div className="orders-acc">
-              <label className="orders-field">
-                <span>Nama kontak</span>
-                <input
-                  className="input"
-                  value={origin.contactName}
-                  onChange={(e) => setOrigin({ ...origin, contactName: e.target.value })}
-                  placeholder="Nama penanggung jawab gudang"
-                />
-              </label>
-              <label className="orders-field">
-                <span>No. HP</span>
-                <input
-                  className="input"
-                  value={origin.phone}
-                  onChange={(e) => setOrigin({ ...origin, phone: e.target.value })}
-                  placeholder="08xxxxxxxxxx"
-                  inputMode="tel"
-                />
-              </label>
-              <label className="orders-field">
-                <span>Nama toko/organisasi</span>
-                <input
-                  className="input"
-                  value={origin.organization}
-                  onChange={(e) => setOrigin({ ...origin, organization: e.target.value })}
-                  placeholder="Nama toko"
-                />
-              </label>
-              <label className="orders-field">
-                <span>Alamat lengkap gudang</span>
-                <textarea
-                  className="input"
-                  rows={2}
-                  value={origin.address}
-                  onChange={(e) => setOrigin({ ...origin, address: e.target.value })}
-                  placeholder="Jalan, nomor, kelurahan, kecamatan, kota"
-                />
-              </label>
-              <label className="orders-field">
-                <span>Kode pos</span>
-                <input
-                  className="input"
-                  value={origin.postalCode}
-                  onChange={(e) => setOrigin({ ...origin, postalCode: e.target.value.replace(/\D/g, "").slice(0, 5) })}
-                  placeholder="5 digit"
-                  inputMode="numeric"
-                />
-              </label>
-              <div className="orders-search orders-search--sm">
-                <IconSearch size={15} />
-                <input
-                  className="input"
-                  value={areaQ}
-                  onChange={(e) => setAreaQ(e.target.value)}
-                  placeholder="Cari kecamatan / kode pos"
-                  aria-label="Cari area Biteship"
-                />
-                <button
-                  type="button"
-                  className="btn btn--2 btn--sm"
-                  onClick={() => void findArea()}
-                  disabled={shipBusy !== "" || !areaQ.trim()}
-                >
-                  Cari
-                </button>
-              </div>
-              {areaResults.length > 0 && (
-                <ul className="orders-cust__list" role="list">
-                  {areaResults.map((ar) => (
-                    <li key={ar.id}>
-                      <button
-                        type="button"
-                        className="orders-cust__pick"
-                        onClick={() => setOrigin({ ...origin, postalCode: ar.postalCode })}
-                      >
-                        {ar.name}
-                        <span className="meta">{ar.postalCode}</span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-            <div className="orders-actions">
-              <button type="button" className="btn btn--sm" onClick={() => void saveOrigin()} disabled={shipBusy !== ""}>
-                {shipBusy === "save" ? <span className="spinner" aria-hidden="true" /> : <IconCheck size={15} />}
-                Simpan
-              </button>
-            </div>
-            <div className="modal__foot">
-              <button type="button" className="btn btn--2" onClick={() => setShipOpen(false)}>
-                Tutup
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

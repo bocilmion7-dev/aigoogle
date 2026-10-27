@@ -7,6 +7,8 @@ import { syncShippingStatuses } from "./wa/shipping-notify.js";
 import { biteshipKeyMode, track } from "./shipping/biteship.js";
 import { syncAllTenants } from "./sync/daily.js";
 import { runNewsIngest } from "./wawasan/ingest.js";
+import { runBillingReminders } from "./billing/dunning.js";
+import { runRetentionCleanup } from "./ops/retention.js";
 import { DAILY_REFRESH_MINUTES, runDailyDigests, wibDate } from "./wawasan/digest.js";
 import { wibMinutes } from "./wawasan/time.js";
 import { prisma } from "./db.js";
@@ -129,4 +131,31 @@ setInterval(
     void runWaJobs().catch((e) => console.error("wa jobs", e));
   },
   15 * 60_000
+);
+
+// Pengingat langganan (H-3/H+1/H+7) — idempoten per hari.
+setInterval(
+  () => {
+    void runBillingReminders()
+      .then((n) => {
+        if (n > 0) console.log(`[billing] ${n} pengingat langganan terkirim`);
+      })
+      .catch((e) => console.error("[billing] pengingat gagal:", e instanceof Error ? e.message : e));
+  },
+  30 * 60_000
+);
+
+// Retensi data (chat/log/token) — tiap 6 jam, idempoten.
+setTimeout(() => {
+  void runRetentionCleanup()
+    .then((r) => console.log("[retensi]", r))
+    .catch((e) => console.error("[retensi] gagal:", e instanceof Error ? e.message : e));
+}, 5 * 60_000);
+setInterval(
+  () => {
+    void runRetentionCleanup()
+      .then((r) => console.log("[retensi]", r))
+      .catch((e) => console.error("[retensi] gagal:", e instanceof Error ? e.message : e));
+  },
+  6 * 3600_000
 );

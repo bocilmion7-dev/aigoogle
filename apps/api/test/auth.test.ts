@@ -79,7 +79,7 @@ describe("auth routes", () => {
   });
 
   it("set-password tanpa login → 401", async () => {
-    expect((await request(api).post("/api/auth/set-password").send({ password: "abc12345" })).status).toBe(401);
+    expect((await request(api).post("/api/auth/set-password").send({ password: "Abcdefgh123!" })).status).toBe(401);
   });
 
   it("set-password lemah → 400", async () => {
@@ -97,11 +97,11 @@ describe("auth routes", () => {
     await prisma.session.create({ data: { id: sid, userId: u.id, expiresAt: new Date(Date.now() + 3600_000) } });
     const c = `sid=${sid}`;
     expect((await request(api).post("/api/auth/set-password").set("Cookie", c).send({ password: "abc" })).status).toBe(400);
-    const ok = await request(api).post("/api/auth/set-password").set("Cookie", c).send({ password: "abc12345" });
+    const ok = await request(api).post("/api/auth/set-password").set("Cookie", c).send({ password: "Abcdefgh123!" });
     expect(ok.status).toBe(200);
     const me = await request(api).get("/api/me").set("Cookie", c);
     expect(me.body.needsPassword).toBe(false);
-    const again = await request(api).post("/api/auth/set-password").set("Cookie", c).send({ password: "xyz12345" });
+    const again = await request(api).post("/api/auth/set-password").set("Cookie", c).send({ password: "Xyzdefgh123!" });
     expect(again.status).toBe(409);
   });
 

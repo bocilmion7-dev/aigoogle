@@ -232,43 +232,54 @@ driveRouter.post(
       where: { id: req.params.id, tenantId: user.tenant.id },
     });
     if (!job) return res.status(404).json({ error: "tidak_ditemukan" });
-    if (job.status === "running") return res.status(409).json({ error: "sedang_berjalan" });
     const client = await driveClientFor(req.user!.tenant.id);
     if (!client) return res.status(409).json({ error: "belum_connect" });
+    // Klaim job secara atomik: dua request paralel tidak boleh menjalankan job yang sama.
+    const claimed = await prisma.driveJob.updateMany({
+      where: { id: job.id, tenantId: user.tenant.id, status: { not: "running" } },
+      data: { status: "running" },
+    });
+    if (claimed.count === 0) return res.status(409).json({ error: "sedang_berjalan" });
     const plan = JSON.parse(job.planJson) as Parameters<typeof executePlan>[1];
 
     res.setHeader("Content-Type", "application/x-ndjson; charset=utf-8");
     const send = (e: Record<string, unknown>) => res.write(JSON.stringify(e) + "\n");
-    await prisma.driveJob.update({ where: { id: job.id }, data: { status: "running" } });
     send({ type: "start", jobId: job.id, total: plan.filter((p) => p.action === "move").length });
 
-    const result = await executePlan(client, plan, {
-      isCancelled: () => cancelFlags.get(job.id) === true,
-      onProgress: async (done, total, item) => {
-        send({ type: "progress", done, total, status: item.status, fileName: item.fileName });
-        await prisma.driveActionLog.create({
-          data: {
-            jobId: job.id,
-            fileId: item.fileId,
-            fileName: item.fileName,
-            action: item.action,
-            fromParent: item.originalParent ?? "",
-            toParent: item.toParent ?? "",
-            status: item.status,
-            error: item.error ?? "",
-          },
-        });
-      },
-    });
-    cancelFlags.delete(job.id);
-    const cancelled = result.items.some((i) => i.status === "skipped");
-    await prisma.driveJob.update({
-      where: { id: job.id },
-      data: { status: cancelled ? "cancelled" : "done", resultJson: JSON.stringify(result.items) },
-    });
-    await writeAudit(req.user!.tenant.id, req.user!.id, "drive.run", { jobId: job.id, cancelled });
-    send({ type: cancelled ? "cancelled" : "done", jobId: job.id, items: result.items });
-    res.end();
+    try {
+      const result = await executePlan(client, plan, {
+        isCancelled: () => cancelFlags.get(job.id) === true,
+        onProgress: async (done, total, item) => {
+          send({ type: "progress", done, total, status: item.status, fileName: item.fileName });
+          await prisma.driveActionLog.create({
+            data: {
+              jobId: job.id,
+              fileId: item.fileId,
+              fileName: item.fileName,
+              action: item.action,
+              fromParent: item.originalParent ?? "",
+              toParent: item.toParent ?? "",
+              status: item.status,
+              error: item.error ?? "",
+            },
+          });
+        },
+      });
+      cancelFlags.delete(job.id);
+      const cancelled = result.items.some((i) => i.status === "skipped");
+      await prisma.driveJob.update({
+        where: { id: job.id },
+        data: { status: cancelled ? "cancelled" : "done", resultJson: JSON.stringify(result.items) },
+      });
+      await writeAudit(req.user!.tenant.id, req.user!.id, "drive.run", { jobId: job.id, cancelled });
+      send({ type: cancelled ? "cancelled" : "done", jobId: job.id, items: result.items });
+      res.end();
+    } catch (e) {
+      cancelFlags.delete(job.id);
+      await prisma.driveJob.update({ where: { id: job.id }, data: { status: "failed" } }).catch(() => null);
+      send({ type: "error", message: e instanceof Error ? e.message : "gagal menjalankan job" });
+      res.end();
+    }
   })
 );
 

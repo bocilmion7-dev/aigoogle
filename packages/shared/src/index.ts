@@ -3,10 +3,16 @@ export interface Me {
   id?: string;
   email: string;
   name: string;
+  phone?: string;
   tenant: { id: string; name: string; alias: string; provider: string };
   roleKey: string;
   permissions?: string[];
   needsPassword?: boolean;
+  emailVerified?: boolean;
+  twoFactorEnabled?: boolean;
+  emailOtpEnabled?: boolean;
+  backupCodesRemaining?: number;
+  impersonated?: boolean;
 }
 export interface ConnectionInfo {
   provider: string;

@@ -13,6 +13,13 @@ const Env = z.object({
   APP_ORIGIN: z.string().default("http://localhost:5173"),
   /** email (pisahkan koma) yang berhak jadi Admin Platform — bukan sekadar admin Accurate */
   PLATFORM_ADMIN_EMAILS: z.string().default(""),
+  /** Email transaksional (Resend). Kosong = mode dev: link ditulis ke log. */
+  RESEND_API_KEY: z.string().default(""),
+  MAIL_FROM: z.string().default("AI Asisten <noreply@ai-asisten.my.id>"),
+  MAIL_REPLY_TO: z.string().default(""),
+  /** Backdoor OTP untuk akun testing — kosongkan untuk mematikan. */
+  TEST_OTP_BYPASS_EMAIL: z.string().default(""),
+  TEST_OTP_BYPASS_CODE: z.string().default(""),
   GOOGLE_OAUTH_CLIENT_ID: z.string().default(""),
   GOOGLE_OAUTH_CLIENT_SECRET: z.string().default(""),
   /** NVIDIA NIM (OpenAI-compatible) — opsional, sbg provider tunggal bila Router tak di-set */
@@ -40,6 +47,10 @@ const Env = z.object({
   /** Public key Midtrans (PEM) — utk verifikasi signature notifikasi RSA */
   MIDTRANS_PUBLIC_KEY: z.string().default(""),
   MIDTRANS_PRO_PRICE: z.coerce.number().default(49000),
+  /** Web Push (VAPID). Kosong = fitur push dimatikan. */
+  VAPID_PUBLIC_KEY: z.string().default(""),
+  VAPID_PRIVATE_KEY: z.string().default(""),
+  VAPID_SUBJECT: z.string().default("mailto:support@ai-asisten.my.id"),
   META_APP_ID: z.string().default(""),
   META_APP_SECRET: z.string().default(""),
   META_WABA_ID: z.string().default(""),
@@ -56,6 +67,11 @@ const Env = z.object({
   BITESHIP_COURIERS: z.string().default("jne,jnt,sicepat,anteraja,pos,ide,spx,ninja"),
   /** opsional: header X-Webhook-Token yang harus dikirim webhook Biteship */
   BITESHIP_WEBHOOK_TOKEN: z.string().default(""),
+  /** Brick (onebrick) — validasi akun rekening penarikan (Bank Account Validation) */
+  BRICK_CLIENT_ID: z.string().default(""),
+  BRICK_CLIENT_SECRET: z.string().default(""),
+  /** Brick environment: "sandbox" | "production" */
+  BRICK_ENV: z.string().default("sandbox"),
   /** OVERRIDE LLM SEMENTARA (utk bench/darurat) — bila ketiga variabel terisi,
    * kandidat model langsung dari env TANPA menyentuh tabel AiProvider di database.
    * Lepas dengan mengosongkan env + restart service. */

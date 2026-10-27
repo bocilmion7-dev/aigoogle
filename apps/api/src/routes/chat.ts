@@ -225,6 +225,7 @@ chatRouter.post(
       }
     };
 
+    let startSent = false;
     try {
       // ─── FAST PATH: transformer → agregasi adapter ───
       // Router ringan (~1rb token) pilih 1 tool → eksekusi → format (0 token LLM).
@@ -259,6 +260,7 @@ chatRouter.post(
         const perm = spec && "requiredPermission" in spec ? (spec as { requiredPermission?: string }).requiredPermission : undefined;
         if (!perm || permissions.has(perm)) {
           console.log(`[chat] transformer pilih ${route.tool} ${JSON.stringify(route.args).slice(0, 120)}`);
+          startSent = true;
           send({ type: "start", sessionId: session.id });
           send({ type: "tool_call", tool: route.tool, label });
           try {
@@ -323,6 +325,11 @@ chatRouter.post(
         history,
         onEvent: (e) => {
           const ev = e as Record<string, unknown>;
+          // fast path sudah mengirim start → jangan kirim start kedua saat fallback
+          if (e.type === "start") {
+            if (startSent) return;
+            startSent = true;
+          }
           // start membawa sessionId supaya frontend (mode voice) bisa lanjut di sesi yg sama
           send(e.type === "start" ? { ...ev, sessionId: session.id } : ev);
         },

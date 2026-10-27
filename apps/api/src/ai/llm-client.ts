@@ -6,7 +6,7 @@ export { LlmHttpError };
 
 /** batas PER PERCOBAAN — origin yg menggantung (522/queue senyap) dilepas & failover,
  * bukan menunggu deadline total 125 dtk milik user sampai habis. */
-const ATTEMPT_TIMEOUT_MS = 70_000;
+const ATTEMPT_TIMEOUT_MS = 45_000;
 
 function attemptSignal(outer?: AbortSignal): AbortSignal {
   const t = AbortSignal.timeout(ATTEMPT_TIMEOUT_MS);

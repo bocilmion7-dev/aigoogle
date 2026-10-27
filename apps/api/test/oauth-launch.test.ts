@@ -88,7 +88,7 @@ describe("launch & callback", () => {
     );
     expect(await prisma.connection.count({ where: { tenantId: tenant!.id, provider: "accurate" } })).toBe(1);
     // set password → OAuth ulang redirect ke /app
-    const setPw = await agent.post("/api/auth/set-password").send({ password: "password123" });
+    const setPw = await agent.post("/api/auth/set-password").send({ password: "Password123!" });
     expect(setPw.status).toBe(200);
     const launch2 = await agent.get("/api/launch?dbId=1001").redirects(0);
     const state2 = new URL(launch2.headers.location).searchParams.get("state")!;

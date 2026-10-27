@@ -119,6 +119,180 @@ export function matchGroups(text: string, groups: string[][]): boolean {
   return groups.every((alts) => alts.some((w) => t.includes(w)));
 }
 
+export interface Measure {
+  /** nilai ternormalisasi, mis. "128", "1.5", "40" */
+  value: string;
+  /** satuan ternormalisasi: gb, kg, ml, l, cm, mm, m, in, w, v, a, mah, hz … */
+  unit: string;
+}
+
+/** Spesifikasi produk generik — berlaku untuk semua bidang usaha. */
+export interface ProductSpec {
+  /** merek yang dikenali (bila ada) */
+  brand: string;
+  /** kode model/seri alfanumerik: "6s", "s7", "a52", "xr", "rtx3060" */
+  models: string[];
+  /** angka polos penanda seri/ukuran: "6", "13", "40" */
+  numbers: string[];
+  /** kapasitas/berat/volume/dimensi berdimensi satuan */
+  measures: Measure[];
+  /** varian produk yang membedakan: plus, max, pro, mini, lite, ultra */
+  variants: string[];
+}
+
+const UNIT_ALIASES: Record<string, string> = {
+  gb: "gb", tb: "tb", mb: "mb",
+  kg: "kg", kilogram: "kg", kilo: "kg",
+  g: "g", gr: "g", gram: "g",
+  mg: "mg",
+  ml: "ml", mililiter: "ml",
+  l: "l", liter: "l", litre: "l",
+  m: "m", meter: "m", metre: "m",
+  cm: "cm",
+  mm: "mm",
+  in: "in", inch: "in", inci: "in", '"': "in",
+  w: "w", watt: "w",
+  v: "v", volt: "v",
+  a: "a", ampere: "a", ah: "ah", mah: "mah",
+  hz: "hz", khz: "khz", mhz: "mhz", ghz: "ghz",
+  pcs: "pcs", pc: "pcs", buah: "pcs", unit: "pcs",
+};
+
+const STRONG_VARIANTS = ["plus", "max", "pro", "mini", "lite", "ultra"];
+
+/** Ekstrak spesifikasi produk dari nama apa pun (generik, lintas industri). */
+export function parseProductSpec(productName: string): ProductSpec {
+  const raw = productName.toLowerCase().replace(/\u00a0/g, " ");
+  const brand = BRANDS.find((b) => new RegExp(`\\b${b}\\b`).test(raw)) ?? "";
+  const norm = raw
+    .replace(/(\d)[.,](\d)/g, "$1.$2")
+    .replace(/[^\p{L}\p{N}. ]+/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const tokens = norm.split(" ").filter(Boolean);
+
+  const measures: Measure[] = [];
+  const consumed = new Set<number>();
+  for (let i = 0; i < tokens.length; i++) {
+    const tk = tokens[i]!;
+    // "128gb" atau "128 gb"
+    const glued = tk.match(/^(\d+(?:\.\d+)?)([a-z]+)$/);
+    if (glued) {
+      const unit = UNIT_ALIASES[glued[2]!];
+      if (unit) {
+        measures.push({ value: glued[1]!, unit });
+        consumed.add(i);
+        continue;
+      }
+    }
+    const unit = UNIT_ALIASES[tk];
+    if (unit && i > 0) {
+      const prev = tokens[i - 1]!;
+      if (/^\d+(?:\.\d+)?$/.test(prev)) {
+        measures.push({ value: prev, unit });
+        consumed.add(i);
+        consumed.add(i - 1);
+        continue;
+      }
+    }
+    // "40x40cm" → 2 nilai, satuan di akhir
+    const dim = tk.match(/^(\d+(?:\.\d+)?)x(\d+(?:\.\d+)?)$/);
+    if (dim) {
+      const nextUnit = UNIT_ALIASES[tokens[i + 1] ?? ""];
+      if (nextUnit) {
+        measures.push({ value: dim[1]!, unit: nextUnit });
+        measures.push({ value: dim[2]!, unit: nextUnit });
+        consumed.add(i);
+        consumed.add(i + 1);
+      }
+    }
+  }
+
+  const variants = [...STRONG_VARIANTS, "edge", "note", "fe", "se"].filter((v) => tokens.includes(v));
+  const models: string[] = [];
+  const numbers: string[] = [];
+  for (let i = 0; i < tokens.length; i++) {
+    if (consumed.has(i)) continue;
+    const tk = tokens[i]!;
+    if (tk === brand || variants.includes(tk)) continue;
+    // gabungan terpisah: "6 s" → "6s", "s 7" → "s7"
+    const next = tokens[i + 1] ?? "";
+    if (/^\d{1,3}$/.test(tk) && /^[a-z]{1,2}$/.test(next) && !STRONG_VARIANTS.includes(next) && !consumed.has(i + 1)) {
+      models.push(tk + next);
+      i++;
+      continue;
+    }
+    if (/^[a-z]{1,3}\d{1,4}[a-z]?$/.test(tk) || /^\d{1,2}[a-z]{1,2}$/.test(tk)) {
+      models.push(tk);
+      continue;
+    }
+    if (/^\d{1,4}$/.test(tk) && Number(tk) < 2000) {
+      numbers.push(tk);
+    }
+  }
+  return {
+    brand,
+    models: [...new Set(models)],
+    numbers: [...new Set(numbers)],
+    measures,
+    variants,
+  };
+}
+
+const BRAND_LIST = BRANDS;
+
+/** Cek judul cocok dengan spesifikasi produk (ketat, generik). */
+export function matchesProductSpec(title: string, spec: ProductSpec): boolean {
+  const t = title.toLowerCase().replace(/\u00a0/g, " ");
+
+  // merek lain pada judul → bukan produk yang sama
+  if (spec.brand) {
+    const other = BRAND_LIST.find((b) => b !== spec.brand && new RegExp(`\\b${b}\\b`).test(t));
+    if (other) return false;
+  }
+
+  // setiap kode model wajib muncul utuh (bukan bagian dari angka lain)
+  for (const m of spec.models) {
+    const esc = m.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    if (!new RegExp(`(^|[^a-z0-9])${esc}([^a-z0-9]|$)`).test(t)) return false;
+  }
+
+  // angka seri wajib muncul utuh
+  for (const n of spec.numbers) {
+    if (!new RegExp(`(^|[^0-9])${n}([^0-9]|$)`).test(t)) return false;
+  }
+
+  // ukuran/kapasitas: nilai pada judul untuk satuan yang sama harus sesuai
+  for (const ms of spec.measures) {
+    const found = measureValues(t, ms.unit);
+    if (!found.length) continue; // judul tanpa info ukuran → toleransi
+    if (found.length > 1) return false; // judul multi-ukuran → ambigu
+    if (found[0] !== ms.value) return false;
+  }
+
+  // varian berbeda (plus/max/pro/mini/lite/ultra/edge/note/fe/se) → bukan produk yang sama
+  const allVariants = [...new Set([...STRONG_VARIANTS, "edge", "note", "fe", "se"])];
+  for (const v of allVariants) {
+    const inTitle = new RegExp(`(^|[^a-z0-9])${v}([^a-z0-9]|$)`).test(t);
+    if (inTitle && !spec.variants.includes(v)) return false;
+  }
+
+  return true;
+}
+
+/** Semua nilai angka untuk satuan tertentu di dalam teks. */
+function measureValues(text: string, unit: string): string[] {
+  const out: string[] = [];
+  const t = text.replace(/(\d)[.,](\d)/g, "$1.$2");
+  const aliases = Object.entries(UNIT_ALIASES)
+    .filter(([, u]) => u === unit)
+    .map(([a]) => a.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  if (!aliases.length) return out;
+  const re = new RegExp(`(\\d+(?:\\.\\d+)?)\\s*(?:${aliases.join("|")})(?![a-z])`, "g");
+  for (const m of t.matchAll(re)) out.push(m[1]!);
+  return [...new Set(out)];
+}
+
 /** nomor model harus menempel pada merek (mis. "iphone 6s", "samsung galaxy s7") */
 export function phoneModelMatch(text: string, brand: string, numbers: string[]): boolean {
   if (!brand || !numbers.length) return false;
@@ -127,7 +301,7 @@ export function phoneModelMatch(text: string, brand: string, numbers: string[]):
   return numbers.some((n) => new RegExp(`${brand}[^0-9]{0,14}${n}([^0-9]|$)`).test(t));
 }
 
-/** daftar query per produk: tipe barang sejenis, atau beberapa variasi harga HP. */
+/** Daftar query per produk: tipe barang sejenis, atau beberapa variasi harga produk. */
 export function buildQueryList(productName: string): QuerySpec[] {
   const name = productName.toLowerCase().replace(/\s+/g, " ").trim();
   const brand = BRANDS.find((b) => name.includes(b)) ?? "";
@@ -166,7 +340,7 @@ export function buildQuerySpec(productName: string): QuerySpec {
     };
   }
   // produk non-aksesoris (mis. iPhone 6 128GB): pakai nama + nomor model
-  return { query: `${productName} harga`, groups: [], numbers: modelNumbers(productName) };
+  return { query: productName, groups: [], numbers: modelNumbers(productName) };
 }
 
 /**

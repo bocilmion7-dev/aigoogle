@@ -157,7 +157,7 @@ export function Insight() {
     const root = rootRef.current;
     if (!root) return;
     const header = document.querySelector(".app-header");
-    const mast = root.querySelector(".insight-mast");
+    const mast = root.querySelector(".ins-hero");
     const set = () => {
       const h = Math.round(header?.getBoundingClientRect().height ?? 56);
       const mh = Math.round(mast?.getBoundingClientRect().height ?? 0);
@@ -195,7 +195,7 @@ export function Insight() {
       else ob.observe(el);
     });
     return () => ob.disconnect();
-  }, [data, filter, answer, loading]);
+  }, [data, filter, answer, loading, me]);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -264,14 +264,16 @@ export function Insight() {
       <main className="page page--narrow insight insight--portal" ref={rootRef}>
         <h1 className="insight-sr">Insight pasar</h1>
 
-        <div className="insight-mast">
-          <div className="insight-mast__row">
-            <span className="insight-eyebrow">
-              <IconNews size={13} /> Briefing pasar — {todayLine()}
+        {/* ── Hero briefing ── */}
+        <section className="ins-hero" data-reveal style={vp(0)}>
+          <div className="ins-hero__top">
+            <span className="ins-eyebrow">
+              <IconNews size={13} /> Briefing pasar
             </span>
-            {data && <span className="insight-updated">Diperbarui {fmtDateTime(data.generatedAt)}</span>}
+            {data && <span className="ins-updated">{fmtDateTime(data.generatedAt)}</span>}
           </div>
-          <form className="insight-search" onSubmit={submit} role="search">
+          <p className="ins-hero__date">{todayLine()}</p>
+          <form className="ins-search" onSubmit={submit} role="search">
             <IconSearch size={17} />
             <input
               value={q}
@@ -281,40 +283,37 @@ export function Insight() {
               maxLength={300}
               enterKeyHint="search"
             />
-            <button type="submit" className="insight-search__btn" disabled={asking || !q.trim()} aria-label="Cari">
+            <button type="submit" className="ins-search__btn" disabled={asking || !q.trim()} aria-label="Cari">
               {asking ? <span className="spinner" aria-hidden="true" /> : <IconSend size={15} />}
             </button>
           </form>
-          <p className="insight-industry">
-            Industri terdeteksi: <strong>{industryText}</strong>
+          <div className="ins-hero__tags">
+            <span className="ins-chip">
+              Industri: <strong>{industryText}</strong>
+            </span>
             {industries.slice(0, 3).map((i) => (
-              <span key={i.key}> · {Math.round(i.weight * 100)}%</span>
+              <span className="ins-chip" key={i.key}>
+                {i.label} · {Math.round(i.weight * 100)}%
+              </span>
             ))}
-          </p>
-          {topics.length > 0 && (
-            <nav className="insight-nav" aria-label="Filter topik berita">
-              <button
-                type="button"
-                className={filter === "semua" ? "is-on" : ""}
-                aria-pressed={filter === "semua"}
-                onClick={() => setFilter("semua")}
-              >
-                Semua
-              </button>
-              {topics.map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  className={filter === t ? "is-on" : ""}
-                  aria-pressed={filter === t}
-                  onClick={() => setFilter(t)}
-                >
-                  {TOPIC_LABEL[t] ?? t}
-                </button>
-              ))}
-            </nav>
-          )}
-        </div>
+          </div>
+        </section>
+
+        {/* ── Stat ringkas (selalu render agar tidak shift saat data masuk) ── */}
+        <section className="ins-stats" data-reveal style={vp(1)}>
+          <div className="ins-stat">
+            <strong>{data ? all.length : "—"}</strong>
+            <span>Berita hari ini</span>
+          </div>
+          <div className="ins-stat">
+            <strong>{data ? monitored : "—"}</strong>
+            <span>Produk terpantau</span>
+          </div>
+          <div className="ins-stat">
+            <strong>{data ? mpWithData.length : "—"}</strong>
+            <span>Marketplace aktif</span>
+          </div>
+        </section>
 
         {askErr && (
           <p className="insight-alert" role="alert">
@@ -352,45 +351,70 @@ export function Insight() {
             {err}
           </p>
         )}
-        <div className="insight-cols">
-          <div className="insight-main">
+
+        {/* ── Konten utama ── */}
+        <div className="ins-cols">
+          <div className="ins-main">
+            <nav className="ins-tabs" aria-label="Filter topik berita">
+              <button
+                type="button"
+                className={filter === "semua" ? "is-on" : ""}
+                aria-pressed={filter === "semua"}
+                onClick={() => setFilter("semua")}
+              >
+                Semua
+              </button>
+              {topics.map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  className={filter === t ? "is-on" : ""}
+                  aria-pressed={filter === t}
+                  onClick={() => setFilter(t)}
+                >
+                  {TOPIC_LABEL[t] ?? t}
+                </button>
+              ))}
+            </nav>
+
             {featured && (
               <article
-                className={`insight-featured ${TOPIC_CLASS[featured.topic] ?? "is-neutral"}`}
+                className={`ins-feature ${TOPIC_CLASS[featured.topic] ?? "is-neutral"}`}
                 data-reveal
-                style={vp(0)}
+                style={vp(2)}
               >
-                <div className="insight-featured__body">
-                  <div className="insight-kicker">
-                    <span className={`insight-topic ${TOPIC_CLASS[featured.topic] ?? "is-neutral"}`}>
+                <div className="ins-feature__body">
+                  <div className="ins-kicker">
+                    <span className={`ins-topic ${TOPIC_CLASS[featured.topic] ?? "is-neutral"}`}>
                       {TOPIC_LABEL[featured.topic] ?? "Umum"}
                     </span>
-                    <span className="insight-kicker__meta">
+                    <span className="ins-kicker__meta">
                       {featured.sourceName}
                       {featured.publishedAt ? ` · ${timeAgo(featured.publishedAt)}` : ""}
                     </span>
                   </div>
-                  <h2 className="insight-featured__title">
+                  <h2 className="ins-feature__title">
                     <a href={featured.url} target="_blank" rel="noopener noreferrer">
                       {featured.title}
                     </a>
                   </h2>
-                  {featured.snippet && <p className="insight-featured__snippet">{featured.snippet}</p>}
-                  <p className="insight-featured__why">{featured.why}</p>
-                  <span className="insight-read" aria-hidden="true">
+                  {featured.snippet && <p className="ins-feature__snippet">{featured.snippet}</p>}
+                  <p className="ins-feature__why">{featured.why}</p>
+                  <span className="ins-read" aria-hidden="true">
                     Baca selengkapnya →
                   </span>
                 </div>
-                <div className="insight-featured__media" aria-hidden="true">
-                  <span className={`insight-ava insight-ava--big ${avaClass(featured.sourceDomain)}`}>
+                <div className="ins-feature__media" aria-hidden="true">
+                  <span className={`ins-ava ins-ava--big ${avaClass(featured.sourceDomain)}`}>
                     {initials(featured.sourceName)}
                   </span>
-                  <span className="insight-featured__domain">{featured.sourceDomain}</span>
+                  <span className="ins-feature__domain">{featured.sourceDomain}</span>
                 </div>
               </article>
             )}
-            <div className="insight-feedwrap">
-              <div className="insight-section-head">
+
+            <div className="ins-feedwrap">
+              <div className="ins-section-head">
                 <h2>{filter === "semua" ? "Berita pasar" : (TOPIC_LABEL[filter] ?? filter)}</h2>
                 {!loading && data && <span>{feed.length} berita</span>}
               </div>
@@ -398,28 +422,28 @@ export function Insight() {
               {loading ? (
                 <SkeletonFeed />
               ) : feed.length > 0 ? (
-                <ol className="insight-grid" role="list">
+                <ol className="ins-grid" role="list">
                   {feed.map((it, idx) => (
                     <li data-reveal style={vp(idx)} key={it.id}>
-                      <article className={`insight-card ${TOPIC_CLASS[it.topic] ?? "is-neutral"}`}>
-                        <div className="insight-card__top">
-                          <span className={`insight-ava ${avaClass(it.sourceDomain)}`}>
+                      <article className={`ins-card ${TOPIC_CLASS[it.topic] ?? "is-neutral"}`}>
+                        <div className="ins-card__top">
+                          <span className={`ins-ava ${avaClass(it.sourceDomain)}`}>
                             {initials(it.sourceName)}
                           </span>
-                          <span className={`insight-topic ${TOPIC_CLASS[it.topic] ?? "is-neutral"}`}>
+                          <span className={`ins-topic ${TOPIC_CLASS[it.topic] ?? "is-neutral"}`}>
                             {TOPIC_LABEL[it.topic] ?? "Umum"}
                           </span>
-                          <span className="insight-time">{it.publishedAt ? timeAgo(it.publishedAt) : ""}</span>
+                          <span className="ins-time">{it.publishedAt ? timeAgo(it.publishedAt) : ""}</span>
                         </div>
-                        <h3 className="insight-card__title">
+                        <h3 className="ins-card__title">
                           <a href={it.url} target="_blank" rel="noopener noreferrer">
                             {it.title}
                           </a>
                         </h3>
-                        {it.snippet && <p className="insight-card__snippet">{it.snippet}</p>}
-                        <p className="insight-card__why">{it.why}</p>
+                        {it.snippet && <p className="ins-card__snippet">{it.snippet}</p>}
+                        <p className="ins-card__why">{it.why}</p>
                         {it.matched.length > 0 && (
-                          <div className="insight-tags">
+                          <div className="ins-tags">
                             {it.matched.slice(0, 3).map((m) => (
                               <span key={m}>#{m}</span>
                             ))}
@@ -430,7 +454,7 @@ export function Insight() {
                   ))}
                 </ol>
               ) : (
-                <div className="insight-empty">
+                <div className="ins-empty">
                   <IconNews size={26} />
                   <strong>Belum ada berita relevan hari ini</strong>
                   <p>Briefing diperbarui sekali sehari. Silakan cek kembali besok.</p>
@@ -440,9 +464,9 @@ export function Insight() {
           </div>
 
           {data && visible.length > 0 && (
-            <aside className="insight-rail" data-reveal style={vp(1)}>
+            <aside className="ins-rail" data-reveal style={vp(1)}>
               <section className="market" aria-label="Harga pasar dan pesaing">
-                <div className="insight-section-head">
+                <div className="ins-section-head">
                   <h2>Pasar &amp; pesaing</h2>
                   <span>{monitored} terpantau</span>
                 </div>

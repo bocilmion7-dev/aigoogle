@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { ACCURATE_OAUTH_CTA } from "../oauth";
+import { resetSessionCache } from "../api";
+import { track } from "../telemetry";
 
 export function Login() {
   const [email, setEmail] = useState("");
@@ -17,11 +19,26 @@ export function Login() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
+      const j = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        twoFactorRequired?: boolean;
+        emailOtpRequired?: boolean;
+        challenge?: string;
+      };
       if (!res.ok) {
-        const j = (await res.json().catch(() => ({}))) as { error?: string };
         setError(j.error === "email_atau_password_salah" ? "Email atau password salah." : "Gagal masuk.");
         return;
       }
+      if (j.twoFactorRequired && j.challenge) {
+        window.location.href = `/2fa?challenge=${encodeURIComponent(j.challenge)}`;
+        return;
+      }
+      if (j.emailOtpRequired && j.challenge) {
+        window.location.href = `/otp?challenge=${encodeURIComponent(j.challenge)}`;
+        return;
+      }
+      resetSessionCache();
+      track("login", { via: "password" });
       window.location.href = "/app";
     } finally {
       setBusy(false);
@@ -29,55 +46,67 @@ export function Login() {
   }
 
   return (
-    <main className="auth">
-      <span className="auth__brand">Accurate Accelerator</span>
-      <h1>Masuk</h1>
-      <p className="page__sub">Gunakan email & password yang sudah Anda buat.</p>
-      <form onSubmit={(e) => void submit(e)} className="card">
-        <div className="stack">
-          <label className="field">
-            Email
-            <input
-              className="input"
-              type="email"
-              inputMode="email"
-              autoComplete="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-          </label>
-          <label className="field">
-            Password
-            <input
-              className="input"
-              type="password"
-              autoComplete="current-password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-          </label>
-          {error && (
-            <p className="banner banner--err" role="alert" style={{ marginBottom: 0 }}>
-              {error}
+    <div className="auth2 auth2--centered">
+      <div className="auth2__grid">
+        <main className="auth2__main">
+          <div className="auth2__card">
+            <img src="/logo.webp" alt="AI Asisten" className="auth2__logo" width={132} height={44} />
+            <h1>Masuk</h1>
+            <p className="auth2__hint">Gunakan email &amp; password akun Anda.</p>
+
+            <form onSubmit={(e) => void submit(e)} className="auth2__form" noValidate>
+              <label className="auth2__field">
+                <span>Email</span>
+                <input
+                  className="input"
+                  type="email"
+                  inputMode="email"
+                  autoComplete="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="nama@perusahaan.co.id"
+                />
+              </label>
+              <label className="auth2__field">
+                <span>Password</span>
+                <input
+                  className="input"
+                  type="password"
+                  autoComplete="current-password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                />
+              </label>
+              <a className="auth2__forgot" href="/forgot-password">Lupa password?</a>
+
+              {error && (
+                <p className="banner banner--err" role="alert" style={{ margin: 0 }}>
+                  {error}
+                </p>
+              )}
+
+              <button className="btn btn--primary auth2__submit" type="submit" disabled={busy} aria-busy={busy}>
+                {busy ? "Memproses…" : "Masuk"}
+              </button>
+            </form>
+
+            <div className="auth2__or"><span>atau</span></div>
+
+            <a className="auth2__oauth" href={ACCURATE_OAUTH_CTA}>
+              Masuk lewat Accurate →
+            </a>
+
+            <p className="auth2__alt">
+              Belum punya password? Pakai <strong>Masuk lewat Accurate</strong> — Anda akan diminta
+              membuat password sekali.
             </p>
-          )}
-          <button className="btn" type="submit" disabled={busy} aria-label="Masuk">
-            {busy ? "Memproses…" : "Masuk"}
-          </button>
-        </div>
-      </form>
-      <p className="meta" style={{ textAlign: "center" }}>
-        Pengurus sistem? <a href="/platform">Masuk sebagai Admin Platform</a>
-      </p>
-      <p className="meta">
-        Belum punya password?{" "}
-        <a href={ACCURATE_OAUTH_CTA}>Masuk lewat Accurate →</a>
-      </p>
-      <a className="btn btn--ghost btn--sm" href="/" style={{ marginTop: 8 }}>
-        ← Kembali
-      </a>
-    </main>
+            <a className="auth2__back" href="/">← Kembali ke beranda</a>
+          </div>
+        </main>
+      </div>
+    </div>
   );
 }

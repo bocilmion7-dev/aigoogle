@@ -1,0 +1,23 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /app
+Disallow: /admin
+Disallow: /settings
+Disallow: /whatsapp
+Disallow: /wa-chats
+Disallow: /pesanan
+Disallow: /pelanggan
+Disallow: /aktivitas
+Disallow: /explore
+Disallow: /insight
+Disallow: /saldo
+Disallow: /subscription
+Disallow: /analisa
+Disallow: /penjualan
+Disallow: /toko
+Disallow: /sandbox
+Disallow: /ai
+Disallow: /ai-models
+
+Sitemap: https://ai-asisten.my.id/sitemap.xml

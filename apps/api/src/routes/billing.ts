@@ -11,6 +11,9 @@ import { finalizeWaTopup } from "../wa/service.js";
 import { applyShopPaymentResult } from "../wa/shop-settle.js";
 import { creditTokens, finalizeAiTopup, tenantOwnerId } from "../ai/billing.js";
 import { writeAudit } from "../audit.js";
+import { buildInvoicePdf } from "../doc/invoice-pdf.js";
+import { sendMail } from "../mail.js";
+import { isAutoRenewEnabled, setAutoRenew } from "../billing/recurring.js";
 
 export const billingRouter = Router();
 
@@ -31,6 +34,73 @@ billingRouter.get(
       expiresAt: sub?.expiresAt ?? null,
       clientKey: enabled ? (process.env.MIDTRANS_CLIENT_KEY ?? "") : "",
     });
+  })
+);
+
+billingRouter.get(
+  "/billing/invoices",
+  requireUser,
+  asyncHandler(async (req, res) => {
+    const tenantId = req.user!.tenant.id;
+    const [payments, waTopups, aiTopups] = await Promise.all([
+      prisma.payment.findMany({
+        // Riwayat billing add-on; pesanan toko punya halaman sendiri.
+        where: { tenantId, NOT: { orderId: { startsWith: "shop-" } } },
+        orderBy: { createdAt: "desc" },
+        take: 100,
+      }),
+      prisma.waTopup.findMany({ where: { tenantId }, orderBy: { createdAt: "desc" }, take: 100 }),
+      prisma.aiTopup.findMany({ where: { tenantId }, orderBy: { createdAt: "desc" }, take: 100 }),
+    ]);
+    const rows = [
+      ...payments.map((p) => ({
+        orderId: p.orderId,
+        kind: paymentLabel(p.orderId),
+        amount: p.amount,
+        status: p.status,
+        paymentMethod: p.paymentMethod,
+        createdAt: p.createdAt,
+      })),
+      ...waTopups.map((p) => ({
+        orderId: p.orderId,
+        kind: "Top up WhatsApp",
+        amount: p.amount,
+        status: p.status,
+        paymentMethod: p.paymentMethod,
+        createdAt: p.createdAt,
+      })),
+      ...aiTopups.map((p) => ({
+        orderId: p.orderId,
+        kind: "Top up token AI",
+        amount: p.amount,
+        status: p.status,
+        paymentMethod: p.paymentMethod,
+        createdAt: p.createdAt,
+      })),
+    ]
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+      .slice(0, 100);
+    res.json(rows);
+  })
+);
+
+billingRouter.get(
+  "/billing/auto-renew",
+  requireUser,
+  asyncHandler(async (req, res) => {
+    res.json({ enabled: await isAutoRenewEnabled(req.user!.tenant.id) });
+  })
+);
+
+billingRouter.put(
+  "/billing/auto-renew",
+  requireUser,
+  asyncHandler(async (req, res) => {
+    const body = z.object({ enabled: z.boolean() }).safeParse(req.body);
+    if (!body.success) return res.status(400).json({ error: "bad_request" });
+    await setAutoRenew(req.user!.tenant.id, body.data.enabled);
+    await writeAudit(req.user!.tenant.id, req.user!.id, "billing.auto_renew", { enabled: body.data.enabled });
+    res.json({ ok: true, enabled: body.data.enabled });
   })
 );
 
@@ -102,6 +172,14 @@ billingRouter.post(
     const n: MidtransNotification = body.data;
     const payment = await prisma.payment.findUnique({ where: { orderId: n.order_id } });
     if (!payment) return res.status(404).json({ error: "order_tidak_ditemukan" });
+    // Idempoten: replay notifikasi yang sama tidak boleh memproses ulang.
+    if (payment.status === n.transaction_status) {
+      return res.json({ ok: true, ignored: true });
+    }
+    // Pembayaran yang sudah settlement tidak boleh diturunkan oleh replay gagal.
+    if (payment.status === "settlement" && !["settlement", "capture"].includes(n.transaction_status)) {
+      return res.json({ ok: true, ignored: true });
+    }
     const paid = n.transaction_status === "settlement" || n.transaction_status === "capture";
     const failed = ["deny", "cancel", "expire", "failure"].includes(n.transaction_status);
     await prisma.payment.update({
@@ -119,6 +197,89 @@ billingRouter.post(
       });
     }
     res.json({ ok: true });
+  })
+);
+
+function paymentLabel(orderId: string): string {
+  if (orderId.startsWith("wg-")) return "Langganan WhatsApp Gateway";
+  if (orderId.startsWith("subl-") || orderId.startsWith("sub-")) return "Langganan AI Asisten";
+  if (orderId.startsWith("shop-")) return "Pesanan toko WhatsApp";
+  return "Langganan / layanan AI Asisten";
+}
+
+async function invoiceFor(tenantId: string, orderId: string) {
+  const payment = await prisma.payment.findFirst({ where: { orderId, tenantId } });
+  if (payment) {
+    return {
+      amount: payment.amount,
+      label: paymentLabel(payment.orderId),
+      status: payment.status,
+      createdAt: payment.createdAt,
+    };
+  }
+  const wa = await prisma.waTopup.findFirst({ where: { orderId, tenantId } });
+  if (wa) {
+    return { amount: wa.amount, label: "Top up saldo WhatsApp", status: wa.status, createdAt: wa.createdAt };
+  }
+  const ai = await prisma.aiTopup.findFirst({ where: { orderId, tenantId } });
+  if (ai) {
+    return { amount: ai.amount, label: "Top up token AI", status: ai.status, createdAt: ai.createdAt };
+  }
+  return null;
+}
+
+function invoiceDate(d: Date): string {
+  return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
+}
+
+async function invoicePdfFor(tenantId: string, orderId: string, tenantName: string) {
+  const inv = await invoiceFor(tenantId, orderId);
+  if (!inv) return null;
+  const pdf = await buildInvoicePdf({
+    docType: "nota",
+    companyName: "AI Asisten",
+    no: orderId,
+    date: invoiceDate(inv.createdAt),
+    customerName: tenantName,
+    partyLabel: "Ditagihkan kepada",
+    items: [{ name: inv.label, qty: 1, price: inv.amount }],
+    note: `Status pembayaran: ${inv.status}`,
+  });
+  return { pdf, inv };
+}
+
+billingRouter.get(
+  "/billing/invoice/:orderId",
+  requireUser,
+  asyncHandler(async (req, res) => {
+    const tenant = await prisma.tenant.findUnique({ where: { id: req.user!.tenant.id }, select: { name: true } });
+    const out = await invoicePdfFor(req.user!.tenant.id, req.params.orderId, tenant?.name ?? "Perusahaan");
+    if (!out) return res.status(404).json({ error: "tidak_ditemukan" });
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="invoice-${req.params.orderId}.pdf"`);
+    res.send(Buffer.from(out.pdf));
+  })
+);
+
+billingRouter.post(
+  "/billing/invoice/:orderId/email",
+  requireUser,
+  asyncHandler(async (req, res) => {
+    const tenant = await prisma.tenant.findUnique({ where: { id: req.user!.tenant.id }, select: { name: true } });
+    const out = await invoicePdfFor(req.user!.tenant.id, req.params.orderId, tenant?.name ?? "Perusahaan");
+    if (!out) return res.status(404).json({ error: "tidak_ditemukan" });
+    const sent = await sendMail({
+      to: req.user!.email,
+      subject: `Invoice ${req.params.orderId} — AI Asisten`,
+      text: `Terlampir invoice ${req.params.orderId} sebesar Rp${out.inv.amount.toLocaleString("id-ID")}.`,
+      attachments: [
+        {
+          filename: `invoice-${req.params.orderId}.pdf`,
+          content: Buffer.from(out.pdf).toString("base64"),
+        },
+      ],
+    });
+    res.json({ ok: true, sent });
   })
 );
 

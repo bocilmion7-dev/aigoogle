@@ -16,4 +16,22 @@ if (process.env.NODE_ENV === "test") {
   }
 }
 
-export const prisma = new PrismaClient();
+/** Tambahkan default pool yang aman untuk trafik produksi tanpa menimpa override eksplisit. */
+function tunedDatabaseUrl(raw: string): string {
+  try {
+    const u = new URL(raw);
+    if (!u.searchParams.has("connection_limit")) {
+      u.searchParams.set("connection_limit", process.env.PRISMA_CONNECTION_LIMIT ?? "20");
+    }
+    if (!u.searchParams.has("pool_timeout")) {
+      u.searchParams.set("pool_timeout", process.env.PRISMA_POOL_TIMEOUT ?? "20");
+    }
+    return u.toString();
+  } catch {
+    return raw;
+  }
+}
+
+export const prisma = new PrismaClient({
+  datasources: { db: { url: tunedDatabaseUrl(process.env.DATABASE_URL ?? "") } },
+});

@@ -15,6 +15,7 @@ const startedAt = Date.now();
 const routes = new Map<string, RouteStat>();
 const counters = new Map<string, number>();
 const llm = { calls: 0, promptTokens: 0, completionTokens: 0, byKind: new Map<string, number>() };
+const webVitals = new Map<string, { count: number; total: number; max: number; samples: number[] }>();
 
 function stat(key: string): RouteStat {
   let s = routes.get(key);
@@ -52,6 +53,17 @@ export function countEvent(name: string, delta = 1): void {
   counters.set(name, (counters.get(name) ?? 0) + delta);
 }
 
+export function recordWebVital(name: string, value: number): void {
+  if (!Number.isFinite(value) || value < 0) return;
+  const cur = webVitals.get(name) ?? { count: 0, total: 0, max: 0, samples: [] };
+  cur.count += 1;
+  cur.total += value;
+  cur.max = Math.max(cur.max, value);
+  cur.samples.push(value);
+  if (cur.samples.length > MAX_SAMPLES) cur.samples.shift();
+  webVitals.set(name, cur);
+}
+
 function pct(samples: number[], p: number): number {
   if (!samples.length) return 0;
   const sorted = [...samples].sort((a, b) => a - b);
@@ -83,6 +95,17 @@ export function metricsSnapshot(): Record<string, unknown> {
       byKind: Object.fromEntries(llm.byKind),
     },
     events: Object.fromEntries(counters),
+    webVitals: Object.fromEntries(
+      [...webVitals.entries()].map(([name, s]) => [
+        name,
+        {
+          count: s.count,
+          avg: s.count ? Math.round(s.total / s.count) : 0,
+          max: Math.round(s.max),
+          p75: pct(s.samples, 75),
+        },
+      ])
+    ),
     routes: list,
   };
 }
@@ -95,4 +118,5 @@ export function resetMetrics(): void {
   llm.promptTokens = 0;
   llm.completionTokens = 0;
   llm.byKind.clear();
+  webVitals.clear();
 }

@@ -131,16 +131,11 @@ function checkAppKey(req: { get: (h: string) => string | undefined; query: Recor
   const expect = process.env.ACCURATE_WEBHOOK_APP_KEY;
   if (!expect) return { ok: true, status: "tidak_diset" };
   const cand: string[] = [];
+  // Hanya header — jangan pernah terima App Key dari query/body (bocor ke log).
   for (const h of ["x-app-key", "x-accurate-app-key", "x-webhook-key", "x-appkey"]) {
     const v = req.get(h);
     if (v) cand.push(v);
   }
-  for (const q of ["appKey", "key"]) {
-    const v = req.query[q];
-    if (typeof v === "string" && v) cand.push(v);
-  }
-  const b = (req.body ?? {}) as { appKey?: unknown; key?: unknown };
-  for (const v of [b.appKey, b.key]) if (typeof v === "string" && v) cand.push(v);
   // fail-closed: bila App Key dikonfigurasi, request tanpa key ditolak
   if (!cand.length) return { ok: false, status: "tidak_dikenali" };
   return cand.includes(expect) ? { ok: true, status: "cocok" } : { ok: false, status: "salah" };

@@ -4,6 +4,9 @@ import { getShopOrder, setShopOrderStatus } from "./shop-order.js";
 import { syncShopOrderPaid } from "./shop-accurate.js";
 import { sendWaText } from "./service.js";
 import { ownerPaidMessage, paymentReceivedMessage } from "./format.js";
+import { creditSalesWallet } from "../sales/wallet.js";
+import { sendPushToUser } from "../push.js";
+import { tenantOwnerId } from "../ai/billing.js";
 
 export interface ShopPaymentResult {
   found: boolean;
@@ -44,6 +47,12 @@ export async function applyShopPaymentResult(opts: {
   const order = await getShopOrder(opts.orderId);
   if (paid && order) {
     await setShopOrderStatus(order.orderId, "paid");
+    await creditSalesWallet({
+      tenantId: order.tenantId,
+      amount: order.total,
+      orderId: order.orderId,
+      note: `Pembayaran QRIS pesanan ${order.orderId}`,
+    }).catch(() => null);
     // faktur + penerimaan kas dibuat otomatis bila Accurate terhubung.
     // Dibatasi 12 dtk supaya webhook Midtrans tidak menggantung bila Accurate lambat.
     const synced = await Promise.race([
@@ -59,6 +68,17 @@ export async function applyShopPaymentResult(opts: {
     if (ownerPhone) {
       await sendWaText(order.tenantId, ownerPhone, ownerPaidMessage(order, acc)).catch(() => null);
     }
+    void tenantOwnerId(order.tenantId)
+      .then((ownerId) =>
+        ownerId
+          ? sendPushToUser(ownerId, {
+              title: "Pembayaran diterima",
+              body: `${order.orderId} · Rp${Math.round(order.total).toLocaleString("id-ID")}`,
+              url: "/pesanan",
+            })
+          : 0
+      )
+      .catch(() => 0);
     if (order.buyerPhone) {
       const buyerMsg = paymentReceivedMessage(order);
       if (order.buyerPhone.startsWith("sandbox:")) {

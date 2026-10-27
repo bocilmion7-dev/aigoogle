@@ -15,6 +15,9 @@ export function Settings() {
   useEffect(() => {
     void getMe().then(setMe);
   }, []);
+  useEffect(() => {
+    if (me === null) window.location.href = "/login";
+  }, [me]);
 
   const canSettings = !!me?.permissions?.includes("app:settings.manage");
 
@@ -98,10 +101,7 @@ export function Settings() {
       </div>
     );
   }
-  if (me === null) {
-    window.location.href = "/login";
-    return null;
-  }
+  if (me === null) return null;
 
   if (!canSettings) {
     return (

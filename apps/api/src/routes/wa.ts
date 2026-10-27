@@ -366,6 +366,13 @@ waRouter.post(
     }
     const topup = await prisma.waTopup.findUnique({ where: { orderId: body.data.order_id } });
     if (!topup) return res.status(404).json({ error: "order_tidak_ditemukan" });
+    // Idempoten: replay notifikasi yang sama tidak boleh memproses ulang.
+    if (topup.status === body.data.transaction_status) {
+      return res.json({ ok: true, ignored: true });
+    }
+    if (topup.status === "settlement" && !["settlement", "capture"].includes(body.data.transaction_status)) {
+      return res.json({ ok: true, ignored: true });
+    }
     const paid = body.data.transaction_status === "settlement" || body.data.transaction_status === "capture";
     const failed = ["deny", "cancel", "expire", "failure"].includes(body.data.transaction_status);
     await prisma.waTopup.update({
@@ -542,6 +549,7 @@ waRouter.post(
 waRouter.post(
   "/wa/send",
   requireUser,
+  requirePerm("app:wa.send"),
   asyncHandler(async (req, res) => {
     const body = z.object({ to: z.string().min(8).max(20), text: z.string().min(1).max(4000) }).safeParse(req.body);
     if (!body.success) return res.status(400).json({ error: "bad_request" });

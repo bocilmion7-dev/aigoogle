@@ -18,13 +18,19 @@ import { customersRouter } from "./routes/customers.js";
 import { ordersRouter } from "./routes/orders.js";
 import { sandboxRouter } from "./routes/sandbox.js";
 import { insightRouter } from "./routes/insight.js";
+import { salesRouter } from "./sales/routes.js";
+import { analisaRouter } from "./analisa/routes.js";
 import { webhookAccurateRouter, webhookRootRouter } from "./routes/webhook-accurate.js";
 import { LlmHttpError } from "./ai/llm-error.js";
 import { opsRouter } from "./routes/ops.js";
 import { docTypesRouter } from "./routes/doc-types.js";
 import { aiBillingRouter } from "./routes/ai-billing.js";
+import { telemetryRouter } from "./routes/telemetry.js";
+import { pushRouter } from "./routes/push.js";
+import { accurateCompanyRouter } from "./routes/accurate-company.js";
 import { observe } from "./middleware/observe.js";
 import { rateLimit } from "./middleware/rate-limit.js";
+import { env } from "./env.js";
 
 export function createApp() {
   const app = express();
@@ -37,6 +43,15 @@ export function createApp() {
     res.setHeader("X-Frame-Options", "DENY");
     res.setHeader("Referrer-Policy", "same-origin");
     res.setHeader("Cache-Control", "no-store");
+    res.setHeader("Cross-Origin-Opener-Policy", "same-origin");
+    res.setHeader("Cross-Origin-Resource-Policy", "same-origin");
+    res.setHeader("Permissions-Policy", "camera=(self), microphone=(self), geolocation=(), payment=()");
+    // API hanya mengembalikan JSON — CSP ketat agar respons tidak bisa dirender
+    // sebagai dokumen/iframe bila ada bug content-type.
+    res.setHeader("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'; base-uri 'none'");
+    if (env.APP_ORIGIN.startsWith("https://")) {
+      res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload");
+    }
     next();
   });
   app.use(
@@ -75,8 +90,13 @@ export function createApp() {
   app.use("/api", ordersRouter);
   app.use("/api", sandboxRouter);
   app.use("/api", insightRouter);
+  app.use("/api", salesRouter);
+  app.use("/api", analisaRouter);
   app.use("/api", docTypesRouter);
   app.use("/api", aiBillingRouter);
+  app.use("/api", telemetryRouter);
+  app.use("/api", pushRouter);
+  app.use("/api", accurateCompanyRouter);
   app.use("/api", webhookAccurateRouter);
   // POST /webhook — target URL webhook yang terdaftar di Area Developer Accurate
   app.use(webhookRootRouter);

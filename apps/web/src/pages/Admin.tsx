@@ -10,8 +10,23 @@ import {
   getRoles,
   putRolePermissions,
   putUserRole,
+  inviteUser,
+  impersonateUser,
+  suspendTenant,
+  getAdminFeatures,
+  putAdminFeatures,
+  getAuditLogs,
+  getHealthDeep,
+  getMetrics,
+  getAccurateStatus,
+  reconcileAccurate,
+  type AccurateStatus,
   type AdminRole,
   type AdminUser,
+  type AuditRow,
+  type FeatureFlags,
+  type HealthPayload,
+  type MetricsPayload,
   type PrivilegesPayload,
   type PlatformAnalytics,
   type UsagePayload,
@@ -20,7 +35,7 @@ import type { ConnectionInfo } from "@aigoogle/shared";
 import { AppHeader, PageLoader } from "../ui";
 import { ACCURATE_OAUTH_CTA } from "../oauth";
 
-type Tab = "users" | "roles" | "usage";
+type Tab = "users" | "roles" | "usage" | "features" | "audit" | "system";
 
 export function Admin() {
   const [tab, setTab] = useState<Tab>("users");
@@ -38,12 +53,28 @@ export function Admin() {
   const [me, setMe] = useState<Awaited<ReturnType<typeof getMe>> | undefined>(undefined);
   const [usage, setUsage] = useState<UsagePayload | null>(null);
   const [platformUsage, setPlatformUsage] = useState<PlatformAnalytics | null>(null);
+  const [features, setFeatures] = useState<FeatureFlags | null>(null);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteName, setInviteName] = useState("");
+  const [inviteRole, setInviteRole] = useState("");
+  const [inviteBusy, setInviteBusy] = useState(false);
+  const [auditRows, setAuditRows] = useState<AuditRow[]>([]);
+  const [auditAction, setAuditAction] = useState("");
+  const [auditDraft, setAuditDraft] = useState("");
+  const [health, setHealth] = useState<HealthPayload | null>(null);
+  const [metrics, setMetrics] = useState<MetricsPayload | null>(null);
+  const [accStatus, setAccStatus] = useState<AccurateStatus | null>(null);
+  const [sysBusy, setSysBusy] = useState(false);
+  const [sysMsg, setSysMsg] = useState("");
   const isAdmin = !!me?.permissions?.includes("app:users.manage");
   const canSettings = !!me?.permissions?.includes("app:settings.manage"); // Admin Platform saja
 
   useEffect(() => {
     void getMe().then(setMe);
   }, []);
+  useEffect(() => {
+    if (me === null) window.location.href = "/login";
+  }, [me]);
 
   const loadRoles = useCallback(async (tenantId?: string) => {
     const r = await getRoles(tenantId || undefined);
@@ -51,11 +82,37 @@ export function Admin() {
     return r;
   }, []);
 
+  const loadSystem = useCallback(async () => {
+    setSysBusy(true);
+    setSysMsg("");
+    try {
+      const statusPromise =
+        canSettings && !selTenant
+          ? Promise.resolve(null)
+          : getAccurateStatus(selTenant || undefined).catch(() => null);
+      const [h, m, s] = await Promise.all([
+        getHealthDeep(),
+        getMetrics().catch(() => null),
+        statusPromise,
+      ]);
+      setHealth(h);
+      setMetrics(m);
+      setAccStatus(s);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Gagal memuat status sistem.");
+    } finally {
+      setSysBusy(false);
+    }
+  }, [canSettings, selTenant]);
+
   useEffect(() => {
     if (!isAdmin) return;
     void loadRoles(selTenant || undefined)
       .then((r) => {
-        if (r[0]) setSelRole(r[0].id);
+        if (r[0]) {
+          setSelRole(r[0].id);
+          setInviteRole((cur) => cur || r[0]!.key);
+        }
       })
       .catch((e) => {
         if (e instanceof Error && e.message === "belum_login") window.location.href = "/login";
@@ -102,7 +159,21 @@ export function Admin() {
       const role = roles.find((x) => x.id === selRole);
       setChecked(new Set(role?.permissions ?? []));
     }
-  }, [tab, selRole, roles, isAdmin, canSettings, selTenant]);
+    if (tab === "features") {
+      setErr(null);
+      void getAdminFeatures().then(setFeatures).catch(onFetchErr);
+    }
+    if (tab === "audit") {
+      setErr(null);
+      void getAuditLogs(100, selTenant || undefined, auditAction || undefined)
+        .then(setAuditRows)
+        .catch(onFetchErr);
+    }
+    if (tab === "system") {
+      setErr(null);
+      void loadSystem();
+    }
+  }, [tab, selRole, roles, isAdmin, canSettings, selTenant, auditAction, loadSystem]);
 
   const errText = (code?: string) =>
     code === "tidak_boleh_ubah_role_sendiri"
@@ -136,6 +207,78 @@ export function Admin() {
     }
   }
 
+  async function sendInvite(e: React.FormEvent) {
+    e.preventDefault();
+    setInviteBusy(true);
+    setMsg(null);
+    setErr(null);
+    try {
+      await inviteUser({
+        email: inviteEmail.trim(),
+        name: inviteName.trim(),
+        roleKey: inviteRole,
+        ...(canSettings && selTenant ? { tenantId: selTenant } : {}),
+      });
+      setInviteEmail("");
+      setInviteName("");
+      setMsg("Undangan terkirim.");
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Gagal mengirim undangan.");
+    } finally {
+      setInviteBusy(false);
+    }
+  }
+
+  async function setTenantSuspended(suspended: boolean) {
+    if (!selTenant) return;
+    setMsg(null);
+    setErr(null);
+    try {
+      await suspendTenant(selTenant, suspended);
+      setMsg(suspended ? "Tenant ditangguhkan." : "Tenant diaktifkan kembali.");
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Gagal mengubah status tenant.");
+    }
+  }
+
+  async function impersonate(userId: string) {
+    setMsg(null);
+    setErr(null);
+    try {
+      await impersonateUser(userId);
+      window.location.href = "/app";
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Gagal masuk sebagai user.");
+    }
+  }
+
+  async function doReconcile() {
+    setSysBusy(true);
+    setSysMsg("");
+    setErr(null);
+    try {
+      const r = await reconcileAccurate(selTenant || undefined);
+      setSysMsg(`Rekonsiliasi selesai: ${r.credited} pesanan dikreditkan.`);
+      await loadSystem();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Gagal rekonsiliasi.");
+    } finally {
+      setSysBusy(false);
+    }
+  }
+
+  async function saveFeatures() {
+    if (!features) return;
+    setMsg(null);
+    setErr(null);
+    try {
+      setFeatures(await putAdminFeatures(features));
+      setMsg("Feature flag disimpan.");
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Gagal menyimpan feature flag.");
+    }
+  }
+
   if (me === undefined) {
     return (
       <div className="app">
@@ -145,10 +288,7 @@ export function Admin() {
       </div>
     );
   }
-  if (me === null) {
-    window.location.href = "/login";
-    return null;
-  }
+  if (me === null) return null;
 
   if (!isAdmin) {
     return (
@@ -214,10 +354,18 @@ export function Admin() {
                 ))}
               </select>
             </label>
+            <div className="btn-row" style={{ marginTop: "var(--space-xs)" }}>
+              <button className="btn btn--danger btn--sm" onClick={() => void setTenantSuspended(true)}>
+                Tangguhkan tenant
+              </button>
+              <button className="btn btn--2 btn--sm" onClick={() => void setTenantSuspended(false)}>
+                Aktifkan kembali
+              </button>
+            </div>
           </div>
         )}
 
-        <div className="tabs tabs--fill" role="group" aria-label="Bagian Admin">
+        <div className="tabs" role="group" aria-label="Bagian Admin">
           <button className="tab" aria-pressed={tab === "users"} onClick={() => setTab("users")}>
             User
           </button>
@@ -227,12 +375,49 @@ export function Admin() {
           <button className="tab" aria-pressed={tab === "usage"} onClick={() => setTab("usage")}>
             Pemakaian AI
           </button>
+          {canSettings && (
+            <button className="tab" aria-pressed={tab === "features"} onClick={() => setTab("features")}>
+              Fitur
+            </button>
+          )}
+          <button className="tab" aria-pressed={tab === "audit"} onClick={() => setTab("audit")}>
+            Audit
+          </button>
+          <button className="tab" aria-pressed={tab === "system"} onClick={() => setTab("system")}>
+            Sistem
+          </button>
         </div>
 
         {msg && <p className="banner banner--ok" role="status">{msg}</p>}
         {err && <p className="banner banner--err" role="alert">{err}</p>}
 
         {tab === "users" && (
+          <>
+          <form className="card" onSubmit={(e) => void sendInvite(e)} style={{ marginBottom: "var(--space-s)" }}>
+            <strong className="card__title">Undang user</strong>
+            <p className="meta" style={{ marginTop: 0 }}>
+              User menerima email untuk membuat password. Tidak perlu lewat OAuth Accurate.
+            </p>
+            <div className="admin-invite-grid">
+              <label className="field">
+                Nama
+                <input className="input" value={inviteName} onChange={(e) => setInviteName(e.target.value)} required maxLength={120} />
+              </label>
+              <label className="field">
+                Email
+                <input className="input" type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} required />
+              </label>
+              <label className="field">
+                Role
+                <select className="select" value={inviteRole} onChange={(e) => setInviteRole(e.target.value)}>
+                  {roles.map((r) => <option key={r.key} value={r.key}>{r.name}</option>)}
+                </select>
+              </label>
+              <button className="btn" type="submit" disabled={inviteBusy || !inviteRole}>
+                {inviteBusy ? "Mengirim…" : "Kirim undangan"}
+              </button>
+            </div>
+          </form>
           <div className="table-wrap">
             <table className="table table--users">
               <thead>
@@ -274,6 +459,18 @@ export function Admin() {
                             </option>
                           ))}
                         </select>
+                        {canSettings && (
+                          <button
+                            className="btn btn--ghost btn--sm"
+                            style={{ marginLeft: 6 }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              void impersonate(u.id);
+                            }}
+                          >
+                            Masuk
+                          </button>
+                        )}
                       </td>
                     </tr>
                     <tr className={`user-detail${openUser === u.id ? " is-open" : ""}`}>
@@ -310,6 +507,7 @@ export function Admin() {
               </tbody>
             </table>
           </div>
+          </>
         )}
 
         {tab === "roles" && (
@@ -440,6 +638,190 @@ export function Admin() {
                 </div>
               </>
             )}
+          </div>
+        )}
+
+        {tab === "features" && canSettings && (
+          <div className="card">
+            <strong className="card__title">Feature flag &amp; kill switch</strong>
+            <p className="meta" style={{ marginTop: 0 }}>
+              Matikan fitur tertentu tanpa deploy ulang. Perubahan berlaku pada request berikutnya.
+            </p>
+            {!features ? (
+              <PageLoader label="Memuat fitur…" />
+            ) : (
+              <>
+                <div className="stack" style={{ gap: 0 }}>
+                  {Object.entries(features).map(([key, value]) => (
+                    <label key={key} className="check">
+                      <input
+                        type="checkbox"
+                        checked={value}
+                        onChange={(e) => setFeatures({ ...features, [key]: e.target.checked })}
+                      />
+                      <span>{key}</span>
+                    </label>
+                  ))}
+                </div>
+                <div className="btn-row" style={{ marginTop: "var(--space-s)" }}>
+                  <button className="btn" onClick={() => void saveFeatures()}>Simpan</button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {tab === "audit" && (
+          <div>
+            <form
+              className="card"
+              onSubmit={(e) => {
+                e.preventDefault();
+                setAuditAction(auditDraft.trim());
+              }}
+            >
+              <div className="btn-row" style={{ alignItems: "flex-end" }}>
+                <label className="field" style={{ flex: 1, minWidth: 200 }}>
+                  Filter action
+                  <input
+                    className="input"
+                    value={auditDraft}
+                    onChange={(e) => setAuditDraft(e.target.value)}
+                    placeholder="tool.call, auth.login, role.permissions.update…"
+                  />
+                </label>
+                <button className="btn" type="submit">Terapkan</button>
+                <a
+                  className="btn btn--2"
+                  href={`/api/admin/audit/export?limit=2000${selTenant ? `&tenantId=${encodeURIComponent(selTenant)}` : ""}${auditAction ? `&action=${encodeURIComponent(auditAction)}` : ""}`}
+                >
+                  Export CSV
+                </a>
+              </div>
+            </form>
+            <div className="table-wrap">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th scope="col">Waktu</th>
+                    <th scope="col">Tenant</th>
+                    <th scope="col">User</th>
+                    <th scope="col">Action</th>
+                    <th scope="col">Detail</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {auditRows.map((r) => (
+                    <tr key={r.id}>
+                      <td style={{ whiteSpace: "nowrap" }}>{new Date(r.createdAt).toLocaleString("id-ID")}</td>
+                      <td>{r.tenantName ?? "-"}</td>
+                      <td className="muted">{r.userEmail}</td>
+                      <td><code>{r.action}</code></td>
+                      <td title={r.detail}>
+                        <code style={{ fontSize: "0.72rem" }}>{r.detail.length > 120 ? `${r.detail.slice(0, 117)}…` : r.detail}</code>
+                      </td>
+                    </tr>
+                  ))}
+                  {auditRows.length === 0 && (
+                    <tr><td colSpan={5} className="empty">Belum ada audit log.</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {tab === "system" && (
+          <div className="stack">
+            <div className="btn-row" style={{ alignItems: "center" }}>
+              <button className="btn" onClick={() => void loadSystem()} disabled={sysBusy}>
+                {sysBusy ? "Memuat…" : "Muat ulang"}
+              </button>
+              <button
+                className="btn btn--2"
+                onClick={() => void doReconcile()}
+                disabled={sysBusy || (canSettings && !selTenant)}
+              >
+                Rekonsiliasi wallet
+              </button>
+              {sysMsg && <span className="meta" role="status">{sysMsg}</span>}
+            </div>
+
+            <div className="card">
+              <strong className="card__title">Health check</strong>
+              {health?.checks ? (
+                <div className="table-wrap">
+                  <table className="table">
+                    <thead><tr><th>Layanan</th><th>Status</th><th>Latensi</th></tr></thead>
+                    <tbody>
+                      {Object.entries(health.checks).map(([name, c]) => (
+                        <tr key={name}>
+                          <td style={{ textTransform: "capitalize" }}>{name}</td>
+                          <td>
+                            <span className={`account-dot${c.ok ? " is-on" : ""}`} style={{ display: "inline-block", marginRight: 6 }} />
+                            {c.ok ? "OK" : "Gagal"}
+                          </td>
+                          <td>{c.ms != null ? `${c.ms} ms` : c.error ?? "-"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="meta">Tidak dapat memuat health check.</p>
+              )}
+            </div>
+
+            <div className="card">
+              <strong className="card__title">Status Accurate &amp; sinkronisasi</strong>
+              {canSettings && !selTenant ? (
+                <p className="meta">Pilih perusahaan di atas untuk melihat status Accurate.</p>
+              ) : accStatus ? (
+                <div className="table-wrap">
+                  <table className="table">
+                    <tbody>
+                      <tr><td>Perusahaan</td><td>{accStatus.tenant.name} ({accStatus.tenant.alias})</td></tr>
+                      <tr><td>Koneksi</td><td>{accStatus.connection ? `${accStatus.connection.status} · ${accStatus.connection.host}` : "belum terhubung"}</td></tr>
+                      <tr><td>Token expired</td><td>{accStatus.connection ? new Date(accStatus.connection.expiresAt).toLocaleString("id-ID") : "-"}</td></tr>
+                      <tr><td>Sync terakhir</td><td>{accStatus.lastMetric ? `${accStatus.lastMetric.date} · ${new Date(accStatus.lastMetric.updatedAt).toLocaleString("id-ID")}` : "belum ada"}</td></tr>
+                      <tr><td>Webhook 24 jam</td><td>{accStatus.webhookCount24h} event{accStatus.lastWebhook ? ` · terakhir ${accStatus.lastWebhook.event}` : ""}</td></tr>
+                      <tr><td>Wallet penjualan</td><td>Rp{accStatus.wallet.available.toLocaleString("id-ID")} tersedia · Rp{accStatus.wallet.pendingWithdrawal.toLocaleString("id-ID")} pending</td></tr>
+                      <tr><td>AI hari ini</td><td>{accStatus.ai.tokens.toLocaleString("id-ID")} token · {accStatus.ai.calls} panggilan{accStatus.ai.limit ? ` · limit ${accStatus.ai.limit.toLocaleString("id-ID")}` : ""}</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="meta">Tidak dapat memuat status Accurate.</p>
+              )}
+            </div>
+
+            <div className="card">
+              <strong className="card__title">Metrik runtime</strong>
+              {metrics ? (
+                <>
+                  <p className="meta" style={{ marginTop: 0 }}>
+                    Uptime {Math.floor(metrics.uptimeSec / 60)} menit · memori {metrics.memoryMb} MB · LLM {metrics.llm.calls} panggilan
+                  </p>
+                  <div className="table-wrap">
+                    <table className="table">
+                      <thead><tr><th>Rute</th><th>Request</th><th>Error</th><th>p95</th></tr></thead>
+                      <tbody>
+                        {metrics.routes.slice(0, 10).map((r) => (
+                          <tr key={r.route}>
+                            <td><code>{r.route}</code></td>
+                            <td>{r.count}</td>
+                            <td>{r.errors}</td>
+                            <td>{r.p95} ms</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              ) : (
+                <p className="meta">Metrik tidak tersedia untuk peran ini.</p>
+              )}
+            </div>
           </div>
         )}
 

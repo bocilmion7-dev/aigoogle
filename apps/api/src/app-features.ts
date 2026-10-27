@@ -8,6 +8,7 @@ export const APP_FEATURES: AppFeature[] = [
   { key: "app:settings.manage", label: "Pengaturan" },
   { key: "app:drive.tidy", label: "Rapikan Drive (Explore)" },
   { key: "app:chat.history", label: "Riwayat Chat" },
+  { key: "app:wa.send", label: "Kirim WhatsApp" },
   { key: "app:audit.view", label: "Lihat Log Audit" },
 ];
 

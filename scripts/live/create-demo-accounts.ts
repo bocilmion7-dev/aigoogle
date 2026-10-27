@@ -1,15 +1,18 @@
 import { prisma } from "../../apps/api/src/db.js";
 import { hashPassword } from "../../apps/api/src/password.js";
 
-const PASS_DEMO = "Demo#2026";
-const PASS_PLATFORM = "Platform#2026";
+const PASS_DEMO = process.env.DEMO_PASSWORD ?? "";
+const PASS_PLATFORM = process.env.PLATFORM_DEMO_PASSWORD ?? "";
+if (!PASS_DEMO || !PASS_PLATFORM) {
+  throw new Error("Set DEMO_PASSWORD dan PLATFORM_DEMO_PASSWORD (jangan hardcode di repo).");
+}
 
 async function main() {
   // 1) Admin Platform — tabel PlatformUser (terpisah dari akun Accurate)
   const plat = await prisma.platformUser.upsert({
     where: { email: "platform@aigoogle.local" },
     create: { email: "platform@aigoogle.local", name: "Admin Platform (Demo)", passwordHash: hashPassword(PASS_PLATFORM) },
-    update: { name: "Admin Platform (Demo)" },
+    update: { name: "Admin Platform (Demo)", passwordHash: hashPassword(PASS_PLATFORM) },
   });
   console.log("Admin Platform :", plat.email);
 
@@ -45,7 +48,7 @@ async function main() {
       email: "admin.demo@retaildemo.local", name: "Admin Accurate (Demo)",
       passwordHash: hashPassword(PASS_DEMO), roleId: adminRole.id,
     },
-    update: { roleId: adminRole.id },
+    update: { roleId: adminRole.id, passwordHash: hashPassword(PASS_DEMO) },
   });
   const staff = await prisma.user.upsert({
     where: { tenantId_providerUserId: { tenantId: tid, providerUserId: "demo-staff" } },
@@ -54,7 +57,7 @@ async function main() {
       email: "staff.demo@retaildemo.local", name: "Staf Accurate (Demo)",
       passwordHash: hashPassword(PASS_DEMO), roleId: staffRole.id,
     },
-    update: { roleId: staffRole.id },
+    update: { roleId: staffRole.id, passwordHash: hashPassword(PASS_DEMO) },
   });
   console.log("Admin Accurate:", admin.email, "@", tid.slice(-6));
   console.log("Staf Accurate :", staff.email, "@", tid.slice(-6));

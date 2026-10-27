@@ -6,6 +6,7 @@ import { asyncHandler } from "../asyncHandler.js";
 import { writeAudit } from "../audit.js";
 import { RealNvidiaClient } from "../ai/nvidia.js";
 import { LlmHttpError } from "../ai/llm-error.js";
+import { assertSafeOutboundUrl, normalizeOutboundBaseUrl } from "../ai/url-safety.js";
 import {
   AI_MODULES,
   AI_MODULE_HINTS,
@@ -43,6 +44,10 @@ async function reconcileModuleModels(names: string[]): Promise<string[]> {
 function maskKey(key: string): string {
   if (!key) return "";
   return `••••${key.slice(-4)}`;
+}
+
+async function safeBaseUrl(raw: string): Promise<string> {
+  return normalizeOutboundBaseUrl(await assertSafeOutboundUrl(raw));
 }
 
 aiProvidersRouter.get(
@@ -85,11 +90,17 @@ aiProvidersRouter.post(
   asyncHandler(async (req, res) => {
     const body = ProviderBody.safeParse(req.body);
     if (!body.success) return res.status(400).json({ error: "bad_request" });
-    const { name, baseUrl, apiKey, models } = body.data;
+    const { name, apiKey, models } = body.data;
+    let baseUrl: string;
+    try {
+      baseUrl = await safeBaseUrl(body.data.baseUrl);
+    } catch (e) {
+      return res.status(400).json({ error: "baseurl_tidak_aman", message: e instanceof Error ? e.message : "URL tidak aman" });
+    }
     const p = await prisma.aiProvider.create({
       data: {
         name,
-        baseUrl: baseUrl.replace(/\/+$/, ""),
+        baseUrl,
         apiKey,
         models: { createMany: { data: models.map((m, rank) => ({ name: m, rank })) } },
       },
@@ -117,10 +128,18 @@ aiProvidersRouter.put(
     const exists = await prisma.aiProvider.findUnique({ where: { id } });
     if (!exists) return res.status(404).json({ error: "tidak_ditemukan" });
     const { models, baseUrl, ...rest } = body.data;
+    let safeUrl: string | undefined;
+    if (baseUrl) {
+      try {
+        safeUrl = await safeBaseUrl(baseUrl);
+      } catch (e) {
+        return res.status(400).json({ error: "baseurl_tidak_aman", message: e instanceof Error ? e.message : "URL tidak aman" });
+      }
+    }
     await prisma.$transaction(async (tx) => {
       await tx.aiProvider.update({
         where: { id },
-        data: { ...rest, ...(baseUrl ? { baseUrl: baseUrl.replace(/\/+$/, "") } : {}) },
+        data: { ...rest, ...(safeUrl ? { baseUrl: safeUrl } : {}) },
       });
       if (models !== undefined) {
         await tx.aiProviderModel.deleteMany({ where: { providerId: id } });
@@ -177,8 +196,14 @@ const PreviewBody = z.object({
 });
 
 async function fetchModelList(baseUrl: string, apiKey: string): Promise<string[]> {
+  let safe: string;
   try {
-    return await new RealNvidiaClient(apiKey, baseUrl.replace(/\/+$/, "")).listModels();
+    safe = await safeBaseUrl(baseUrl);
+  } catch (e) {
+    throw new LlmHttpError(400, `baseurl_tidak_aman: ${e instanceof Error ? e.message : "URL tidak aman"}`);
+  }
+  try {
+    return await new RealNvidiaClient(apiKey, safe).listModels();
   } catch (e) {
     const st = e instanceof LlmHttpError ? e.status : 502;
     const msg = e instanceof Error ? e.message : String(e);

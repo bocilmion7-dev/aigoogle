@@ -14,6 +14,7 @@ import { getWaSettings, sendWaImage, sendWaText } from "./service.js";
 import { saveShopOrder, type Fulfillment, type ShopOrderItem, type ShopShipping } from "./shop-order.js";
 import { biteshipReady, getRates } from "../shipping/biteship.js";
 import { getDefaultWeightGram, getShippingOrigin } from "./shipping-settings.js";
+import { sendPushToUser } from "../push.js";
 
 const MAX_ITEMS = 10;
 const MAX_QTY = 1000;
@@ -394,6 +395,17 @@ async function createOrder(opts: {
       expiresAt: qr.expiredAt,
       createdAt: new Date().toISOString(),
     });
+    void tenantOwnerId(opts.tenantId)
+      .then((ownerId) =>
+        ownerId
+          ? sendPushToUser(ownerId, {
+              title: "Pesanan baru",
+              body: `${buyerName} · ${rupiah(total)} · ${orderId}`,
+              url: "/pesanan",
+            })
+          : 0
+      )
+      .catch(() => 0);
     return {
       orderId,
       fulfillment,

@@ -17,9 +17,12 @@ export function verifyPassword(password: string, stored: string): boolean {
   return actual.length === expected.length && timingSafeEqual(actual, expected);
 }
 
-/** Minimal: ≥8 karakter, minimal 1 angka. */
+/** Minimal: ≥12 karakter, huruf besar/kecil, angka, dan simbol. */
 export function validatePasswordStrength(password: string): string | null {
-  if (password.length < 8) return "minimal_8";
+  if (password.length < 12) return "minimal_12";
+  if (!/[a-z]/.test(password)) return "butuh_huruf_kecil";
+  if (!/[A-Z]/.test(password)) return "butuh_huruf_besar";
   if (!/\d/.test(password)) return "butuh_angka";
+  if (!/[^A-Za-z0-9]/.test(password)) return "butuh_simbol";
   return null;
 }
