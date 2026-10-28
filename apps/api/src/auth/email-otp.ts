@@ -2,6 +2,7 @@ import { createHash, randomInt, timingSafeEqual } from "node:crypto";
 import { prisma } from "../db.js";
 import { env } from "../env.js";
 import { sendMail, escapeHtml } from "../mail.js";
+import { renderMailLayout } from "../mail/templates.js";
 import { createToken, peekToken, restoreToken, takeToken } from "./tokens.js";
 
 /**
@@ -62,12 +63,17 @@ export async function createEmailOtpChallenge(opts: {
       `Kode OTP login Anda adalah: ${code}\n\n` +
       `Kode berlaku 10 menit. Jangan bagikan kode ini kepada siapa pun.\n` +
       `Jika Anda tidak mencoba login, abaikan email ini.`,
-    html:
-      `<p>Halo <strong>${safeName}</strong>,</p>` +
-      `<p>Kode OTP login Anda:</p>` +
-      `<p style="font-size:28px;letter-spacing:6px;font-weight:700;margin:16px 0">${code}</p>` +
-      `<p>Kode berlaku <strong>10 menit</strong>. Jangan bagikan kode ini kepada siapa pun.</p>` +
-      `<p style="color:#666">Jika Anda tidak mencoba login, abaikan email ini.</p>`,
+    html: renderMailLayout({
+      heading: "Kode OTP login Anda",
+      preheader: `Kode OTP: ${code}`,
+      intro: `Halo ${opts.name || "Pengguna"}, gunakan kode di bawah ini untuk menyelesaikan proses login.`,
+      bodyHtml:
+        `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:6px 0 0;background:#1c1917;border-radius:12px">` +
+        `<tr><td align="center" style="padding:20px 16px;font-size:30px;font-weight:700;letter-spacing:10px;color:#ffffff;font-family:'SF Mono',Menlo,Consolas,monospace">${code}</td></tr>` +
+        `</table>`,
+      note: "Kode berlaku 10 menit. Jangan bagikan kode ini kepada siapa pun.",
+      footerNote: `Permintaan untuk ${safeName}`,
+    }),
   });
   if (!sent) {
     // Jangan tinggalkan challenge yang tidak bisa dipakai.

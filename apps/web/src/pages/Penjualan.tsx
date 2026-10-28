@@ -384,8 +384,9 @@ export function Penjualan() {
           <>
             {/* ── Hero wallet ── */}
             {wallet && (
-              <section className="sales-hero">
+              <section className="sales-hero" aria-label="Kartu saldo wallet penjualan">
                 <div className="sales-hero__top">
+                  <span className="sales-hero__chip" aria-hidden="true" />
                   <span className="sales-hero__badge">
                     <IconWallet size={15} /> Wallet Penjualan
                   </span>
@@ -403,17 +404,23 @@ export function Penjualan() {
                     <IconRefresh size={14} /> Tarik Dana
                   </button>
                 </div>
-                <span className="sales-hero__label">Saldo tersedia</span>
-                <strong className="sales-hero__value">{rp(wallet.available)}</strong>
-                <div className="sales-hero__meta">
-                  <span>
-                    Saldo total <strong>{rp(wallet.balance)}</strong>
-                  </span>
-                  {wallet.pendingWithdrawal > 0 && (
-                    <span>
-                      Dalam proses <strong>{rp(wallet.pendingWithdrawal)}</strong>
-                    </span>
-                  )}
+                <div className="sales-hero__main">
+                  <span className="sales-hero__label">Saldo tersedia</span>
+                  <strong className="sales-hero__value">{rp(wallet.available)}</strong>
+                </div>
+                <div className="sales-hero__foot">
+                  <div>
+                    <span>Saldo total</span>
+                    <strong>{rp(wallet.balance)}</strong>
+                  </div>
+                  <div>
+                    <span>Dalam proses</span>
+                    <strong>{wallet.pendingWithdrawal > 0 ? rp(wallet.pendingWithdrawal) : "—"}</strong>
+                  </div>
+                  <div>
+                    <span>Perusahaan</span>
+                    <strong>{me?.tenant.name ?? "—"}</strong>
+                  </div>
                 </div>
               </section>
             )}

@@ -50,7 +50,7 @@ export function Login() {
       <div className="auth2__grid">
         <main className="auth2__main">
           <div className="auth2__card">
-            <img src="/logo.webp" alt="AI Asisten" className="auth2__logo" width={132} height={44} />
+            <img src="/logo-ai-asisten.webp" alt="AI Asisten" className="auth2__logo" width={132} height={44} />
             <h1>Masuk</h1>
             <p className="auth2__hint">Gunakan email &amp; password akun Anda.</p>
 

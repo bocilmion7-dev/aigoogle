@@ -10,8 +10,8 @@
 
 ## Deploy (produksi)
 **Setiap perubahan harus langsung di-deploy ke publik** setelah verifikasi lulus (tidak menunggu diminta):
-1. `cd apps/web && pnpm build && rsync -a --delete dist/ /var/www/aigoogle/`
-2. `systemctl restart aigoogle-api` (API pakai `tsx` — perubahan kode butuh restart; ±15 dtk).
+1. `scripts/deploy-web.sh` — build + rsync **aditif**: aset ber-hash lama disimpan 30 hari. Jangan memakai `rsync --delete` langsung ke `/var/www/aigoogle`; index/service worker lama yang masih dipegang klien bisa menunjuk chunk yang sudah dihapus → halaman macet.
+2. `systemctl restart aigoogle-api` **hanya jika kode API berubah** (API pakai `tsx`). Deploy web saja tidak perlu restart agar sesi & request pengguna tidak terputus.
 3. Cek `curl -s http://127.0.0.1:3001/api/health?deep=1`.
 4. nginx TIDAK perlu reload kecuali config diubah.
 

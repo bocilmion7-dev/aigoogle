@@ -212,7 +212,7 @@ export function AppHeader({ me }: { me?: Me | null }) {
       <header className="app-header">
         <div className="app-header__bar">
           <a className="app-header__brand app-header__brand--logo" href="/app" aria-label="AI Asisten — beranda">
-            <img src="/logo.webp" alt="AI Asisten" className="app-header__logo" width={114} height={38} />
+            <img src="/logo-ai-asisten.webp" alt="AI Asisten" className="app-header__logo" width={126} height={42} />
           </a>
           <span className="app-header__user">
             <span className="app-header__name">

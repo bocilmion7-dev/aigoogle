@@ -13,7 +13,7 @@ import {
   type InvoiceRow,
 } from "../api";
 import { AppHeader, PageLoader } from "../ui";
-import { IconCheck } from "../icons";
+import { IconCheck, IconDownload, IconSend } from "../icons";
 import { track } from "../telemetry";
 
 const rp = (n: number): string => `Rp${Math.round(n).toLocaleString("id-ID")}`;
@@ -28,6 +28,9 @@ export function Subscription() {
   const [invoices, setInvoices] = useState<InvoiceRow[]>([]);
   const [invMsg, setInvMsg] = useState("");
   const [invBusy, setInvBusy] = useState("");
+  const [invPage, setInvPage] = useState(1);
+  const [invHasMore, setInvHasMore] = useState(false);
+  const [invLoading, setInvLoading] = useState(false);
   const [autoRenew, setAutoRenew] = useState(false);
   const [renewBusy, setRenewBusy] = useState(false);
   const pollRef = useRef<number | null>(null);
@@ -35,14 +38,25 @@ export function Subscription() {
   const load = useCallback(async () => {
     setData(await getAiSubscription());
   }, []);
-  const loadInvoices = useCallback(async () => {
-    setInvoices(await getInvoices().catch(() => []));
+  const loadInvoices = useCallback(async (page = 1) => {
+    setInvLoading(true);
+    try {
+      const r = await getInvoices(10, (page - 1) * 10);
+      setInvoices(r.items);
+      setInvHasMore(r.hasMore);
+      setInvPage(page);
+    } catch {
+      setInvoices([]);
+      setInvHasMore(false);
+    } finally {
+      setInvLoading(false);
+    }
   }, []);
 
   useEffect(() => {
     void getMe().then(setMe);
     void load().catch(() => setErr("Gagal memuat paket langganan."));
-    void loadInvoices();
+    void loadInvoices(1);
     void getAutoRenew().then((r) => setAutoRenew(r.enabled)).catch(() => null);
   }, [load, loadInvoices]);
   useEffect(() => {
@@ -58,6 +72,7 @@ export function Subscription() {
             setMsg(`Langganan ${qris.plan.name} aktif — ${qris.tokens.toLocaleString("id-ID")} token masuk.`);
             setQris(null);
             void load();
+            void loadInvoices(1);
           } else if (["cancel", "expire", "deny"].includes(s.status)) {
             setQris(null);
             setErr("Pembayaran langganan dibatalkan atau kedaluwarsa.");
@@ -264,8 +279,8 @@ export function Subscription() {
           <strong className="card__title">Riwayat pembayaran</strong>
           <p className="meta" style={{ marginTop: 0 }}>Unduh atau kirim invoice ke email akun Anda.</p>
           {invMsg && <p className="banner banner--ok" role="status">{invMsg}</p>}
-          <div className="table-wrap">
-            <table className="table">
+          <div className={`table-wrap${invLoading ? " is-loading" : ""}`} aria-busy={invLoading}>
+            <table className="table inv-table">
               <thead>
                 <tr>
                   <th>Tanggal</th>
@@ -273,7 +288,7 @@ export function Subscription() {
                   <th>Order</th>
                   <th>Nominal</th>
                   <th>Status</th>
-                  <th>Aksi</th>
+                  <th className="inv-actions-cell">Aksi</th>
                 </tr>
               </thead>
               <tbody>
@@ -281,31 +296,68 @@ export function Subscription() {
                   <tr key={`${inv.orderId}-${inv.kind}`}>
                     <td style={{ whiteSpace: "nowrap" }}>{new Date(inv.createdAt).toLocaleDateString("id-ID")}</td>
                     <td>{inv.kind}</td>
-                    <td><code style={{ fontSize: "0.72rem" }}>{inv.orderId}</code></td>
+                    <td><code style={{ fontSize: "var(--text-2xs)" }}>{inv.orderId}</code></td>
                     <td>Rp{inv.amount.toLocaleString("id-ID")}</td>
                     <td>{inv.status === "settlement" ? "Lunas" : inv.status === "pending" ? "Menunggu" : inv.status}</td>
-                    <td>
-                      <div className="btn-row" style={{ gap: 4 }}>
-                        <a className="btn btn--2 btn--sm" href={`/api/billing/invoice/${encodeURIComponent(inv.orderId)}`}>
-                          PDF
+                    <td className="inv-actions-cell">
+                      <div className="inv-actions">
+                        <a
+                          className="btn btn--2 btn--sm inv-btn"
+                          href={`/api/billing/invoice/${encodeURIComponent(inv.orderId)}`}
+                          download
+                          aria-label={`Unduh invoice ${inv.orderId}`}
+                          title="Unduh invoice PDF"
+                        >
+                          <IconDownload size={14} /> PDF
                         </a>
                         <button
-                          className="btn btn--ghost btn--sm"
+                          type="button"
+                          className="btn btn--2 btn--sm inv-btn"
                           onClick={() => void sendInvoice(inv.orderId)}
                           disabled={invBusy === inv.orderId}
+                          aria-busy={invBusy === inv.orderId}
+                          aria-label={`Kirim invoice ${inv.orderId} ke email`}
+                          title="Kirim invoice ke email"
                         >
-                          {invBusy === inv.orderId ? "Mengirim…" : "Email"}
+                          {invBusy === inv.orderId ? <span className="spinner" aria-hidden="true" /> : <IconSend size={14} />}
+                          Email
                         </button>
                       </div>
                     </td>
                   </tr>
                 ))}
-                {invoices.length === 0 && (
+                {!invLoading && invoices.length === 0 && (
                   <tr><td colSpan={6} className="empty">Belum ada pembayaran.</td></tr>
+                )}
+                {invLoading && invoices.length === 0 && (
+                  <tr><td colSpan={6} className="empty">Memuat…</td></tr>
                 )}
               </tbody>
             </table>
           </div>
+          {(invoices.length > 0 || invPage > 1 || invHasMore) && (
+            <div className="inv-pager">
+              <button
+                type="button"
+                className="btn btn--2 btn--sm"
+                onClick={() => void loadInvoices(invPage - 1)}
+                disabled={invPage <= 1 || invLoading}
+              >
+                Sebelumnya
+              </button>
+              <span className="meta" aria-live="polite">
+                Halaman {invPage} · 10/halaman
+              </span>
+              <button
+                type="button"
+                className="btn btn--2 btn--sm"
+                onClick={() => void loadInvoices(invPage + 1)}
+                disabled={!invHasMore || invLoading}
+              >
+                Berikutnya
+              </button>
+            </div>
+          )}
         </section>
       </main>
 

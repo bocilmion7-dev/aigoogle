@@ -41,22 +41,15 @@ export function ResetPassword() {
   }
 
   return (
-    <div className="auth2">
+    <div className="auth2 auth2--centered">
       <div className="auth2__grid">
-        <aside className="auth2__aside">
-          <a className="auth2__brand" href="/">
-            <span className="auth2__mark" aria-hidden="true">AI</span>
-            <span>AI Asisten</span>
-          </a>
-          <h2 className="auth2__headline">Buat password baru.</h2>
-          <p className="auth2__sub">
-            Gunakan minimal 12 karakter dengan huruf besar, huruf kecil, angka, dan simbol.
-          </p>
-          <span className="auth2__foot">© {new Date().getFullYear()} AI Asisten</span>
-        </aside>
         <main className="auth2__main">
           <div className="auth2__card">
+            <img src="/logo-ai-asisten.webp" alt="AI Asisten" className="auth2__logo" width={132} height={44} />
             <h1>Reset Password</h1>
+            <p className="auth2__hint">
+              Gunakan minimal 12 karakter dengan huruf besar, huruf kecil, angka, dan simbol.
+            </p>
             {!token ? (
               <>
                 <p className="banner banner--err" role="alert">Tautan reset tidak valid atau sudah kedaluwarsa.</p>
@@ -93,9 +86,9 @@ export function ResetPassword() {
                 <button className="btn btn--primary auth2__submit" type="submit" disabled={busy} aria-busy={busy}>
                   {busy ? "Menyimpan…" : "Simpan password"}
                 </button>
+                <a className="auth2__back" href="/login">← Kembali ke login</a>
               </form>
             )}
-            <a className="auth2__back" href="/login">← Kembali ke login</a>
           </div>
         </main>
       </div>

@@ -4,7 +4,8 @@ import { z } from "zod";
 import { prisma } from "../db.js";
 import { env } from "../env.js";
 import { createToken } from "../auth/tokens.js";
-import { sendMail } from "../mail.js";
+import { sendMail, escapeHtml } from "../mail.js";
+import { renderMailLayout } from "../mail/templates.js";
 import { clearImpersonationCookie, readImpersonationId, setImpersonationCookie } from "../cookies.js";
 import { asyncHandler } from "../asyncHandler.js";
 import { requirePerm, loadPermissionSet } from "../permissions.js";
@@ -398,6 +399,20 @@ adminRouter.post(
         `Halo ${body.data.name},\n\nAnda diundang bergabung ke ${tenant.name} sebagai ${role.name}.\n` +
         `Buat password Anda melalui tautan berikut (berlaku 7 hari):\n${link}\n\n` +
         `Jika Anda tidak merasa diundang, abaikan email ini.`,
+      html: renderMailLayout({
+        heading: `Undangan ke ${tenant.name}`,
+        preheader: `Anda diundang bergabung sebagai ${role.name}`,
+        intro: `Halo ${escapeHtml(body.data.name)}, Anda diundang bergabung ke ${escapeHtml(tenant.name)} sebagai ${escapeHtml(role.name)}.`,
+        bodyHtml:
+          `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid #e7e5e4;border-radius:12px;background:#fafaf9;padding:2px 18px;margin:6px 0 0">` +
+          `<tr><td style="padding:10px 0;font-size:12.5px;color:#78716c;width:38%">Perusahaan</td>` +
+          `<td style="padding:10px 0;font-size:13px;font-weight:600;color:#1c1917;text-align:right">${escapeHtml(tenant.name)}</td></tr>` +
+          `<tr><td style="padding:10px 0 10px;font-size:12.5px;color:#78716c;border-top:1px solid #e7e5e4">Peran</td>` +
+          `<td style="padding:10px 0;font-size:13px;font-weight:600;color:#1c1917;text-align:right;border-top:1px solid #e7e5e4">${escapeHtml(role.name)}</td></tr>` +
+          `</table>`,
+        cta: { label: "Buat password & bergabung", url: link },
+        note: "Tautan undangan berlaku 7 hari. Jika Anda tidak merasa diundang, abaikan email ini.",
+      }),
     });
     await writeAudit(tenantId, req.user?.id ?? req.platform?.id ?? "platform", "user.invite", {
       userId: user.id,

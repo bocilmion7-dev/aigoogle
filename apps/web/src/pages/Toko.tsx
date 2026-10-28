@@ -17,6 +17,7 @@ export function Toko() {
   const [biteshipMode, setBiteshipMode] = useState<"off" | "test" | "live">("off");
   const [areaQ, setAreaQ] = useState("");
   const [areaResults, setAreaResults] = useState<ShippingArea[]>([]);
+  const [areaSearched, setAreaSearched] = useState(false);
   const [busy, setBusy] = useState("");
   const [err, setErr] = useState("");
   const [msg, setMsg] = useState("");
@@ -42,7 +43,9 @@ export function Toko() {
     setBusy("area");
     setErr("");
     try {
-      setAreaResults(await searchShippingAreas(areaQ.trim()));
+      const rows = await searchShippingAreas(areaQ.trim());
+      setAreaResults(rows);
+      setAreaSearched(true);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Gagal mencari kode pos.");
     } finally {
@@ -155,6 +158,60 @@ export function Toko() {
                     placeholder="Jalan, nomor, kelurahan, kecamatan, kota"
                   />
                 </label>
+                {/* Pencarian kecamatan ditempatkan sebelum kode pos. */}
+                <form
+                  className="orders-search orders-search--sm"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    void findArea();
+                  }}
+                >
+                  <IconSearch size={15} />
+                  <input
+                    className="input"
+                    value={areaQ}
+                    onChange={(e) => {
+                      setAreaQ(e.target.value);
+                      setAreaSearched(false);
+                      if (!e.target.value.trim()) setAreaResults([]);
+                    }}
+                    placeholder="Cari kecamatan / kode pos"
+                    aria-label="Cari kecamatan atau kode pos"
+                  />
+                  <button
+                    type="submit"
+                    className="btn btn--2 btn--sm"
+                    disabled={busy !== "" || !areaQ.trim()}
+                  >
+                    {busy === "area" ? "Mencari…" : "Cari"}
+                  </button>
+                </form>
+                {areaSearched && !busy && !err && areaResults.length === 0 && (
+                  <p className="meta" role="status" style={{ margin: 0 }}>
+                    Area tidak ditemukan.
+                  </p>
+                )}
+                {areaResults.length > 0 && (
+                  <ul className="orders-cust__list" role="list">
+                    {areaResults.map((ar) => (
+                      <li key={`${ar.id}-${ar.postalCode}`}>
+                        <button
+                          type="button"
+                          className="orders-cust__pick"
+                          onClick={() => {
+                            setOrigin({ ...origin, postalCode: ar.postalCode });
+                            setAreaQ(ar.name);
+                            setAreaResults([]);
+                            setAreaSearched(false);
+                          }}
+                        >
+                          {ar.name}
+                          <span className="meta">{ar.postalCode}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
                 <label className="orders-field">
                   <span>Kode pos</span>
                   <input
@@ -165,40 +222,6 @@ export function Toko() {
                     inputMode="numeric"
                   />
                 </label>
-                <div className="orders-search orders-search--sm">
-                  <IconSearch size={15} />
-                  <input
-                    className="input"
-                    value={areaQ}
-                    onChange={(e) => setAreaQ(e.target.value)}
-                    placeholder="Cari kecamatan / kode pos"
-                    aria-label="Cari area Biteship"
-                  />
-                  <button
-                    type="button"
-                    className="btn btn--2 btn--sm"
-                    onClick={() => void findArea()}
-                    disabled={busy !== "" || !areaQ.trim()}
-                  >
-                    Cari
-                  </button>
-                </div>
-                {areaResults.length > 0 && (
-                  <ul className="orders-cust__list" role="list">
-                    {areaResults.map((ar) => (
-                      <li key={ar.id}>
-                        <button
-                          type="button"
-                          className="orders-cust__pick"
-                          onClick={() => setOrigin({ ...origin, postalCode: ar.postalCode })}
-                        >
-                          {ar.name}
-                          <span className="meta">{ar.postalCode}</span>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
               </div>
               <div className="orders-actions">
                 <button type="button" className="btn btn--primary btn--block" onClick={() => void save()} disabled={busy !== ""}>

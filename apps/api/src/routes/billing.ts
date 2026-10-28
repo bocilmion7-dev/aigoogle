@@ -13,6 +13,8 @@ import { creditTokens, finalizeAiTopup, tenantOwnerId } from "../ai/billing.js";
 import { writeAudit } from "../audit.js";
 import { buildInvoicePdf } from "../doc/invoice-pdf.js";
 import { sendMail } from "../mail.js";
+import { renderInvoiceMail } from "../mail/templates.js";
+import { env } from "../env.js";
 import { isAutoRenewEnabled, setAutoRenew } from "../billing/recurring.js";
 
 export const billingRouter = Router();
@@ -42,15 +44,22 @@ billingRouter.get(
   requireUser,
   asyncHandler(async (req, res) => {
     const tenantId = req.user!.tenant.id;
+    const takeRaw = typeof req.query.take === "string" ? Number(req.query.take) : 10;
+    const skipRaw = typeof req.query.skip === "string" ? Number(req.query.skip) : 0;
+    const pageSize = Number.isFinite(takeRaw) ? Math.min(50, Math.max(1, Math.floor(takeRaw))) : 10;
+    const skip = Number.isFinite(skipRaw) ? Math.max(0, Math.floor(skipRaw)) : 0;
+    // Ambil cukup baris dari tiap sumber untuk menutup halaman ini setelah
+    // merge+sort. fetchN >= skip+pageSize+1 agar `hasMore` akurat.
+    const fetchN = Math.min(1000, skip + pageSize + 1);
     const [payments, waTopups, aiTopups] = await Promise.all([
       prisma.payment.findMany({
         // Riwayat billing add-on; pesanan toko punya halaman sendiri.
         where: { tenantId, NOT: { orderId: { startsWith: "shop-" } } },
         orderBy: { createdAt: "desc" },
-        take: 100,
+        take: fetchN,
       }),
-      prisma.waTopup.findMany({ where: { tenantId }, orderBy: { createdAt: "desc" }, take: 100 }),
-      prisma.aiTopup.findMany({ where: { tenantId }, orderBy: { createdAt: "desc" }, take: 100 }),
+      prisma.waTopup.findMany({ where: { tenantId }, orderBy: { createdAt: "desc" }, take: fetchN }),
+      prisma.aiTopup.findMany({ where: { tenantId }, orderBy: { createdAt: "desc" }, take: fetchN }),
     ]);
     const rows = [
       ...payments.map((p) => ({
@@ -77,10 +86,13 @@ billingRouter.get(
         paymentMethod: p.paymentMethod,
         createdAt: p.createdAt,
       })),
-    ]
-      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
-      .slice(0, 100);
-    res.json(rows);
+    ].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    res.json({
+      items: rows.slice(skip, skip + pageSize),
+      hasMore: rows.length > skip + pageSize,
+      page: Math.floor(skip / pageSize) + 1,
+      pageSize,
+    });
   })
 );
 
@@ -232,6 +244,14 @@ function invoiceDate(d: Date): string {
   return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
 }
 
+/** Teks badge status utk PDF (LUNAS / MENUNGGU PEMBAYARAN / PEMBAYARAN GAGAL). */
+function invoiceStatusBadge(status: string): string {
+  const s = status.toLowerCase();
+  if (["settlement", "capture"].includes(s)) return "LUNAS";
+  if (["deny", "cancel", "expire", "failure"].includes(s)) return "PEMBAYARAN GAGAL";
+  return "MENUNGGU PEMBAYARAN";
+}
+
 async function invoicePdfFor(tenantId: string, orderId: string, tenantName: string) {
   const inv = await invoiceFor(tenantId, orderId);
   if (!inv) return null;
@@ -243,7 +263,8 @@ async function invoicePdfFor(tenantId: string, orderId: string, tenantName: stri
     customerName: tenantName,
     partyLabel: "Ditagihkan kepada",
     items: [{ name: inv.label, qty: 1, price: inv.amount }],
-    note: `Status pembayaran: ${inv.status}`,
+    note: `Dokumen ini dibuat otomatis untuk pesanan ${orderId}.`,
+    status: invoiceStatusBadge(inv.status),
   });
   return { pdf, inv };
 }
@@ -268,10 +289,20 @@ billingRouter.post(
     const tenant = await prisma.tenant.findUnique({ where: { id: req.user!.tenant.id }, select: { name: true } });
     const out = await invoicePdfFor(req.user!.tenant.id, req.params.orderId, tenant?.name ?? "Perusahaan");
     if (!out) return res.status(404).json({ error: "tidak_ditemukan" });
+    const mail = renderInvoiceMail({
+      invoiceNo: req.params.orderId,
+      date: invoiceDate(out.inv.createdAt),
+      customerName: tenant?.name ?? "Perusahaan",
+      label: out.inv.label,
+      amount: out.inv.amount,
+      status: out.inv.status,
+      ctaUrl: `${env.APP_ORIGIN}/subscription`,
+    });
     const sent = await sendMail({
       to: req.user!.email,
-      subject: `Invoice ${req.params.orderId} — AI Asisten`,
-      text: `Terlampir invoice ${req.params.orderId} sebesar Rp${out.inv.amount.toLocaleString("id-ID")}.`,
+      subject: mail.subject,
+      text: mail.text,
+      html: mail.html,
       attachments: [
         {
           filename: `invoice-${req.params.orderId}.pdf`,

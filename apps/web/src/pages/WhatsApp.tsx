@@ -378,7 +378,7 @@ export function WhatsApp() {
   return (
     <div className="app">
       <AppHeader />
-      <main className="page page--narrow wa-page">
+      <main className="page wa-page">
         <header className="wa-head">
           <div>
             <h1>WhatsApp</h1>
@@ -392,415 +392,430 @@ export function WhatsApp() {
           </div>
         </header>
 
-        <div className="tabs tabs--fill">
-          <button type="button" className="tab" onClick={() => setTab("gateway")} aria-pressed={tab === "gateway"}>
-            <IconChat size={16} /> Gateway
-          </button>
-          <button type="button" className="tab" onClick={() => setTab("meta")} aria-pressed={tab === "meta"}>
-            <IconSend size={16} /> META
-          </button>
+        {error && (
+          <p className="banner banner--err" role="alert" style={{ marginBottom: "var(--space-s)" }}>
+            {error}
+          </p>
+        )}
+        {admMsg && (
+          <p
+            className={`banner ${admMsg.startsWith("Gagal") ? "banner--err" : "banner--ok"}`}
+            role="status"
+            style={{ marginBottom: "var(--space-s)" }}
+          >
+            {admMsg}
+          </p>
+        )}
+
+        <div className="wa-toolbar">
+          <div className="tabs tabs--fill">
+            <button type="button" className="tab" onClick={() => setTab("gateway")} aria-pressed={tab === "gateway"}>
+              <IconChat size={16} /> Gateway
+            </button>
+            <button type="button" className="tab" onClick={() => setTab("meta")} aria-pressed={tab === "meta"}>
+              <IconSend size={16} /> META
+            </button>
+          </div>
         </div>
 
-        {/* ── Tab 1: WhatsApp Gateway (waserver) ── */}
-        {tab === "gateway" && (
-          <>
-            <section className="card wa-card">
-              <div className="wa-card-head">
-                <span className={`wa-icon${gatewayConnected ? " is-ok" : ""}`}>
-                  <IconChat size={18} />
-                </span>
-                <div className="wa-card-title">
-                  <strong>Gateway</strong>
-                  <span className="meta">
-                    {gatewayConnected ? st.account?.displayName || "Nomor terhubung" : "Belum terhubung"}
-                  </span>
+        <div className="wa-grid">
+          <div className="wa-panel wa-panel--main">
+            {tab === "gateway" ? (
+              <section className="wa-block">
+                <div className="wa-block__head">
+                  <div>
+                    <span className="wa-kicker">Koneksi</span>
+                    <h2>WhatsApp Gateway</h2>
+                  </div>
                 </div>
-                <div className="wa-actions">
-                  {!gatewayConnected ? (
+                <div className="wa-connect">
+                  <span className={`wa-icon${gatewayConnected ? " is-ok" : ""}`}>
+                    <IconChat size={18} />
+                  </span>
+                  <div className="wa-connect__body">
+                    <strong>
+                      {gatewayConnected ? st.account?.displayName || "Nomor terhubung" : "Belum ada nomor terhubung"}
+                    </strong>
+                    <span className="meta">
+                      {gatewayConnected
+                        ? "Sesi gateway aktif — pesan dikirim lewat nomor ini."
+                        : "Pindai QR untuk menghubungkan nomor toko."}
+                    </span>
+                  </div>
+                  <div className="wa-actions">
+                    {!gatewayConnected ? (
+                      <button
+                        type="button"
+                        className="btn btn--sm"
+                        onClick={wasOpenModal}
+                        disabled={!!wasBusy}
+                        aria-busy={!!wasBusy}
+                        title="Hubungkan WhatsApp"
+                      >
+                        {wasBusy === "load" ? <span className="spinner" aria-hidden="true" /> : <IconLink size={16} />}
+                        Hubungkan
+                      </button>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          className="icon-btn"
+                          onClick={() => void wasReconnect()}
+                          disabled={!!wasBusy}
+                          aria-busy={!!wasBusy}
+                          aria-label="Sambungkan ulang"
+                          title="Sambungkan ulang"
+                        >
+                          {wasBusy === "reconnect" ? <span className="spinner" aria-hidden="true" /> : <IconRefresh size={16} />}
+                        </button>
+                        <button
+                          type="button"
+                          className="icon-btn"
+                          onClick={() => void wasDisconnect()}
+                          disabled={!!wasBusy}
+                          aria-label="Putuskan"
+                          title="Putuskan"
+                        >
+                          <IconPower size={16} />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+                <a
+                  className="btn btn--2 btn--block"
+                  href="/wa-chats"
+                  title="Buka riwayat chat WhatsApp"
+                  style={{ marginTop: "var(--space-s)" }}
+                >
+                  <IconChat size={16} /> Riwayat Chat
+                </a>
+                {wasMsg && (
+                  <p className="banner banner--err" role="alert" style={{ margin: "var(--space-s) 0 0" }}>
+                    {wasMsg}
+                  </p>
+                )}
+              </section>
+            ) : (
+              <section className="wa-block">
+                <div className="wa-block__head">
+                  <div>
+                    <span className="wa-kicker">Koneksi</span>
+                    <h2>WhatsApp META</h2>
+                  </div>
+                  {metaConnected && (
+                    <span className="wa-chip is-ok">
+                      <IconCheck size={13} /> Resmi
+                    </span>
+                  )}
+                </div>
+                <div className="wa-connect">
+                  <span className={`wa-icon${metaConnected ? " is-ok" : ""}`}>
+                    <IconSend size={18} />
+                  </span>
+                  <div className="wa-connect__body">
+                    <strong>{metaConnected ? st.account?.displayName || "Nomor terhubung" : "Belum terhubung"}</strong>
+                    <span className="meta">
+                      {metaConnected
+                        ? "Nomor resmi Meta terhubung."
+                        : "Hubungkan nomor resmi lewat formulir di bawah."}
+                    </span>
+                  </div>
+                </div>
+                {st.waProvider === "meta" &&
+                  (metaEmbedUrl ? (
+                    <iframe
+                      title="Meta WhatsApp Embedded Signup"
+                      src={metaEmbedUrl}
+                      className="embed"
+                      style={{ marginTop: "var(--space-s)" }}
+                    />
+                  ) : (
+                    <p className="meta" style={{ margin: "var(--space-s) 0 0" }}>
+                      Formulir belum tersedia.
+                    </p>
+                  ))}
+                {st.waProvider === "waserver" && (
+                  <p className="meta" style={{ margin: "var(--space-s) 0 0" }}>
+                    Provider aktif: <strong>Waserver Gateway</strong> — kelola koneksi di tab Gateway.
+                  </p>
+                )}
+              </section>
+            )}
+
+            <section className="wa-block">
+              <div className="wa-block__head wa-block__head--list">
+                <div>
+                  <span className="wa-kicker">Toko</span>
+                  <h2>AI penjaga toko</h2>
+                </div>
+                <span className={`wa-chip ${waShop ? "is-ok" : ""}`}>{waShop ? "Aktif" : "Nonaktif"}</span>
+              </div>
+              {isAdmin ? (
+                <>
+                  <label className="wa-switch">
+                    <input type="checkbox" checked={waShop} onChange={(e) => setWaShop(e.target.checked)} />
+                    <span>Balas pembeli otomatis</span>
+                  </label>
+                  <p className="wa-help">AI menjawab pertanyaan pembeli dan mencatat pesanan ke Accurate.</p>
+                  <div className="wa-block__actions">
                     <button
                       type="button"
                       className="btn btn--sm"
-                      onClick={wasOpenModal}
-                      disabled={!!wasBusy}
-                      aria-busy={!!wasBusy}
-                      title="Hubungkan WhatsApp"
+                      onClick={() => void saveAdmin()}
+                      disabled={admBusy}
+                      aria-busy={admBusy}
+                      title="Simpan status AI penjaga toko"
                     >
-                      {wasBusy === "load" ? <span className="spinner" aria-hidden="true" /> : <IconLink size={16} />}
-                      Hubungkan
+                      {admBusy ? <span className="spinner" aria-hidden="true" /> : <IconCheck size={15} />}
+                      Simpan
                     </button>
-                  ) : (
-                    <>
-                      <button
-                        type="button"
-                        className="icon-btn"
-                        onClick={() => void wasReconnect()}
-                        disabled={!!wasBusy}
-                        aria-busy={!!wasBusy}
-                        aria-label="Sambungkan ulang"
-                        title="Sambungkan ulang"
-                      >
-                        {wasBusy === "reconnect" ? <span className="spinner" aria-hidden="true" /> : <IconRefresh size={16} />}
-                      </button>
-                      <button
-                        type="button"
-                        className="icon-btn"
-                        onClick={() => void wasDisconnect()}
-                        disabled={!!wasBusy}
-                        aria-label="Putuskan"
-                        title="Putuskan"
-                      >
-                        <IconPower size={16} />
-                      </button>
-                    </>
-                  )}
-                </div>
-              </div>
-              {wasMsg && (
-                <p className="banner banner--err" role="alert" style={{ margin: "var(--space-xs) 0 0" }}>
-                  {wasMsg}
-                </p>
+                  </div>
+                </>
+              ) : (
+                <p className="wa-help">Aktifkan AI penjaga toko lewat akun admin perusahaan.</p>
               )}
             </section>
 
-            <section className="card wa-card">
-              <div className="wa-card-head">
-                <span className={`wa-icon${st.waSubscription?.active ? " is-ok" : ""}`}>
-                  <IconPackage size={18} />
-                </span>
-                <div className="wa-card-title">
-                  <strong>Langganan</strong>
-                  {st.waSubscription?.active ? (
-                    <span className="wa-inline-ok">
-                      <IconCheck size={13} /> s.d. {subUntil ?? "tanpa batas"}
-                    </span>
-                  ) : st.waSubscription?.expiresAt ? (
-                    <span className="meta">Berakhir {subUntil}</span>
-                  ) : (
-                    <span className="meta">Belum aktif</span>
-                  )}
+            {isAdmin && (
+              <section className="wa-block">
+                <div className="wa-block__head wa-block__head--list">
+                  <div>
+                    <span className="wa-kicker">Otomasi</span>
+                    <h2>Pengingat &amp; laporan</h2>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn--sm"
+                    onClick={() => void saveAdmin()}
+                    disabled={admBusy}
+                    aria-busy={admBusy}
+                    title="Simpan setelan"
+                  >
+                    {admBusy ? <span className="spinner" aria-hidden="true" /> : <IconCheck size={15} />}
+                    Simpan
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  className="btn btn--sm"
-                  onClick={() => {
-                    setSubMsg(null);
-                    setError(null);
-                    setSubPlansOpen(true);
-                  }}
-                  disabled={subBusy}
-                  aria-busy={subBusy}
-                  title={st.waSubscription?.active ? "Perpanjang langganan" : "Pilih paket langganan"}
-                >
-                  {subBusy ? (
-                    <span className="spinner" aria-hidden="true" />
-                  ) : st.waSubscription?.active ? (
-                    <IconRefresh size={15} />
-                  ) : (
-                    <IconPackage size={15} />
-                  )}
-                  {st.waSubscription?.active ? "Perpanjang" : "Pilih Paket"}
-                </button>
+                <div className="wa-switches">
+                  <label className="wa-switch">
+                    <input type="checkbox" checked={waAuto} onChange={(e) => setWaAuto(e.target.checked)} />
+                    <IconClock size={16} />
+                    <span>Jatuh tempo</span>
+                  </label>
+                  <label className="wa-switch">
+                    <input type="checkbox" checked={waDaily} onChange={(e) => setWaDaily(e.target.checked)} />
+                    <IconActivity size={16} />
+                    <span>Laporan harian</span>
+                  </label>
+                </div>
+                <label className="field" style={{ marginTop: "var(--space-s)" }}>
+                  <span>
+                    <IconPhone size={14} /> Nomor pemilik
+                  </span>
+                  <input
+                    className="input num"
+                    type="tel"
+                    inputMode="tel"
+                    autoComplete="tel"
+                    value={waPhone}
+                    onChange={(e) => setWaPhone(e.target.value)}
+                    placeholder="628123456789"
+                  />
+                </label>
+                <details className="wa-details">
+                  <summary>
+                    <IconBell size={16} />
+                    Notifikasi Accurate
+                    <span className="wa-count">{waWh?.events.length ?? 0}</span>
+                  </summary>
+                  <div className="wa-details-body">
+                    <div className="stack" style={{ gap: 0 }}>
+                      {(waWh?.options ?? []).map((o) => (
+                        <label className="check check--sm" key={o.key}>
+                          <input
+                            type="checkbox"
+                            checked={waWh?.events.includes(o.key) ?? false}
+                            onChange={(e) =>
+                              setWaWh((s) =>
+                                s
+                                  ? {
+                                      ...s,
+                                      events: e.target.checked
+                                        ? [...s.events, o.key]
+                                        : s.events.filter((x) => x !== o.key),
+                                    }
+                                  : s
+                              )
+                            }
+                          />
+                          <span>{o.label}</span>
+                        </label>
+                      ))}
+                    </div>
+                    <label className="field" style={{ maxWidth: 200 }}>
+                      Jeda (menit)
+                      <input
+                        className="input num"
+                        type="number"
+                        inputMode="numeric"
+                        min={1}
+                        max={1440}
+                        value={waWh?.rateMin ?? 10}
+                        onChange={(e) => setWaWh((s) => (s ? { ...s, rateMin: Number(e.target.value) } : s))}
+                      />
+                    </label>
+                  </div>
+                </details>
+              </section>
+            )}
+          </div>
+
+          <aside className="wa-panel wa-panel--side">
+            <section className="wa-block wa-block--side">
+              <div className="wa-block__head">
+                <div>
+                  <span className="wa-kicker">Langganan gateway</span>
+                  <h2>{st.waSubscription?.active ? "Aktif" : "Belum aktif"}</h2>
+                </div>
               </div>
+              <p className="wa-side-note">
+                {st.waSubscription?.active ? (
+                  <>
+                    Berlaku sampai <strong>{subUntil ?? "tanpa batas"}</strong>.
+                  </>
+                ) : st.waSubscription?.expiresAt ? (
+                  <>
+                    Berakhir <strong>{subUntil}</strong>.
+                  </>
+                ) : (
+                  <>Pilih paket untuk mengaktifkan pengiriman WhatsApp.</>
+                )}
+              </p>
+              <button
+                type="button"
+                className="btn btn--block"
+                onClick={() => {
+                  setSubMsg(null);
+                  setError(null);
+                  setSubPlansOpen(true);
+                }}
+                disabled={subBusy}
+                aria-busy={subBusy}
+                title={st.waSubscription?.active ? "Perpanjang langganan" : "Pilih paket langganan"}
+              >
+                {subBusy ? (
+                  <span className="spinner" aria-hidden="true" />
+                ) : st.waSubscription?.active ? (
+                  <IconRefresh size={15} />
+                ) : (
+                  <IconPackage size={15} />
+                )}
+                {st.waSubscription?.active ? "Perpanjang" : "Pilih Paket"}
+              </button>
               {subMsg && (
-                <p className="banner banner--ok" role="status" style={{ margin: "var(--space-xs) 0 0" }}>
+                <p className="banner banner--ok" role="status" style={{ margin: "var(--space-s) 0 0" }}>
                   {subMsg}
                 </p>
               )}
-              {error && (
-                <p className="banner banner--err" role="alert" style={{ margin: "var(--space-xs) 0 0" }}>
-                  {error}
-                </p>
-              )}
-            </section>
-          </>
-        )}
-
-        {/* ── Tab 2: WhatsApp META ── */}
-        {tab === "meta" && (
-          <>
-            <section className="card wa-card">
-              <div className="wa-card-head">
-                <span className={`wa-icon${metaConnected ? " is-ok" : ""}`}>
-                  <IconSend size={18} />
-                </span>
-                <div className="wa-card-title">
-                  <strong>META</strong>
-                  <span className="meta">
-                    {metaConnected ? st.account?.displayName || "Nomor terhubung" : "Belum terhubung"}
-                  </span>
-                </div>
-                {metaConnected && (
-                  <span className="wa-chip is-ok">
-                    <IconCheck size={13} /> Resmi
-                  </span>
-                )}
-              </div>
-              {st.waProvider === "meta" &&
-                (metaEmbedUrl ? (
-                  <iframe title="Meta WhatsApp Embedded Signup" src={metaEmbedUrl} className="embed" style={{ marginTop: "var(--space-xs)" }} />
-                ) : (
-                  <p className="meta" style={{ margin: "var(--space-xs) 0 0" }}>
-                    Formulir belum tersedia.
-                  </p>
-                ))}
-              {st.waProvider === "waserver" && (
-                <p className="meta" style={{ margin: "var(--space-xs) 0 0" }}>
-                  Provider aktif: <strong>Waserver Gateway</strong> — kelola koneksi di tab Gateway.
-                </p>
-              )}
             </section>
 
-            <section className="card wa-card">
-              <div className="wa-card-head">
-                <span className="wa-icon">
-                  <IconWallet size={18} />
-                </span>
-                <div className="wa-card-title">
-                  <strong>Saldo META</strong>
-                  <span className="meta">
-                    {st.balance} kredit · {st.rupiahPerCredit} Rp/kirim
-                  </span>
+            <section className="wa-block wa-block--side">
+              <div className="wa-block__head">
+                <div>
+                  <span className="wa-kicker">Saldo META</span>
+                  <h2>
+                    {st.balance.toLocaleString("id-ID")} <small>kredit</small>
+                  </h2>
                 </div>
               </div>
-              <div className="wa-topup-row">
-                <button
-                  className="btn btn--block"
-                  onClick={() => {
-                    setTopupMsg(null);
-                    setError(null);
-                    setMetaTopupsOpen(true);
-                  }}
-                  disabled={busy}
-                  aria-busy={busy}
-                  aria-label="Top up saldo META via Midtrans QRIS"
-                >
-                  {busy ? <span className="spinner" aria-hidden="true" /> : <IconWallet size={16} />}
-                  {busy ? "Memproses…" : "Top Up"}
-                </button>
-              </div>
+              <p className="wa-side-note">
+                Tarif <strong>{st.rupiahPerCredit} Rp</strong> per kirim.
+              </p>
+              <button
+                className="btn btn--2 btn--block"
+                onClick={() => {
+                  setTopupMsg(null);
+                  setError(null);
+                  setMetaTopupsOpen(true);
+                }}
+                disabled={busy}
+                aria-busy={busy}
+                aria-label="Top up saldo META via Midtrans QRIS"
+              >
+                {busy ? <span className="spinner" aria-hidden="true" /> : <IconWallet size={16} />}
+                {busy ? "Memproses…" : "Top Up"}
+              </button>
               {topupMsg && (
-                <p className="banner banner--ok" role="status" style={{ marginTop: "var(--space-xs)", marginBottom: 0 }}>
+                <p className="banner banner--ok" role="status" style={{ margin: "var(--space-s) 0 0" }}>
                   {topupMsg}
                 </p>
               )}
-              {error && (
-                <p className="banner banner--err" role="alert" style={{ marginTop: "var(--space-xs)", marginBottom: 0 }}>
-                  {error}
-                </p>
-              )}
             </section>
-          </>
-        )}
+          </aside>
+        </div>
 
-        <section className="card wa-card">
-          <div className="wa-card-head wa-card-head--split">
-            <span className="wa-icon">
-              <IconChat size={18} />
-            </span>
-            <div className="wa-card-title">
-              <strong>Toko &amp; Riwayat</strong>
-              <span className="meta">Percakapan pembeli &amp; AI penjaga toko</span>
-            </div>
-            <div className="wa-actions">
-              <a className="btn btn--2 btn--sm" href="/sandbox" title="Uji AI tanpa mengirim WhatsApp">
-                Sandbox
-              </a>
-              <a className="btn btn--2 btn--sm" href="/wa-chats" title="Buka riwayat chat WhatsApp">
-                <IconChat size={16} /> Riwayat Chat
-              </a>
-            </div>
-          </div>
-          {isAdmin ? (
-            <>
-              <div className="wa-options">
-                <label className="wa-option">
-                  <input type="checkbox" checked={waShop} onChange={(e) => setWaShop(e.target.checked)} />
-                  <IconChat size={16} />
-                  <span>AI penjaga toko</span>
-                </label>
-              </div>
-              <div className="wa-actions" style={{ marginTop: "var(--space-xs)" }}>
-                <button
-                  type="button"
-                  className="btn btn--sm"
-                  onClick={() => void saveAdmin()}
-                  disabled={admBusy}
-                  aria-busy={admBusy}
-                  title="Simpan status AI penjaga toko"
-                >
-                  {admBusy ? <span className="spinner" aria-hidden="true" /> : <IconCheck size={15} />}
-                  Simpan
-                </button>
-              </div>
-            </>
-          ) : (
-            <p className="meta" style={{ margin: 0 }}>
-              Aktifkan AI penjaga toko lewat akun admin perusahaan.
-            </p>
-          )}
-          {admMsg && (
-            <p className="banner banner--ok" role="status" style={{ margin: "var(--space-xs) 0 0" }}>
-              {admMsg}
-            </p>
-          )}
-        </section>
-
-        {isAdmin && (
-          <section className="card wa-card">
-            <div className="wa-card-head">
-              <span className="wa-icon">
-                <IconSettings size={18} />
-              </span>
-              <div className="wa-card-title">
-                <strong>Otomasi</strong>
-                <span className="meta">Pengingat &amp; notifikasi</span>
-              </div>
-              <button
-                type="button"
-                className="btn btn--sm"
-                onClick={() => void saveAdmin()}
-                disabled={admBusy}
-                aria-busy={admBusy}
-                title="Simpan setelan"
-              >
-                {admBusy ? <span className="spinner" aria-hidden="true" /> : <IconCheck size={15} />}
-                Simpan
-              </button>
-            </div>
-            <div className="wa-options">
-              <label className="wa-option">
-                <input type="checkbox" checked={waAuto} onChange={(e) => setWaAuto(e.target.checked)} />
-                <IconClock size={16} />
-                <span>Jatuh tempo</span>
-              </label>
-              <label className="wa-option">
-                <input type="checkbox" checked={waDaily} onChange={(e) => setWaDaily(e.target.checked)} />
-                <IconActivity size={16} />
-                <span>Laporan harian</span>
-              </label>
-            </div>
-            <label className="field" style={{ marginTop: "var(--space-xs)" }}>
-              <span>
-                <IconPhone size={14} /> Nomor pemilik
-              </span>
-              <input
-                className="input num"
-                type="tel"
-                inputMode="tel"
-                autoComplete="tel"
-                value={waPhone}
-                onChange={(e) => setWaPhone(e.target.value)}
-                placeholder="628123456789"
-              />
-            </label>
-            <details className="wa-details">
-              <summary>
-                <IconBell size={16} />
-                Notifikasi Accurate
-                <span className="wa-count">{waWh?.events.length ?? 0}</span>
-              </summary>
-              <div className="wa-details-body">
-                <div className="stack" style={{ gap: 0 }}>
-                  {(waWh?.options ?? []).map((o) => (
-                    <label className="check check--sm" key={o.key}>
-                      <input
-                        type="checkbox"
-                        checked={waWh?.events.includes(o.key) ?? false}
-                        onChange={(e) =>
-                          setWaWh((s) =>
-                            s
-                              ? { ...s, events: e.target.checked ? [...s.events, o.key] : s.events.filter((x) => x !== o.key) }
-                              : s
-                          )
-                        }
-                      />
-                      <span>{o.label}</span>
-                    </label>
-                  ))}
-                </div>
-                <label className="field" style={{ maxWidth: 200 }}>
-                  Jeda (menit)
-                  <input
-                    className="input num"
-                    type="number"
-                    inputMode="numeric"
-                    min={1}
-                    max={1440}
-                    value={waWh?.rateMin ?? 10}
-                    onChange={(e) => setWaWh((s) => (s ? { ...s, rateMin: Number(e.target.value) } : s))}
-                  />
-                </label>
-              </div>
-            </details>
-            {admMsg && (
-              <p className="banner banner--ok" role="status" style={{ margin: "var(--space-xs) 0 0" }}>
-                {admMsg}
-              </p>
-            )}
-          </section>
-        )}
-
-        <details className="card wa-card wa-details">
+        <details className="wa-history">
           <summary>
             <IconChat size={16} />
-            Riwayat pesan
+            <span className="wa-history__title">
+              <span className="wa-kicker">Riwayat</span>
+              <strong>Pesan terakhir</strong>
+            </span>
             <span className="wa-count">{st.recent.length}</span>
           </summary>
-          <div className="wa-details-body">
-          {st.recent.length === 0 ? (
-            <p className="empty" style={{ padding: "var(--space-m) 0" }}>
-              Belum ada pesan terkirim.
-            </p>
-          ) : (
-            <ul className="file-list msg-list">
-              {st.recent.map((m, i) => {
-                const open = openMsg === m.id;
-                const isIn = m.direction === "in";
-                const label = isIn
-                  ? "Masuk"
-                  : m.status === "sent"
-                    ? "Terkirim"
-                    : m.status === "queued"
-                      ? "Antre"
-                      : m.status === "pending"
-                        ? "Tertunda"
-                        : "Gagal";
-                const tone = isIn || m.status === "sent" ? "sent" : m.status === "queued" || m.status === "pending" ? "pending" : "failed";
-                const errText =
-                  m.error === "belum_connect"
-                    ? "Nomor belum terhubung"
-                    : m.error.startsWith("waserver_")
-                      ? "Gateway waserver menolak"
-                      : m.error.includes("rate")
-                        ? "Batas kirim tercapai"
-                        : m.error
-                          ? "Gagal dikirim"
-                          : "";
-                return (
-                  <li key={m.id} className="file-row msg-row">
-                    <button
-                      type="button"
-                      className="msg-row__head"
-                      aria-expanded={open}
-                      onClick={() => setOpenMsg(open ? null : m.id)}
-                    >
-                      <span className="msg-row__no num">{i + 1}</span>
-                      <span className="msg-row__time num">{fmtStamp(m.createdAt)}</span>
-                      <span className="msg-row__to num">{m.to}</span>
-                      <span className={`msg-row__status is-${tone}`}>
-                        {label}
-                      </span>
-                      <span className="msg-row__snippet muted">{m.body.slice(0, 60)}</span>
-                    </button>
-                    <div className="msg-row__detail" hidden={!open}>
-                      {m.body}
-                      {errText && <p className="msg-row__err">{errText}</p>}
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
+          <div className="wa-history__body">
+            {st.recent.length === 0 ? (
+              <p className="empty" style={{ padding: "var(--space-m) 0" }}>
+                Belum ada pesan terkirim.
+              </p>
+            ) : (
+              <ul className="file-list msg-list">
+                {st.recent.map((m, i) => {
+                  const open = openMsg === m.id;
+                  const isIn = m.direction === "in";
+                  const label = isIn
+                    ? "Masuk"
+                    : m.status === "sent"
+                      ? "Terkirim"
+                      : m.status === "queued"
+                        ? "Antre"
+                        : m.status === "pending"
+                          ? "Tertunda"
+                          : "Gagal";
+                  const tone = isIn || m.status === "sent" ? "sent" : m.status === "queued" || m.status === "pending" ? "pending" : "failed";
+                  const errText =
+                    m.error === "belum_connect"
+                      ? "Nomor belum terhubung"
+                      : m.error.startsWith("waserver_")
+                        ? "Gateway waserver menolak"
+                        : m.error.includes("rate")
+                          ? "Batas kirim tercapai"
+                          : m.error
+                            ? "Gagal dikirim"
+                            : "";
+                  return (
+                    <li key={m.id} className="file-row msg-row">
+                      <button
+                        type="button"
+                        className="msg-row__head"
+                        aria-expanded={open}
+                        onClick={() => setOpenMsg(open ? null : m.id)}
+                      >
+                        <span className="msg-row__no num">{i + 1}</span>
+                        <span className="msg-row__time num">{fmtStamp(m.createdAt)}</span>
+                        <span className="msg-row__to num">{m.to}</span>
+                        <span className={`msg-row__status is-${tone}`}>{label}</span>
+                        <span className="msg-row__snippet muted">{m.body.slice(0, 60)}</span>
+                      </button>
+                      <div className="msg-row__detail" hidden={!open}>
+                        {m.body}
+                        {errText && <p className="msg-row__err">{errText}</p>}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
           </div>
         </details>
       </main>

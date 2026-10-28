@@ -1,12 +1,28 @@
 import { prisma } from "../db.js";
-import { sendMail } from "../mail.js";
+import { sendMail, escapeHtml } from "../mail.js";
+import { renderMailLayout, formatRupiah, BRAND } from "../mail/templates.js";
+import { env } from "../env.js";
 import { sendWaText } from "../wa/service.js";
 import { sendPushToUser } from "../push.js";
 import { isAutoRenewEnabled } from "./recurring.js";
 import { wibDate } from "../wawasan/time.js";
 
 function rupiah(n: number): string {
-  return `Rp${Math.round(Number.isFinite(n) ? n : 0).toLocaleString("id-ID")}`;
+  return formatRupiah(n);
+}
+
+/** Kartu ringkasan label–nilai (HTML inline, nilai sudah di-escape). */
+function kvCard(rows: Array<[string, string]>): string {
+  const body = rows
+    .map(
+      ([k, v], i) =>
+        `<tr>
+          <td style="padding:10px 0;font-size:12.5px;color:${BRAND.muted};border-bottom:${i === rows.length - 1 ? "none" : `1px solid ${BRAND.border}`};width:40%">${escapeHtml(k)}</td>
+          <td style="padding:10px 0;font-size:13px;font-weight:600;color:${BRAND.ink};text-align:right;border-bottom:${i === rows.length - 1 ? "none" : `1px solid ${BRAND.border}`}">${escapeHtml(v)}</td>
+        </tr>`
+    )
+    .join("");
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid ${BRAND.border};border-radius:12px;background:${BRAND.card};padding:2px 18px;margin:6px 0 0">${body}</table>`;
 }
 
 async function ownerForTenant(tenantId: string) {
@@ -48,8 +64,9 @@ export async function runBillingReminders(): Promise<number> {
     let body = expired
       ? `Langganan ${sub.plan} untuk ${tenant?.name ?? "perusahaan"} sudah berakhir. Perpanjang agar fitur AI tetap aktif.`
       : `Langganan ${sub.plan} untuk ${tenant?.name ?? "perusahaan"} berakhir dalam ${Math.max(0, days)} hari (${sub.expiresAt.toLocaleDateString("id-ID")}).`;
-    if (await isAutoRenewEnabled(sub.tenantId)) {
-      body += ` Perpanjangan otomatis aktif — buka /subscription untuk menyelesaikan pembayaran.`;
+    const autoRenew = await isAutoRenewEnabled(sub.tenantId);
+    if (autoRenew) {
+      body += ` Perpanjangan otomatis aktif — buka ${env.APP_ORIGIN}/subscription untuk menyelesaikan pembayaran.`;
     }
     let ok = false;
     if (owner.phone) {
@@ -57,7 +74,23 @@ export async function runBillingReminders(): Promise<number> {
       ok = ok || r.ok;
     }
     if (owner.email) {
-      const m = await sendMail({ to: owner.email, subject: "Pengingat langganan AI Asisten", text: body });
+      const html = renderMailLayout({
+        heading: expired ? "Langganan telah berakhir" : "Langganan segera berakhir",
+        preheader: `Langganan ${sub.plan} untuk ${tenant?.name ?? "perusahaan"}`,
+        intro: expired
+          ? `Masa aktif langganan Anda sudah berakhir. Perpanjang sekarang agar fitur AI tetap dapat digunakan.`
+          : `Langganan Anda akan berakhir dalam ${Math.max(0, days)} hari. Perpanjang agar layanan tetap aktif tanpa terputus.`,
+        bodyHtml: kvCard([
+          ["Langganan", sub.plan],
+          ["Perusahaan", tenant?.name ?? "-"],
+          ["Berakhir", sub.expiresAt.toLocaleDateString("id-ID")],
+        ]),
+        cta: { label: "Perpanjang langganan", url: `${env.APP_ORIGIN}/subscription` },
+        note: autoRenew
+          ? "Perpanjangan otomatis aktif — selesaikan pembayaran saat diminta agar masa aktif diperpanjang."
+          : "Buka halaman Langganan untuk memilih paket dan menyelesaikan pembayaran.",
+      });
+      const m = await sendMail({ to: owner.email, subject: "Pengingat langganan AI Asisten", text: body, html });
       ok = ok || m;
     }
     const pushed = await sendPushToUser(owner.id, {
@@ -89,8 +122,19 @@ export async function maybeAlertLowBalance(userId: string, tenantId: string, bal
   const text =
     `Halo ${user.name}, saldo token AI Anda tinggal ${rupiah(balance)} ` +
     `(batas minimum ${rupiah(minReserve)}). Top up agar chat/voice tidak terhenti.`;
+  const html = renderMailLayout({
+    heading: "Saldo token AI menipis",
+    preheader: `Sisa saldo ${rupiah(balance)}`,
+    intro: `Saldo token AI Anda sudah di bawah batas minimum. Isi ulang agar percakapan dan fitur suara tidak terputus.`,
+    bodyHtml: kvCard([
+      ["Sisa saldo", rupiah(balance)],
+      ["Batas minimum", rupiah(minReserve)],
+    ]),
+    cta: { label: "Isi ulang saldo", url: `${env.APP_ORIGIN}/saldo` },
+    note: "Pengingat ini dikirim maksimal satu kali per hari.",
+  });
   if (user.phone) await sendWaText(tenantId, user.phone, text).catch(() => null);
-  if (user.email) await sendMail({ to: user.email, subject: "Saldo token AI menipis", text }).catch(() => null);
+  if (user.email) await sendMail({ to: user.email, subject: "Saldo token AI menipis", text, html }).catch(() => null);
   await sendPushToUser(userId, {
     title: "Saldo token AI menipis",
     body: text,

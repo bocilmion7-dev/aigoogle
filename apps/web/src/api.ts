@@ -896,7 +896,14 @@ export interface InvoiceRow {
   paymentMethod: string;
   createdAt: string;
 }
-export const getInvoices = () => adminFetch<InvoiceRow[]>("/api/billing/invoices");
+export interface InvoicePage {
+  items: InvoiceRow[];
+  hasMore: boolean;
+  page: number;
+  pageSize: number;
+}
+export const getInvoices = (take = 10, skip = 0) =>
+  adminFetch<InvoicePage>(`/api/billing/invoices?take=${take}&skip=${skip}`);
 export const getAutoRenew = () => adminFetch<{ enabled: boolean }>("/api/billing/auto-renew");
 export const setAutoRenew = (enabled: boolean) =>
   adminFetch<{ ok: boolean; enabled: boolean }>("/api/billing/auto-renew", {

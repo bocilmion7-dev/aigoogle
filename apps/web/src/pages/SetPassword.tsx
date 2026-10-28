@@ -69,31 +69,14 @@ export function SetPassword() {
   }
 
   return (
-    <div className="auth2">
+    <div className="auth2 auth2--centered">
       <div className="auth2__grid">
-        <aside className="auth2__aside">
-          <a className="auth2__brand" href="/">
-            <span className="auth2__mark" aria-hidden="true">AI</span>
-            <span>AI Asisten</span>
-          </a>
-          <h2 className="auth2__headline">Satu langkah lagi.</h2>
-          <p className="auth2__sub">
-            Buat password agar Anda bisa masuk tanpa membuka Accurate setiap kali. Akun tetap
-            terhubung ke data perusahaan Anda.
-          </p>
-          <ul className="auth2__points">
-            <li>Minimal 12 karakter</li>
-            <li>Huruf besar, huruf kecil, angka, dan simbol</li>
-            <li>Bisa diubah nanti di Pengaturan</li>
-          </ul>
-          <span className="auth2__foot">© {new Date().getFullYear()} AI Asisten</span>
-        </aside>
-
         <main className="auth2__main">
           <div className="auth2__card">
+            <img src="/logo-ai-asisten.webp" alt="AI Asisten" className="auth2__logo" width={132} height={44} />
             <h1>Buat Password</h1>
             <p className="auth2__hint">
-              Selamat datang, <strong>{me.name}</strong>.
+              Selamat datang, <strong>{me.name}</strong>. Buat password agar bisa masuk tanpa membuka Accurate.
             </p>
             <form onSubmit={(e) => void submit(e)} className="auth2__form">
               <label className="auth2__field">
@@ -129,8 +112,8 @@ export function SetPassword() {
               <button className="btn btn--primary auth2__submit" type="submit" disabled={busy} aria-busy={busy}>
                 {busy ? "Menyimpan…" : "Simpan & masuk"}
               </button>
+              <a className="auth2__back" href="/">← Kembali ke beranda</a>
             </form>
-            <a className="auth2__back" href="/">← Kembali ke beranda</a>
           </div>
         </main>
       </div>

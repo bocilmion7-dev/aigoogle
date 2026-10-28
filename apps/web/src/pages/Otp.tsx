@@ -181,7 +181,7 @@ export function Otp() {
 
         <main className="auth2__main otp-main">
           <div className={`auth2__card otp-card${shake ? " otp-card--shake" : ""}${success ? " otp-card--success" : ""}`}>
-            <img src="/logo.webp" alt="AI Asisten" className="otp-logo" width={126} height={42} />
+            <img src="/logo-ai-asisten.webp" alt="AI Asisten" className="otp-logo" width={126} height={42} />
             <div className="otp-head">
               <span className="otp-badge" aria-hidden="true">
                 {success ? "✓" : "✉"}

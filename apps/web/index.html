@@ -2,6 +2,68 @@
 <html lang="id">
   <head>
     <meta charset="UTF-8" />
+    <script>
+      try {
+        if (["/", "/dokumentasi", "/insight"].includes(location.pathname)) {
+          document.documentElement.classList.add("font-robot");
+        }
+      } catch {}
+    </script>
+    <script>
+      (function () {
+        var KEY = "aigoogle:asset-recover";
+        var reloading = false;
+        function reload() {
+          if (reloading) return;
+          reloading = true;
+          var u = new URL(location.href);
+          u.searchParams.set("_r", Date.now().toString(36));
+          location.replace(u.toString());
+        }
+        window.addEventListener(
+          "error",
+          function (e) {
+            var t = e.target;
+            if (!t || (t.tagName !== "SCRIPT" && t.tagName !== "LINK")) return;
+            if (t.tagName === "LINK") {
+              var rel = (t.getAttribute("rel") || "").toLowerCase();
+              if (rel !== "stylesheet" && rel !== "modulepreload") return;
+            }
+            try {
+              var last = Number(sessionStorage.getItem(KEY) || 0);
+              if (Date.now() - last < 60000) return;
+              sessionStorage.setItem(KEY, String(Date.now()));
+            } catch (_) {}
+            var timer = setTimeout(reload, 1200);
+            try {
+              if ("serviceWorker" in navigator) {
+                navigator.serviceWorker
+                  .getRegistrations()
+                  .then(function (rs) {
+                    return Promise.all(
+                      rs.map(function (r) {
+                        return r.unregister();
+                      })
+                    );
+                  })
+                  .then(function () {
+                    clearTimeout(timer);
+                    reload();
+                  })
+                  .catch(function () {
+                    clearTimeout(timer);
+                    reload();
+                  });
+                return;
+              }
+            } catch (_) {}
+            clearTimeout(timer);
+            reload();
+          },
+          true
+        );
+      })();
+    </script>
     <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <meta name="theme-color" content="#dc2626" />
@@ -11,12 +73,10 @@
     <link rel="apple-touch-icon" href="/icon-192.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="description" content="AI Asisten — AI Accurate Assistant, Voice Assistant & Drive Organizer. Chat akuntansi, rapikan Drive, WhatsApp otomatis." />
-    <!-- Font SELF-HOSTED (apps/web/public/fonts, subset latin). Dulu memakai
-         fonts.googleapis.com: 3 permintaan lintas-origin (~190 KB) yang menambah
-         ~2 RTT dan memblokir render di jaringan mobile. Preload hanya varian yang
-         dipakai di atas layar (Plex + Fraunces normal); CSS-nya di src/fonts.css. -->
-    <link rel="preload" href="/fonts/plex-var.woff2" as="font" type="font/woff2" crossorigin />
-    <link rel="preload" href="/fonts/fraunces-600.woff2" as="font" type="font/woff2" crossorigin />
+    <!-- Font SELF-HOSTED (apps/web/public/fonts, subset latin). Preload hanya
+         SATU varian yang dipakai judul di atas layar; sisanya memakai
+         font-display: swap dan diunduh saat dipakai. CSS: src/fonts.css. -->
+    <link rel="preload" href="/fonts/spacemono-700.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="canonical" href="https://ai-asisten.my.id/" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="AI Asisten" />

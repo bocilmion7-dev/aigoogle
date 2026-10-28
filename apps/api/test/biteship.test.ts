@@ -24,8 +24,10 @@ beforeAll(async () => {
         return send(200, {
           success: true,
           areas: [
-            { id: "AREA-1", name: "Kuningan, Jakarta Selatan. 12950", postal_code: 12950 },
-            { id: "AREA-2", name: "Tanpa kode pos", postal_code: null },
+            // Bentuk respons Biteship asli: kode pos ada di akhir `name`,
+            // bukan field postal_code.
+            { id: "AREA-1", name: "Kuningan, Jakarta Selatan. 12950" },
+            { id: "AREA-2", name: "Tanpa kode pos" },
           ],
         });
       }

@@ -22,25 +22,18 @@ export function ForgotPassword() {
   }
 
   return (
-    <div className="auth2">
+    <div className="auth2 auth2--centered">
       <div className="auth2__grid">
-        <aside className="auth2__aside">
-          <a className="auth2__brand" href="/">
-            <span className="auth2__mark" aria-hidden="true">AI</span>
-            <span>AI Asisten</span>
-          </a>
-          <h2 className="auth2__headline">Pulihkan akses akun.</h2>
-          <p className="auth2__sub">
-            Masukkan email yang terdaftar. Kami kirim tautan aman untuk membuat password baru.
-          </p>
-          <span className="auth2__foot">© {new Date().getFullYear()} AI Asisten</span>
-        </aside>
         <main className="auth2__main">
           <div className="auth2__card">
+            <img src="/logo-ai-asisten.webp" alt="AI Asisten" className="auth2__logo" width={132} height={44} />
             <h1>Lupa Password</h1>
+            <p className="auth2__hint">
+              Masukkan email terdaftar. Kami kirim tautan aman untuk membuat password baru.
+            </p>
             {sent ? (
               <>
-                <p className="auth2__hint">
+                <p className="banner banner--ok" role="status">
                   Jika email <strong>{email}</strong> terdaftar, tautan reset sudah dikirim. Periksa inbox
                   dan folder spam.
                 </p>
@@ -65,9 +58,9 @@ export function ForgotPassword() {
                 <button className="btn btn--primary auth2__submit" type="submit" disabled={busy} aria-busy={busy}>
                   {busy ? "Mengirim…" : "Kirim tautan reset"}
                 </button>
+                <a className="auth2__back" href="/login">← Kembali ke login</a>
               </form>
             )}
-            <a className="auth2__back" href="/login">← Kembali ke login</a>
           </div>
         </main>
       </div>

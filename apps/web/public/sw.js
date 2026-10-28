@@ -1,35 +1,54 @@
 /* Service worker: cache shell + aset ber-hash; API selalu jaringan.
  *
- * Aturan penting (v4):
+ * Aturan penting (v8):
  *  - HANYA simpan respons ok (status 200). Dulu respons 404 ikut di-cache, sehingga
  *    sekali aset gagal (jendela rsync deploy / jaringan putus) browser terus
  *    menyajikan 404 itu — hard reload pun tidak menolong. Itu penyebab utama
  *    halaman "macet" setelah deploy.
  *  - Aset & navigasi: NETWORK-FIRST. Server selalu jadi kebenaran; cache hanya
- *    fallback saat offline. Hash aset berubah tiap deploy, jadi cache lama tak
- *    boleh mengalahkan jaringan.
- *  - Semua fetch diberi BATAS WAKTU (5 dtk navigasi / 8 dtk aset). Koneksi
- *    mobile yang menggantung (bukan putus) dulu membuat refresh menunggu tanpa
- *    akhir — sekarang langsung jatuh ke cache sehingga halaman tetap terbuka.
+ *    fallback saat offline.
+ *  - Saat install, index.html dibaca dan chunk entry (JS/CSS) ikut di-cache,
+ *    supaya reload saat jaringan lambat tidak menunggu chunk utama.
+ *  - Untuk aset ber-hash yang SUDAH pernah di-cache, 404 dari server dijawab
+ *    dengan salinan cache (nama hash = isi sama). Ini menyelamatkan tab lama
+ *    yang chunk-nya sudah tidak ada di server.
+ *  - Semua fetch diberi BATAS WAKTU (5 dtk navigasi / 8 dtk aset).
  */
-const CACHE = "aigoogle-shell-v5";
+const CACHE = "aigoogle-shell-v8";
 const SHELL = ["/index.html", "/favicon.svg", "/manifest.webmanifest"];
+const ENTRY_ASSET_RE = /(?:src|href)="(\/assets\/[^"]+\.(?:js|css))"/g;
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches
-      .open(CACHE)
-      .then(async (c) => {
-        // simpan per-item: satu item gagal jangan menggagalkan seluruh instalasi
-        await Promise.all(
-          SHELL.map((url) =>
-            fetch(url, { cache: "reload" })
-              .then((res) => (res.ok ? c.put(url, res) : null))
-              .catch(() => null)
-          )
-        );
-      })
-      .then(() => self.skipWaiting())
+    (async () => {
+      const c = await caches.open(CACHE);
+      // simpan per-item: satu item gagal jangan menggagalkan seluruh instalasi
+      await Promise.all(
+        SHELL.map(async (url) => {
+          try {
+            const res = await fetch(url, { cache: "reload" });
+            if (!res.ok) return;
+            await c.put(url, res.clone());
+            if (url !== "/index.html") return;
+            const html = await res.text();
+            const assets = [...new Set([...html.matchAll(ENTRY_ASSET_RE)].map((m) => m[1]))];
+            await Promise.all(
+              assets.map(async (asset) => {
+                try {
+                  const ar = await fetch(asset, { cache: "reload" });
+                  if (ar.ok) await c.put(asset, ar);
+                } catch {
+                  /* aset opsional */
+                }
+              })
+            );
+          } catch {
+            /* biarkan instalasi lanjut; navigasi tetap network-first */
+          }
+        })
+      );
+      await self.skipWaiting();
+    })()
   );
 });
 
@@ -43,10 +62,13 @@ self.addEventListener("activate", (event) => {
 });
 
 /** simpan hanya respons sehat */
-function putIfOk(cache, request, res) {
+async function putIfOk(cache, request, res) {
   if (res && res.ok) {
-    const copy = res.clone();
-    cache.put(request, copy).catch(() => null);
+    try {
+      await cache.put(request, res.clone());
+    } catch {
+      /* kuota penuh / clone gagal */
+    }
   }
   return res;
 }
@@ -88,7 +110,7 @@ self.addEventListener("fetch", (event) => {
         try {
           const res = await withTimeout(fetch(req), NAV_TIMEOUT_MS);
           // jangan menimpa shell dengan halaman error (502/504 saat API restart)
-          if (res.ok) putIfOk(await caches.open(CACHE), "/index.html", res);
+          if (res.ok) await putIfOk(await caches.open(CACHE), "/index.html", res);
           return res;
         } catch {
           const cached = await caches.match("/index.html");
@@ -113,8 +135,15 @@ self.addEventListener("fetch", (event) => {
         try {
           const res = await withTimeout(fetch(req), ASSET_TIMEOUT_MS);
           const cache = await caches.open(CACHE);
-          if (res.ok) putIfOk(cache, req, res);
-          else cache.delete(req).catch(() => null); // buang entri basi/rusak
+          if (res.ok) {
+            await putIfOk(cache, req, res);
+            return res;
+          }
+          // Aset ber-hash bersifat immutable: salinan cache untuk URL yang sama
+          // tetap valid walau server sudah menghapus file lama (404).
+          const hit = await caches.match(req);
+          if (hit) return hit;
+          cache.delete(req).catch(() => null); // buang entri basi/rusak
           return res;
         } catch {
           // jangan pernah menyajikan HTML 404/502 sebagai JS/CSS

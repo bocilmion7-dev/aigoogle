@@ -209,7 +209,7 @@ export function Dokumentasi() {
     <div className="landing ld2">
       <header className="ld2-nav">
         <a className="ld2-brand" href="/" aria-label="AI Asisten — beranda">
-          <img src="/logo.webp" alt="AI Asisten" className="ld2-logo" width={114} height={38} />
+          <img src="/logo-ai-asisten.webp" alt="AI Asisten" className="ld2-logo" width={114} height={38} />
         </a>
         <nav className="ld2-links" aria-label="Navigasi utama">
           <a href="/">Beranda</a>

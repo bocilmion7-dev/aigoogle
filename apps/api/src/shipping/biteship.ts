@@ -143,9 +143,23 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
   return j as T;
 }
 
+/**
+ * Biteship mengirim kode pos di akhir `name` (mis. "Sumur Bandung, Bandung,
+ * Jawa Barat. 40111"), bukan sebagai field `postal_code`. Ambil fallback dari
+ * nama agar hasil pencarian tidak terbuang semua.
+ */
+function postalFromName(name: string): string {
+  return name.match(/(\d{5})\s*$/)?.[1] ?? "";
+}
+
 function areaOf(a: Record<string, unknown> | undefined): BiteshipArea | null {
   if (!a) return null;
-  return { id: String(a.id ?? ""), name: String(a.name ?? ""), postalCode: String(a.postal_code ?? "") };
+  const name = String(a.name ?? "");
+  return {
+    id: String(a.id ?? ""),
+    name,
+    postalCode: String(a.postal_code ?? "") || postalFromName(name),
+  };
 }
 
 /** Cari area (kecamatan/kode pos) — untuk memilih kode pos asal & tujuan. */
@@ -157,7 +171,7 @@ export async function searchAreas(input: string, limit = 10): Promise<BiteshipAr
   );
   return (j.areas ?? [])
     .map((a) => areaOf(a))
-    .filter((a): a is BiteshipArea => !!a && !!a.id && !!a.postalCode)
+    .filter((a): a is BiteshipArea => !!a && !!a.id && /^\d{5}$/.test(a.postalCode))
     .slice(0, limit);
 }
 

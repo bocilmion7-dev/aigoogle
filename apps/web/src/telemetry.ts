@@ -1,10 +1,8 @@
-import { onCLS, onINP, onLCP, onTTFB } from "web-vitals";
+export type Vital = { name: string; value: number };
 
-type WebVital = { name: string; value: number };
-
-function post(event: string, props?: Record<string, unknown>, webVital?: WebVital): void {
+function post(event: string, props?: Record<string, unknown>): void {
   try {
-    const body = JSON.stringify({ event, props, webVital });
+    const body = JSON.stringify({ event, props });
     if (typeof navigator.sendBeacon === "function") {
       navigator.sendBeacon("/api/telemetry", new Blob([body], { type: "application/json" }));
       return;
@@ -24,11 +22,8 @@ export function track(event: string, props?: Record<string, unknown>): void {
   post(event, props);
 }
 
-/** Core Web Vitals → /api/telemetry (in-process metrics, tanpa PII). */
-export function initTelemetry(): void {
-  const send = (name: string) => (m: { value: number }) => post("web_vital", undefined, { name, value: m.value });
-  onCLS(send("CLS"));
-  onINP(send("INP"));
-  onLCP(send("LCP"));
-  onTTFB(send("TTFB"));
+/** Kirim semua Core Web Vitals dalam SATU request (dipanggil dari vitals.ts). */
+export function trackVitals(items: Vital[]): void {
+  if (!items.length) return;
+  post("web_vitals", { items });
 }

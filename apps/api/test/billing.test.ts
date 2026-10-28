@@ -111,3 +111,50 @@ describe("webhook update (mode aktif disuntik via env)", () => {
     process.env.MIDTRANS_SERVER_KEY = "";
   });
 });
+
+describe("riwayat pembayaran", () => {
+  it("membagi 10 baris per halaman + hasMore", async () => {
+    // Tenant terpisah agar hitungan tidak tercampur payment dari test lain.
+    const t = await prisma.tenant.create({
+      data: { provider: "accurate", providerDbId: `page-${randomBytes(4).toString("hex")}`, name: "PT Page", alias: "PAGE" },
+    });
+    const role = await prisma.role.create({ data: { tenantId: t.id, key: "admin", name: "Admin" } });
+    const user = await prisma.user.create({
+      data: { tenantId: t.id, providerUserId: `pu-${randomBytes(4).toString("hex")}`, email: "page@demo.local", name: "Page", roleId: role.id },
+    });
+    const sid = randomBytes(32).toString("hex");
+    await prisma.session.create({ data: { id: sid, userId: user.id, expiresAt: new Date(Date.now() + 86400_000) } });
+    const c = `sid=${sid}`;
+    const now = Date.now();
+    await prisma.payment.createMany({
+      data: Array.from({ length: 12 }, (_, i) => ({
+        tenantId: t.id,
+        orderId: `page-${i}`,
+        amount: 10000 + i,
+        status: "settlement",
+        paymentMethod: "qris",
+        createdAt: new Date(now - i * 1000),
+      })),
+    });
+    try {
+      const p1 = await request(api).get("/api/billing/invoices?take=10&skip=0").set("Cookie", c);
+      expect(p1.status).toBe(200);
+      expect(p1.body.page).toBe(1);
+      expect(p1.body.pageSize).toBe(10);
+      expect(p1.body.items).toHaveLength(10);
+      expect(p1.body.hasMore).toBe(true);
+
+      const p2 = await request(api).get("/api/billing/invoices?take=10&skip=10").set("Cookie", c);
+      expect(p2.status).toBe(200);
+      expect(p2.body.page).toBe(2);
+      expect(p2.body.items).toHaveLength(2);
+      expect(p2.body.hasMore).toBe(false);
+    } finally {
+      await prisma.payment.deleteMany({ where: { tenantId: t.id } });
+      await prisma.session.deleteMany({ where: { userId: user.id } });
+      await prisma.user.delete({ where: { id: user.id } });
+      await prisma.role.delete({ where: { id: role.id } });
+      await prisma.tenant.delete({ where: { id: t.id } });
+    }
+  });
+});

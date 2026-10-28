@@ -718,7 +718,7 @@ export function Admin() {
                       <td className="muted">{r.userEmail}</td>
                       <td><code>{r.action}</code></td>
                       <td title={r.detail}>
-                        <code style={{ fontSize: "0.72rem" }}>{r.detail.length > 120 ? `${r.detail.slice(0, 117)}…` : r.detail}</code>
+                        <code style={{ fontSize: "var(--text-2xs)" }}>{r.detail.length > 120 ? `${r.detail.slice(0, 117)}…` : r.detail}</code>
                       </td>
                     </tr>
                   ))}

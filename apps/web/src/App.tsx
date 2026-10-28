@@ -126,6 +126,11 @@ export function App() {
   }, []);
 
   useEffect(() => {
+    const robot = path === "/" || path === "/dokumentasi" || path === "/insight";
+    document.documentElement.classList.toggle("font-robot", robot);
+  }, [path]);
+
+  useEffect(() => {
     track("page_view", { path, public: publicPage });
   }, [publicPage, path, route]);
 

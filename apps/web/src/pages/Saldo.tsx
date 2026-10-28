@@ -170,36 +170,55 @@ export function Saldo() {
           </p>
         )}
 
-        <section className="card saldo-card">
-          <div>
+        <section className="saldo-card" aria-label="Kartu saldo token AI">
+          <div className="saldo-card__head">
+            <span className="saldo-card__chip" aria-hidden="true" />
+            <span className="saldo-card__brand">
+              <IconWallet size={15} /> AI Asisten
+            </span>
+          </div>
+          <div className="saldo-card__main">
             <p className="saldo-card__label">Saldo token tersedia</p>
-            <p className="saldo-card__value">{wallet ? tok(wallet.balanceTokens) : "…"}</p>
+            <p className="saldo-card__value">
+              <span>{wallet ? Math.round(wallet.balanceTokens).toLocaleString("id-ID") : "…"}</span>
+              <small>token</small>
+            </p>
             {wallet && wallet.balanceTokens < wallet.minReserveTokens && (
               <p className="saldo-card__warn" role="alert">
                 Saldo di bawah minimum ({tok(wallet.minReserveTokens)}) — AI diblokir sampai top up.
               </p>
             )}
-            {wallet && (
-              <p style={{ margin: "4px 0 0", color: "var(--ink-2)", fontSize: "var(--step--1)" }}>
-                1.000 token = {rp(wallet.rupiahPer1kTokens)}
-              </p>
-            )}
           </div>
-          <dl className="saldo-card__stats">
+          <div className="saldo-card__foot">
             <div>
-              <dt>Token terpakai 30 hari</dt>
-              <dd>{wallet ? wallet.spentTokens30d.toLocaleString("id-ID") : "…"}</dd>
+              <span>Pemilik</span>
+              <strong>{me?.name ?? "—"}</strong>
             </div>
             <div>
-              <dt>Token diproses model</dt>
-              <dd>{wallet ? wallet.tokens30d.toLocaleString("id-ID") : "…"}</dd>
+              <span>Tarif / 1k token</span>
+              <strong>{wallet ? rp(wallet.rupiahPer1kTokens) : "…"}</strong>
             </div>
             <div>
-              <dt>Panggilan</dt>
-              <dd>{wallet ? wallet.calls30d.toLocaleString("id-ID") : "…"}</dd>
+              <span>Berlaku</span>
+              <strong>Tidak kedaluwarsa</strong>
             </div>
-          </dl>
+          </div>
         </section>
+
+        <dl className="saldo-usage">
+          <div>
+            <dt>Token terpakai 30 hari</dt>
+            <dd>{wallet ? wallet.spentTokens30d.toLocaleString("id-ID") : "…"}</dd>
+          </div>
+          <div>
+            <dt>Token diproses model</dt>
+            <dd>{wallet ? wallet.tokens30d.toLocaleString("id-ID") : "…"}</dd>
+          </div>
+          <div>
+            <dt>Panggilan</dt>
+            <dd>{wallet ? wallet.calls30d.toLocaleString("id-ID") : "…"}</dd>
+          </div>
+        </dl>
 
         <section className="card">
           <h2>Top up saldo</h2>

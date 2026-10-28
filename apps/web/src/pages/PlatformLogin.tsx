@@ -31,29 +31,13 @@ export function PlatformLogin() {
   }
 
   return (
-    <div className="auth2">
+    <div className="auth2 auth2--centered">
       <div className="auth2__grid">
-        <aside className="auth2__aside">
-          <a className="auth2__brand" href="/">
-            <span className="auth2__mark" aria-hidden="true">AI</span>
-            <span>AI Asisten</span>
-          </a>
-          <h2 className="auth2__headline">Panel Admin Platform.</h2>
-          <p className="auth2__sub">
-            Khusus pengurus sistem. Akun perusahaan masuk lewat halaman login biasa.
-          </p>
-          <ul className="auth2__points">
-            <li>Kelola akun &amp; peran seluruh perusahaan</li>
-            <li>Atur provider dan model AI</li>
-            <li>Semua aksi tercatat di jejak audit</li>
-          </ul>
-          <span className="auth2__foot">© {new Date().getFullYear()} AI Asisten</span>
-        </aside>
-
         <main className="auth2__main">
           <div className="auth2__card">
+            <img src="/logo-ai-asisten.webp" alt="AI Asisten" className="auth2__logo" width={132} height={44} />
             <h1>Masuk — Admin</h1>
-            <p className="auth2__hint">Gunakan kredensial pengurus sistem.</p>
+            <p className="auth2__hint">Khusus pengurus sistem. Akun perusahaan masuk lewat login biasa.</p>
             <form onSubmit={(e) => void submit(e)} className="auth2__form">
               <label className="auth2__field">
                 <span>Email</span>
@@ -87,8 +71,8 @@ export function PlatformLogin() {
               <button className="btn btn--primary auth2__submit" type="submit" disabled={busy} aria-busy={busy}>
                 {busy ? "Memproses…" : "Masuk sebagai Admin Platform"}
               </button>
+              <a className="auth2__back" href="/login">← Masuk sebagai akun perusahaan</a>
             </form>
-            <a className="auth2__back" href="/login">← Masuk sebagai akun perusahaan</a>
           </div>
         </main>
       </div>

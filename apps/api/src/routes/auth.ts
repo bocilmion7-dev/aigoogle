@@ -10,6 +10,7 @@ import { asyncHandler } from "../asyncHandler.js";
 import { hashPassword, validatePasswordStrength, verifyPassword } from "../password.js";
 import { writeAudit } from "../audit.js";
 import { escapeHtml, sendMail } from "../mail.js";
+import { renderMailLayout } from "../mail/templates.js";
 import {
   clearImpersonationCookie,
   clearPlatformCookie,
@@ -63,15 +64,14 @@ async function issuePlatformSession(res: Response, platformUserId: string): Prom
 
 function verifyEmailHtml(name: string, link: string): string {
   const safe = escapeHtml(name || "Pengguna");
-  return (
-    `<div style="font-family:system-ui,-apple-system,sans-serif;max-width:520px;margin:0 auto;padding:24px;color:#17150f">` +
-    `<h2 style="margin:0 0 12px">Verifikasi email</h2>` +
-    `<p>Halo <strong>${safe}</strong>,</p>` +
-    `<p>Klik tombol di bawah untuk memverifikasi email akun AI Asisten Anda.</p>` +
-    `<p style="margin:24px 0"><a href="${link}" style="display:inline-block;background:#ea580c;color:#fff;padding:12px 18px;border-radius:10px;text-decoration:none;font-weight:600">Verifikasi email</a></p>` +
-    `<p style="font-size:13px;color:#6e6860">Tautan berlaku 24 jam. Abaikan email ini jika Anda tidak memintanya.</p>` +
-    `</div>`
-  );
+  return renderMailLayout({
+    heading: "Verifikasi email Anda",
+    preheader: "Klik tautan untuk memverifikasi email akun AI Asisten",
+    intro: `Halo ${safe}, klik tombol di bawah untuk memverifikasi email akun AI Asisten Anda.`,
+    bodyHtml: `<p style="margin:0;font-size:14px;line-height:1.6;color:#44403c">Verifikasi diperlukan agar notifikasi, invoice, dan keamanan akun dapat dikirim ke email Anda.</p>`,
+    cta: { label: "Verifikasi email", url: link },
+    note: "Tautan berlaku 24 jam. Abaikan email ini jika Anda tidak memintanya.",
+  });
 }
 
 async function sendVerificationEmail(user: { id: string; email: string; name: string }): Promise<void> {
@@ -285,21 +285,28 @@ authRouter.post(
         `Kami menerima permintaan reset password untuk akun ini.\n\n` +
         links.map((l, i) => (links.length > 1 ? `${i + 1}. ${l.tenant}\n${l.url}` : l.url)).join("\n\n") +
         `\n\nTautan berlaku 30 menit. Abaikan email ini jika Anda tidak memintanya.`;
-      const html =
-        `<div style="font-family:system-ui,-apple-system,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#17150f">` +
-        `<h2 style="margin:0 0 12px">Reset password</h2>` +
-        `<p>Kami menerima permintaan reset password untuk akun ini.</p>` +
-        links
-          .map(
-            (l, i) =>
-              `<div style="border:1px solid #e7e0d5;border-radius:12px;padding:14px;margin:12px 0">` +
-              `<p style="margin:0 0 8px"><strong>${links.length > 1 ? `Akun ${i + 1} — ` : ""}${escapeHtml(l.tenant)}</strong></p>` +
-              `<a href="${l.url}" style="display:inline-block;background:#ea580c;color:#fff;padding:10px 16px;border-radius:9px;text-decoration:none;font-weight:600">Reset password</a>` +
-              `</div>`
-          )
-          .join("") +
-        `<p style="font-size:13px;color:#6e6860">Tautan berlaku 30 menit. Abaikan email ini jika Anda tidak memintanya.</p>` +
-        `</div>`;
+      const cards = links
+        .map(
+          (l, i) =>
+            `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid #e7e5e4;border-radius:12px;background:#fafaf9;margin:0 0 12px">` +
+            `<tr><td style="padding:16px 18px">` +
+            (links.length > 1
+              ? `<p style="margin:0 0 4px;font-size:12px;font-weight:700;color:#78716c">AKUN ${i + 1}</p>`
+              : "") +
+            `<p style="margin:0 0 12px;font-size:14px;font-weight:700;color:#1c1917">${escapeHtml(l.tenant)}</p>` +
+            `<table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" bgcolor="#ea580c" style="border-radius:8px">` +
+            `<a href="${l.url}" style="display:inline-block;padding:11px 18px;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:13.5px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:8px">Reset password</a>` +
+            `</td></tr></table>` +
+            `</td></tr></table>`
+        )
+        .join("");
+      const html = renderMailLayout({
+        heading: "Reset password",
+        preheader: "Tautan reset password — berlaku 30 menit",
+        intro: "Kami menerima permintaan reset password untuk akun Anda.",
+        bodyHtml: cards,
+        note: "Tautan berlaku 30 menit. Abaikan email ini jika Anda tidak memintanya. Jika Anda tidak merasa melakukan permintaan ini, abaikan saja — tidak ada perubahan pada akun Anda.",
+      });
       void sendMail({ to: email, subject: "Reset password AI Asisten", text, html });
     }
     // Selalu jawab sama agar tidak bisa dipakai menebak email terdaftar.

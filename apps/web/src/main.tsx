@@ -3,7 +3,6 @@ import "./base.css";
 
 import { createRoot } from "react-dom/client";
 import { App } from "./App";
-import { initTelemetry, track } from "./telemetry";
 
 // Tangkap ajakan install lebih awal — event bisa datang sebelum React selesai mount.
 window.addEventListener("beforeinstallprompt", (e) => {
@@ -57,8 +56,22 @@ function installSpaNavigation(): void {
 
 installSpaNavigation();
 createRoot(document.getElementById("root")!).render(<App />);
-initTelemetry();
-track("app_open", { path: window.location.pathname });
+
+// Web-vitals tidak perlu ikut bundle awal: muat saat idle, kirim sekali saat tab ditutup.
+function whenIdle(fn: () => void): void {
+  const idle = (
+    window as Window & {
+      requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+    }
+  ).requestIdleCallback;
+  if (idle) idle(fn, { timeout: 4000 });
+  else window.setTimeout(fn, 2000);
+}
+whenIdle(() => {
+  void import("./vitals")
+    .then((m) => m.initTelemetry())
+    .catch(() => null);
+});
 
 // PWA: cache shell + aset (API tetap selalu jaringan)
 if (import.meta.env.PROD && "serviceWorker" in navigator) {
