@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import "./storefront.css";
 import { IconArrowLeft, IconCart, IconChat, IconCheck, IconHome, IconLayout, IconList, IconPackage, IconSearch, IconStar, IconTrash, IconTruck, IconWhatsApp } from "../icons";
+import { storefrontBasePath } from "../storefront-host";
 import {
   createStorefrontOrder,
   getPublicStorefront,
@@ -255,7 +256,10 @@ export function Storefront({ slug, subpath = "" }: { slug: string; subpath?: str
   const service = store.mode === "service";
   const wa = (text: string) => waLink(store.whatsapp, text);
   const waGeneral = wa(`Halo ${store.companyName}, saya ingin bertanya.`);
-  const catalogHref = `/t/${store.slug}`;
+  const base = storefrontBasePath(store.slug);
+  const catalogHref = base || "/";
+  const categoryHref = `${base}/kategori`;
+  const trackingHref = `${base}/lacak`;
 
   return (
     <div className={`sf sf--${store.template} sf-theme-${store.theme || "warm"}${service ? " sf--service" : " sf--product"}`}>
@@ -273,7 +277,7 @@ export function Storefront({ slug, subpath = "" }: { slug: string; subpath?: str
         </a>
         <nav className="sf-nav__links" aria-label="Navigasi toko">
           <a href={catalogHref + "#semua-produk"}>Katalog</a>
-          {!service && <a href={`/t/${store.slug}/lacak`}>Lacak</a>}
+          {!service && <a href={trackingHref}>Lacak</a>}
           {store.whatsapp && <a href={waGeneral} target="_blank" rel="noopener noreferrer">WhatsApp</a>}
         </nav>
       </header>
@@ -283,7 +287,7 @@ export function Storefront({ slug, subpath = "" }: { slug: string; subpath?: str
           <IconHome size={20} />
           <span>Home</span>
         </a>
-        <a href={`${catalogHref}/kategori`} aria-current={categoryPage ? "page" : undefined}>
+        <a href={categoryHref} aria-current={categoryPage ? "page" : undefined}>
           <IconLayout size={20} />
           <span>Kategori</span>
         </a>
@@ -301,7 +305,7 @@ export function Storefront({ slug, subpath = "" }: { slug: string; subpath?: str
             <span>Keranjang</span>
           </button>
         )}
-        <a href={`${catalogHref}/lacak`} aria-current={trackingPage ? "page" : undefined}>
+        <a href={trackingHref} aria-current={trackingPage ? "page" : undefined}>
           <IconTruck size={20} />
           <span>Tracking</span>
         </a>
@@ -335,7 +339,7 @@ export function Storefront({ slug, subpath = "" }: { slug: string; subpath?: str
           <section className={`sf-hero${store.bannerUrl ? " has-banner" : ""}`}>
             {store.bannerUrl && (
               <div className="sf-hero__banner" aria-hidden="true">
-                <img src={store.bannerUrl} alt="" />
+                <img src={store.bannerUrl} alt="" loading="eager" decoding="async" fetchPriority="high" />
               </div>
             )}
             <div className="sf-hero__copy">
@@ -477,7 +481,7 @@ export function Storefront({ slug, subpath = "" }: { slug: string; subpath?: str
         <span>{store.companyName}</span>
         <span className="sf-footer__links">
           <a href={catalogHref}>Katalog</a>
-          {!service && <a href={`/t/${store.slug}/lacak`}>Lacak resi</a>}
+          {!service && <a href={trackingHref}>Lacak resi</a>}
           {store.whatsapp && <a href={waGeneral} target="_blank" rel="noopener noreferrer">WhatsApp</a>}
         </span>
         <span>Storefront ini dikelola oleh pemilik usaha.</span>
@@ -599,11 +603,12 @@ function ViewToggle({ view, onChange }: { view: "grid" | "list"; onChange: (v: "
 
 function ProductCard({ product: p, store, onAdd }: { product: Product; store: PublicStorefront["store"]; onAdd: (id: string) => void }) {
   const service = store.mode === "service";
+  const base = storefrontBasePath(store.slug);
   const habis = p.stock !== null && p.stock <= 0;
   return (
     <article className="sf-card">
       <div className="sf-card__media">
-        <a className="sf-card__imagebtn" href={`/t/${store.slug}/p/${p.id}`} aria-label={`Lihat detail ${p.title}`}>
+        <a className="sf-card__imagebtn" href={`${base}/p/${p.id}`} aria-label={`Lihat detail ${p.title}`}>
           {p.imageUrl ? <img src={p.imageUrl} alt={p.title} loading="lazy" /> : <span className="sf-card__ph">{initials(p.title)}</span>}
           <span className="sf-card__zoom"><IconSearch size={14} /> Lihat detail</span>
         </a>
@@ -612,7 +617,7 @@ function ProductCard({ product: p, store, onAdd }: { product: Product; store: Pu
       </div>
       <div className="sf-card__body">
         <div className="sf-card__title">
-          <a href={`/t/${store.slug}/p/${p.id}`}>{p.title}</a>
+          <a href={`${base}/p/${p.id}`}>{p.title}</a>
           {p.category && <span>{p.category}</span>}
         </div>
         <div className="sf-card__foot">
@@ -626,7 +631,7 @@ function ProductCard({ product: p, store, onAdd }: { product: Product; store: Pu
           ) : <span className="sf-note">Nomor WhatsApp belum diatur.</span>
         ) : (
           <div className="sf-card__actions sf-card__actions--cart">
-            <a className="sf-btn sf-btn--ghost" href={`/t/${store.slug}/p/${p.id}`}>Detail</a>
+            <a className="sf-btn sf-btn--ghost" href={`${base}/p/${p.id}`}>Detail</a>
             <button
               type="button"
               className="sf-btn sf-addcart"
@@ -660,6 +665,7 @@ function CategoryPage({
   const [active, setActive] = useState("Semua");
   const [q, setQ] = useState("");
   const [page, setPage] = useState(1);
+  const base = storefrontBasePath(store.slug);
   const counts = useMemo(() => {
     const map = new Map<string, number>();
     for (const p of products) map.set(p.category || "Lainnya", (map.get(p.category || "Lainnya") ?? 0) + 1);
@@ -682,7 +688,7 @@ function CategoryPage({
   return (
     <main className="sf-category-page">
       <header className="sf-cathead">
-        <a href={`/t/${store.slug}`} className="sf-track__back"><IconArrowLeft size={14} /> Kembali ke Home</a>
+        <a href={(base || "/")} className="sf-track__back"><IconArrowLeft size={14} /> Kembali ke Home</a>
         <span className="sf-kicker">Kategori</span>
         <h1>Jelajahi kategori</h1>
         <p>Pilih kategori untuk mempersempit pilihan produk atau layanan.</p>
@@ -752,6 +758,7 @@ function ProductPage({
   onOpenCart: () => void;
 }) {
   const service = store.mode === "service";
+  const base = storefrontBasePath(store.slug);
   const images = product.images?.length ? product.images : product.imageUrl ? [product.imageUrl] : [];
   const [active, setActive] = useState(0);
   const [qty, setQty] = useState(1);
@@ -784,7 +791,7 @@ function ProductPage({
   return (
     <main className="sf-product-page">
       <nav className="sf-product-crumbs" aria-label="Breadcrumb">
-        <a href={`/t/${store.slug}`}><IconArrowLeft size={14} /> Katalog</a>
+        <a href={(base || "/")}><IconArrowLeft size={14} /> Katalog</a>
         {product.category && <><span>/</span><span>{product.category}</span></>}
       </nav>
 
@@ -877,18 +884,18 @@ function ProductPage({
         <section className="sf-related">
           <div className="sf-section-head">
             <div><span className="sf-kicker">Rekomendasi</span><h2>Produk serupa</h2></div>
-            <a className="sf-related__all" href={`/t/${store.slug}#katalog`}>Lihat semua</a>
+            <a className="sf-related__all" href={`${base}#semua-produk`}>Lihat semua</a>
           </div>
           <div className="sf-grid">
             {related.map((p) => (
               <article className="sf-card" key={p.id}>
                 <div className="sf-card__media">
-                  <a className="sf-card__imagebtn" href={`/t/${store.slug}/p/${p.id}`} aria-label={`Lihat ${p.title}`}>
+                  <a className="sf-card__imagebtn" href={`${base}/p/${p.id}`} aria-label={`Lihat ${p.title}`}>
                     {p.imageUrl ? <img src={p.imageUrl} alt={p.title} loading="lazy" /> : <span className="sf-card__ph">{initials(p.title)}</span>}
                   </a>
                 </div>
                 <div className="sf-card__body">
-                  <div className="sf-card__title"><a href={`/t/${store.slug}/p/${p.id}`}>{p.title}</a></div>
+                  <div className="sf-card__title"><a href={`${base}/p/${p.id}`}>{p.title}</a></div>
                   <div className="sf-card__foot"><strong>{service ? (p.price ? `Mulai ${rp(p.price)}` : "Konsultasi") : rp(p.price)}</strong></div>
                 </div>
               </article>
@@ -915,6 +922,7 @@ function PhotoLightbox({ src, onClose }: { src: string; onClose: () => void }) {
 }
 
 function TrackingPage({ store, slug }: { store: PublicStorefront["store"]; slug: string }) {
+  const base = storefrontBasePath(slug);
   const [resi, setResi] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
@@ -954,7 +962,7 @@ function TrackingPage({ store, slug }: { store: PublicStorefront["store"]; slug:
           <input ref={inputRef} value={resi} onChange={(e) => setResi(e.target.value)} placeholder="Nomor resi / ID pesanan" aria-label="Nomor resi" />
           <button type="submit" className="sf-btn" disabled={busy}>{busy ? "Mencari…" : "Lacak"}</button>
         </form>
-        <a className="sf-track__back" href={`/t/${slug}`}>← Kembali ke katalog</a>
+        <a className="sf-track__back" href={base || "/"}>← Kembali ke katalog</a>
       </div>
 
       {err && <div className="sf-track__error" role="alert">{err}</div>}
@@ -1177,6 +1185,7 @@ function OrderPanel({
   company: string;
   onClose: () => void;
 }) {
+  const base = storefrontBasePath(slug);
   const current = status ?? {
     orderId: order.orderId,
     status: "pending" as const,
@@ -1221,7 +1230,7 @@ function OrderPanel({
             ))}
           </ul>
           <div className="sf-order__total"><span>Total</span><strong>{rp(current.total)}</strong></div>
-          <a className="sf-btn sf-btn--ghost sf-btn--block" href={`/t/${slug}/lacak`}><IconTruck size={16} /> Lacak pesanan</a>
+          <a className="sf-btn sf-btn--ghost sf-btn--block" href={`${base}/lacak`}><IconTruck size={16} /> Lacak pesanan</a>
           {whatsapp && (
             <a className="sf-btn sf-btn--wa sf-btn--block" href={waLink(whatsapp, `Halo ${company}, saya baru membuat pesanan #${current.orderId.replace("shop-", "")}.`)} target="_blank" rel="noopener noreferrer">
               <IconWhatsApp size={16} /> Hubungi toko

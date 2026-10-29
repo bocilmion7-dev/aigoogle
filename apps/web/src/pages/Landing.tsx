@@ -36,6 +36,8 @@ const CAPS = [
   { t: "Bicara, bukan mengetik", d: "Tanya dengan suara dan jawaban dibacakan — tanpa biaya langganan tambahan." },
   { t: "Tim, peran & jejak audit", d: "Undang staf, atur siapa boleh melihat apa, dan setiap aksi tercatat rapi." },
   { t: "Dua cara masuk", d: "Lewat Accurate sekali klik, atau email & password — keduanya menuju dashboard yang sama." },
+  { t: "Storefront per perusahaan", d: "Alamat toko sendiri, template dan tema pilihan, katalog produk/jasa dari Accurate." },
+  { t: "AI untuk konten produk", d: "Deskripsi massal dan saran 3 gambar produk dengan watermark nama toko." },
 ];
 
 const FLOW = [
@@ -156,6 +158,7 @@ export function Landing() {
             <a href="#kemampuan">Kemampuan</a>
             <a href="#cara-kerja">Cara kerja</a>
             <a href="#contoh">Contoh</a>
+            <a href="#storefront">Storefront</a>
             <a href="#testimoni">Testimoni</a>
           </nav>
           <div className="lp-actions">
@@ -265,7 +268,7 @@ export function Landing() {
             <p className="lp-kicker">02 — Indeks fitur</p>
             <div>
               <h2 id="fitur-heading">Semua yang bisa dikerjakan</h2>
-              <p className="lp-sub">Dua belas pekerjaan yang dulu menumpuk di meja, kini selesai di latar belakang.</p>
+              <p className="lp-sub">{CAPS.length} pekerjaan yang dulu menumpuk di meja, kini selesai di latar belakang.</p>
             </div>
           </div>
           <ol className="lp-index">
@@ -324,10 +327,57 @@ export function Landing() {
           </figure>
         </section>
 
+        {/* ── Storefront ── */}
+        <section className="lp-section lp-store" id="storefront">
+          <div className="lp-section__head lp-reveal">
+            <p className="lp-kicker">04 — Storefront</p>
+            <div>
+              <h2>Toko online yang lahir dari data Accurate</h2>
+              <p className="lp-sub">
+                Setiap perusahaan mendapat storefront publik sendiri. Katalog tetap dari Accurate,
+                sementara foto, deskripsi, template, dan tema diatur dari dashboard.
+              </p>
+            </div>
+          </div>
+          <div className="lp-store__layout">
+            <figure className="lp-store__shot lp-reveal">
+              <div className="lp-store__phone">
+                <div className="lp-store__screen">
+                  <img
+                    src="/contoh/storefront-mobile.webp"
+                    alt="Contoh storefront publik AI Asisten dalam tampilan ponsel"
+                    width="780"
+                    height="1800"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </div>
+              </div>
+              <figcaption>Contoh storefront Retail Demo · toko-a.ai-asisten.my.id</figcaption>
+            </figure>
+            <div className="lp-store__copy lp-reveal">
+              <ul className="lp-ticks">
+                <li>Alamat publik sendiri: subdomain perusahaan atau slug toko.</li>
+                <li>4 layout produk/jasa, tema warna, banner, dan logo toko.</li>
+                <li>Produk dari Accurate — foto, deskripsi, dan konten AI dari dashboard.</li>
+                <li>Produk berakhir di order + QRIS + tracking; jasa berakhir di WhatsApp.</li>
+              </ul>
+              <div className="lp-cta">
+                <a className="lp-btn lp-btn--primary" href="https://toko-a.ai-asisten.my.id" target="_blank" rel="noopener noreferrer">
+                  Lihat contoh storefront
+                </a>
+                <a className="lp-btn lp-btn--ghost" href={ACCURATE_OAUTH_CTA}>
+                  Buat storefront Anda
+                </a>
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* ── Cara kerja ── */}
         <section className="lp-section" id="cara-kerja">
           <div className="lp-section__head lp-reveal">
-            <p className="lp-kicker">04 — Cara kerja</p>
+            <p className="lp-kicker">05 — Cara kerja</p>
             <h2>Empat langkah, tanpa ribet</h2>
           </div>
           <ol className="lp-flow">
@@ -344,7 +394,7 @@ export function Landing() {
         {/* ── Testimoni ── */}
         <section className="lp-section" id="testimoni">
           <div className="lp-section__head lp-reveal">
-            <p className="lp-kicker">05 — Testimoni</p>
+            <p className="lp-kicker">06 — Testimoni</p>
             <h2>Mereka yang sudah merasakan bedanya</h2>
           </div>
           <div className="lp-quotes">
@@ -371,7 +421,7 @@ export function Landing() {
         {/* ── Suasana kerja ── */}
         <section className="lp-section" aria-labelledby="office-heading">
           <div className="lp-section__head lp-reveal">
-            <p className="lp-kicker">06 — Dipakai sehari-hari</p>
+            <p className="lp-kicker">07 — Dipakai sehari-hari</p>
             <div>
               <h2 id="office-heading">Dibuka pagi, dipakai sepanjang hari kerja</h2>
               <p className="lp-sub">

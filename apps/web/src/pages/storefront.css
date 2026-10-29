@@ -659,3 +659,6 @@ textarea.sf-input { resize: vertical; }
 .sf-card__actions .sf-addcart { width: 44px; min-width: 44px; padding: 0; }
 .sf-card__actions .sf-addcart svg { display: block; }
 :is(.sf--product-4, .sf--service-4) .sf-card__actions .sf-addcart { border-radius: 4px; }
+
+/* Kurangi layout offscreen untuk katalog panjang */
+.sf-grid .sf-card { content-visibility: auto; contain-intrinsic-size: 260px 340px; }

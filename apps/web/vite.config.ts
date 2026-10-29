@@ -36,5 +36,16 @@ function cspPlugin(): Plugin {
 
 export default defineConfig({
   plugins: [react(), cspPlugin()],
+  // Preact compat memangkas runtime React dari ~140 KB menjadi belasan KB.
+  // API komponen tetap React, jadi halaman tidak perlu diubah.
+  resolve: {
+    alias: [
+      { find: /^react-dom\/client$/, replacement: "preact/compat/client" },
+      { find: /^react-dom$/, replacement: "preact/compat" },
+      { find: /^react\/jsx-runtime$/, replacement: "preact/jsx-runtime" },
+      { find: /^react\/jsx-dev-runtime$/, replacement: "preact/jsx-dev-runtime" },
+      { find: /^react$/, replacement: "preact/compat" },
+    ],
+  },
   server: { port: 5173, proxy: { "/api": "http://localhost:3001" } },
 });

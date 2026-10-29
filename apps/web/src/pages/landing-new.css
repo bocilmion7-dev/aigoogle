@@ -1070,3 +1070,72 @@
   -webkit-hyphens: none;
 }
 
+
+/* ── Storefront section ── */
+.lp-store__layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-l);
+  align-items: center;
+}
+@media (min-width: 900px) {
+  .lp-store__layout { grid-template-columns: minmax(0, 1.2fr) minmax(0, .8fr); gap: var(--space-2xl); }
+}
+.lp-store__shot { margin: 0; }
+.lp-store__shot img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--line-strong);
+  box-shadow: 0 24px 60px -46px rgb(64 43 24 / .55);
+}
+.lp-store__shot figcaption {
+  margin-top: var(--space-2xs);
+  color: var(--ink-3);
+  font-size: var(--type-meta);
+}
+.lp-store__copy .lp-ticks { margin-top: 0; }
+.lp-store__copy .lp-cta { margin-top: var(--space-m); }
+
+/* Mockup HP untuk contoh storefront */
+.lp-store__phone {
+  position: relative;
+  width: min(100%, 310px);
+  margin: 0 auto;
+  padding: 9px;
+  border-radius: 34px;
+  background: #17120e;
+  border: 1px solid #3a2d22;
+  box-shadow: 0 28px 70px -38px rgb(64 43 24 / .65);
+}
+.lp-store__phone::before {
+  content: "";
+  position: absolute;
+  z-index: 2;
+  top: 12px;
+  left: 50%;
+  width: 82px;
+  height: 17px;
+  border-radius: 0 0 12px 12px;
+  background: #17120e;
+  transform: translateX(-50%);
+}
+.lp-store__phone::after {
+  content: "";
+  position: absolute;
+  top: 80px;
+  right: -3px;
+  width: 3px;
+  height: 42px;
+  border-radius: 0 3px 3px 0;
+  background: #4b3a2b;
+}
+.lp-store__screen {
+  overflow: hidden;
+  border-radius: 26px;
+  background: #fffdf9;
+}
+.lp-store__screen img { display: block; width: 100%; height: auto; }
+@media (min-width: 900px) { .lp-store__phone { width: min(100%, 330px); } }
+.lp-store__shot .lp-store__screen img { border: 0; box-shadow: none; }
+.lp-store__shot figcaption { text-align: center; }

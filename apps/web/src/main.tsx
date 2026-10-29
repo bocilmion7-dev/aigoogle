@@ -76,8 +76,17 @@ whenIdle(() => {
 // PWA: cache shell + aset (API tetap selalu jaringan)
 if (import.meta.env.PROD && "serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/sw.js").catch(() => {
-      /* offline support opsional — jangan ganggu aplikasi */
-    });
+    const register = () => {
+      navigator.serviceWorker.register("/sw.js").catch(() => {
+        /* offline support opsional — jangan ganggu aplikasi */
+      });
+    };
+    const idle = (
+      window as Window & {
+        requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+      }
+    ).requestIdleCallback;
+    if (idle) idle(register, { timeout: 6000 });
+    else window.setTimeout(register, 3000);
   });
 }

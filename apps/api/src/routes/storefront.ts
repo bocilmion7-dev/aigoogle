@@ -100,7 +100,9 @@ async function adminSnapshot(tenantId: string) {
     description: sf.description,
     whatsapp: sf.whatsapp || ownerPhone,
     active: sf.active,
-    publicUrl: `${env.APP_ORIGIN}/t/${sf.slug}`,
+    publicUrl: env.STORE_BASE_DOMAIN
+      ? `https://${sf.slug}.${env.STORE_BASE_DOMAIN.replace(/^\.+|\.+$/g, "")}`
+      : `${env.APP_ORIGIN}/t/${sf.slug}`,
     templates: TEMPLATES,
     productsSyncedAt: sf.productsSyncedAt?.toISOString() ?? null,
   };

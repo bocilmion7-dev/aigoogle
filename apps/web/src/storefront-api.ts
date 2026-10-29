@@ -213,10 +213,20 @@ export async function uploadStorefrontImage(file: File): Promise<string> {
   return j.url;
 }
 
-export const getPublicStorefront = (slug: string) =>
-  request<PublicStorefront>(`/api/public/storefront/${encodeURIComponent(slug)}`, {
+export const getPublicStorefront = async (slug: string) => {
+  const prefetch = (
+    window as Window & {
+      __STOREFRONT_PREFETCH__?: { slug: string; promise: Promise<PublicStorefront | null> };
+    }
+  ).__STOREFRONT_PREFETCH__;
+  if (prefetch?.slug === slug) {
+    const early = await prefetch.promise;
+    if (early) return early;
+  }
+  return request<PublicStorefront>(`/api/public/storefront/${encodeURIComponent(slug)}`, {
     signal: AbortSignal.timeout(15_000),
   });
+};
 
 export const quoteStorefrontShipping = (slug: string, items: Array<{ id: string; qty: number }>, postalCode: string) =>
   request<{ options: ShippingOption[] }>(`/api/public/storefront/${encodeURIComponent(slug)}/shipping`, {

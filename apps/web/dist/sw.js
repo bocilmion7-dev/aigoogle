@@ -14,7 +14,7 @@
 /* BUILD_ID diganti otomatis oleh scripts/deploy-web.sh. Perubahan byte pada
  * sw.js memicu instalasi SW baru setiap deploy, sehingga cache index ikut
  * diperbarui walau nomor versi cache tidak dinaikkan manual. */
-const BUILD_ID = "2ff2310a55f5";
+const BUILD_ID = "348aa6108b9d";
 const CACHE = "aigoogle-shell-v13";
 const PREV_CACHES = ["aigoogle-shell-v12", "aigoogle-shell-v11", "aigoogle-shell-v10", "aigoogle-shell-v9", "aigoogle-shell-v8"];
 const SHELL = ["/index.html", "/favicon.svg", "/manifest.webmanifest"];

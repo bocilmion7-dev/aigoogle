@@ -46,6 +46,7 @@ import { AiGate } from "./ai-gate";
 import { AiAccessGuard } from "./ai-access-guard";
 import { PageBoundary } from "./page-boundary";
 import { ChatReplyToast } from "./chat-reply-toast";
+import { storefrontSlugFromHost } from "./storefront-host";
 
 /** Fallback saat chunk halaman sedang diunduh (biasanya < 300 ms). */
 function PageFallback() {
@@ -61,7 +62,8 @@ function PageFallback() {
   );
 }
 
-function pageFor(path: string) {
+function pageFor(path: string, storeSlug: string) {
+  if (storeSlug) return <Storefront slug={storeSlug} subpath={path.replace(/^\/+/, "")} />;
   if (path === "/insight") return <Insight />;
   if (path === "/penjualan") return <Penjualan />;
   if (path === "/toko") return <Toko />;
@@ -144,7 +146,8 @@ async function hardReload(): Promise<void> {
 export function App() {
   const [route, setRoute] = useState(() => window.location.pathname + window.location.search);
   const path = route.split("?")[0] ?? "/";
-  const publicPage = isPublicPath(path);
+  const storeSlug = storefrontSlugFromHost();
+  const publicPage = !!storeSlug || isPublicPath(path);
   const [me, setMe] = useState<Awaited<ReturnType<typeof getMe>> | undefined>(undefined);
   const [sessionError, setSessionError] = useState<SessionError>(null);
   const [sessionAttempt, setSessionAttempt] = useState(0);
@@ -160,9 +163,9 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    const robot = path === "/" || path === "/dokumentasi" || path === "/insight";
+    const robot = !storeSlug && (path === "/" || path === "/dokumentasi" || path === "/insight");
     document.documentElement.classList.toggle("font-robot", robot);
-  }, [path]);
+  }, [path, storeSlug]);
 
   useEffect(() => {
     track("page_view", { path, public: publicPage });
@@ -226,7 +229,7 @@ export function App() {
       <AiGate />
       <PageBoundary>
         <Suspense key={route} fallback={<PageFallback />}>
-          {pageFor(path)}
+          {pageFor(path, storeSlug)}
         </Suspense>
       </PageBoundary>
     </>

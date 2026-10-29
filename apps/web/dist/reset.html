@@ -19,9 +19,14 @@
     <main>
       <h1><span class="dot"></span>Membersihkan cache lama…</h1>
       <p>Service worker dan cache shell akan dilepas, lalu aplikasi dimuat ulang. Sesi login Anda tidak dihapus.</p>
-      <p><a href="/app">Buka aplikasi</a></p>
+      <p><a href="/app" id="reset-target">Buka aplikasi</a></p>
     </main>
     <script>
+      try {
+        var host = location.hostname;
+        document.getElementById("reset-target").href =
+          host === "ai-asisten.my.id" || host === "www.ai-asisten.my.id" ? "/app" : "/";
+      } catch (_) {}
       (async function () {
         try {
           if ("serviceWorker" in navigator) {
@@ -38,7 +43,10 @@
             );
           }
         } catch (_) {}
-        var u = new URL("/app", location.origin);
+        var host = location.hostname;
+        var isAppHost = host === "ai-asisten.my.id" || host === "www.ai-asisten.my.id";
+        var target = isAppHost ? "/app" : "/";
+        var u = new URL(target, location.origin);
         u.searchParams.set("_r", Date.now().toString(36));
         location.replace(u.toString());
       })();

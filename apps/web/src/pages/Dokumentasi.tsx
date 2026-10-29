@@ -176,6 +176,22 @@ const SECTIONS: DocSection[] = [
       "Pantau saldo agar layanan tidak terhenti saat dibutuhkan.",
     ],
   },
+  {
+    id: "storefront",
+    num: "12",
+    title: "Storefront — toko online dari data Accurate",
+    intro:
+      "Setiap perusahaan dapat memiliki storefront publik sendiri. Katalog diambil dari Accurate, lalu dilengkapi foto, deskripsi, template, dan tema dari dashboard. Produk berakhir di order; jasa berakhir di WhatsApp.",
+    image: "/contoh/storefront-mobile.webp",
+    imageAlt: "Contoh storefront publik dengan katalog produk dan navigasi mobile",
+    points: [
+      "Buka menu Template Storefront untuk memilih mode Produk/Jasa, layout, tema warna, banner, logo, dan slug.",
+      "Alamat publik memakai subdomain perusahaan atau slug toko; cek ketersediaan slug sebelum menyimpan.",
+      "Di menu Produk, sinkronkan katalog Accurate lalu lengkapi gambar dan deskripsi. Tersedia AI deskripsi massal dan 3 saran gambar AI ber-watermark.",
+      "Mode produk: keranjang, checkout, QRIS, dan tracking resi. Mode jasa: tombol konsultasi langsung ke WhatsApp.",
+      "Contoh storefront aktif: https://toko-a.ai-asisten.my.id",
+    ],
+  },
 ];
 
 function useReveal() {
@@ -224,7 +240,7 @@ export function Dokumentasi() {
           <h1>Panduan AI Asisten</h1>
           <p>
             Panduan bergambar untuk pemilik usaha dan staf: mulai dari menghubungkan Accurate hingga
-            membaca analisis, mengelola pesanan, dan menarik hasil penjualan.
+            membaca analisis, mengelola pesanan, menarik hasil penjualan, sampai mengelola storefront.
           </p>
           <div className="ld2-cta">
             <a className="ld2-btn ld2-btn--primary" href={ACCURATE_OAUTH_CTA}>

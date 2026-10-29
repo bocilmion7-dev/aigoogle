@@ -76,6 +76,25 @@
     <!-- Font SELF-HOSTED (apps/web/public/fonts, subset latin). Preload hanya
          SATU varian yang dipakai judul di atas layar; sisanya memakai
          font-display: swap dan diunduh saat dipakai. CSS: src/fonts.css. -->
+    <script>
+      (function () {
+        try {
+          var host = location.hostname.toLowerCase();
+          var base = "ai-asisten.my.id";
+          var suffix = "." + base;
+          if (!host.endsWith(suffix)) return;
+          var sub = host.slice(0, -suffix.length);
+          if (!sub || sub.indexOf(".") !== -1) return;
+          if (["www","app","api","admin","auth","login","dashboard","static","assets","fonts","mail","cdn","kinerjatim","storefront","t"].indexOf(sub) !== -1) return;
+          window.__STOREFRONT_PREFETCH__ = {
+            slug: sub,
+            promise: fetch("/api/public/storefront/" + encodeURIComponent(sub), { headers: { Accept: "application/json" } })
+              .then(function (r) { return r.ok ? r.json() : null; })
+              .catch(function () { return null; })
+          };
+        } catch (_) {}
+      })();
+    </script>
     <link rel="preload" href="/fonts/spacemono-700.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="canonical" href="https://ai-asisten.my.id/" />
     <meta property="og:type" content="website" />
