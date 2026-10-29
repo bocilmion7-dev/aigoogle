@@ -370,6 +370,7 @@ const MSG: Record<string, string> = {
       "AI gagal membaca isi dokumen — pastikan gambar/PDF jelas dan tidak buram, atau isi datanya secara manual, lalu simpan.",
   field_ocr_gagal:
     "Ekstraksi otomatis gagal — isi datanya secara manual, lalu simpan.",
+  drive_gagal: "Gagal menyimpan file ke Drive — coba lagi.",
 };
 
 async function apiError(res: Response): Promise<Error> {
@@ -485,6 +486,8 @@ export interface OrderShipping {
 /** tahap pesanan diturunkan server: menunggu|lunas|pesanan-acc|difakturkan|selesai|gagal */
 export interface OrderRow extends WaShopOrder {
   stage: string;
+  source?: "wa" | "storefront";
+  storeSlug?: string;
   fulfillment?: "pickup" | "courier";
   itemsSubtotal?: number;
   /** nomor HP yang dikumpulkan AI dari pembeli (bisa beda dgn nomor WA) */
@@ -706,6 +709,34 @@ export interface DriveUploadResult {
   folder: string;
   link: string;
 }
+
+const MIME_BY_EXT: Record<string, string> = {
+  png: "image/png",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  webp: "image/webp",
+  gif: "image/gif",
+  bmp: "image/bmp",
+  tif: "image/tiff",
+  tiff: "image/tiff",
+  pdf: "application/pdf",
+  docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  doc: "application/msword",
+  ppt: "application/vnd.ms-powerpoint",
+  md: "text/markdown",
+  markdown: "text/markdown",
+  txt: "text/plain",
+  csv: "text/csv",
+};
+
+function mimeForFile(blob: Blob, fileName: string): string {
+  const fromFile = (blob.type || "").trim().toLowerCase();
+  if (fromFile && fromFile !== "application/octet-stream") return fromFile;
+  const ext = fileName.split(".").pop()?.toLowerCase() ?? "";
+  return MIME_BY_EXT[ext] ?? "application/octet-stream";
+}
+
 export async function uploadDocToDrive(
   blob: Blob,
   opts: { fileName: string; docType: string; label?: string; party?: string; date?: string }
@@ -718,7 +749,7 @@ export async function uploadDocToDrive(
     method: "POST",
     headers: {
       "x-file-name": opts.fileName,
-      "Content-Type": opts.fileName.toLowerCase().endsWith(".png") ? "image/png" : "image/jpeg",
+      "Content-Type": mimeForFile(blob, opts.fileName),
     },
     body: blob,
   });

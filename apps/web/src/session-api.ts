@@ -54,7 +54,9 @@ function coalescedGet<T>(key: string, run: () => Promise<T>, force = false): Pro
   }
   const p = run()
     .then((v) => {
-      recent.set(key, { at: Date.now(), value: v });
+      // Jangan cache null (mis. error jaringan) — biar percobaan berikutnya
+      // benar-benar memanggil server lagi.
+      if (v !== null) recent.set(key, { at: Date.now(), value: v });
       return v;
     })
     .finally(() => inflight.delete(key));
@@ -62,17 +64,74 @@ function coalescedGet<T>(key: string, run: () => Promise<T>, force = false): Pro
   return p;
 }
 
+export type SessionError = "auth" | "network" | null;
+let lastSessionError: SessionError = null;
+
+/** Penyebab kegagalan getMe terakhir: 401/403 (auth) atau jaringan/timeout. */
+export function getLastSessionError(): SessionError {
+  return lastSessionError;
+}
+
+const SESSION_TIMEOUT_MS = 6_000;
+const IDLE_RECONNECT_MS = 15_000;
+let lastSessionNetworkAt = Date.now();
+
+/**
+ * Setelah tab lama idle, HP/proxy bisa menyimpan koneksi keep-alive setengah
+ * mati. GET /api/me lalu menggantung sampai timeout tanpa pernah sampai ke
+ * server (tidak ada log akses). Hangatkan dengan GET idempoten dulu.
+ */
+async function warmSessionConnection(force = false): Promise<void> {
+  if (!force && Date.now() - lastSessionNetworkAt < IDLE_RECONNECT_MS) return;
+  try {
+    await fetch(`/api/health?warm=${Date.now()}`, {
+      cache: "no-store",
+      signal: AbortSignal.timeout(2_500),
+    });
+  } catch {
+    /* tetap coba /api/me */
+  }
+  lastSessionNetworkAt = Date.now();
+}
+
+async function fetchMeOnce(): Promise<Me | null> {
+  const res = await fetch(`/api/me?t=${Date.now()}`, {
+    cache: "no-store",
+    signal: AbortSignal.timeout(SESSION_TIMEOUT_MS),
+  });
+  lastSessionNetworkAt = Date.now();
+  // Hanya 401/403 yang berarti sesi benar-benar tidak valid.
+  if (res.status === 401 || res.status === 403) {
+    lastSessionError = "auth";
+    return null;
+  }
+  if (!res.ok) throw new Error("session_fetch_failed");
+  const me = (await res.json()) as Me;
+  lastSessionError = null;
+  return me;
+}
+
 export async function getMe(force = false): Promise<Me | null> {
   return coalescedGet(
     "me",
     async () => {
-      try {
-        const res = await fetch("/api/me", { signal: AbortSignal.timeout(15_000) });
-        if (!res.ok) return null;
-        return (await res.json()) as Me;
-      } catch {
-        return null;
+      for (let attempt = 0; attempt < 2; attempt++) {
+        if (attempt === 0) await warmSessionConnection(force);
+        else {
+          await new Promise((r) => setTimeout(r, 500));
+          await warmSessionConnection(true);
+        }
+        try {
+          return await fetchMeOnce();
+        } catch {
+          /* coba sekali lagi lewat koneksi baru */
+        }
       }
+      // Timeout/putus koneksi/5xx BUKAN logout. Pakai sesi terakhir yang
+      // pernah sukses bila ada, supaya halaman tidak terlempar ke login.
+      lastSessionError = "network";
+      const stale = recent.get("me")?.value as Me | undefined;
+      return stale ?? null;
     },
     force
   );
@@ -95,4 +154,5 @@ export function resetSessionCache(): void {
   recent.delete("me");
   recent.delete("ai-wallet");
   inflight.clear();
+  lastSessionError = null;
 }

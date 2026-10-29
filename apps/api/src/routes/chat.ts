@@ -82,6 +82,9 @@ chatRouter.post(
 
     res.setHeader("Content-Type", "application/x-ndjson; charset=utf-8");
     res.setHeader("Cache-Control", "no-cache");
+    // kirim header segera: klien tahu koneksi hidup sebelum router/LLM selesai
+    res.flushHeaders();
+    console.log(`[chat] masuk | session=${body.data.sessionId ? "lanjut" : "baru"} | msgChars=${body.data.message.length}`);
     let bytesSent = 0;
     const send = (e: Record<string, unknown>) => {
       const line = JSON.stringify(e) + "\n";

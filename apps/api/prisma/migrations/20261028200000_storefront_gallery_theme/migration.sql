@@ -1,0 +1,3 @@
+ALTER TABLE "Storefront" ADD COLUMN "theme" TEXT NOT NULL DEFAULT 'warm';
+ALTER TABLE "Storefront" ADD COLUMN "bannerUrl" TEXT NOT NULL DEFAULT '';
+ALTER TABLE "StorefrontProduct" ADD COLUMN "images" TEXT NOT NULL DEFAULT '[]';

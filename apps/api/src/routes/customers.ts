@@ -279,23 +279,31 @@ const TARGET_PERM: Record<(typeof ENTRY_TARGETS)[number], string> = {
 };
 const TARGET_NEEDS_NAME = new Set(["salesInvoice", "salesReceipt", "purchaseInvoice"]);
 
-const EntryBody = z.object({
-  target: z.enum(ENTRY_TARGETS),
-  customerName: z.string().max(200).default(""),
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-  no: z.string().max(60).optional(),
-  total: z.number().nonnegative().optional(),
-  description: z.string().max(500).optional(),
-  items: z.array(EntryLineItem).max(50).optional(),
-  /** penerimaan kas: faktur yang dibayar + rekening penerimaan */
-  invoiceNo: z.string().max(60).optional(),
-  bankNo: z.string().max(40).optional(),
-  /** beban: akun beban pilihan admin */
-  expenseAccountNo: z.string().max(40).optional(),
-  /** transfer bank: rekening sumber & tujuan */
-  fromBankNo: z.string().max(40).optional(),
-  toBankNo: z.string().max(40).optional(),
-});
+const EntryBody = z
+  .object({
+    target: z.enum(ENTRY_TARGETS),
+    customerName: z.string().max(200).default(""),
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    no: z.string().max(60).optional(),
+    total: z.number().nonnegative().optional(),
+    description: z.string().max(500).optional(),
+    items: z.array(EntryLineItem).max(50).optional(),
+    /** penerimaan kas: faktur yang dibayar + rekening penerimaan */
+    invoiceNo: z.string().max(60).optional(),
+    bankNo: z.string().max(40).optional(),
+    /** beban: akun beban pilihan admin */
+    expenseAccountNo: z.string().max(40).optional(),
+    /** transfer bank: rekening sumber & tujuan */
+    fromBankNo: z.string().max(40).optional(),
+    toBankNo: z.string().max(40).optional(),
+  })
+  .superRefine((b, ctx) => {
+    // Target ini mencatat uang keluar/masuk nominal tunggal — jangan pernah
+    // sampai provider mengirim Rp0 karena field total kosong.
+    if (["salesReceipt", "expense", "bankTransfer"].includes(b.target) && !(Number(b.total) > 0)) {
+      ctx.addIssue({ code: "custom", path: ["total"], message: "nominal total wajib lebih dari 0" });
+    }
+  });
 
 customersRouter.post(
   "/customers/entries",

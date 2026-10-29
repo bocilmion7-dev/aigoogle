@@ -3,13 +3,13 @@
 
 :root {
   /* type scale — rasio 1.25 */
-  --step--2: 0.64rem;
-  --step--1: 0.8rem;
-  --step-0: 1rem;
-  --step-1: 1.25rem;
-  --step-2: 1.563rem;
-  --step-3: 1.953rem;
-  --step-4: 2.441rem;
+  --step--2: var(--type-micro);
+  --step--1: var(--type-small);
+  --step-0: var(--type-body);
+  --step-1: var(--type-h3);
+  --step-2: var(--type-h2);
+  --step-3: var(--type-h1);
+  --step-4: var(--type-display-2);
 
   /* space — base 0.25rem */
   --space-3xs: 0.25rem;
@@ -26,12 +26,32 @@
   --space-2xl: 4rem;
 
   /* type — UI kecil yang konsisten */
-  --text-3xs: 0.6rem;
-  --text-2xs: 0.7rem;
-  --text-xs: 0.75rem;
-  --text-sm: 0.85rem;
-  --text-md: 0.95rem;
-  --text-lg: 1.05rem;
+  --text-3xs: var(--type-micro);
+  --text-2xs: var(--type-label);
+  --text-xs: var(--type-meta);
+  --text-sm: var(--type-small);
+  --text-md: var(--type-body);
+  --text-lg: var(--type-h3);
+
+  /* type roles — sumber kebenaran: tipografi landing (Space Mono) */
+  --type-display-1: clamp(2.1rem, 1.2rem + 3.6vw, 4.2rem);
+  --type-display-2: clamp(1.7rem, 1.3rem + 1.6vw, 2.5rem);
+  --type-h1: clamp(1.8rem, 1.45rem + 1.2vw, 2.2rem);
+  --type-h2: clamp(1.35rem, 1.2rem + 0.6vw, 1.7rem);
+  --type-h3: 1.2rem;
+  --type-body: 1rem;
+  --type-small: 0.86rem;
+  --type-meta: 0.74rem;
+  --type-label: 0.7rem;
+  --type-micro: 0.6rem;
+  --type-input: 1rem;
+  --type-button: 0.75rem;
+  --type-metric: clamp(3rem, 7vw, 5rem);
+  --type-metric-sm: clamp(1.8rem, 5vw, 2.8rem);
+  --type-data: clamp(0.9rem, 3.4vw, 1.15rem);
+  --lh-display: 1.05;
+  --lh-title: 1.15;
+  --lh-body: 1.6;
 
   /* color — broadsheet (krem + tinta + merah status bar) */
   --base: #f8f3ea;
@@ -114,8 +134,13 @@
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
 
   --font-display: "Space Mono", ui-monospace, "SFMono-Regular", "Menlo", "Consolas", monospace;
-  --font-text: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  --font-text: "Space Mono", ui-monospace, "SFMono-Regular", "Menlo", "Consolas", monospace;
   --font-mono: "Space Mono", ui-monospace, "SFMono-Regular", "Menlo", "Consolas", monospace;
+  --font-title: var(--font-display);
+  --font-copy: var(--font-text);
+  --font-label: var(--font-mono);
+  --font-input: var(--font-mono);
+  --font-data: var(--font-mono);
 }
 
 
@@ -145,20 +170,53 @@ input,
 select,
 textarea {
   font: inherit;
+  font-family: var(--font-input);
+}
+
+::placeholder {
+  font-family: var(--font-input);
 }
 
 body {
   min-height: 100dvh;
   background: var(--base);
   color: var(--ink);
-  font-family: var(--font-text);
-  font-size: var(--step-0);
-  line-height: 1.55;
+  font-family: var(--font-copy);
+  font-size: var(--type-body);
+  line-height: var(--lh-body);
   -webkit-font-smoothing: antialiased;
 }
 
-/* Landing, dokumentasi, dan insight sepenuhnya mono — jangan unduh Plex Sans. */
 html.font-robot body {
+  font-family: var(--font-copy);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-title);
+  line-height: var(--lh-title);
+}
+
+h1 {
+  font-size: var(--type-h1);
+}
+
+h2 {
+  font-size: var(--type-h2);
+}
+
+h3 {
+  font-size: var(--type-h3);
+}
+
+code,
+kbd,
+pre,
+samp {
   font-family: var(--font-mono);
 }
 
@@ -187,18 +245,19 @@ a {
 }
 
 .page h1 {
-  font-family: var(--font-display);
-  font-size: var(--step-3);
+  font-family: var(--font-title);
+  font-size: var(--type-h1);
   font-weight: 600;
   letter-spacing: -0.02em;
   margin: 0 0 var(--space-3xs);
-  line-height: 1.1;
+  line-height: var(--lh-title);
 }
 
 .page__sub {
   max-width: 68ch;
   color: var(--ink-2);
-  font-size: var(--text-md);
+  font-size: var(--type-body);
+  line-height: var(--lh-body);
   margin: 0 0 var(--space-s);
 }
 
@@ -216,8 +275,8 @@ a {
 
 .card__title {
   display: block;
-  font-family: var(--font-display);
-  font-size: var(--step-1);
+  font-family: var(--font-title);
+  font-size: var(--type-h3);
   font-weight: 600;
   letter-spacing: -0.02em;
   margin-bottom: var(--space-2xs);
@@ -236,8 +295,8 @@ a {
   border-radius: var(--radius-control);
   background: var(--action);
   color: #fff;
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
+  font-family: var(--font-input);
+  font-size: var(--type-button);
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -296,7 +355,7 @@ a {
 .btn--sm {
   min-height: 32px;
   padding: 0 10px;
-  font-size: var(--text-2xs);
+  font-size: var(--type-label);
 }
 
 .btn--block {
@@ -354,8 +413,9 @@ a {
 /* ---------- text utils ---------- */
 
 .meta {
-  font-family: var(--font-mono);
-  font-size: var(--text-2xs);
+  font-family: var(--font-label);
+  font-size: var(--type-meta);
+  line-height: 1.45;
   letter-spacing: 0.02em;
   color: var(--ink-3);
 }
@@ -791,11 +851,11 @@ a {
   background: var(--accent-strong); color: #fff; font-size: var(--text-2xs); font-weight: 800;
 }
 .auth2__headline {
-  font-family: var(--font-display);
-  font-size: clamp(1.7rem, 3.4vw, 2.4rem);
-  line-height: 1.15; margin: 18px 0 0; color: var(--ink); letter-spacing: -0.02em;
+  font-family: var(--font-title);
+  font-size: var(--type-h1);
+  line-height: var(--lh-title); margin: 18px 0 0; color: var(--ink); letter-spacing: -0.02em;
 }
-.auth2__sub { margin: 10px 0 0; font-size: var(--text-md); line-height: 1.65; color: var(--ink-2); max-width: 30rem; }
+.auth2__sub { margin: 10px 0 0; font-size: var(--type-body); line-height: var(--lh-body); color: var(--ink-2); max-width: 30rem; }
 .auth2__points { display: flex; flex-direction: column; gap: var(--space-2-5); margin: 18px 0 0; padding: 0; list-style: none; }
 .auth2__points li {
   position: relative; padding-left: var(--space-m); font-size: var(--text-sm); color: var(--ink-2);
@@ -816,17 +876,17 @@ a {
   box-shadow: none;
 }
 .auth2__card h1 {
-  margin: 0; font-family: var(--font-display);
-  font-size: var(--step-2); font-weight: 600; letter-spacing: -0.02em; color: var(--ink);
+  margin: 0; font-family: var(--font-title);
+  font-size: var(--type-h2); font-weight: 600; letter-spacing: -0.02em; color: var(--ink);
 }
-.auth2__hint { margin: 6px 0 20px; font-size: var(--text-sm); color: var(--ink-3); }
+.auth2__hint { margin: 6px 0 20px; font-size: var(--type-small); color: var(--ink-3); }
 .auth2__form { display: flex; flex-direction: column; gap: var(--space-3-5); }
-.auth2__field { display: flex; flex-direction: column; gap: var(--space-1xs); font-family: var(--font-mono); font-size: var(--text-2xs); font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); }
+.auth2__field { display: flex; flex-direction: column; gap: var(--space-1xs); font-family: var(--font-label); font-size: var(--type-label); font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); }
 .auth2__field .input { font-weight: 400; }
 .auth2__field .input,
 .auth2__field .select {
-  font-family: var(--font-mono);
-  font-size: var(--step-0);
+  font-family: var(--font-input);
+  font-size: var(--type-input);
   letter-spacing: 0;
   text-transform: none;
 }
@@ -917,8 +977,8 @@ a {
   border-radius: var(--radius-control);
   background: var(--surface);
   color: var(--ink);
-  font-family: var(--font-mono);
-  font-size: var(--step-0);
+  font-family: var(--font-input);
+  font-size: var(--type-input);
   font-weight: 400;
   transition: border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
 }
@@ -1294,4 +1354,4 @@ a {
 }
 
 /* Elemen kecil memakai skala teks global, bukan default browser. */
-small { font-size: var(--text-sm); }
+small { font-size: var(--type-small); }

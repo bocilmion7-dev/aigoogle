@@ -1,0 +1,1 @@
+ALTER TABLE "Storefront" ADD COLUMN "logoUrl" TEXT NOT NULL DEFAULT '';

@@ -15,6 +15,10 @@ RETENTION_DAYS="${ASSET_RETENTION_DAYS:-30}"
 cd "$WEB"
 pnpm build
 
+# Pastikan sw.js berubah setiap deploy (memicu install & refresh cache index).
+BUILD_ID="$(sha256sum "$WEB/dist/index.html" | cut -c1-12)"
+sed -i "s/__BUILD_ID__/${BUILD_ID}/g" "$WEB/dist/sw.js"
+
 # 1) Unggah aset baru dulu (aditif). Jangan pernah memakai --delete untuk aset.
 mkdir -p "$DEST/assets"
 rsync -a "$WEB/dist/assets/" "$DEST/assets/"

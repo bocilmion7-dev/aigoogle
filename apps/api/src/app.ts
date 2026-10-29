@@ -16,6 +16,7 @@ import { authRouter } from "./routes/auth.js";
 import { waRouter } from "./routes/wa.js";
 import { customersRouter } from "./routes/customers.js";
 import { ordersRouter } from "./routes/orders.js";
+import { storefrontRouter } from "./routes/storefront.js";
 import { sandboxRouter } from "./routes/sandbox.js";
 import { insightRouter } from "./routes/insight.js";
 import { salesRouter } from "./sales/routes.js";
@@ -88,6 +89,7 @@ export function createApp() {
   app.use("/api", waRouter);
   app.use("/api", customersRouter);
   app.use("/api", ordersRouter);
+  app.use("/api", storefrontRouter);
   app.use("/api", sandboxRouter);
   app.use("/api", insightRouter);
   app.use("/api", salesRouter);

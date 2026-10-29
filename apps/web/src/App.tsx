@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from "react";
-import { getMe } from "./session-api";
+import { getLastSessionError, getMe, type SessionError } from "./session-api";
 import { track } from "./telemetry";
 
 /* Halaman aplikasi dimuat belakangan (code-split): klien hanya mengunduh JS
@@ -24,6 +24,9 @@ const Lacak = lazy(() => import("./pages/Lacak").then((m) => ({ default: m.Lacak
 const Insight = lazy(() => import("./pages/Insight").then((m) => ({ default: m.Insight })));
 const Penjualan = lazy(() => import("./pages/Penjualan").then((m) => ({ default: m.Penjualan })));
 const Toko = lazy(() => import("./pages/Toko").then((m) => ({ default: m.Toko })));
+const Template = lazy(() => import("./pages/Template").then((m) => ({ default: m.Template })));
+const Produk = lazy(() => import("./pages/Produk").then((m) => ({ default: m.Produk })));
+const ProdukEdit = lazy(() => import("./pages/ProdukEdit").then((m) => ({ default: m.ProdukEdit })));
 const Analisa = lazy(() => import("./pages/Analisa").then((m) => ({ default: m.Analisa })));
 const Panduan = lazy(() => import("./pages/Panduan").then((m) => ({ default: m.Panduan })));
 const Dokumentasi = lazy(() => import("./pages/Dokumentasi").then((m) => ({ default: m.Dokumentasi })));
@@ -36,11 +39,13 @@ const AiModels = lazy(() => import("./pages/AiModels").then((m) => ({ default: m
 const Saldo = lazy(() => import("./pages/Saldo").then((m) => ({ default: m.Saldo })));
 const Subscription = lazy(() => import("./pages/Subscription").then((m) => ({ default: m.Subscription })));
 const RefundPolicy = lazy(() => import("./pages/RefundPolicy").then((m) => ({ default: m.RefundPolicy })));
+const Storefront = lazy(() => import("./pages/Storefront").then((m) => ({ default: m.Storefront })));
 
 import { InstallPrompt } from "./install-prompt";
 import { AiGate } from "./ai-gate";
 import { AiAccessGuard } from "./ai-access-guard";
 import { PageBoundary } from "./page-boundary";
+import { ChatReplyToast } from "./chat-reply-toast";
 
 /** Fallback saat chunk halaman sedang diunduh (biasanya < 300 ms). */
 function PageFallback() {
@@ -60,6 +65,9 @@ function pageFor(path: string) {
   if (path === "/insight") return <Insight />;
   if (path === "/penjualan") return <Penjualan />;
   if (path === "/toko") return <Toko />;
+  if (path === "/template") return <Template />;
+  if (path === "/produk") return <Produk />;
+  if (path.startsWith("/produk/")) return <ProdukEdit id={decodeURIComponent(path.slice("/produk/".length))} />;
   if (path === "/analisa") return <Analisa />;
   if (path === "/panduan") return <Panduan />;
   if (path === "/dokumentasi") return <Dokumentasi />;
@@ -83,6 +91,10 @@ function pageFor(path: string) {
   if (path === "/wa-chats") return <WaChats />;
   if (path === "/pesanan") return <Orders />;
   if (path === "/refund") return <RefundPolicy />;
+  if (path.startsWith("/t/")) {
+    const rest = path.slice(3).split("/");
+    return <Storefront slug={decodeURIComponent(rest[0] ?? "")} subpath={rest.slice(1).join("/")} />;
+  }
   if (path.startsWith("/lacak/")) return <Lacak orderId={decodeURIComponent(path.slice("/lacak/".length))} />;
   if (path === "/sandbox") return <Sandbox />;
   if (path === "/pelanggan") return <Pelanggan />;
@@ -102,6 +114,7 @@ const PUBLIC_PREFIXES = [
   "/dokumentasi",
   "/panduan",
   "/refund",
+  "/t/",
 ];
 
 function isPublicPath(path: string): boolean {
@@ -109,11 +122,32 @@ function isPublicPath(path: string): boolean {
   return PUBLIC_PREFIXES.some((p) => (p.endsWith("/") ? path.startsWith(p) : path === p));
 }
 
+/** Muat ulang paksa: lepaskan service worker lama + buang cache HTML/aset. */
+async function hardReload(): Promise<void> {
+  try {
+    if ("serviceWorker" in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map((r) => r.unregister()));
+    }
+    if ("caches" in window) {
+      const keys = await caches.keys();
+      await Promise.all(keys.filter((k) => k.startsWith("aigoogle-shell-")).map((k) => caches.delete(k)));
+    }
+  } catch {
+    /* tetap reload */
+  }
+  const u = new URL(window.location.href);
+  u.searchParams.set("_r", Date.now().toString(36));
+  window.location.replace(u.toString());
+}
+
 export function App() {
   const [route, setRoute] = useState(() => window.location.pathname + window.location.search);
   const path = route.split("?")[0] ?? "/";
   const publicPage = isPublicPath(path);
   const [me, setMe] = useState<Awaited<ReturnType<typeof getMe>> | undefined>(undefined);
+  const [sessionError, setSessionError] = useState<SessionError>(null);
+  const [sessionAttempt, setSessionAttempt] = useState(0);
 
   useEffect(() => {
     const sync = () => setRoute(window.location.pathname + window.location.search);
@@ -137,20 +171,58 @@ export function App() {
   // Cukup cek sesi sekali per mount; navigasi antar halaman tidak perlu /api/me lagi.
   useEffect(() => {
     if (publicPage || me !== undefined) return;
-    void getMe().then(setMe);
-  }, [publicPage, me]);
+    void getMe(sessionAttempt > 0).then((m) => {
+      setMe(m);
+      setSessionError(m ? null : getLastSessionError());
+    });
+  }, [publicPage, me, sessionAttempt]);
 
   useEffect(() => {
-    if (!publicPage && me === null) window.location.replace("/login");
-  }, [publicPage, me]);
+    if (!publicPage && me === null && sessionError === "auth") window.location.replace("/login");
+  }, [publicPage, me, sessionError]);
 
   if (!publicPage && me === undefined) return <PageFallback />;
+  if (!publicPage && me === null && sessionError === "network") {
+    return (
+      <div className="app">
+        <main className="page page--narrow">
+          <div className="card" role="alert">
+            <strong className="card__title">Koneksi ke server bermasalah</strong>
+            <p style={{ margin: "var(--space-2xs) 0 0", color: "var(--ink-2)" }}>
+              Sesi Anda belum bisa diverifikasi karena jaringan atau server lambat. Data Anda tidak dihapus.
+            </p>
+            <div className="btn-row" style={{ marginTop: "var(--space-s)" }}>
+              <button
+                type="button"
+                className="btn"
+                onClick={() => {
+                  setSessionError(null);
+                  setMe(undefined);
+                  setSessionAttempt((n) => n + 1);
+                }}
+              >
+                Coba lagi
+              </button>
+              <button
+                type="button"
+                className="btn btn--ghost"
+                onClick={() => void hardReload()}
+              >
+                Muat ulang
+              </button>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
   if (!publicPage && me === null) return null;
 
   return (
     <>
       <InstallPrompt />
       {!publicPage && <AiAccessGuard />}
+      {!publicPage && <ChatReplyToast />}
       <AiGate />
       <PageBoundary>
         <Suspense key={route} fallback={<PageFallback />}>

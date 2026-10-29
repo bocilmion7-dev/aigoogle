@@ -9,3 +9,6 @@ node_modules/
 apps/api/dist/
 # laporan security lokal — berisi kredensial/secret, jangan di-commit
 testing.md
+
+# upload gambar storefront (runtime, jangan di-commit)
+apps/api/uploads/

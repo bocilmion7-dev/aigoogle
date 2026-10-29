@@ -76,6 +76,9 @@ export interface ShopOrder {
   itemsSubtotal?: number;
   shipping?: ShopShipping;
   accurate?: ShopOrderAccurate;
+  /** asal pesanan: WhatsApp lama (default) atau storefront publik */
+  source?: "wa" | "storefront";
+  storeSlug?: string;
 }
 
 const keyOf = (orderId: string) => `wa:shop_order:${orderId}`;

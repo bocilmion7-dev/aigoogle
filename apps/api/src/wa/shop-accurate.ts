@@ -4,11 +4,12 @@ import type { AccountingProvider, ProviderCtx, ScannedLineItem } from "../provid
 import { writeAudit } from "../audit.js";
 import { getShopOrder, patchShopOrder, type ShopOrder, type ShopOrderAccurate } from "./shop-order.js";
 
-const desc = (order: ShopOrder) => `Pesanan WhatsApp ${order.orderId}`;
+const desc = (order: ShopOrder) =>
+  `${order.source === "storefront" ? "Pesanan Storefront" : "Pesanan WhatsApp"} ${order.orderId}`;
 
 /** Nama pelanggan Accurate: nama pembeli dari WA, fallback nomor. */
 export function customerNameFor(order: ShopOrder): string {
-  return order.buyerName.trim() || `Pembeli WA ${order.buyerPhone}`;
+  return order.buyerName.trim() || `${order.source === "storefront" ? "Pembeli Storefront" : "Pembeli WA"} ${order.buyerPhone}`;
 }
 
 /** Item pesanan → baris Accurate; kode barang (no) dipakai bila ada, kalau tidak dicari by nama. */

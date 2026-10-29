@@ -974,7 +974,7 @@ export function WhatsApp() {
               {qris.qrUrl ? (
                 <img src={qris.qrUrl} alt="Kode QRIS top up" width={220} height={220} />
               ) : (
-                <p style={{ fontFamily: "monospace", wordBreak: "break-all", margin: 0 }}>{qris.qrContent}</p>
+                <p style={{ fontFamily: "var(--font-mono)", wordBreak: "break-all", margin: 0 }}>{qris.qrContent}</p>
               )}
               <p className="qr-card__status" role="status" aria-live="polite">
                 <span className="busy-dot" aria-hidden="true" /> Menunggu pembayaran…
@@ -1078,7 +1078,7 @@ export function WhatsApp() {
               {subQris.qris.qrUrl ? (
                 <img src={subQris.qris.qrUrl} alt="QRIS pembayaran langganan" width={220} height={220} />
               ) : (
-                <p style={{ fontFamily: "monospace", wordBreak: "break-all", margin: 0 }}>
+                <p style={{ fontFamily: "var(--font-mono)", wordBreak: "break-all", margin: 0 }}>
                   {subQris.qris.qrContent}
                 </p>
               )}

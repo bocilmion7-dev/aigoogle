@@ -98,6 +98,8 @@ export function DocCapture({ perms, onClose, onDone }: Props) {
   const [saveOpen, setSaveOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [entrySaved, setEntrySaved] = useState(false);
+  const [entryMsg, setEntryMsg] = useState("");
   const [saveFile, setSaveFile] = useState(true);
   const progressTimer = useRef<number | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -197,6 +199,11 @@ export function DocCapture({ perms, onClose, onDone }: Props) {
     setFile(f);
     setStep("processing");
     setErr("");
+    setMsg("");
+    setEntrySaved(false);
+    setEntryMsg("");
+    setSaveOpen(false);
+    setProgress(0);
     try {
       const hint =
         chosen && chosen.key === "screenshot-pembayaran"
@@ -308,6 +315,10 @@ export function DocCapture({ perms, onClose, onDone }: Props) {
       if (!fromBankNo || !toBankNo) throw new Error("Rekening sumber dan tujuan wajib dipilih.");
       if (fromBankNo === toBankNo) throw new Error("Rekening sumber dan tujuan tidak boleh sama.");
     }
+    if (target === "salesReceipt" || target === "expense" || target === "bankTransfer") {
+      const total = Number(form.total.replace(/[^\d.]/g, ""));
+      if (!(total > 0)) throw new Error("Nominal total wajib diisi (lebih dari 0).");
+    }
     return items;
   }
 
@@ -350,9 +361,13 @@ export function DocCapture({ perms, onClose, onDone }: Props) {
 
   async function performSave() {
     const wantFile = saveFile;
-    const wantEntry = !!target;
+    const wantEntry = !!target && !entrySaved;
     if (!wantFile && !wantEntry) {
-      setErr("Pilih simpan file foto atau tujuan Accurate.");
+      setErr(
+        entrySaved
+          ? "Data sudah tersimpan ke Accurate. Centang simpan file untuk mencoba Drive lagi."
+          : "Pilih simpan file atau tujuan Accurate."
+      );
       return;
     }
     let items: Array<{ name: string; qty: string; price: string }> = [];
@@ -363,18 +378,29 @@ export function DocCapture({ perms, onClose, onDone }: Props) {
       return;
     }
     setErr("");
+    setMsg("");
     setSaving(true);
     setProgress(4);
     progressTimer.current = window.setInterval(() => {
       setProgress((p) => (p < 55 ? Math.min(55, p + 7) : Math.min(90, p + 3)));
     }, 250);
+    let entryDone = entrySaved;
+    let entryDoneMsg = entryMsg;
     try {
-      const parts: string[] = [];
-      if (wantFile) {
-        parts.push(await doSavePhoto());
+      const parts: string[] = entrySaved && entryMsg ? [entryMsg] : [];
+      if (wantEntry) {
+        const saved = await doSaveEntry(items);
+        entryDone = true;
+        entryDoneMsg = saved;
+        setEntrySaved(true);
+        setEntryMsg(saved);
+        parts.push(saved);
         setProgress((p) => Math.max(p, 55));
       }
-      if (wantEntry) parts.push(await doSaveEntry(items));
+      if (wantFile) {
+        parts.push(await doSavePhoto());
+        setProgress((p) => Math.max(p, 90));
+      }
       stopProgress();
       setProgress(100);
       await new Promise((r) => setTimeout(r, 350));
@@ -387,7 +413,14 @@ export function DocCapture({ perms, onClose, onDone }: Props) {
       setSaving(false);
       setSaveOpen(false);
       setProgress(0);
-      setErr((e as Error).message);
+      const message = e instanceof Error ? e.message : "Gagal menyimpan.";
+      if (entryDone) {
+        setErr(
+          `${entryDoneMsg || "Data sudah tersimpan ke Accurate."} File gagal disimpan ke Drive: ${message} Klik Simpan lagi untuk mencoba file.`
+        );
+      } else {
+        setErr(message);
+      }
     }
   }
 
@@ -400,6 +433,7 @@ export function DocCapture({ perms, onClose, onDone }: Props) {
         }.`
       );
     }
+    if (entryMsg) parts.push(entryMsg);
     if (msg) parts.push(msg);
     onDone(parts.join(" ") || "Selesai.");
     onClose();
@@ -723,6 +757,7 @@ export function DocCapture({ perms, onClose, onDone }: Props) {
               value={target}
               onChange={(e) => setTarget(e.target.value as EntryTarget | "")}
               aria-label="Tujuan penyimpanan Accurate"
+              disabled={entrySaved}
             >
               <option value="">(tidak disimpan ke Accurate)</option>
               {(Object.keys(TARGET_LABEL) as EntryTarget[]).map((t) => (
@@ -872,10 +907,10 @@ export function DocCapture({ perms, onClose, onDone }: Props) {
             {saving ? (
               <>
                 <p className="meta" style={{ margin: 0 }}>
-                  {saveFile && progress < 55
-                    ? "Menyimpan file foto ke Drive…"
-                    : target
-                      ? "Menyimpan data ke Accurate…"
+                  {target && !entrySaved
+                    ? "Menyimpan data ke Accurate…"
+                    : saveFile
+                      ? "Menyimpan file ke Drive…"
                       : "Menyelesaikan…"}
                 </p>
                 <div className="modal__bar" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress}>
@@ -890,14 +925,16 @@ export function DocCapture({ perms, onClose, onDone }: Props) {
                 <label className="check">
                   <input type="checkbox" checked={saveFile} onChange={(e) => setSaveFile(e.target.checked)} />
                   <span>
-                    Simpan file foto ke Drive
+                    Simpan file ke Drive
                     {file ? <span className="check__hint">{file.name}</span> : null}
                   </span>
                 </label>
                 <p className="meta" style={{ margin: 0 }}>
-                  {target
-                    ? `Data juga akan disimpan ke ${TARGET_LABEL[target]}.`
-                    : "Data tidak disimpan ke Accurate (tujuan belum dipilih)."}
+                  {entrySaved
+                    ? "Data sudah tersimpan ke Accurate. Centang simpan file untuk mencoba Drive lagi."
+                    : target
+                      ? `Data juga akan disimpan ke ${TARGET_LABEL[target]}.`
+                      : "Data tidak disimpan ke Accurate (tujuan belum dipilih)."}
                 </p>
                 <div className="modal__foot">
                   <button type="button" className="btn btn--2" onClick={() => setSaveOpen(false)}>

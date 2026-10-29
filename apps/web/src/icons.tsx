@@ -34,6 +34,21 @@ export const IconHome: ComponentType<IconProps> = ({ size }) => (
   </Base>
 );
 
+export const IconList: ComponentType<IconProps> = ({ size }) => (
+  <Base size={size}>
+    <path d="M8 6h13M8 12h13M8 18h13" />
+    <path d="M3 6h.01M3 12h.01M3 18h.01" />
+  </Base>
+);
+
+export const IconLayout: ComponentType<IconProps> = ({ size }) => (
+  <Base size={size}>
+    <rect x="3" y="3" width="18" height="18" rx="1.5" />
+    <path d="M3 9h18" />
+    <path d="M9 9v12" />
+  </Base>
+);
+
 export const IconActivity: ComponentType<IconProps> = ({ size }) => (
   <Base size={size}>
     <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
@@ -45,6 +60,19 @@ export const IconCompass: ComponentType<IconProps> = ({ size }) => (
     <circle cx="12" cy="12" r="9" />
     <path d="m15.5 8.5-2 5-5 2 2-5z" />
   </Base>
+);
+
+export const IconWhatsApp: ComponentType<IconProps> = ({ size = 20 }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 32 32"
+    fill="currentColor"
+    aria-hidden="true"
+    focusable="false"
+  >
+    <path d="M16.04 3C8.86 3 3.04 8.82 3.04 16c0 2.29.6 4.52 1.74 6.49L3 29l6.69-1.75A12.9 12.9 0 0 0 16.04 29C23.22 29 29.04 23.18 29.04 16S23.22 3 16.04 3Zm0 23.7c-2.05 0-4.06-.55-5.82-1.6l-.42-.25-3.97 1.04 1.06-3.87-.27-.4A10.65 10.65 0 0 1 5.34 16c0-5.9 4.8-10.7 10.7-10.7S26.74 10.1 26.74 16s-4.8 10.7-10.7 10.7Zm5.86-8.01c-.32-.16-1.9-.94-2.19-1.05-.29-.11-.5-.16-.71.16-.21.32-.82 1.05-1.01 1.26-.19.21-.37.24-.69.08-.32-.16-1.35-.5-2.57-1.59-.95-.85-1.59-1.9-1.78-2.22-.19-.32-.02-.49.14-.65.14-.14.32-.37.48-.56.16-.19.21-.32.32-.53.11-.21.05-.4-.03-.56-.08-.16-.71-1.72-.97-2.36-.26-.62-.52-.54-.71-.55h-.61c-.21 0-.56.08-.85.4-.29.32-1.12 1.1-1.12 2.67s1.15 3.09 1.31 3.3c.16.21 2.26 3.46 5.48 4.85.77.33 1.37.53 1.84.68.77.25 1.47.21 2.02.13.62-.09 1.9-.78 2.17-1.53.27-.75.27-1.39.19-1.52-.08-.13-.29-.21-.61-.37Z" />
+  </svg>
 );
 
 export const IconChat: ComponentType<IconProps> = ({ size }) => (
@@ -85,6 +113,14 @@ export const IconCamera: ComponentType<IconProps> = ({ size }) => (
   <Base size={size}>
     <path d="M4 8h2.5l1.5-2h8l1.5 2H20a1.5 1.5 0 0 1 1.5 1.5V19A1.5 1.5 0 0 1 20 20.5H4A1.5 1.5 0 0 1 2.5 19V9.5A1.5 1.5 0 0 1 4 8z" />
     <circle cx="12" cy="14" r="3.5" />
+  </Base>
+);
+
+export const IconExternal: ComponentType<IconProps> = ({ size }) => (
+  <Base size={size}>
+    <path d="M14 4h6v6" />
+    <path d="m20 4-9 9" />
+    <path d="M19 13v6a1.5 1.5 0 0 1-1.5 1.5h-12A1.5 1.5 0 0 1 4 19V7a1.5 1.5 0 0 1 1.5-1.5H11" />
   </Base>
 );
 
@@ -239,6 +275,24 @@ export const IconClock: ComponentType<IconProps> = ({ size }) => (
   <Base size={size}>
     <circle cx="12" cy="12" r="9" />
     <path d="M12 7v5l3 2" />
+  </Base>
+);
+
+export const IconTruck: ComponentType<IconProps> = ({ size }) => (
+  <Base size={size}>
+    <path d="M3 6h11v10H3z" />
+    <path d="M14 9h4l3 3v4h-7z" />
+    <circle cx="7" cy="18" r="2" />
+    <circle cx="18" cy="18" r="2" />
+    <path d="M3 16h2M9 18h7M20 18h1" />
+  </Base>
+);
+
+export const IconCart: ComponentType<IconProps> = ({ size }) => (
+  <Base size={size}>
+    <circle cx="9" cy="20" r="1.4" />
+    <circle cx="18" cy="20" r="1.4" />
+    <path d="M3 4h2l2.3 10.8a2 2 0 0 0 2 1.6h8.9a2 2 0 0 0 2-1.6L21 8H6" />
   </Base>
 );
 

@@ -45,6 +45,8 @@ beforeAll(async () => {
     "accurate:sales-receipt.view",
     "accurate:sales-invoice.save",
     "accurate:sales-receipt.save",
+    "accurate:expense.save",
+    "accurate:bank-transfer.save",
   ]) {
     await prisma.rolePermission.create({ data: { roleId: role.id, permissionKey } });
   }
@@ -234,6 +236,24 @@ describe("POST /api/customers/entries", () => {
     expect(res.status).toBe(200);
     expect(res.body.target).toBe("salesReceipt");
     expect(String(res.body.id)).toMatch(/^SA-/);
+  });
+
+  it("menolak Biaya tanpa nominal", async () => {
+    const res = await request(api)
+      .post("/api/customers/entries")
+      .set("Cookie", cookie)
+      .send({ target: "expense", description: "Bensin operasional" });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe("bad_request");
+  });
+
+  it("menolak transfer bank tanpa nominal", async () => {
+    const res = await request(api)
+      .post("/api/customers/entries")
+      .set("Cookie", cookie)
+      .send({ target: "bankTransfer", fromBankNo: "1000", toBankNo: "1100" });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe("bad_request");
   });
 });
 

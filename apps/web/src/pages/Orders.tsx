@@ -128,12 +128,7 @@ export function Orders() {
     try {
       const r = await createBiteshipOrder(open.orderId, phone);
       if (r.order) setOpen(r.order);
-      setMsg(
-        (r.shipment.waybillId
-          ? `Order Biteship dibuat — resi ${r.shipment.waybillId}.`
-          : `Order Biteship dibuat (${r.shipment.id}). Resi menyusul dari kurir.`) +
-          (r.buyerNotified ? "" : " Notifikasi WhatsApp ke pembeli gagal (cek koneksi/saldo WA).")
-      );
+      setMsg("Pesanan berhasil diproses.");
       await load(stage, q.trim());
     } catch (e) {
       if (e instanceof Error && (e.name === "TimeoutError" || e.name === "AbortError")) {
@@ -231,7 +226,7 @@ export function Orders() {
           <div>
             <h1 className="orders-title">Pesanan</h1>
             <p className="meta" style={{ margin: 0 }}>
-              Pesanan masuk dari WhatsApp · tersambung ke Accurate
+              Pesanan masuk dari WhatsApp & storefront · tersambung ke Accurate
             </p>
           </div>
           <div className="orders-head__actions" />

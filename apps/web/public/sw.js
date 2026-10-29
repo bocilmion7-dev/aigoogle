@@ -1,28 +1,31 @@
-/* Service worker: cache shell + aset ber-hash; API selalu jaringan.
+/* Service worker: shell + aset ber-hash; API selalu jaringan.
  *
- * Aturan penting (v8):
- *  - HANYA simpan respons ok (status 200). Dulu respons 404 ikut di-cache, sehingga
- *    sekali aset gagal (jendela rsync deploy / jaringan putus) browser terus
- *    menyajikan 404 itu — hard reload pun tidak menolong. Itu penyebab utama
- *    halaman "macet" setelah deploy.
- *  - Aset & navigasi: NETWORK-FIRST. Server selalu jadi kebenaran; cache hanya
- *    fallback saat offline.
- *  - Saat install, index.html dibaca dan chunk entry (JS/CSS) ikut di-cache,
- *    supaya reload saat jaringan lambat tidak menunggu chunk utama.
- *  - Untuk aset ber-hash yang SUDAH pernah di-cache, 404 dari server dijawab
- *    dengan salinan cache (nama hash = isi sama). Ini menyelamatkan tab lama
- *    yang chunk-nya sudah tidak ada di server.
- *  - Semua fetch diberi BATAS WAKTU (5 dtk navigasi / 8 dtk aset).
+ * Prinsip v13:
+ *  - Aset ber-hash (/assets/) dan font: CACHE-FIRST. Nama ber-hash immutable,
+ *    jadi salinan cache selalu valid. Reload setelah idle tidak menunggu
+ *    jaringan 8 detik per aset.
+ *  - Navigasi: NETWORK-FIRST dengan timeout 3 dtk; fallback index cached.
+ *    Deploy baru langsung terpakai, tapi idle tidak menggantung.
+ *  - Cache versi sebelumnya (v12/v11/v10/v9/v8) DIPERTAHANKAN saat v13 aktif, agar
+ *    tab yang masih terbuka tidak kehilangan chunk lama saat SW baru mengambil alih.
+ *  - Fetch yang timeout dibatalkan (AbortController), bukan dibiarkan
+ *    menggantung dan menahan koneksi.
  */
-const CACHE = "aigoogle-shell-v8";
+/* BUILD_ID diganti otomatis oleh scripts/deploy-web.sh. Perubahan byte pada
+ * sw.js memicu instalasi SW baru setiap deploy, sehingga cache index ikut
+ * diperbarui walau nomor versi cache tidak dinaikkan manual. */
+const BUILD_ID = "__BUILD_ID__";
+const CACHE = "aigoogle-shell-v13";
+const PREV_CACHES = ["aigoogle-shell-v12", "aigoogle-shell-v11", "aigoogle-shell-v10", "aigoogle-shell-v9", "aigoogle-shell-v8"];
 const SHELL = ["/index.html", "/favicon.svg", "/manifest.webmanifest"];
 const ENTRY_ASSET_RE = /(?:src|href)="(\/assets\/[^"]+\.(?:js|css))"/g;
+const NAV_TIMEOUT_MS = 5_000;
+const ASSET_TIMEOUT_MS = 8_000;
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
     (async () => {
       const c = await caches.open(CACHE);
-      // simpan per-item: satu item gagal jangan menggagalkan seluruh instalasi
       await Promise.all(
         SHELL.map(async (url) => {
           try {
@@ -43,7 +46,7 @@ self.addEventListener("install", (event) => {
               })
             );
           } catch {
-            /* biarkan instalasi lanjut; navigasi tetap network-first */
+            /* navigasi tetap fallback ke cache lama */
           }
         })
       );
@@ -54,14 +57,17 @@ self.addEventListener("install", (event) => {
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches
-      .keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
-      .then(() => self.clients.claim())
+    (async () => {
+      const keep = new Set([CACHE, ...PREV_CACHES]);
+      const keys = await caches.keys();
+      await Promise.all(
+        keys.filter((k) => k.startsWith("aigoogle-shell-") && !keep.has(k)).map((k) => caches.delete(k))
+      );
+      await self.clients.claim();
+    })()
   );
 });
 
-/** simpan hanya respons sehat */
 async function putIfOk(cache, request, res) {
   if (res && res.ok) {
     try {
@@ -73,17 +79,22 @@ async function putIfOk(cache, request, res) {
   return res;
 }
 
-/**
- * Batas waktu jaringan. Koneksi mobile yang "menggantung" (bukan putus) membuat
- * fetch menunggu tanpa batas → halaman tampak macet saat refresh. Setelah batas
- * ini, pakai salinan cache supaya aplikasi tetap terbuka.
- */
-const NAV_TIMEOUT_MS = 5_000;
-const ASSET_TIMEOUT_MS = 8_000;
+/** Cari di cache terbaru dulu, lalu cache versi sebelumnya. */
+async function matchAny(request) {
+  for (const name of [CACHE, ...PREV_CACHES]) {
+    const cache = await caches.open(name);
+    const hit = await cache.match(request);
+    if (hit) return hit;
+  }
+  return null;
+}
 
-function withTimeout(promise, ms) {
+function withTimeout(promise, ms, controller) {
   return new Promise((resolve, reject) => {
-    const t = setTimeout(() => reject(new Error("sw_timeout")), ms);
+    const t = setTimeout(() => {
+      controller?.abort();
+      reject(new Error("sw_timeout"));
+    }, ms);
     promise.then(
       (v) => {
         clearTimeout(t);
@@ -97,6 +108,16 @@ function withTimeout(promise, ms) {
   });
 }
 
+async function revalidateAsset(req) {
+  const ctrl = new AbortController();
+  try {
+    const res = await withTimeout(fetch(req, { cache: "reload", signal: ctrl.signal }), ASSET_TIMEOUT_MS, ctrl);
+    if (res.ok) await putIfOk(await caches.open(CACHE), req, res);
+  } catch {
+    /* tetap pakai aset cached */
+  }
+}
+
 self.addEventListener("fetch", (event) => {
   const req = event.request;
   if (req.method !== "GET") return;
@@ -107,15 +128,16 @@ self.addEventListener("fetch", (event) => {
   if (req.mode === "navigate") {
     event.respondWith(
       (async () => {
+        const ctrl = new AbortController();
         try {
-          const res = await withTimeout(fetch(req), NAV_TIMEOUT_MS);
-          // jangan menimpa shell dengan halaman error (502/504 saat API restart)
+          // Network-first singkat: deploy baru langsung terpakai; saat jaringan
+          // menggantung, fallback ke index cached setelah 3 dtk.
+          const res = await withTimeout(fetch(req, { signal: ctrl.signal }), NAV_TIMEOUT_MS, ctrl);
           if (res.ok) await putIfOk(await caches.open(CACHE), "/index.html", res);
           return res;
         } catch {
-          const cached = await caches.match("/index.html");
+          const cached = await matchAny("/index.html");
           if (cached) return cached;
-          // benar-benar offline & belum pernah dibuka → tampilkan pesan ramah
           return new Response(
             '<!doctype html><meta charset="utf-8"><title>Offline</title>' +
               '<body style="font:16px system-ui;padding:2rem;line-height:1.6">' +
@@ -132,22 +154,26 @@ self.addEventListener("fetch", (event) => {
   if (url.pathname.startsWith("/assets/") || url.pathname === "/favicon.svg" || url.pathname.startsWith("/fonts/")) {
     event.respondWith(
       (async () => {
+        const cached = await matchAny(req);
+        if (cached) {
+          // Font nama tetap bisa berubah isi; revalidasi di background.
+          if (url.pathname.startsWith("/fonts/")) event.waitUntil(revalidateAsset(req));
+          return cached;
+        }
+        const ctrl = new AbortController();
         try {
-          const res = await withTimeout(fetch(req), ASSET_TIMEOUT_MS);
+          const res = await withTimeout(fetch(req, { signal: ctrl.signal }), ASSET_TIMEOUT_MS, ctrl);
           const cache = await caches.open(CACHE);
           if (res.ok) {
             await putIfOk(cache, req, res);
             return res;
           }
-          // Aset ber-hash bersifat immutable: salinan cache untuk URL yang sama
-          // tetap valid walau server sudah menghapus file lama (404).
-          const hit = await caches.match(req);
+          const hit = await matchAny(req);
           if (hit) return hit;
-          cache.delete(req).catch(() => null); // buang entri basi/rusak
+          cache.delete(req).catch(() => null);
           return res;
         } catch {
-          // jangan pernah menyajikan HTML 404/502 sebagai JS/CSS
-          const hit = await caches.match(req);
+          const hit = await matchAny(req);
           return hit || Response.error();
         }
       })()

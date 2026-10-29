@@ -7,23 +7,23 @@
   --lp-max: 1240px;
   --lp-pad: clamp(1rem, 4vw, 2.75rem);
   --lp-section: clamp(3.5rem, 8vw, 7rem);
-  --lp-display: clamp(2.1rem, 1.2rem + 3.6vw, 4.2rem);
-  --lp-h2: clamp(1.9rem, 1.15rem + 2.5vw, 3rem);
-  --lp-h3: clamp(1.1rem, 1rem + 0.45vw, 1.35rem);
-  --lp-body: clamp(0.98rem, 0.94rem + 0.18vw, 1.06rem);
-  --lp-small: 0.86rem;
-  --lp-label: 0.68rem;
+  --lp-display: var(--type-display-1);
+  --lp-h2: var(--type-display-2);
+  --lp-h3: var(--type-h3);
+  --lp-body: var(--type-body);
+  --lp-small: var(--type-small);
+  --lp-label: var(--type-label);
   --lp-accent: var(--action);
   --lp-accent-ink: var(--action-hover);
   --lp-rule: 1px solid var(--line-strong);
   --lp-ink-rule: 1px solid var(--ink);
-  --lp-mono: var(--font-mono);
+  --lp-mono: var(--font-label);
 
   min-height: 100dvh;
   overflow-x: clip;
   background: var(--base);
   color: var(--ink);
-  font-family: var(--font-mono);
+  font-family: var(--font-copy);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -41,7 +41,7 @@
 .lp h2,
 .lp h3 {
   margin: 0;
-  font-family: var(--font-display);
+  font-family: var(--font-title);
   font-weight: 600;
   letter-spacing: -0.02em;
   text-wrap: balance;
@@ -71,7 +71,7 @@
   background: var(--ink);
   color: var(--base);
   font-family: var(--lp-mono);
-  font-size: 0.72rem;
+  font-size: var(--type-meta);
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -100,7 +100,7 @@
   margin: 0 auto;
   padding: 6px var(--lp-pad);
   font-family: var(--lp-mono);
-  font-size: 10px;
+  font-size: var(--type-label);
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
@@ -147,7 +147,7 @@
   border-bottom: 1px solid transparent;
   color: var(--ink-2);
   font-family: var(--lp-mono);
-  font-size: 11px;
+  font-size: var(--type-label);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   text-decoration: none;
@@ -186,7 +186,7 @@
   border: 1px solid var(--ink);
   color: var(--ink);
   font-family: var(--lp-mono);
-  font-size: 11px;
+  font-size: var(--type-label);
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -212,7 +212,7 @@
   align-items: center;
   gap: var(--space-2xs);
   font-family: var(--lp-mono);
-  font-size: 10.5px;
+  font-size: var(--type-label);
   font-weight: 600;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -250,7 +250,7 @@
 .lp-note {
   max-width: 42ch;
   margin-top: var(--space-s);
-  font-size: 0.78rem;
+  font-size: var(--type-small);
   line-height: 1.5;
   color: var(--ink-3);
 }
@@ -264,8 +264,8 @@
   padding: 0.85rem 1.35rem;
   border: 1px solid transparent;
   border-radius: 0;
-  font-family: var(--lp-mono);
-  font-size: 11px;
+  font-family: var(--font-input);
+  font-size: var(--type-button);
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -327,7 +327,7 @@
   background: var(--ink);
   color: var(--base);
   font-family: var(--lp-mono);
-  font-size: 9.5px;
+  font-size: var(--type-micro);
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
@@ -342,8 +342,8 @@
   border-bottom: var(--lp-rule);
 }
 .lp-score__num {
-  font-family: var(--font-display);
-  font-size: clamp(4rem, 7vw, 5.4rem);
+  font-family: var(--font-title);
+  font-size: var(--type-metric);
   font-weight: 700;
   line-height: 0.75;
   color: var(--lp-accent);
@@ -355,7 +355,7 @@
   gap: var(--space-3xs);
   padding-bottom: 4px;
   font-family: var(--lp-mono);
-  font-size: 9px;
+  font-size: var(--type-micro);
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--ink-3);
@@ -363,7 +363,7 @@
 .lp-score__cap strong {
   color: var(--ink);
   font-family: var(--font-mono);
-  font-size: 0.8rem;
+  font-size: var(--type-small);
   font-weight: 600;
   letter-spacing: 0;
   text-transform: none;
@@ -380,13 +380,13 @@
   border-bottom: 1px solid var(--line);
 }
 .lp-rows dt {
-  font-size: 0.8rem;
+  font-size: var(--type-small);
   color: var(--ink-3);
 }
 .lp-rows dd {
   margin: 0;
   font-family: var(--lp-mono);
-  font-size: 0.85rem;
+  font-size: var(--type-small);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
@@ -395,7 +395,7 @@
   padding: 0.75rem 0.85rem;
   border-left: 3px solid var(--lp-accent);
   background: var(--action-soft);
-  font-size: 0.85rem;
+  font-size: var(--type-small);
   line-height: 1.5;
   color: var(--ink);
 }
@@ -403,7 +403,7 @@
   display: block;
   margin-bottom: var(--space-3xs);
   font-family: var(--lp-mono);
-  font-size: 9px;
+  font-size: var(--type-micro);
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -413,7 +413,7 @@
   padding: 0.5rem 0.85rem;
   border-top: 1px solid var(--ink);
   font-family: var(--lp-mono);
-  font-size: 9px;
+  font-size: var(--type-micro);
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--ink-3);
@@ -441,7 +441,7 @@
   padding: 0.6rem clamp(0.8rem, 2vw, 1.3rem);
   border-left: 1px solid var(--line-strong);
   font-family: var(--lp-mono);
-  font-size: 10px;
+  font-size: var(--type-label);
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--ink-2);
@@ -471,7 +471,7 @@
 .lp-kicker {
   padding-top: 3px;
   font-family: var(--lp-mono);
-  font-size: 10.5px;
+  font-size: var(--type-label);
   font-weight: 600;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -504,7 +504,7 @@
 }
 .lp-pillar__k {
   font-family: var(--lp-mono);
-  font-size: 10px;
+  font-size: var(--type-label);
   font-weight: 600;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -541,20 +541,20 @@
 .lp-cap__n {
   padding-top: 2px;
   font-family: var(--lp-mono);
-  font-size: 11px;
+  font-size: var(--type-label);
   color: var(--lp-accent-ink);
   font-variant-numeric: tabular-nums;
 }
 .lp-cap h3 {
-  font-family: var(--font-mono);
-  font-size: 0.98rem;
+  font-family: var(--font-title);
+  font-size: var(--type-h3);
   font-weight: 600;
   letter-spacing: 0;
   line-height: 1.35;
 }
 .lp-cap p {
   margin-top: 0.25rem;
-  font-size: 0.83rem;
+  font-size: var(--type-small);
   line-height: 1.55;
   color: var(--ink-2);
 }
@@ -570,7 +570,7 @@
 }
 .lp-demo__q {
   margin-top: 0.7rem;
-  font-size: clamp(1.8rem, 3.4vw, 2.7rem);
+  font-size: var(--type-display-2);
   line-height: 1.15;
   letter-spacing: -0.02em;
 }
@@ -599,7 +599,7 @@
 .lp-ticks li {
   position: relative;
   padding-left: 1.25rem;
-  font-size: 0.88rem;
+  font-size: var(--type-small);
   line-height: 1.5;
   color: var(--ink-2);
 }
@@ -636,7 +636,7 @@
 .lp-demo__shot figcaption {
   padding-top: 0.6rem;
   font-family: var(--lp-mono);
-  font-size: 9.5px;
+  font-size: var(--type-micro);
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--ink-3);
@@ -659,7 +659,7 @@
   display: block;
   margin-bottom: var(--space-xs);
   font-family: var(--font-display);
-  font-size: 2.2rem;
+  font-size: var(--type-display-2);
   font-weight: 700;
   line-height: 1;
   color: var(--lp-accent);
@@ -667,11 +667,11 @@
 }
 .lp-step strong {
   display: block;
-  font-size: 0.98rem;
+  font-size: var(--type-body);
 }
 .lp-step p {
   margin-top: 0.35rem;
-  font-size: 0.83rem;
+  font-size: var(--type-small);
   line-height: 1.55;
   color: var(--ink-2);
 }
@@ -696,7 +696,7 @@
 .lp-quote blockquote {
   margin: 0;
   font-family: var(--font-display);
-  font-size: 1.02rem;
+  font-size: var(--type-body);
   line-height: 1.5;
   letter-spacing: -0.01em;
 }
@@ -723,10 +723,10 @@
   line-height: 1.3;
 }
 .lp-quote figcaption strong {
-  font-size: 0.82rem;
+  font-size: var(--type-small);
 }
 .lp-quote figcaption span span {
-  font-size: 0.72rem;
+  font-size: var(--type-meta);
   color: var(--ink-3);
 }
 
@@ -754,7 +754,7 @@
   padding: 0.7rem 0.9rem;
   border-top: 1px solid var(--line-strong);
   font-family: var(--lp-mono);
-  font-size: 9.5px;
+  font-size: var(--type-micro);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--ink-3);
@@ -819,7 +819,7 @@
 .lp-footer__brand p {
   max-width: 34ch;
   margin-top: 0.9rem;
-  font-size: 0.82rem;
+  font-size: var(--type-small);
   line-height: 1.6;
   color: var(--ink-2);
 }
@@ -829,11 +829,11 @@
   gap: 0.2rem;
   margin-top: 0.9rem;
   font-style: normal;
-  font-size: 0.75rem;
+  font-size: var(--type-meta);
   color: var(--ink-3);
 }
 .lp-footer__brand address strong {
-  font-size: 0.8rem;
+  font-size: var(--type-small);
   color: var(--ink);
 }
 .lp-footer__brand address a {
@@ -851,7 +851,7 @@
 .lp-footer__cols h3 {
   margin-bottom: 0.6rem;
   font-family: var(--lp-mono);
-  font-size: 10px;
+  font-size: var(--type-label);
   font-weight: 600;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -866,7 +866,7 @@
   list-style: none;
 }
 .lp-footer__cols a {
-  font-size: 0.82rem;
+  font-size: var(--type-small);
   color: var(--ink-2);
   text-decoration: none;
   transition: color 150ms var(--ease);
@@ -884,7 +884,7 @@
   padding: var(--space-s) var(--lp-pad);
   border-top: 1px solid var(--line-strong);
   font-family: var(--lp-mono);
-  font-size: 9.5px;
+  font-size: var(--type-micro);
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--ink-3);

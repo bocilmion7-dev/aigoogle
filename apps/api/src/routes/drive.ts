@@ -34,13 +34,50 @@ async function readRaw(req: Express.Request, limit = MAX_UPLOAD): Promise<Buffer
   return Buffer.concat(chunks);
 }
 
+const UPLOAD_EXT = new Set([
+  "jpg", "jpeg", "png", "webp", "gif", "bmp", "tif", "tiff", "pdf",
+  "docx", "pptx", "doc", "ppt", "md", "markdown", "txt", "csv",
+]);
+const MIME_BY_EXT: Record<string, string> = {
+  png: "image/png",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  webp: "image/webp",
+  gif: "image/gif",
+  bmp: "image/bmp",
+  tif: "image/tiff",
+  tiff: "image/tiff",
+  pdf: "application/pdf",
+  docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  doc: "application/msword",
+  ppt: "application/vnd.ms-powerpoint",
+  md: "text/markdown",
+  markdown: "text/markdown",
+  txt: "text/plain",
+  csv: "text/csv",
+};
+const EXT_BY_MIME: Record<string, string> = Object.fromEntries(
+  Object.entries(MIME_BY_EXT).map(([ext, mime]) => [mime, ext === "jpeg" ? "jpg" : ext])
+);
+
 function extOf(fileName: string, mime: string): string {
   const ext = fileName.split(".").pop()?.toLowerCase() ?? "";
-  if (["jpg", "jpeg", "png", "webp", "gif", "bmp", "tif", "tiff", "pdf"].includes(ext)) return ext === "jpeg" ? "jpg" : ext;
-  if (mime === "image/png") return "png";
-  if (mime === "image/webp") return "webp";
-  if (mime === "application/pdf") return "pdf";
-  return "jpg";
+  if (UPLOAD_EXT.has(ext)) return ext === "jpeg" ? "jpg" : ext;
+  return EXT_BY_MIME[mime] ?? "bin";
+}
+
+/**
+ * Perbaiki MIME yang dikirim klien lama: PDF/dokumen yang terlanjur dikirim
+ * sebagai image/* tetap disimpan dengan MIME sesuai ekstensinya.
+ */
+function mimeForUpload(fileName: string, headerMime: string): string {
+  const mime = headerMime.split(";")[0]!.trim().toLowerCase();
+  const ext = fileName.split(".").pop()?.toLowerCase() ?? "";
+  const byExt = MIME_BY_EXT[ext];
+  if (byExt && mime.startsWith("image/") && !byExt.startsWith("image/")) return byExt;
+  if (mime && mime !== "application/octet-stream") return mime;
+  return byExt ?? "application/octet-stream";
 }
 
 /**
@@ -59,7 +96,7 @@ driveRouter.post(
     if (!client) return res.status(409).json({ error: "belum_connect" });
 
     const fileNameHeader = String(req.header("x-file-name") ?? "dokumen.jpg").slice(0, 200);
-    const mime = String(req.header("content-type") ?? "application/octet-stream").split(";")[0]!.trim();
+    const mime = mimeForUpload(fileNameHeader, String(req.header("content-type") ?? ""));
     const docType = String(req.query.docType ?? "lainnya").slice(0, 40);
     const label = String(req.query.label ?? "").slice(0, 60);
     const party = String(req.query.party ?? "").slice(0, 200);

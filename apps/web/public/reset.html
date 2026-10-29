@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>Memuat ulang AI Asisten…</title>
+    <style>
+      body{margin:0;min-height:100vh;display:grid;place-items:center;background:#fffdf9;color:#2b2016;font:16px/1.6 "Space Mono",ui-monospace,monospace;padding:24px}
+      main{max-width:520px;text-align:center}
+      h1{font-size:20px;margin:0 0 8px}
+      p{color:#6b5a4b;margin:0 0 18px}
+      a{color:#b91c1c}
+      .dot{width:10px;height:10px;border-radius:50%;background:#dc2626;display:inline-block;margin-right:8px;animation:p 1s infinite alternate}
+      @keyframes p{to{opacity:.25}}
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1><span class="dot"></span>Membersihkan cache lama…</h1>
+      <p>Service worker dan cache shell akan dilepas, lalu aplikasi dimuat ulang. Sesi login Anda tidak dihapus.</p>
+      <p><a href="/app">Buka aplikasi</a></p>
+    </main>
+    <script>
+      (async function () {
+        try {
+          if ("serviceWorker" in navigator) {
+            const regs = await navigator.serviceWorker.getRegistrations();
+            await Promise.all(regs.map(function (r) { return r.unregister(); }));
+          }
+        } catch (_) {}
+        try {
+          if ("caches" in window) {
+            const keys = await caches.keys();
+            await Promise.all(
+              keys.filter(function (k) { return k.indexOf("aigoogle-shell-") === 0; })
+                .map(function (k) { return caches.delete(k); })
+            );
+          }
+        } catch (_) {}
+        var u = new URL("/app", location.origin);
+        u.searchParams.set("_r", Date.now().toString(36));
+        location.replace(u.toString());
+      })();
+    </script>
+  </body>
+</html>

@@ -386,7 +386,7 @@ export function Subscription() {
               {qris.qris.qrUrl ? (
                 <img src={qris.qris.qrUrl} alt="QRIS pembayaran langganan" width={220} height={220} />
               ) : (
-                <p style={{ fontFamily: "monospace", wordBreak: "break-all", margin: 0 }}>{qris.qris.qrContent}</p>
+                <p style={{ fontFamily: "var(--font-mono)", wordBreak: "break-all", margin: 0 }}>{qris.qris.qrContent}</p>
               )}
               <p className="qr-card__status" role="status" aria-live="polite">
                 <span className="busy-dot" aria-hidden="true" /> Menunggu pembayaran…

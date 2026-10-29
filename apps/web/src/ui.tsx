@@ -19,6 +19,7 @@ import {
   IconCompass,
   IconCpu,
   IconFileText,
+  IconLayout,
   IconLogout,
   IconMore,
   IconNews,
@@ -124,11 +125,16 @@ export function AppHeader({ me }: { me?: Me | null }) {
   const canPlatform = perms.includes("app:settings.manage");
   const sisiAccurate = !canPlatform; // Staf & Admin Accurate
   const links: NavLink[] = [
-    ...(sisiAccurate ? [{ href: "/analisa", label: "Analisis Bisnis", short: "Analisa", Icon: IconActivity }] : []),
     ...(sisiAccurate ? [{ href: "/insight", label: "Insight", short: "Insight", Icon: IconNews }] : []),
     ...(sisiAccurate ? [{ href: "/app", label: "AI Asisten", short: "AI", Icon: IconCpu }] : []),
     ...(sisiAccurate ? [{ href: "/whatsapp", label: "WhatsApp", short: "WhatsApp", Icon: IconChat }] : []),
     ...(sisiAccurate ? [{ href: "/pesanan", label: "Kelola Pesanan", short: "Pesanan", Icon: IconPackage }] : []),
+    ...(canAdmin && !canPlatform
+      ? [{ href: "/template", label: "Template Storefront", short: "Template", Icon: IconLayout }]
+      : []),
+    ...(canAdmin && !canPlatform
+      ? [{ href: "/produk", label: "Produk Storefront", short: "Produk", Icon: IconPackage }]
+      : []),
     ...(canAdmin && !canPlatform
       ? [{ href: "/aktivitas", label: "Aktivitas", short: "Aktivitas", hidden: true, Icon: IconActivity }]
       : []),
@@ -142,6 +148,7 @@ export function AppHeader({ me }: { me?: Me | null }) {
   // Item yang dipindah dari bottom bar ke drawer "Lainnya"
   const drawerLinks: NavLink[] = [
     { href: "/akun", label: "Akun & Keamanan", short: "Akun", Icon: IconUsers },
+    ...(sisiAccurate ? [{ href: "/analisa", label: "Analisis Bisnis", short: "Analisa", Icon: IconActivity }] : []),
     ...(sisiAccurate ? [{ href: "/toko", label: "Akun Toko", short: "Akun Toko", Icon: IconPackage }] : []),
     ...(sisiAccurate ? [{ href: "/explore", label: "Explore Manager", short: "Explore", Icon: IconCompass }] : []),
     ...(canAdmin && !canPlatform
@@ -239,7 +246,7 @@ export function AppHeader({ me }: { me?: Me | null }) {
             href={href}
             title={label}
             aria-label={label}
-            aria-current={cur === href ? "page" : undefined}
+            aria-current={cur === href || (href === "/produk" && cur.startsWith("/produk/")) ? "page" : undefined}
           >
             <span className="bottom-nav__chip">
               <Icon size={20} />

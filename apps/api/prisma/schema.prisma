@@ -8,25 +8,28 @@ datasource db {
 }
 
 model Tenant {
-  id           String       @id @default(cuid())
-  provider     String
-  providerDbId String
-  name         String
-  alias        String
-  createdAt    DateTime     @default(now())
-  users        User[]
-  connections  Connection[]
-  roles        Role[]
-  chatSessions ChatSession[]
-  auditLogs    AuditLog[]
-  driveJobs    DriveJob[]
-  subscriptions Subscription[]
-  payments     Payment[]
-  waAccount    WaAccount?
-  waBalance    WaBalance?
-  waTopups     WaTopup[]
-  waMessages   WaMessageLog[]
+  id                    String                 @id @default(cuid())
+  provider              String
+  providerDbId          String
+  name                  String
+  alias                 String
+  createdAt             DateTime               @default(now())
+  users                 User[]
+  connections           Connection[]
+  roles                 Role[]
+  chatSessions          ChatSession[]
+  auditLogs             AuditLog[]
+  driveJobs             DriveJob[]
+  subscriptions         Subscription[]
+  payments              Payment[]
+  waAccount             WaAccount?
+  waBalance             WaBalance?
+  waTopups              WaTopup[]
+  waMessages            WaMessageLog[]
   accurateWebhookEvents AccurateWebhookEvent[]
+  storefront            Storefront?
+  storefrontProducts    StorefrontProduct[]
+
   @@unique([provider, providerDbId])
 }
 
@@ -38,6 +41,7 @@ model Role {
   name        String
   permissions RolePermission[]
   users       User[]
+
   @@unique([tenantId, key])
 }
 
@@ -46,23 +50,25 @@ model RolePermission {
   role          Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
   roleId        String
   permissionKey String
+
   @@unique([roleId, permissionKey])
 }
 
 model User {
-  id             String   @id @default(cuid())
-  tenant         Tenant   @relation(fields: [tenantId], references: [id])
+  id             String        @id @default(cuid())
+  tenant         Tenant        @relation(fields: [tenantId], references: [id])
   tenantId       String
   providerUserId String
   email          String
   name           String
-  phone          String   @default("")
-  passwordHash   String   @default("")
-  role           Role     @relation(fields: [roleId], references: [id])
+  phone          String        @default("")
+  passwordHash   String        @default("")
+  role           Role          @relation(fields: [roleId], references: [id])
   roleId         String
-  createdAt      DateTime @default(now())
+  createdAt      DateTime      @default(now())
   sessions       Session[]
   chatSessions   ChatSession[]
+
   @@unique([tenantId, providerUserId])
 }
 
@@ -74,10 +80,11 @@ model Connection {
   accessTokenEnc  String
   refreshTokenEnc String
   expiresAt       DateTime
-  host            String     @default("")
-  session         String     @default("")
-  status          String     @default("connected")
+  host            String   @default("")
+  session         String   @default("")
+  status          String   @default("connected")
   updatedAt       DateTime @updatedAt
+
   @@unique([tenantId, provider])
 }
 
@@ -151,17 +158,17 @@ model AuditLog {
 }
 
 model DriveJob {
-  id         String            @id @default(cuid())
-  tenant     Tenant            @relation(fields: [tenantId], references: [id])
+  id         String           @id @default(cuid())
+  tenant     Tenant           @relation(fields: [tenantId], references: [id])
   tenantId   String
   userId     String
   folderId   String
-  folderName String            @default("")
-  status     String            @default("planned") // planned|running|done|cancelled|failed|undone
-  planJson   String            @default("[]")
-  resultJson String            @default("{}")
-  createdAt  DateTime          @default(now())
-  updatedAt  DateTime          @updatedAt
+  folderName String           @default("")
+  status     String           @default("planned") // planned|running|done|cancelled|failed|undone
+  planJson   String           @default("[]")
+  resultJson String           @default("{}")
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
   logs       DriveActionLog[]
 }
 
@@ -171,7 +178,7 @@ model DriveActionLog {
   jobId      String
   fileId     String
   fileName   String   @default("")
-  action     String   // create_folder|rename|move
+  action     String // create_folder|rename|move
   fromParent String   @default("")
   toParent   String   @default("")
   status     String   @default("ok") // ok|failed|skipped
@@ -188,21 +195,23 @@ model Subscription {
   expiresAt DateTime?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
+
   @@index([tenantId])
 }
 
 model Payment {
-  id                String   @id @default(cuid())
-  tenant            Tenant   @relation(fields: [tenantId], references: [id])
-  tenantId          String
-  orderId           String   @unique
-  amount            Int      // dalam Rupiah
-  status            String   @default("pending") // pending|settlement|deny|cancel|expire
-  paymentMethod     String   @default("")
-  transactionTime   DateTime @default(now())
-  fraudStatus       String   @default("")
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  id              String   @id @default(cuid())
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+  tenantId        String
+  orderId         String   @unique
+  amount          Int // dalam Rupiah
+  status          String   @default("pending") // pending|settlement|deny|cancel|expire
+  paymentMethod   String   @default("")
+  transactionTime DateTime @default(now())
+  fraudStatus     String   @default("")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
   @@index([tenantId])
   @@index([orderId])
 }
@@ -219,13 +228,14 @@ model WaAccount {
   status        String   @default("pending") // pending|connected|error
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+
   @@unique([tenantId])
 }
 
 model WaBalance {
-  tenantId String @id
-  tenant   Tenant @relation(fields: [tenantId], references: [id])
-  amount   Int    @default(0) // kredit pesan
+  tenantId  String   @id
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  amount    Int      @default(0) // kredit pesan
   updatedAt DateTime @updatedAt
 }
 
@@ -234,33 +244,91 @@ model WaTopup {
   tenant        Tenant   @relation(fields: [tenantId], references: [id])
   tenantId      String
   orderId       String   @unique
-  amount        Int      // Rupiah
-  credits       Int      // amount / 200
+  amount        Int // Rupiah
+  credits       Int // amount / 200
   status        String   @default("pending") // pending|settlement|deny|cancel|expire
   paymentMethod String   @default("")
   providerRef   String   @default("") // referensi provider pembayaran (Midtrans referenceNo)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+
   @@index([tenantId])
   @@index([orderId])
 }
 
 model WaMessageLog {
-  id          String   @id @default(cuid())
-  tenant      Tenant   @relation(fields: [tenantId], references: [id])
-  tenantId    String
+  id               String   @id @default(cuid())
+  tenant           Tenant   @relation(fields: [tenantId], references: [id])
+  tenantId         String
   /// lawan bicara: nomor tujuan bila keluar, nomor pengirim bila masuk
-  to          String
-  body        String
-  status      String   // sent|failed|received|queued
-  direction   String   @default("out") // out|in
-  error       String   @default("")
-  costCredits Int      @default(1)
+  to               String
+  body             String
+  status           String // sent|failed|received|queued
+  direction        String   @default("out") // out|in
+  error            String   @default("")
+  costCredits      Int      @default(1)
   /// tautan ke outbox waserver — dipakai utk menyinkronkan status kirim
   waserverOutboxId Int?
-  createdAt   DateTime @default(now())
+  createdAt        DateTime @default(now())
+
   @@index([tenantId])
   @@index([waserverOutboxId])
+}
+
+// ── Storefront publik per perusahaan (satu tenant = satu database Accurate) ──
+model Storefront {
+  id               String    @id @default(cuid())
+  tenant           Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenantId         String    @unique
+  slug             String    @unique
+  /// product = katalog + checkout order; service = katalog + CTA WhatsApp
+  mode             String    @default("product")
+  /// product-1..3 atau service-1..3
+  template         String    @default("product-1")
+  /// tema warna independen dari layout template
+  theme            String    @default("warm")
+  /// banner hero (URL upload)
+  bannerUrl        String    @default("")
+  /// logo perusahaan di header storefront (URL upload)
+  logoUrl          String    @default("")
+  tagline          String    @default("")
+  description      String    @default("")
+  /// nomor WhatsApp CTA; kosong = pakai nomor pemilik di pengaturan WA
+  whatsapp         String    @default("")
+  active           Boolean   @default(true)
+  productsSyncedAt DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([active])
+}
+
+model StorefrontProduct {
+  id          String   @id @default(cuid())
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenantId    String
+  itemNo      String
+  /// nama dari Accurate (cache)
+  name        String   @default("")
+  /// judul tampilan storefront (boleh beda dari Accurate)
+  title       String   @default("")
+  description String   @default("")
+  imageUrl    String   @default("")
+  /// JSON array URL gambar tambahan (termasuk cover di index 0)
+  images      String   @default("[]")
+  category    String   @default("")
+  unit        String   @default("")
+  /// cache harga jual & stok dari Accurate saat sinkron
+  price       Float?
+  stock       Float?
+  active      Boolean  @default(true)
+  featured    Boolean  @default(false)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([tenantId, itemNo])
+  @@index([tenantId, active, sortOrder])
 }
 
 // Provider AI (OpenAI-compatible) — dikelola admin platform via halaman /ai
@@ -286,6 +354,7 @@ model AiProviderModel {
   lastError    String     @default("")
   lastOkAt     DateTime?
   lastFailAt   DateTime?
+
   @@unique([providerId, name])
   @@index([providerId, rank])
 }
@@ -438,6 +507,7 @@ model NewsItem {
   topic        String    @default("umum")
   industries   String    @default("") // dipisah koma
   hash         String    @unique
+
   @@index([publishedAt])
   @@index([topic])
 }

@@ -802,6 +802,8 @@ export class AccurateAdapter implements AccountingProvider {
   }
 
   async createExpense(ctx: ProviderCtx, data: ExpenseInput): Promise<SavedDoc> {
+    const amount = Number(data.total ?? 0);
+    if (!(amount > 0)) throw new Error("nominal beban wajib lebih dari 0");
     const all = await this.allAccounts(ctx);
     const hint = data.description ?? "";
     const picked = data.accountNo
@@ -821,7 +823,7 @@ export class AccurateAdapter implements AccountingProvider {
         description: hint,
         expensePayableNo: payable.no,
         detailAccount: [
-          { accountNo: expense.no, amount: data.total ?? 0, expenseName: hint.slice(0, 100) || "Beban operasional" },
+          { accountNo: expense.no, amount, expenseName: hint.slice(0, 100) || "Beban operasional" },
         ],
       },
       ctx
@@ -830,6 +832,8 @@ export class AccurateAdapter implements AccountingProvider {
   }
 
   async createBankTransfer(ctx: ProviderCtx, data: BankTransferInput): Promise<SavedDoc> {
+    const amount = Number(data.total ?? 0);
+    if (!(amount > 0)) throw new Error("nominal transfer wajib lebih dari 0");
     const all = await this.allAccounts(ctx);
     // transfer antar rekening sendiri: hanya RUPIAH — akun USD/SGD ditolak API ("mata uang asing")
     const cash = all.filter(
@@ -849,7 +853,7 @@ export class AccurateAdapter implements AccountingProvider {
         ...(branch ? { branchName: branch } : {}),
         fromBankNo: from.no,
         toBankNo: to.no,
-        fromBankAmount: data.total ?? 0,
+        fromBankAmount: amount,
         description: data.description ?? "",
       },
       ctx
